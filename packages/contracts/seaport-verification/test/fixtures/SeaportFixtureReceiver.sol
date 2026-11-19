@@ -20,7 +20,7 @@ interface IFixtureSeaport {
     function incrementCounter() external returns(uint256);
     function fulfillAdvancedOrder(SeaportFixtureTypes.AdvancedOrder calldata,SeaportFixtureTypes.CriteriaResolver[] calldata,bytes32,address) external payable returns(bool);
 }
-interface IFixtureToken {function approve(address,uint256)external returns(bool);}
+interface IFixtureToken {function approve(address,uint256)external returns(bool);function balanceOf(address)external view returns(uint256);}
 interface IFixture721 {function ownerOf(uint256)external view returns(address);function approve(address,uint256)external;}
 interface IFixture1155 {function balanceOf(address,uint256)external view returns(uint256);}
 contract SeaportFixtureReceiver {
@@ -32,12 +32,15 @@ contract SeaportFixtureReceiver {
         require(block.chainid==31337&&msg.sender==owner&&!entered,"OWNER_OR_REENTRY");require(order.parameters.offer.length==1&&order.parameters.zone==address(0)&&order.parameters.orderType==0,"SUBSET");
         require(order.numerator==1&&order.denominator==1&&order.parameters.conduitKey==bytes32(0),"FULL_DIRECT_ONLY");
         uint256 total;for(uint256 i;i<order.parameters.consideration.length;i++){SeaportFixtureTypes.ConsiderationItem calldata c=order.parameters.consideration[i];require(c.token==paymentToken&&c.startAmount==c.endAmount&&c.itemType==(paymentToken==address(0)?0:1),"PAYMENT");total+=c.startAmount;}
-        require(total==exactSpend&&(paymentToken==address(0)?msg.value==total:msg.value==0),"EXACT_VALUE");entered=true;
+        require(total==exactSpend&&(paymentToken==address(0)?(msg.value==0||msg.value==total)&&address(this).balance>=total:msg.value==0),"EXACT_VALUE");entered=true;
+        uint256 nativeBefore=address(this).balance;uint256 paymentBefore=paymentToken==address(0)?0:IFixtureToken(paymentToken).balanceOf(address(this));
         SeaportFixtureTypes.OfferItem calldata item=order.parameters.offer[0];expectedCollection=item.token;expectedSeller=order.parameters.offerer;expectedId=item.identifierOrCriteria;expectedQuantity=item.startAmount;
         uint256 beforeHeld=item.itemType==3?IFixture1155(item.token).balanceOf(address(this),item.identifierOrCriteria):0;
         if(paymentToken!=address(0))require(IFixtureToken(paymentToken).approve(address(seaport),total));
         require(seaport.fulfillAdvancedOrder{value:msg.value}(order,new SeaportFixtureTypes.CriteriaResolver[](0),bytes32(0),address(this)),"FILL");
         if(paymentToken!=address(0))require(IFixtureToken(paymentToken).approve(address(seaport),0));
+        if(paymentToken==address(0))require(address(this).balance+total==nativeBefore,"EXACT_NATIVE_SETTLEMENT");
+        else require(IFixtureToken(paymentToken).balanceOf(address(this))+total==paymentBefore,"EXACT_TOKEN_SETTLEMENT");
         if(item.itemType==2)require(IFixture721(item.token).ownerOf(item.identifierOrCriteria)==address(this),"NFT_CUSTODY");
         else require(item.itemType==3&&IFixture1155(item.token).balanceOf(address(this),item.identifierOrCriteria)==beforeHeld+item.startAmount,"NFT_QUANTITY");
         entered=false;expectedCollection=address(0);
@@ -48,6 +51,7 @@ contract SeaportFixtureReceiver {
     function onERC1155Received(address operator,address from,uint256 id,uint256 quantity,bytes calldata)external returns(bytes4){require(entered&&msg.sender==expectedCollection&&operator==address(seaport)&&from==expectedSeller&&id==expectedId&&quantity==expectedQuantity);safe1155Callbacks++;return this.onERC1155Received.selector;}
     function onERC1155BatchReceived(address,address,uint256[] calldata,uint256[] calldata,bytes calldata)external pure returns(bytes4){revert("NO_BATCH");}
     function supportsInterface(bytes4 id)external pure returns(bool){return id==0x01ffc9a7||id==0x150b7a02||id==0x4e2312e0;}
+    receive()external payable {require(block.chainid==31337&&msg.sender==owner&&!entered,"OWNER_FUNDING_ONLY");}
 }
 contract SeaportFixtureSeller1271 {
     address public immutable owner;IFixtureSeaport public immutable seaport;bool public reject;bool public tryReentry;bool public reentrySucceeded;
