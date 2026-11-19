@@ -34,7 +34,7 @@
     "threeSecondReadDelayMs": 3200,
     "focusedTestsFailed": 0,
     "unavailableReadObservedMs": 10020.6138,
-    "fullLifecycleCiRerun": "PENDING",
+    "fullLifecycleCiRerun": "BOTH_LINUX_JOBS_PASSED_AT_60185DAA_NOT_LATEST_HEAD",
     "eachCaseRpcRequests": 1
   },
   "unchanged": [

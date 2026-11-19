@@ -9,5 +9,5 @@
   "fix": "Explicitly register the existing shared declaration entry in root knip workspace, consistent with native-proof.d.mts and project-treasury-runtime.d.mts",
   "ignoreOrAssertionChange": false,
   "localKnipStatus": "FAILED_OXC_ARRAY_BUFFER_ALLOCATION_RETAINED_SEPARATELY",
-  "linuxCiRerunStatus": "PENDING"
+  "linuxCiRerunStatus": "PASSED_AT_60185DAA_NOT_LATEST_HEAD"
 }

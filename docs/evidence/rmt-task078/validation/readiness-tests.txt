@@ -1,0 +1,580 @@
+TAP version 13
+# Subtest: real notice timing and inclusive expiry never imply owner signing or broadcast approval
+ok 1 - real notice timing and inclusive expiry never imply owner signing or broadcast approval
+  ---
+  duration_ms: 4.3219
+  type: 'test'
+  ...
+# Subtest: changed authority, notice, suspension or publication state fails closed
+ok 2 - changed authority, notice, suspension or publication state fails closed
+  ---
+  duration_ms: 6.2513
+  type: 'test'
+  ...
+# Subtest: RPC wrapper rejects signing, writes, gas simulation and arbitrary call data before provider access
+ok 3 - RPC wrapper rejects signing, writes, gas simulation and arbitrary call data before provider access
+  ---
+  duration_ms: 1.6343
+  type: 'test'
+  ...
+# Subtest: provider failure remains unavailable and wrong chain is invalid without any transaction preparation
+ok 4 - provider failure remains unavailable and wrong chain is invalid without any transaction preparation
+  ---
+  duration_ms: 5.581
+  type: 'test'
+  ...
+# Subtest: reads the same 4663 block from independent witnesses before and after the L1 reference
+ok 5 - reads the same 4663 block from independent witnesses before and after the L1 reference
+  ---
+  duration_ms: 6.7182
+  type: 'test'
+  ...
+# Subtest: fails closed on a stale or reorged header, conflicting fee, insufficient readers, or wrong chain
+ok 6 - fails closed on a stale or reorged header, conflicting fee, insufficient readers, or wrong chain
+  ---
+  duration_ms: 5.3033
+  type: 'test'
+  ...
+# Subtest: keeps an uncorroborated L1 reference unset even when the 4663 block fee agrees
+ok 7 - keeps an uncorroborated L1 reference unset even when the 4663 block fee agrees
+  ---
+  duration_ms: 2.2139
+  type: 'test'
+  ...
+# Subtest: prices ten archived fixture receipts directionally and keeps protocol value and actual mainnet fees distinct
+ok 8 - prices ten archived fixture receipts directionally and keeps protocol value and actual mainnet fees distinct
+  ---
+  duration_ms: 10.5045
+  type: 'test'
+  ...
+# Subtest: does not convert archived Safe pricing to current quote or accept a modified simulation amount
+ok 9 - does not convert archived Safe pricing to current quote or accept a modified simulation amount
+  ---
+  duration_ms: 8.571
+  type: 'test'
+  ...
+# Subtest: production governance binds the actual deployment plan, Directory, all eight runtimes and authorized target
+ok 10 - production governance binds the actual deployment plan, Directory, all eight runtimes and authorized target
+  ---
+  duration_ms: 4.4068
+  type: 'test'
+  ...
+# Subtest: canonical schedule uses real block time and genuine two-key signatures, preserves pending notice and L1-unverified status
+ok 11 - canonical schedule uses real block time and genuine two-key signatures, preserves pending notice and L1-unverified status
+  ---
+  duration_ms: 128.2763
+  type: 'test'
+  ...
+# Subtest: execution requires actual canonical scheduling, mature two-day time, exact publication and ActionCleared events, and mapping
+ok 12 - execution requires actual canonical scheduling, mature two-day time, exact publication and ActionCleared events, and mapping
+  ---
+  duration_ms: 65.169
+  type: 'test'
+  ...
+# Subtest: V3-template publication uses its separate nonce, delay, MigrationTemplatePublished event and mapping
+ok 13 - V3-template publication uses its separate nonce, delay, MigrationTemplatePublished event and mapping
+  ---
+  duration_ms: 141.0726
+  type: 'test'
+  ...
+# Subtest: late verification of a valid historical schedule does not pretend its signing deadline is current
+ok 14 - late verification of a valid historical schedule does not pretend its signing deadline is current
+  ---
+  duration_ms: 55.0916
+  type: 'test'
+  ...
+# Subtest: later governance state remains explicit and never resurrects an old scheduled authorization
+ok 15 - later governance state remains explicit and never resurrects an old scheduled authorization
+  ---
+  duration_ms: 61.286
+  type: 'test'
+  ...
+# Subtest: early or expired canonical executions fail independently of the current wall clock
+ok 16 - early or expired canonical executions fail independently of the current wall clock
+  ---
+  duration_ms: 110.7099
+  type: 'test'
+  ...
+# Subtest: wrong sender nonce requires the original owner journal and never prepares a replacement transaction
+ok 17 - wrong sender nonce requires the original owner journal and never prepares a replacement transaction
+  ---
+  duration_ms: 52.0364
+  type: 'test'
+  ...
+# Subtest: wrong account, chain, value, transaction format, access list and delegation authorization fail closed
+ok 18 - wrong account, chain, value, transaction format, access list and delegation authorization fail closed
+  ---
+  duration_ms: 95.1938
+  type: 'test'
+  ...
+# Subtest: malformed, duplicate, removed or mismatched governance events fail closed
+ok 19 - malformed, duplicate, removed or mismatched governance events fail closed
+  ---
+  duration_ms: 193.36
+  type: 'test'
+  ...
+# Subtest: execution events cannot omit, duplicate, reorder or redirect the publication
+ok 20 - execution events cannot omit, duplicate, reorder or redirect the publication
+  ---
+  duration_ms: 133.2281
+  type: 'test'
+  ...
+# Subtest: duplicate or corrupted ECDSA approvals are rejected at the canonical receipt time
+ok 21 - duplicate or corrupted ECDSA approvals are rejected at the canonical receipt time
+  ---
+  duration_ms: 68.3522
+  type: 'test'
+  ...
+# Subtest: unavailable receipts, archive state or provider failures stay pending without synthetic finality
+ok 22 - unavailable receipts, archive state or provider failures stay pending without synthetic finality
+  ---
+  duration_ms: 112.7656
+  type: 'test'
+  ...
+# Subtest: provider disagreement, runtime drift, wrong archive pending state, reorg and late scheduling invalidate evidence
+ok 23 - provider disagreement, runtime drift, wrong archive pending state, reorg and late scheduling invalidate evidence
+  ---
+  duration_ms: 206.317
+  type: 'test'
+  ...
+# Subtest: original reviewed request is mandatory and test-only publications cannot enter the production CLI boundary
+ok 24 - original reviewed request is mandatory and test-only publications cannot enter the production CLI boundary
+  ---
+  duration_ms: 15.2191
+  type: 'test'
+  ...
+# Subtest: corroborates the hosted checkpoint and exact historical registrations while protecting future routes
+ok 25 - corroborates the hosted checkpoint and exact historical registrations while protecting future routes
+  ---
+  duration_ms: 71.3387
+  type: 'test'
+  ...
+# Subtest: requires two witnesses and quarantines any conflicting canonical header or receipt
+ok 26 - requires two witnesses and quarantines any conflicting canonical header or receipt
+  ---
+  duration_ms: 190.0802
+  type: 'test'
+  ...
+# Subtest: keeps stale snapshot evidence and deployment-dependent routes from claiming active ingestion
+ok 27 - keeps stale snapshot evidence and deployment-dependent routes from claiming active ingestion
+  ---
+  duration_ms: 16.8733
+  type: 'test'
+  ...
+# Subtest: rejects wrong paths, unexpected execution, wrong registration log, and absent backend authorization
+ok 28 - rejects wrong paths, unexpected execution, wrong registration log, and absent backend authorization
+  ---
+  duration_ms: 7.0298
+  type: 'test'
+  ...
+# Subtest: limits hosted payloads before touching RPC and omits private bodies
+ok 29 - limits hosted payloads before touching RPC and omits private bodies
+  ---
+  duration_ms: 3.7938
+  type: 'test'
+  ...
+# Subtest: unusable HTTP-200 worker payload stays unverified even with canonical history
+ok 30 - unusable HTTP-200 worker payload stays unverified even with canonical history
+  ---
+  duration_ms: 8.3522
+  type: 'test'
+  ...
+# Subtest: an unexpected extra registration cannot inherit the pinned historical dataset's verification
+ok 31 - an unexpected extra registration cannot inherit the pinned historical dataset's verification
+  ---
+  duration_ms: 2.5726
+  type: 'test'
+  ...
+# Subtest: read-only sender observation requires agreeing code, nonce and canonical L2 anchor
+ok 32 - read-only sender observation requires agreeing code, nonce and canonical L2 anchor
+  ---
+  duration_ms: 19.556
+  type: 'test'
+  ...
+# Subtest: the explicit delegated path requires the exact designator and verified delegate at anchored and pending state
+ok 33 - the explicit delegated path requires the exact designator and verified delegate at anchored and pending state
+  ---
+  duration_ms: 9.7676
+  type: 'test'
+  ...
+# Subtest: changed pending nonce, occupied destinations and contract-like accounts never yield usable sender binding
+ok 34 - changed pending nonce, occupied destinations and contract-like accounts never yield usable sender binding
+  ---
+  duration_ms: 6.3249
+  type: 'test'
+  ...
+# Subtest: admitting a synthetic proof recomputes account, vacancy, Safe runtime and quote arithmetic
+ok 35 - admitting a synthetic proof recomputes account, vacancy, Safe runtime and quote arithmetic
+  ---
+  duration_ms: 9.3218
+  type: 'test'
+  ...
+# Subtest: delegated evidence separately fails on stale or altered sender, code, nonce, vacancy, and estimates
+ok 36 - delegated evidence separately fails on stale or altered sender, code, nonce, vacancy, and estimates
+  ---
+  duration_ms: 5.7282
+  type: 'test'
+  ...
+# Subtest: the personal payer estimate admits only the exact reviewed Safe transactions
+ok 37 - the personal payer estimate admits only the exact reviewed Safe transactions
+  ---
+  duration_ms: 34.7906
+  type: 'test'
+  ...
+# Subtest: exact packet digest, evidence digest, chain, bytecode, nonce and no-token boundary are required before any RPC
+ok 38 - exact packet digest, evidence digest, chain, bytecode, nonce and no-token boundary are required before any RPC
+  ---
+  duration_ms: 17.9999
+  type: 'test'
+  ...
+# Subtest: canonical Directory CREATE verifies exact transaction, archived runtime, initial/current signers and notice controls
+ok 39 - canonical Directory CREATE verifies exact transaction, archived runtime, initial/current signers and notice controls
+  ---
+  duration_ms: 14.0519
+  type: 'test'
+  ...
+# Subtest: remaining constructors preserve exact deployment identity and bootstrap children
+ok 40 - remaining constructors preserve exact deployment identity and bootstrap children
+  ---
+  duration_ms: 10.9503
+  type: 'test'
+  ...
+# Subtest: missing transaction, receipt, archive code or current reads remains pending
+ok 41 - missing transaction, receipt, archive code or current reads remains pending
+  ---
+  duration_ms: 10.4241
+  type: 'test'
+  ...
+# Subtest: wrong sender, nonce, chain, value, destination, input, type, allowance list and delegation authorization fail closed
+ok 42 - wrong sender, nonce, chain, value, destination, input, type, allowance list and delegation authorization fail closed
+  ---
+  duration_ms: 23.1013
+  type: 'test'
+  ...
+# Subtest: reverted or wrong CREATE receipt cannot advance
+ok 43 - reverted or wrong CREATE receipt cannot advance
+  ---
+  duration_ms: 11.1236
+  type: 'test'
+  ...
+# Subtest: provider transaction, receipt or canonical block disagreement fails closed
+ok 44 - provider transaction, receipt or canonical block disagreement fails closed
+  ---
+  duration_ms: 5.6482
+  type: 'test'
+  ...
+# Subtest: runtime, Directory controls, reorgs, stale observations and bootstrap child changes fail closed
+ok 45 - runtime, Directory controls, reorgs, stale observations and bootstrap child changes fail closed
+  ---
+  duration_ms: 20.7741
+  type: 'test'
+  ...
+# Subtest: exact 4663 fixture routes stay separate from production PoolKey, quotes and binding
+ok 46 - exact 4663 fixture routes stay separate from production PoolKey, quotes and binding
+  ---
+  duration_ms: 9.461
+  type: 'test'
+  ...
+# Subtest: tampered fork routes fail the archived release hash before any probe action
+ok 47 - tampered fork routes fail the archived release hash before any probe action
+  ---
+  duration_ms: 1.639
+  type: 'test'
+  ...
+# Subtest: unapproved RPC scope never reaches transport
+ok 48 - unapproved RPC scope never reaches transport
+  ---
+  duration_ms: 3.1049
+  type: 'test'
+  ...
+# Subtest: retries 429 once, bounds time and body, and redacts RPC diagnostics
+ok 49 - retries 429 once, bounds time and body, and redacts RPC diagnostics
+  ---
+  duration_ms: 349.8727
+  type: 'test'
+  ...
+# Subtest: corroboration demands two distinct sources and fails closed on conflicting observations
+ok 50 - corroboration demands two distinct sources and fails closed on conflicting observations
+  ---
+  duration_ms: 0.5326
+  type: 'test'
+  ...
+# Subtest: deployment dependency reads require a fresh sender anchor and reject a canonical hash conflict
+ok 51 - deployment dependency reads require a fresh sender anchor and reject a canonical hash conflict
+  ---
+  duration_ms: 5.5184
+  type: 'test'
+  ...
+# Subtest: canonical receipt binds the exact event and rejects replaced or duplicate logs
+ok 52 - canonical receipt binds the exact event and rejects replaced or duplicate logs
+  ---
+  duration_ms: 0.895
+  type: 'test'
+  ...
+# Subtest: Ethereum finalized tag alone cannot finalize a missing, conflicting or newer posting
+ok 53 - Ethereum finalized tag alone cannot finalize a missing, conflicting or newer posting
+  ---
+  duration_ms: 0.2568
+  type: 'test'
+  ...
+# Subtest: historical trace proof rejects a replaced selector, changed value and failed root
+ok 54 - historical trace proof rejects a replaced selector, changed value and failed root
+  ---
+  duration_ms: 1.1469
+  type: 'test'
+  ...
+# Subtest: the complete probe corroborates historical batch posting without implying new-engine finality
+ok 55 - the complete probe corroborates historical batch posting without implying new-engine finality
+  ---
+  duration_ms: 1948.13
+  type: 'test'
+  ...
+# Subtest: Nitro L1 poster and L2 execution reconcile without double-counting parent gas
+ok 56 - Nitro L1 poster and L2 execution reconcile without double-counting parent gas
+  ---
+  duration_ms: 2.6931
+  type: 'test'
+  ...
+# Subtest: binds prospective Safe receipt, exact setup and two canonical L2 reads while leaving beneficiary and L1 open
+ok 57 - binds prospective Safe receipt, exact setup and two canonical L2 reads while leaving beneficiary and L1 open
+  ---
+  duration_ms: 48.4134
+  type: 'test'
+  ...
+# Subtest: rejects missing or mismatched receipts, wrong payer, altered salt, and duplicate creation logs
+ok 58 - rejects missing or mismatched receipts, wrong payer, altered salt, and duplicate creation logs
+  ---
+  duration_ms: 141.2515
+  type: 'test'
+  ...
+# Subtest: reports no receipt acceptance on reorg, unsafe owner policy, nonce, or changed pinned infrastructure
+ok 59 - reports no receipt acceptance on reorg, unsafe owner policy, nonce, or changed pinned infrastructure
+  ---
+  duration_ms: 141.9845
+  type: 'test'
+  ...
+# Subtest: Reserve event invokes canonical receipt verification with exact identity and no transaction method
+ok 60 - Reserve event invokes canonical receipt verification with exact identity and no transaction method
+  ---
+  duration_ms: 4.4416
+  type: 'test'
+  ...
+# Subtest: deadline leaves absent creation pending without pretending deployment failed
+ok 61 - deadline leaves absent creation pending without pretending deployment failed
+  ---
+  duration_ms: 0.9
+  type: 'test'
+  ...
+# Subtest: provider failure preserves cursor and pending status
+ok 62 - provider failure preserves cursor and pending status
+  ---
+  duration_ms: 0.8464
+  type: 'test'
+  ...
+# Subtest: missing receipt remains pending and is never promoted from an event
+ok 63 - missing receipt remains pending and is never promoted from an event
+  ---
+  duration_ms: 0.9148
+  type: 'test'
+  ...
+# Subtest: transport exceptions leave evidence pending
+ok 64 - transport exceptions leave evidence pending
+  ---
+  duration_ms: 0.615
+  type: 'test'
+  ...
+# Subtest: provider log disagreement fails closed
+ok 65 - provider log disagreement fails closed
+  ---
+  duration_ms: 0.5312
+  type: 'test'
+  ...
+# Subtest: removed event fails closed
+ok 66 - removed event fails closed
+  ---
+  duration_ms: 1.2087
+  type: 'test'
+  ...
+# Subtest: wrong Safe identity fails closed
+ok 67 - wrong Safe identity fails closed
+  ---
+  duration_ms: 0.4109
+  type: 'test'
+  ...
+# Subtest: duplicate creation fails closed
+ok 68 - duplicate creation fails closed
+  ---
+  duration_ms: 0.8228
+  type: 'test'
+  ...
+# Subtest: reorg during scan fails closed
+ok 69 - reorg during scan fails closed
+  ---
+  duration_ms: 1.0063
+  type: 'test'
+  ...
+# Subtest: wrong verified role fails closed
+ok 70 - wrong verified role fails closed
+  ---
+  duration_ms: 0.5405
+  type: 'test'
+  ...
+# Subtest: scan windows and total scanned blocks are bounded with a resumable cursor
+ok 71 - scan windows and total scanned blocks are bounded with a resumable cursor
+  ---
+  duration_ms: 0.503
+  type: 'test'
+  ...
+# Subtest: invalid roles, durations and scan limits are rejected before any RPC
+ok 72 - invalid roles, durations and scan limits are rejected before any RPC
+  ---
+  duration_ms: 0.9358
+  type: 'test'
+  ...
+# Subtest: the surviving indexer watches its source and each dependency input
+ok 73 - the surviving indexer watches its source and each dependency input
+  ---
+  duration_ms: 3.33
+  type: 'test'
+  ...
+# Subtest: website, docs and local examples do not trigger a Railway worker deploy
+ok 74 - website, docs and local examples do not trigger a Railway worker deploy
+  ---
+  duration_ms: 0.3421
+  type: 'test'
+  ...
+# Subtest: the worker build pins its lockfile and preserves startup, health endpoint and restart policy
+ok 75 - the worker build pins its lockfile and preserves startup, health endpoint and restart policy
+  ---
+  duration_ms: 0.2215
+  type: 'test'
+  ...
+# Subtest: absence of an external audit does not defeat an otherwise evidenced and explicitly accepted stage
+ok 76 - absence of an external audit does not defeat an otherwise evidenced and explicitly accepted stage
+  ---
+  duration_ms: 32.7473
+  type: 'test'
+  ...
+# Subtest: unaccepted findings, expired risk records, different candidates and different evidence retain a hold
+ok 77 - unaccepted findings, expired risk records, different candidates and different evidence retain a hold
+  ---
+  duration_ms: 187.6207
+  type: 'test'
+  ...
+# Subtest: confirmed defects and unresolved material paths remain held even with matching owner acceptance
+ok 78 - confirmed defects and unresolved material paths remain held even with matching owner acceptance
+  ---
+  duration_ms: 44.0093
+  type: 'test'
+  ...
+# Subtest: failed operational evidence, synthetic provenance, stale observations and over-limit fees hold the stage
+ok 79 - failed operational evidence, synthetic provenance, stale observations and over-limit fees hold the stage
+  ---
+  duration_ms: 117.6324
+  type: 'test'
+  ...
+# Subtest: the Safe stage requires actual exact-evidence validation and preserves the approved fee ceiling
+ok 80 - the Safe stage requires actual exact-evidence validation and preserves the approved fee ceiling
+  ---
+  duration_ms: 85.2089
+  type: 'test'
+  ...
+# Subtest: stage and transaction approvals cannot be replayed across stages, nonces or expired evidence
+ok 81 - stage and transaction approvals cannot be replayed across stages, nonces or expired evidence
+  ---
+  duration_ms: 55.3139
+  type: 'test'
+  ...
+# Subtest: a renewed quote preserves stable owner risk acceptance while transaction approval requires a fresh decision
+ok 82 - a renewed quote preserves stable owner risk acceptance while transaction approval requires a fresh decision
+  ---
+  duration_ms: 34.3136
+  type: 'test'
+  ...
+# Subtest: RMT creation requires verified infrastructure and the normal website form with its own approval
+ok 83 - RMT creation requires verified infrastructure and the normal website form with its own approval
+  ---
+  duration_ms: 32.3155
+  type: 'test'
+  ...
+# Subtest: infrastructure can be verified before a project exists and graduated public trading has its own pool evidence
+ok 84 - infrastructure can be verified before a project exists and graduated public trading has its own pool evidence
+  ---
+  duration_ms: 47.3172
+  type: 'test'
+  ...
+# Subtest: a stable configuration activation decision survives fresh observations and expires on phase or configuration drift
+ok 85 - a stable configuration activation decision survives fresh observations and expires on phase or configuration drift
+  ---
+  duration_ms: 37.3105
+  type: 'test'
+  ...
+# Subtest: every original compiler source and its inventory must match, including files outside finding-specific evidence
+ok 86 - every original compiler source and its inventory must match, including files outside finding-specific evidence
+  ---
+  duration_ms: 4.9137
+  type: 'test'
+  ...
+# Subtest: missing, duplicated or altered finding evidence and unknown stages are rejected
+ok 87 - missing, duplicated or altered finding evidence and unknown stages are rejected
+  ---
+  duration_ms: 7.1995
+  type: 'test'
+  ...
+# Subtest: standalone start requires the existing project's private reader and preview identity
+ok 88 - standalone start requires the existing project's private reader and preview identity
+  ---
+  duration_ms: 8.7232
+  type: 'test'
+  ...
+# Subtest: activation, emulator, signing and direct database configuration are not part of this read-only process
+ok 89 - activation, emulator, signing and direct database configuration are not part of this read-only process
+  ---
+  duration_ms: 1.0554
+  type: 'test'
+  ...
+# Subtest: Railway runs exactly one standalone web process and health probes do not depend on database migration
+ok 90 - Railway runs exactly one standalone web process and health probes do not depend on database migration
+  ---
+  duration_ms: 135.2534
+  type: 'test'
+  ...
+# Subtest: read-only source acceptance never grants production publication or execution
+ok 91 - read-only source acceptance never grants production publication or execution
+  ---
+  duration_ms: 1.9969
+  type: 'test'
+  ...
+# Subtest: activation, hosted emulators and public admin secrets fail closed without disclosing values
+ok 92 - activation, hosted emulators and public admin secrets fail closed without disclosing values
+  ---
+  duration_ms: 1.1111
+  type: 'test'
+  ...
+# Subtest: Railway credential continuity is explicit; absent listing is not proof of a missing live runtime credential
+ok 93 - Railway credential continuity is explicit; absent listing is not proof of a missing live runtime credential
+  ---
+  duration_ms: 0.5737
+  type: 'test'
+  ...
+# Subtest: Linux server acceptance rejects Windows packaging, changed adapters and missing SSR routes
+ok 94 - Linux server acceptance rejects Windows packaging, changed adapters and missing SSR routes
+  ---
+  duration_ms: 15.4384
+  type: 'test'
+  ...
+# Subtest: both existing native edge budgets and their identity routes must survive packaging
+ok 95 - both existing native edge budgets and their identity routes must survive packaging
+  ---
+  duration_ms: 2.6965
+  type: 'test'
+  ...
+1..95
+# tests 95
+# suites 0
+# pass 95
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 5102.1337
