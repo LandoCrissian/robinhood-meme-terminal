@@ -3,7 +3,7 @@ import {compileSeaportSafeCall,readSeaportSafeState,safeAuthorityIdentity,seapor
 import {seaportLocalContext,readSeaportIndex,type SeaportLocalConfig} from "./seaport-acquisition";
 import {projectTreasuryControllerKind} from "./project-treasury-fixture";
 import {claimProfileDigest} from "../claim-profiles";
-import {seaportSafeProfile,seaportSafeOperations,seaportSafeAbi,seaportSafeTyped,seaportSafeProposalHash,seaportSafeOuterHash,validSeaportSafeProposal,validSeaportSafeOuter,verifySafeOwnerApproval,verifySafeOwnerApprovals,canonicalSeaportSafeApprovals,safeExecutionData,type SeaportSafeProposal,type SeaportSafeApproval,type SeaportSafeOuterReview,type SeaportSafeOperation,type SeaportSafeFields,type SeaportSafeVerification} from "../seaport-acquisition-safe";
+import {seaportSafeProfile,seaportSafeOperations,seaportSafeAbi,seaportSafeTyped,seaportSafeProposalHash,seaportSafeOuterHash,validSeaportSafeProposal,validSeaportSafeOuter,seaportSafeObservationMatches,verifySafeOwnerApproval,verifySafeOwnerApprovals,canonicalSeaportSafeApprovals,safeExecutionData,type SeaportSafeProposal,type SeaportSafeApproval,type SeaportSafeOuterReview,type SeaportSafeOperation,type SeaportSafeFields,type SeaportSafeVerification} from "../seaport-acquisition-safe";
 type Address=viem.Address;type Hex=viem.Hex;
 const same=(a:unknown,b:unknown)=>typeof a==="string"&&typeof b==="string"&&a.toLowerCase()===b.toLowerCase();
 const address=(v:unknown):v is Address=>typeof v==="string"&&/^0x[0-9a-f]{40}$/i.test(v)&&BigInt(v)>0xffffn;
@@ -47,7 +47,8 @@ async function terms(x:Context,safe:Address,operation:SeaportSafeOperation,field
 async function current(c:SeaportLocalConfig,p:SeaportSafeProposal){
  need(validSeaportSafeProposal(p));const x=await seaportLocalContext(c);
  need(same(x.m.vault,p.vault)&&same(x.m.projectToken,p.projectToken)&&same(x.controller,p.controller)&&String(x.controllerEpoch)===p.controllerEpoch&&String(x.policyEpoch)===p.policyEpoch
-  &&x.head.timestamp<BigInt(p.expiresAt)&&same((await x.rpc.getBlock({blockNumber:BigInt(p.observed.blockNumber)})).hash,p.observed.blockHash));
+  &&x.head.timestamp<BigInt(p.expiresAt));
+ const observed=await x.rpc.getBlock({blockNumber:BigInt(p.observed.blockNumber)});need(seaportSafeObservationMatches(p,x.head,observed));
  const [state,payer]=await Promise.all([safeState(x,p.safe),payerState(x,p.gasPayer)]);
  need(state.nonce===p.safeNonce&&ownerSet(state.owners)===ownerSet(p.owners)&&BigInt(p.gasPayerNonce)===BigInt(payer.nonce));
  const call=await terms(x,p.safe,p.operation,p.fields);need(same(call.to,p.call.to)&&same(call.data,p.call.data)&&call.value===p.call.value&&same(call.runtimeHash,p.call.runtimeHash));
@@ -120,4 +121,18 @@ export async function seaportSafeAdminSnapshot(c:SeaportLocalConfig,x:Context){
  return{profile:seaportSafeProfile,creatorCreate:"UNAVAILABLE",candidateSafe:state?.safe??null,owners:state?.owners??[],threshold:state?.threshold??null,safeNonce:state?.nonce??null,
   pendingController:same(pending[0],viem.zeroAddress)?null:{next:pending[0],validAfter:String(pending[1]),expiresAt:String(pending[2]),epoch:String(pending[3])},
   observed:{timestamp:new Date(Number(x.head.timestamp)*1000).toISOString()},feeRecipient:c.manifest.fee??null,paymentToken:c.manifest.paymentToken,operations:seaportSafeOperations,productionExecution:false};
+}
+
+/** Rebuilds canonical review metadata without a wallet request. Old signatures
+ * are carried forward only for the identical still-current Safe authorization. */
+export async function refreshSeaportSafeProposal(c:SeaportLocalConfig,p:SeaportSafeProposal,approvals:SeaportSafeApproval[]){
+ need(validSeaportSafeProposal(p)&&Array.isArray(approvals)&&approvals.length<=2&&new Set(approvals.map(a=>a.signer.toLowerCase())).size===approvals.length);
+ for(const approval of approvals)need(await verifySafeOwnerApproval(p,approval));
+ const fresh=await proposeSeaportSafe(c,{safe:p.safe,gasPayer:p.gasPayer,operation:p.operation,fields:p.fields});
+ const identical=same(fresh.digest,p.digest)&&fresh.safeNonce===p.safeNonce&&ownerSet(fresh.owners)===ownerSet(p.owners)
+  &&same(fresh.call.to,p.call.to)&&same(fresh.call.data,p.call.data)&&fresh.call.value===p.call.value&&same(fresh.call.runtimeHash,p.call.runtimeHash);
+ const kept=identical?canonicalSeaportSafeApprovals(approvals):[];
+ for(const approval of kept)need(await verifySafeOwnerApproval(fresh,approval));
+ if(kept.length===2)need(await verifySafeOwnerApprovals(fresh,kept));
+ return{status:"refreshed",proposal:fresh,approvals:kept,approvalsPreserved:identical,productionExecution:false};
 }

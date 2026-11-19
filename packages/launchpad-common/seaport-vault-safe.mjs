@@ -74,9 +74,9 @@ function safeAdminTrace(raw,origin,inner,reverted){
   if(n.type==="DELEGATECALL")need(parent&&[inner.safe,...(inner.admittedSafes??[])].some(safe=>same(n.from,safe))&&same(n.to,seaportSafePins.singleton)&&item.amount===parent.amount);
   if(n.type==="STATICCALL")need(item.amount===0n);flat.push(item);for(const child of n.calls??[])visit(child,item,depth+1);return item;
  }
- const root=visit(raw,null,0);need(root.type==="CALL"&&same(root.from,origin.from)&&same(root.to,inner.safe)&&same(root.input,origin.input)&&root.amount===0n);
- const calls=flat.filter(n=>n.type==="CALL"&&same(n.from,inner.safe)&&same(n.to,inner.target));
- need(calls.length===1&&same(calls[0].input,inner.data)&&calls[0].amount===inner.value);
+ const root=visit(raw,null,0);need(root.type==="CALL"&&same(origin.to,inner.safe)&&same(root.from,origin.from)&&same(root.to,inner.safe)&&same(root.input,origin.input)&&root.amount===0n);
+ const calls=flat.filter(n=>n.type==="CALL"&&same(n.from,inner.safe));
+ need(calls.length===1&&same(calls[0].to,inner.target)&&same(calls[0].input,inner.data)&&calls[0].amount===inner.value);
  need(reverted?typeof root.error==="string"&&typeof calls[0].error==="string":root.error===undefined);
  const paid=flat.filter(n=>n.type==="CALL"&&n.amount>0n);
  need(inner.value>0n?paid.length===1&&paid[0]===calls[0]:paid.length===0);

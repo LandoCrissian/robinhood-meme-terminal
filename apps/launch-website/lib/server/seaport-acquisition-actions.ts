@@ -1,4 +1,4 @@
-import {proposeSeaportSafe,validateSeaportSafeOwner,prepareSeaportSafeOuter,verifySeaportSafeOuter,seaportSafeAdminSnapshot} from "./seaport-acquisition-safe";
+import {proposeSeaportSafe,refreshSeaportSafeProposal,validateSeaportSafeOwner,prepareSeaportSafeOuter,verifySeaportSafeOuter,seaportSafeAdminSnapshot} from "./seaport-acquisition-safe";
 import {validSeaportSafeOuter,type SeaportSafeProposal,type SeaportSafeApproval} from "../seaport-acquisition-safe";
 import {NextResponse} from "next/server";
 import {decodeFunctionData,encodeFunctionData,zeroAddress,zeroHash,type Hash,type PublicClient} from "viem";
@@ -58,6 +58,7 @@ export async function handleSeaportAcquisitionTest(request:Request){
   if(request.headers.get("origin")!==c.site||!/^application\/json(?:;|$)/i.test(request.headers.get("content-type")??"")||Number(request.headers.get("content-length")??0)>65536)return json({status:"rejected"},400);
   try{const reader=request.body?.getReader();if(!reader)return json({status:"rejected"},400);let size=0;const chunks:Uint8Array[]=[];for(;;){const{value,done}=await reader.read();if(done)break;size+=value.length;if(size>65536){await reader.cancel();return json({status:"rejected"},413);}chunks.push(value);}const body=JSON.parse(Buffer.concat(chunks).toString("utf8"))as Record<string,unknown>;
     if(body.action==="safe-propose")return json(await proposeSeaportSafe(c,body));
+    if(body.action==="safe-refresh")return json(await refreshSeaportSafeProposal(c,body.proposal as SeaportSafeProposal,body.approvals as SeaportSafeApproval[]));
     if(body.action==="safe-current")return json(await validateSeaportSafeOwner(c,body.proposal as SeaportSafeProposal));
     if(body.action==="safe-approve")return json(await validateSeaportSafeOwner(c,body.proposal as SeaportSafeProposal,body.approval as SeaportSafeApproval));
     if(body.action==="safe-prepare")return json(await prepareSeaportSafeOuter(c,body.proposal as SeaportSafeProposal,body.approvals as SeaportSafeApproval[]));
