@@ -39,6 +39,8 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
       - name: Verify bounded listings, custody proofs and unavailable evidence
         run: node --test scripts/seaport-acquisition/*.test.mjs packages/launchpad-common/seaport-vault-*.test.mjs
+      - name: Replay retained genuine Safe receipts, signatures and rejected tampering
+        run: node docs/evidence/rmt-task084/browser/replay-raw-proofs.mjs
       - run: pnpm --filter indexer typecheck
       - run: pnpm --filter indexer exec tsx --test src/seaport-acquisition*.test.ts src/seaport-listing-watch*.test.ts
       - run: pnpm --filter @rmt/launch-website typecheck
