@@ -3,7 +3,7 @@ import {writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {createRequire} from "node:module";
 import {devices} from "playwright";
-import {seaportSafeTypedData,readSeaportSafeState,seaportSafeSignatures,seaportSafeVaultSignatures} from "../../packages/launchpad-common/seaport-vault-safe.mjs";
+import {seaportSafeTypedData,readSeaportSafeState,seaportSafeSignatures,seaportSafeVaultSignatures,assertSeaportSafeAdminTrace,assertSeaportSafeAdminRevertTrace} from "../../packages/launchpad-common/seaport-vault-safe.mjs";
 const require=createRequire(new URL("../../apps/indexer/package.json",import.meta.url)),v=require("viem"),{generatePrivateKey,privateKeyToAccount}=require("viem/accounts");
 const api="/api/seaport-acquisition",path="/my-launches/treasury/seaport-purchases",prefix="rmt.seaport-safe-admin.v1:31337:",json=x=>JSON.stringify(x,(_,a)=>typeof a==="bigint"?String(a):a,2)+"\n",same=(a,b)=>a.toLowerCase()===b.toLowerCase();
 const safeAbi=v.parseAbi(seaportSafeSignatures),vaultAbi=v.parseAbi(seaportSafeVaultSignatures);
@@ -12,7 +12,7 @@ const safeAbi=v.parseAbi(seaportSafeSignatures),vaultAbi=v.parseAbi(seaportSafeV
 export async function testSeaportSafeAdministrationBrowser({browserEngine,site,fixture,out,sync,restart,restartNext,listingWatcher,hideTrace,readAdminRows}){
  const {client,rpc,bindings:m,safeSeller:safe,accounts:{owner,fee:payer,owners},send,tx}=fixture;
  assert.equal(await client.getChainId(),31337);assert.equal(owners.length,3);assert.ok(!same(safe,payer.address));
- const evidence={schemaVersion:1,profile:"rmt-seaport-safe-admin-connected-v1",scope:"LOCAL31337_SYNTHETIC_TEST_OWNERS_NOT_PRODUCTION_OR_PHYSICAL_IPHONE",production:false,status:"incomplete",safe,gasPayer:payer.address,creatorCreate:"UNAVAILABLE",chainFixtureScope:fixture.evidence.scope,proposals:[],ownerApprovals:[],outerReviews:[],submissions:[],recoveries:[],layouts:[],negativeChecks:[],walletMethods:[],pageErrors:[],externalRequests:[],checks:{}};
+ const evidence={schemaVersion:1,profile:"rmt-seaport-safe-admin-connected-v1",scope:"LOCAL31337_SYNTHETIC_TEST_OWNERS_NOT_PRODUCTION_OR_PHYSICAL_IPHONE",production:false,status:"incomplete",safe,gasPayer:payer.address,creatorCreate:"UNAVAILABLE",chainFixtureScope:fixture.evidence.scope,proposals:[],ownerApprovals:[],outerReviews:[],submissions:[],canonicalExecutions:[],recoveries:[],layouts:[],negativeChecks:[],walletMethods:[],pageErrors:[],externalRequests:[],checks:{}};
  const save=()=>writeFileSync(join(out,"seaport-safe-admin-evidence.json"),json(evidence));save();
  const read=(name,args=[])=>client.readContract({address:m.vault,abi:vaultAbi,functionName:name,args});
  const safeNonce=()=>client.readContract({address:safe,abi:safeAbi,functionName:"nonce"});
@@ -39,7 +39,15 @@ export async function testSeaportSafeAdministrationBrowser({browserEngine,site,f
   const expected=await client.readContract({address:m.paymentToken,abi:fixture.artifacts.AcquisitionCurrencyFixture.abi,functionName:"fault"})===1?"reverted":"success";
   const raw=await payer.signTransaction({chainId:31337,type:"eip1559",to:request.to,data:request.data,value:0n,nonce:Number(BigInt(request.nonce)),gas:BigInt(request.gas),maxFeePerGas:BigInt(request.maxFeePerGas),maxPriorityFeePerGas:BigInt(request.maxPriorityFeePerGas)}),hash=v.keccak256(raw);
   assert.equal(await rpc("eth_sendRawTransaction",[raw]),hash);const receipt=await client.waitForTransactionReceipt({hash,pollingInterval:100,timeout:30000,checkReplacement:false});assert.equal(receipt.status,expected);
-  const after=await safeNonce();assert.equal(after,before+(expected==="success"?1n:0n));const row={reviewHash:outer.reviewHash,proposalHash:outer.proposal.proposalHash,operation:outer.proposal.operation,transactionHash:hash,request,status:receipt.status,blockNumber:String(receipt.blockNumber),blockHash:receipt.blockHash,safeNonceBefore:String(before),safeNonceAfter:String(after),gasUsed:String(receipt.gasUsed),effectiveGasPrice:String(receipt.effectiveGasPrice),gasCostWei:String(receipt.gasUsed*receipt.effectiveGasPrice)};evidence.submissions.push(row);save();return loseHash?undefined:hash;
+  const after=await safeNonce();assert.equal(after,before+(expected==="success"?1n:0n));const row={reviewHash:outer.reviewHash,proposalHash:outer.proposal.proposalHash,operation:outer.proposal.operation,transactionHash:hash,request,status:receipt.status,blockNumber:String(receipt.blockNumber),blockHash:receipt.blockHash,safeNonceBefore:String(before),safeNonceAfter:String(after),gasUsed:String(receipt.gasUsed),effectiveGasPrice:String(receipt.effectiveGasPrice),gasCostWei:String(receipt.gasUsed*receipt.effectiveGasPrice)};evidence.submissions.push(row);save();
+  const [rawReceipt,rawTransaction,rawBlock,trace,beforeState,afterState]=await Promise.all([
+   rpc("eth_getTransactionReceipt",[hash]),rpc("eth_getTransactionByHash",[hash]),rpc("eth_getBlockByHash",[receipt.blockHash,false]),rpc("debug_traceTransaction",[hash,{tracer:"callTracer"}]),
+   readSeaportSafeState(client,safe,receipt.blockNumber-1n,v),readSeaportSafeState(client,safe,receipt.blockNumber,v)
+  ]);
+  assert.ok(rawReceipt&&rawTransaction&&rawBlock&&rawBlock.transactions.length===1&&same(rawBlock.transactions[0],hash));assert.equal(same(rawReceipt.transactionHash,hash),true);assert.equal(same(rawReceipt.blockHash,rawBlock.hash),true);assert.equal(same(rawTransaction.blockHash,rawBlock.hash),true);
+  assert.ok(Buffer.byteLength(json(rawReceipt))<=65536&&Buffer.byteLength(json(rawTransaction))<=65536&&Buffer.byteLength(json(trace))<=192*1024);assert.ok(evidence.canonicalExecutions.length<32);
+  const origin={from:payer.address,to:safe,input:request.data,value:0n},inner={safe,target:outer.proposal.call.to,data:outer.proposal.call.data,value:BigInt(outer.proposal.call.value)},traceProof=(receipt.status==="success"?assertSeaportSafeAdminTrace:assertSeaportSafeAdminRevertTrace)(trace,origin,inner);
+  evidence.canonicalExecutions.push({transactionHash:hash,proposalHash:outer.proposal.proposalHash,reviewHash:outer.reviewHash,source:"private-local-fixture-read-only-RPC-not-the-worker-evidence-feed",rawReceipt,rawTransaction,rawBlock,trace,beforeState,afterState,traceProof});save();return loseHash?undefined:hash;
  });
  await context.addInitScript(({account})=>{
   let current=account,rejectNextOwner=false,rejectNextOuter=false;const listeners=new Map();
