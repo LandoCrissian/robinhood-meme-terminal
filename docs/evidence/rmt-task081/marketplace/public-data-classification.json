@@ -75,5 +75,12 @@
       "valueSha256": "6c0ce0c475bc9dfefe77775431c238a38be2f339d6f08ad305dda51f7abbc723"
     }
   ],
-  "note": "Raw evidence scan and public identifier source-code finding remain visible. Classification is not a zero-finding scanner claim or security waiver."
+  "note": "Raw evidence scan and public identifier source-code finding remain visible. Classification is not a zero-finding scanner claim or security waiver.",
+  "currentScriptScan": {
+    "source": "scripts/nft-marketplace/probe-4663.mjs",
+    "report": "script-gitleaks-after.json",
+    "findings": 0,
+    "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "change": "One descriptive public identifier constant; unchanged literal and RPC semantics. Original one-finding source scan retained. No scanner configuration, detector or source exclusion changed."
+  }
 }

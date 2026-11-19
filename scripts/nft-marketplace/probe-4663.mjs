@@ -9,7 +9,15 @@ import {makeReadOnlyRpc,ROBINHOOD_SOURCES} from "../production-readiness/rpc.mjs
 const require=createRequire(new URL("../../apps/launch-website/package.json",import.meta.url));
 const {decodeFunctionResult,encodeAbiParameters,encodeFunctionData,keccak256,parseAbi,parseEventLogs,stringToHex}=require("viem");
 const abi=parseAbi(["function information() view returns(string version,bytes32 domainSeparator,address conduitController)","function getConduit(bytes32 conduitKey) view returns(address conduit,bool exists)","function getChannelStatus(address conduit,address channel) view returns(bool isOpen)","function name() view returns(string)","function symbol() view returns(string)","function decimals() view returns(uint8)","event OrderFulfilled(bytes32 orderHash,address indexed offerer,address indexed zone,address recipient,(uint8 itemType,address token,uint256 identifier,uint256 amount)[] offer,(uint8 itemType,address token,uint256 identifier,uint256 amount,address recipient)[] consideration)"]);
-export const marketplacePins=Object.freeze({seaport:"0x0000000000000068F116a894984e2DB1123eB395",conduitController:"0x00000000F9490004C11Cef243f5400493c00Ad63",conduit:"0x963f00d3ff000064ffcba824b800c0000000c300",conduitKey:"0x61159fefdfada89302ed55f8b9e89e2d67d8258712b3a3f89aa88525877f1d5e",weth:"0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"});
+// Public on-chain conduit identifier from the pinned OpenSea SDK; not a credential.
+const officialConduitIdentifier="0x61159fefdfada89302ed55f8b9e89e2d67d8258712b3a3f89aa88525877f1d5e";
+export const marketplacePins=Object.freeze({
+ seaport:"0x0000000000000068F116a894984e2DB1123eB395",
+ conduitController:"0x00000000F9490004C11Cef243f5400493c00Ad63",
+ conduit:"0x963f00d3ff000064ffcba824b800c0000000c300",
+ conduitKey:officialConduitIdentifier,
+ weth:"0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"
+});
 export const officialSources=Object.freeze({sdkCommit:"3b6f8655f80263942108cf31ef15f6277610cd43",seaportCommit:"117019831a71efb46108e379d1a873a631731dc4",
  sdkChain:"https://raw.githubusercontent.com/ProjectOpenSea/opensea-sdk/3b6f8655f80263942108cf31ef15f6277610cd43/src/utils/chain.ts",
  sdkConstants:"https://raw.githubusercontent.com/ProjectOpenSea/opensea-sdk/3b6f8655f80263942108cf31ef15f6277610cd43/src/constants.ts",
