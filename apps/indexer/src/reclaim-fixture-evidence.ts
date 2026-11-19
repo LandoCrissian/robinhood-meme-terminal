@@ -78,9 +78,10 @@ export async function verifyReclaimFixtureModule(rpc:PublicClient,m:ReclaimFixtu
     rpc.readContract({address:origin,abi:curveAbi,functionName:"token",blockNumber:height}),
     rpc.readContract({address:origin,abi:curveAbi,functionName:"factory",blockNumber:height})]);
   requireReclaimEvidence(same(registeredToken,m.rewardToken)&&same(registeredFactory,m.coreFactory));
-  // The finite manifest lists candidate collections, which may be deployed
-  // after the factory. Their code is not admission evidence at factory birth.
-  // Verify actual runtime at active policy snapshots and each NFT settlement.
+  // The reviewed fixture deploys candidate assets before the module factory.
+  // Require those exact runtime identities at birth as well as admission and
+  // settlement; a manifest with a later asset birth is not this fixture.
+  for(const c of m.collections){const actual=await rpc.getCode({address:c.address,blockNumber:height});requireReclaimEvidence(actual&&same(keccak256(actual),c.runtimeHash));}
 }
 
 export async function verifyReclaimFixtureBirth(rpc:PublicClient,m:ReclaimFixtureModule,campaign:Address,at:BlockEvidence,observed?:FixtureTreasuryProofLog):Promise<ReclaimFixtureBirth>{
