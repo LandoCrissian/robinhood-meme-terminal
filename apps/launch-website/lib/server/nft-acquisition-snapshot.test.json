@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-nft-acquisition-local-v1",
+  "chainId": 31337,
+  "scope": "isolated-local",
+  "executionEnabled": false,
+  "status": "ready",
+  "vault": "0x78f98090F99096e6ff3bBDa9A9956AEc9a544814",
+  "runtimeHash": "0xa1292b9f1f35150123c0271566dc56ddd19fa591f06f3d5a2f229500dd515650",
+  "projectToken": "0xb8393610dcF2D3d9AA6C316a118b85a159f53468",
+  "creator": "0x82cEa551c32105bA4e3749b64E852dD1d4882bae",
+  "controller": "0x82cEa551c32105bA4e3749b64E852dD1d4882bae",
+  "controllerEpoch": "1",
+  "policyEpoch": "1",
+  "controllerKind": "eoa",
+  "venue": "0xbe1ddea48f0309ddead79a76b73429b471da8c43",
+  "venueRuntimeHash": "0x9c5ae0b7586eb96a2982f705002ecf8cdb47422c419f71f867bf35c73eccb885",
+  "paymentToken": "0xb6e7842befdd114e67982afc15c352e1b2f06f3c",
+  "collections": [
+    {
+      "address": "0xf26d9955af006627c8c65eeb4ad9988fa21e01dc",
+      "standard": 721,
+      "runtimeHash": "0x84761bec01cb449061432928ac138963b34ebc1a69ff743bd82b9e2b8af7f8ae",
+      "sourceInputSha256": "0x35ca02c6cdc9aaad544df1cb68f226dd4b01bfb928369d67a945ffd25420596e",
+      "name": "Synthetic Acquisition 721",
+      "slug": "synthetic-acquisition-721",
+      "deployment": {
+        "transactionHash": "0x44e3e3ab40836d5594e379599ebbb9a7a6f11029e57573c0b887cd3819dbe1cc",
+        "blockNumber": "57648322",
+        "blockHash": "0x7cfa491625d7a79ffb648dd077b7a0a3d5d9997d6fb61a14644a6285e65a335f",
+        "gasUsed": "880152",
+        "status": "success"
+      }
+    },
+    {
+      "address": "0x3a00f0319adade81bd593448a0c9bebb8331241f",
+      "standard": 1155,
+      "runtimeHash": "0x02f350be1a04269b11eb3e7c8316903c982b47a2d597d37a046f55b7a09256f0",
+      "sourceInputSha256": "0x35ca02c6cdc9aaad544df1cb68f226dd4b01bfb928369d67a945ffd25420596e",
+      "name": "Synthetic Acquisition 1155",
+      "slug": "synthetic-acquisition-1155",
+      "deployment": {
+        "transactionHash": "0x5db324b7b5fa2c56618e277f9917a0e17d44959f302612a31d17dc142a389c61",
+        "blockNumber": "57648347",
+        "blockHash": "0x6bf8a5490d7cd5167195bd0ffb35708eb030cf8696568495a002654327004b9c",
+        "gasUsed": "812039",
+        "status": "success"
+      }
+    }
+  ],
+  "enabled": false,
+  "policy": {
+    "currency": "0x0000000000000000000000000000000000000000",
+    "perNftCap": "0",
+    "totalBudget": "0",
+    "periodBudget": "0",
+    "cooldownSeconds": "0"
+  },
+  "nativeReserveWei": "0",
+  "tokenReserveWei": "0",
+  "nativeSpentWei": "0",
+  "tokenSpentWei": "0",
+  "custody": [],
+  "history": {
+    "indexed": true,
+    "status": "ready",
+    "checkpoint": {
+      "blockNumber": "57648364",
+      "blockHash": "0xad090a474719182ee6fb6fec1c38b21eb5d03816446d80456e7894bb1088c97e",
+      "timestamp": "2026-11-19T14:07:41.000Z",
+      "confirmations": 2,
+      "finality": "local-synthetic",
+      "l1Finality": "not-applicable"
+    }
+  },
+  "observed": {
+    "blockNumber": "57648366",
+    "blockHash": "0xfc00d06fce06deb7cbd7f16437792a8b3880ae8c868ec119df4a48f424f378cc",
+    "timestamp": "2026-11-19T14:07:41.000Z"
+  },
+  "notices": [
+    "Synthetic chain 31337 only. This listing adapter cannot deploy on 4663.",
+    "Settled manual funds only; original V1 fee entitlements are unchanged.",
+    "Collection identity is separate from listing verification and route support."
+  ]
+}

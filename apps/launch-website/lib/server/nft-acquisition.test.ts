@@ -1,8 +1,9 @@
+import observedSnapshot from "./nft-acquisition-snapshot.test.json";
 import assert from "node:assert/strict";
 import test from "node:test";
 import {encodeFunctionData,hashTypedData,keccak256,parseAbi,zeroAddress,type Address,type Hex} from "viem";
 import {privateKeyToAccount} from "viem/accounts";
-import {nftAcquisitionProfile,nftAcquisitionReviewHash,isNftAcquisitionReview,nftAcquisitionVerificationMatches,type NftAcquisitionReview,type NftAcquisitionSnapshot,type NftAcquisitionVerification} from "../nft-acquisition";
+import {nftAcquisitionProfile,nftAcquisitionReviewHash,isNftAcquisitionReview,isNftAcquisitionSnapshot,nftAcquisitionVerificationMatches,type NftAcquisitionReview,type NftAcquisitionSnapshot,type NftAcquisitionVerification} from "../nft-acquisition";
 import {canonicalSafeTypedData,canonicalSafeApprovals,isNftAcquisitionSafeProposal,isNftAcquisitionSafeOuterReview,nftAcquisitionSafeProposalHash,nftAcquisitionSafeOuterReviewHash,verifyNftAcquisitionSafeApproval,verifyNftAcquisitionSafeApprovals,type NftAcquisitionSafeProposal,type NftAcquisitionSafeApproval} from "../nft-acquisition-safe";
 import {listNftAcquisitionJournals,storeNftAcquisitionJournal,reconcileNftAcquisitionRecovery,assertNoPendingNftAcquisition,type NftAcquisitionJournal} from "../nft-acquisition-recovery";
 import {listNftAcquisitionSafeJournals,storeNftAcquisitionSafeJournal} from "../nft-acquisition-safe-recovery";
@@ -48,3 +49,5 @@ test("canonical envelope rejects typed-transaction, authorization, membership an
 test("independent browser calldata binding rejects recomputed hashes hiding selectors or recipients",()=>{const r=review(),abi=parseAbi(["function scheduleAssetWithdrawal(address,uint256,address,uint48)"]),fields={currency:zeroAddress,amountWei:"1000",recipient:owners[1].address,expiresAt:"2000000000"},data=encodeFunctionData({abi,functionName:"scheduleAssetWithdrawal",args:[zeroAddress,1000n,owners[1].address,2000000000]});
   const original={...r,operation:"schedule-asset-withdrawal",fields,innerCall:{...r.innerCall,data},request:{...r.request!,data}}as NftAcquisitionReview;original.reviewHash=nftAcquisitionReviewHash(original);assert.equal(isNftAcquisitionReview(original),true);
   for(const mutation of[{operation:"disable",fields:{}},{fields:{...fields,recipient:owners[2].address}},{innerCall:{...original.innerCall,data:disableData},request:{...original.request!,data:disableData}},{fields:{...fields,hiddenRecipient:owners[2].address}}]){const forged={...original,...mutation}as NftAcquisitionReview;forged.reviewHash=nftAcquisitionReviewHash(forged);assert.equal(isNftAcquisitionReview(forged),false);}});
+
+test("actual Linux fork snapshot14539240102 satisfies the public client contract",()=>{assert.equal(isNftAcquisitionSnapshot(observedSnapshot),true);});
