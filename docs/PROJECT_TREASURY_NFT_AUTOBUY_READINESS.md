@@ -34,7 +34,7 @@ Two providers corroborated block118499505 and the recorded WETH proxy/implementa
 
 The existing dashboard now has isolated Safe2-of3 administration for policy configuration and ON/OFF, collection controls, fee caps, native funding, separate exact ERC20 approval/funding, and controller notices/acceptance. Only the exact pinned Safe1.4.1 profile with three plain EOA owners, threshold2, no modules/guard and verified proxy/singleton/handler is admitted. A Safe CREATE vault path remains explicitly **UNAVAILABLE**; a normal CALL is not deployment.
 
-Before approval/submission, bind current owners, threshold, Safe nonce, runtime, exact target/selector/value, chain31337 and a distinct gas payer. Owners sign the exact EIP712 SafeTx. Execution is CALL-only. SafeTx gas/refund fields are all zero, so failed inner calls revert GS013 and do not burn the Safe nonce. Native funding is Safe capital in the inner call; the outer gas payer sends zero value and pays only its own network cost. ERC20 approval and funding are distinct, exact transactions. Unknown owner/module/guard/delegation changes fail closed.
+Before approval/submission, bind current owners, threshold, Safe nonce, runtime, exact target/selector/value, chain31337 and a distinct gas payer. The confirmed offchain missing-code defect is fixed: new Safe owner, payer, incoming-controller, historical receipt and watcher admission require bounded exact raw eth_getCode at the specified block/pending tag. Missing/null/malformed/timeouts never qualify an EOA. Known EIP-7702 requires the existing pinned designator and delegate runtime. Its incoming-controller receipt has a separate branch instead of being incorrectly treated as a Safe. The isolated V2 EOA preparation guard also requires actual raw empty code; generic legacy classifiers remain untouched. Owners sign the exact EIP712 SafeTx. Execution is CALL-only. SafeTx gas/refund fields are all zero, so failed inner calls revert GS013 and do not burn the Safe nonce. Native funding is Safe capital in the inner call; the outer gas payer sends zero value and pays only its own network cost. ERC20 approval and funding are distinct, exact transactions. Unknown owner/module/guard/delegation changes fail closed.
 
 Standard SafeTx has **no onchain expiry**. UI freshness metadata does not revoke an already collected signature. Explicit canonical refresh preserves approvals only when the SafeTx hash and current authority/nonce remain identical. Refreshing gas is not authority to sign again automatically. A reverted outer hash remains in its original journal; the current retry UI requires an explicit new proposal/two approvals even when GS013 leaves the Safe nonce unchanged.
 
@@ -48,6 +48,8 @@ Each eligible cycle bounds polling (default60s), total work15s, eight discovery 
 
 Before preparing exact purchase calldata, it checks fresh canonical proof, signature/counter/status/ownership/approval, full consideration, collection/runtime, controller authority hash, policy/controller epochs, ON state, per-NFT/lifetime/day/cooldown limits, actual free reserve and gas-payer pending/latest nonce. It independently verifies the order again, simulates the exact unsigned request and rereads final state/canonicality. Chain4663 never emits an execution request. OFF, consumed orders, drift and reorgs invalidate old proposals. Read outages put retained proposals in PENDING_EVIDENCE. Recovery verifies their original order again and never emits a duplicate request.
 
+Invalidated hashes are not silently re-admitted. The64-record capacity fails closed rather than deleting history; archival/re-admission and a production store are not activated by this fixture adapter.
+
 This is an **unsigned preparation candidate**, not autonomous purchasing. A reliable feed and a separately authorized person/keeper to submit and pay gas remain necessary. There is no mandatory new paid service, promised profitability, automatic gas spending, gas subsidy from core revenue or liquidity principal, or automatic retry. Maximum network fee is the proposed gas limit times maxFeePerGas; actual L2/data costs and production submission policy remain unapproved.
 
 ## Custody and product boundaries
@@ -56,11 +58,13 @@ The vault holds only explicitly funded sidecar assets and acquired NFTs. Core cr
 
 ## Reproduce and acceptance evidence
 
-Use pinned repository tools and the existing checksum-verified compiler/PG preparation; no production credentials or service are needed.
+Use the exact preparation/build steps in the [acceptance workflow](../.github/workflows/seaport-acquisition.yml), including checksum-verified solc/PG18.6, genuine upstream fixture artifacts and existing pinned v4 dependencies. No production credential or service is needed. Before Foundry, prepare its official artifacts with `node scripts/seaport-verification/fixture-compile.mjs --solc <verified-solc0.8.26> --output packages/contracts/seaport-acquisition/official-artifacts.json`.
 
 ```sh
-node --test packages/launchpad-common/seaport-vault-safe.test.mjs scripts/seaport-acquisition/*.test.mjs
-pnpm --filter @rmt/indexer exec tsx --test src/seaport-acquisition*.test.ts src/seaport-listing-watch*.test.ts
+node --test packages/launchpad-common/seaport-vault-*.test.mjs scripts/seaport-acquisition/*.test.mjs
+node docs/evidence/rmt-task084/browser/replay-raw-proofs.mjs
+node docs/evidence/rmt-task084/browser/source-73fc6d0/replay-raw-proofs.mjs
+pnpm --filter indexer exec tsx --test src/seaport-acquisition*.test.ts src/seaport-listing-watch*.test.ts
 forge test --root packages/contracts/seaport-acquisition --use <verified-solc0.8.26> -vvv
 node scripts/seaport-acquisition/browser-run.mjs --anvil <anvil> --solc <verified-solc0.8.26> --pg-bin <pg18.6-bin> --browser chromium --fork-robinhood --output <isolated-output>
 # Repeat with --browser webkit. Omit --fork-robinhood for the existing real-core fixture.
@@ -68,16 +72,33 @@ node scripts/seaport-acquisition/browser-run.mjs --anvil <anvil> --solc <verifie
 
 The named Robinhood mode forks genuine pinned Seaport and Safe runtime with read-only upstream connections; it signs synthetic chain31337 orders. The default connected fixture also retains the real fixed1B core lifecycle. These scopes are distinct from live4663 orders, a hosted listing feed, an independent audit or a physical phone. PostgreSQL server stop/start, Next restart, durable rows, replay, traces, reorgs and public404/zero-wallet negatives must be demonstrated by the connected jobs, not inferred from unit mocks.
 
-The first integrated source `9595cc194c0e6d56de7df735781727d89fc550fc` passed all four connected browser jobs in [run44617165542](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44617165542): Chromium and WebKit in both the existing real-core mode and the genuine Robinhood Seaport/Safe fork mode. The actual default-Chromium evidence contains15 proposals,28 synthetic owner signatures,13 submitted local outers,12 surviving canonical admin rows after one reorg,18 recoveries,16 negative checks and22 affirmative Safe checks. Its watcher records three polls, no signature request or broadcast, durable PostgreSQL server restart and mined-Safe-disable invalidation. These counts describe synthetic execution, not owner wallet acceptance. The final strict raw-code-confirmation and raw-receipt archival refinements require their own combined CI run; final source/run bindings are retained with the browser evidence.
+The final functional source is **`73fc6d03d3160e19ac3d19af38138da3461bdb3f`**. Its29 CI checks completed: **22 success, seven unchanged strict security failures, zero pending**. No gate was waived. The [four connected jobs](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731535) pass Chromium/WebKit in both the default real fixed1B core fixture and the genuine Robinhood Seaport/Safe fork fixture. They include the raw-code correction, known EIP-7702 incoming Safe proposal/cancellation, actual PostgreSQL server and Next restarts, durable admin rows, missing hashes/traces and reorg downgrade.
 
-Offchain corrections include rejecting additional Safe-origin mutable calls, binding review timestamps to canonical headers, distinguishing viem's decoded empty code from malformed missing-result RPC responses using exact same-block raw proof, and persisting poll attempts before provider reads. Intermediate harness/type-check failures remain in Git history; fixing them does not waive a security gate.
+| Verification at that source | Actual result |
+| --- | --- |
+| Seaport/common/order/watcher Node tests |68 pass,0 fail/skip |
+| Seaport indexer/store/role tests |9 pass,0 fail/skip |
+| Genuine Seaport/Safe Foundry |54 pass,0 fail/skip |
+|23-ID disposition integrity |6 pass |
+| Repository core Foundry |112 pass,0 fail/skip |
+| Chromium/WebKit connected modes |4 jobs pass |
+| Production-style web, Linux Netlify artifact, Railway container, Firebase emulator, repository/dependency and secret checks |Pass; no deployment |
+| Strict security jobs |7 failed; retained findings remain |
+
+The seven failed check names are slither, fixed-supply-4663, project-treasury-v1, reclaim-v1, reclaim-permanent-v2, nft-acquisition-strict-security and seaport-vault-strict-security. Their underlying contract tests and failed analysis stages remain separate evidence. Seaport V2 still reports all101/48observations/23Highs/strict1. The source98 [CI snapshot](evidence/rmt-task084/ci-source-98eb1be7.json) and its original browser files remain historical proof, not evidence of later account-code changes.
+
+[Fresh raw browser receipts, traces, screenshots and replay](evidence/rmt-task084/browser/source-73fc6d0/README.md) retain60 observed executions,120 verified signature uses,120 tamper rejections and56 final canonical admin rows across the four modes. The source73 raw scan records448 findings,448 explicitly classified and zero unknown; it is not a zero-finding raw scan. The [historical source98 archive](evidence/rmt-task084/browser/README.md) remains intact. Both archives retain exact source/job/artifact identities and original-byte hashes. Test-owner signatures and Anvil state-installed EIP-7702 code are synthetic evidence, not real wallet authorization or a delegation change. Original plaintext is scanned before compression; raw findings, classifications and unknown counts are disclosed separately, with no rule/ignore/gate change. Engine/device emulation is not physical-iPhone acceptance.
+
+One original RH Chromium EOA prepare at source d9e483e returned fail-closed pending before Safe administration. The [failed observation](evidence/rmt-task084/browser/failures/d9-rh-chromium/README.md) is preserved. Its exception/input were not originally retained; timing does not establish cooldown as the cause. Current source adds authenticated loopback-only bounded stage/error-name/revert-selector diagnostics and captures requests/responses before unchanged assertions. Fresh journeys pass with no retry or readiness relaxation. Neither the diagnostic nor the independent raw-code correction is claimed as the causal fix for that unexplained observation.
+
+Offchain fixes also reject additional Safe-origin mutable calls, anchor review freshness to canonical headers and persist poll attempts before provider reads. Intermediate harness/type failures and superseded-run cancellations remain in CI history. Cancelling obsolete runs did not waive any current check.
 
 ## Separate production prerequisites and owner actions
 
 1. Review this exact branch/evidence; no merge, deployment or activation is authorized.
-2. Resolve or explicitly assess the applicable strict findings for the exact production-chain artifact; current chain31337 tests do not approve changed bytecode.
+2. Resolve or explicitly assess applicable strict findings for the exact production-chain artifact. The existing vault enforces chain31337. A separately authorized production-chain build/delta requires fresh verification; this task does not generate or approve changed deployable bytecode.
 3. Establish a legitimate current-order source, independently current order proof and the admitted payment/collection source-authority policy. Unavailable feed/WETH stay NO_GO.
 4. Separately approve the exact production vault/controller, Safe profile, separately funded budget/caps/withdrawal policy and a submission/gas-payer operating policy. Safe-creator deployment remains unavailable.
-5. Verify production receipts/traces, persistence/reorg/backup/provider/L1-finality operations and physical-wallet acceptance before any financial release.
+5. Verify production receipts/traces, multi-transaction block attribution, persistence/reorg/backup/provider/L1-finality operations and physical-wallet acceptance before any financial release. Current Safe admin attribution deliberately requires one transaction per block.
 
 No new owner wallet, key, funding or signature is requested by this development task. Recommended next work is the narrow remaining current-order/payment admission and exact-stage security disposition, rather than activating a keeper without its prerequisites.

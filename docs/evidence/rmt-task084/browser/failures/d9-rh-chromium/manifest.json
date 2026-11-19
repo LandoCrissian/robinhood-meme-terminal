@@ -1,0 +1,70 @@
+{
+  "sourceSha": "d9e483e15a11f41c1914c30c9da64abd57320930",
+  "runId": 44622438585,
+  "jobId": 135907352485,
+  "artifactId": 14579245200,
+  "digest": "sha256:80ae07e61afff47d047d657db50675d5d2086691df4da5136f7d56c59b296352",
+  "status": "FAILED_OBSERVATION_NOT_ACCEPTANCE",
+  "production": false,
+  "observed": "Old EOA ERC20 ERC1155 buy prepare after token-policy configure/recovery returned pending with no profile or unsigned request. Safe administration had not started.",
+  "cause": "Not determined from original evidence; the old generic catch retained no stage or provider exception. No failed order input survived this source version.",
+  "worker": "ready, lastFailure null, target/checkpoint118550519",
+  "response": "Evidence or simulation unavailable; no submission attempted",
+  "correction": "Subsequent source adds bounded stage diagnostics and preserves failed prepare request/response before existing assertions; no retry or readiness weakening.",
+  "rawFindings": 4,
+  "classifiedFindings": 4,
+  "unknown": 0,
+  "members": [
+    {
+      "member": "failure.json",
+      "path": "docs/evidence/rmt-task084/browser/failures/d9-rh-chromium/failure.json.gz",
+      "rawSha256": "520fce821f63ef6543e99c1401dbc58054260ec6fe451361030efe55e73454b9",
+      "rawBytes": 1106,
+      "storedSha256": "7bf7fd71e9e53a27467765a99d3bd33e7da098c44240cc3b903692a1c4e6a979"
+    },
+    {
+      "member": "worker-diagnostics.json",
+      "path": "docs/evidence/rmt-task084/browser/failures/d9-rh-chromium/worker-diagnostics.json.gz",
+      "rawSha256": "ad84cc70d039d4e83bbc1810b2d5a020f0dfec422f90691ca72a840bdd345de6",
+      "rawBytes": 346,
+      "storedSha256": "33403d0f804cdeb315fbb1b060d870b9a7a057e1afca0eec5abb1ebdc06c0cc8"
+    },
+    {
+      "member": "seaport-browser-evidence.json",
+      "path": "docs/evidence/rmt-task084/browser/failures/d9-rh-chromium/seaport-browser-evidence.json.gz",
+      "rawSha256": "6e77683ba97e58406736ebd5bab07e3b0fe80f7968bab83373ac4fa131e15726",
+      "rawBytes": 38192,
+      "storedSha256": "5e9b510fa1a82bd6667646f1016c84a50dd15cab6e8da42bbbf4ca58518eb7ef"
+    },
+    {
+      "member": "next.log",
+      "path": "docs/evidence/rmt-task084/browser/failures/d9-rh-chromium/next.log.gz",
+      "rawSha256": "9b6f5480ae699d6efccd3d68233ffe005f17f1f2d2f029c587ebdef632f4c2a7",
+      "rawBytes": 145,
+      "storedSha256": "6a955cd7842324fb422fcd843969b7a9c601540ae42ccc0b3b38dac1b9c4e532"
+    },
+    {
+      "member": "chain/seaport-acquisition-deployment.json",
+      "path": "docs/evidence/rmt-task084/browser/failures/d9-rh-chromium/chain/seaport-acquisition-deployment.json.gz",
+      "rawSha256": "8962a991776f3b726e3919349c73efcc640579f13966934e18a2047fbc67fd78",
+      "rawBytes": 6129,
+      "storedSha256": "0656a44c39d975e96653372128a3958ba803fea4d04a3664748b7547650f2f64"
+    },
+    {
+      "member": "job-failure.log",
+      "path": "docs/evidence/rmt-task084/browser/failures/d9-rh-chromium/job-failure.log.gz",
+      "rawSha256": "8f297e7950b43e4196f2e8e842f5b3e9cf7e57614961bf888a9b156d6584ab3b",
+      "rawBytes": 2127,
+      "storedSha256": "6beb3ef4a126463ffa0b407996e09ff46d0bffaa9a5d3b39d3e20e2ecb68bc96"
+    }
+  ],
+  "knownTiming": {
+    "nativePurchaseReceiptTimestamp": "2026-11-19T21:53:20.000Z",
+    "nativePurchaseReceiptUnix": "1795125200",
+    "configuredCooldownSeconds": "1",
+    "earliestNextPurchaseUnix": "1795125201",
+    "tokenConfigureReviewHeadUnix": "1795125201",
+    "failedPrepareHeadUnix": null,
+    "interpretation": "The retained configure review head meets the known cooldown boundary. The failed pending simulation context and original exception were not retained; cooldown is not established as the cause."
+  }
+}

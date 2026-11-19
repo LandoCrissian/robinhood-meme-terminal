@@ -1,0 +1,568 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "functionalSourceCommit": "73fc6d03d3160e19ac3d19af38138da3461bdb3f",
+  "base": "663c057746e795f8cde60a4eca8d51d4d685b768",
+  "productionCompilerInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+  "productionSolidityChanged": false,
+  "onlyAddedSolidityTest": "packages/contracts/seaport-acquisition/test/SeaportTask084Security.t.sol",
+  "observedAtUtc": "2026-11-19 22:24:20 UTC",
+  "summary": {
+    "checks": 29,
+    "success": 22,
+    "failure": 7,
+    "pending": 0,
+    "securityGatesWaived": false
+  },
+  "tests": [
+    {
+      "name": "Seaport Node",
+      "pass": 68,
+      "fail": 0,
+      "skip": 0,
+      "jobId": 135915407942
+    },
+    {
+      "name": "Seaport indexer",
+      "pass": 9,
+      "fail": 0,
+      "skip": 0,
+      "jobId": 135915407942
+    },
+    {
+      "name": "Historical raw replay",
+      "executions": 52,
+      "signatureUses": 104,
+      "tamperRejections": 104,
+      "jobId": 135915407942
+    },
+    {
+      "name": "Seaport Foundry",
+      "pass": 54,
+      "fail": 0,
+      "skip": 0,
+      "jobId": 135915407194
+    },
+    {
+      "name": "23-ID integrity",
+      "pass": 6,
+      "fail": 0,
+      "skip": 0,
+      "jobId": 135915407194
+    },
+    {
+      "name": "Core Foundry",
+      "pass": 112,
+      "fail": 0,
+      "skip": 0,
+      "jobId": 135915408293
+    }
+  ],
+  "checks": [
+    {
+      "id": 135915409962,
+      "name": "isolated-lifecycle (webkit)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:03:56Z",
+      "completedAt": "2026-11-19T22:14:52Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624732057/job/135915409962"
+    },
+    {
+      "id": 135915409894,
+      "name": "web",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:03:27Z",
+      "completedAt": "2026-11-19T22:08:26Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624732057/job/135915409894"
+    },
+    {
+      "id": 135915409695,
+      "name": "isolated-lifecycle (chromium)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:03:59Z",
+      "completedAt": "2026-11-19T22:14:40Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624732057/job/135915409695"
+    },
+    {
+      "id": 135915409225,
+      "name": "operations-safe",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:03:55Z",
+      "completedAt": "2026-11-19T22:04:13Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731803/job/135915409225"
+    },
+    {
+      "id": 135915408844,
+      "name": "repository",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:03:50Z",
+      "completedAt": "2026-11-19T22:04:48Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731803/job/135915408844"
+    },
+    {
+      "id": 135915408667,
+      "name": "indexer",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:03:48Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731803/job/135915408667"
+    },
+    {
+      "id": 135915408477,
+      "name": "slither",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:07:02Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731658/job/135915408477"
+    },
+    {
+      "id": 135915408293,
+      "name": "contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:03:13Z",
+      "completedAt": "2026-11-19T22:06:06Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731803/job/135915408293"
+    },
+    {
+      "id": 135915408281,
+      "name": "nft-acquisition-browser (chromium)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:03:37Z",
+      "completedAt": "2026-11-19T22:08:28Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731541/job/135915408281"
+    },
+    {
+      "id": 135915408226,
+      "name": "fixed-supply-4663",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:05:23Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731658/job/135915408226"
+    },
+    {
+      "id": 135915408172,
+      "name": "reclaim-v1",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:04:00Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731658/job/135915408172"
+    },
+    {
+      "id": 135915407986,
+      "name": "seaport-vault-robinhood-fork",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:03:53Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731535/job/135915407986"
+    },
+    {
+      "id": 135915407980,
+      "name": "treasury-purchase-v2-prototype",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:36Z",
+      "completedAt": "2026-11-19T22:03:35Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731658/job/135915407980"
+    },
+    {
+      "id": 135915407942,
+      "name": "seaport-vault-units",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:36Z",
+      "completedAt": "2026-11-19T22:03:11Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731535/job/135915407942"
+    },
+    {
+      "id": 135915407831,
+      "name": "nft-acquisition-units",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:03:15Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731541/job/135915407831"
+    },
+    {
+      "id": 135915407815,
+      "name": "nft-acquisition-browser (webkit)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:03:17Z",
+      "completedAt": "2026-11-19T22:08:05Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731541/job/135915407815"
+    },
+    {
+      "id": 135915407784,
+      "name": "isolated-firebase",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:36Z",
+      "completedAt": "2026-11-19T22:06:31Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731597/job/135915407784"
+    },
+    {
+      "id": 135915407620,
+      "name": "reclaim-permanent-v2",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T22:02:36Z",
+      "completedAt": "2026-11-19T22:03:54Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731596/job/135915407620"
+    },
+    {
+      "id": 135915407557,
+      "name": "seaport-vault-browser (webkit)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:07:13Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731535/job/135915407557"
+    },
+    {
+      "id": 135915407542,
+      "name": "seaport-source-and-fixtures",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:54Z",
+      "completedAt": "2026-11-19T22:04:02Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731541/job/135915407542"
+    },
+    {
+      "id": 135915407530,
+      "name": "project-treasury-v1",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T22:02:36Z",
+      "completedAt": "2026-11-19T22:03:25Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731658/job/135915407530"
+    },
+    {
+      "id": 135915407529,
+      "name": "seaport-vault-robinhood-browser (chromium)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:06:54Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731535/job/135915407529"
+    },
+    {
+      "id": 135915407520,
+      "name": "nft-acquisition-strict-security",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T22:02:36Z",
+      "completedAt": "2026-11-19T22:03:56Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731541/job/135915407520"
+    },
+    {
+      "id": 135915407457,
+      "name": "railway-container",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:04:13Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731501/job/135915407457"
+    },
+    {
+      "id": 135915407443,
+      "name": "seaport-vault-robinhood-browser (webkit)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:07:15Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731535/job/135915407443"
+    },
+    {
+      "id": 135915407409,
+      "name": "linux-netlify-artifact",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:36Z",
+      "completedAt": "2026-11-19T22:04:14Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731513/job/135915407409"
+    },
+    {
+      "id": 135915407368,
+      "name": "seaport-vault-browser (chromium)",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:07:13Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731535/job/135915407368"
+    },
+    {
+      "id": 135915407194,
+      "name": "seaport-vault-strict-security",
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T22:02:37Z",
+      "completedAt": "2026-11-19T22:04:38Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731535/job/135915407194"
+    },
+    {
+      "id": 135915406989,
+      "name": "gitleaks",
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T22:02:36Z",
+      "completedAt": "2026-11-19T22:02:52Z",
+      "detailsUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44624731394/job/135915406989"
+    }
+  ],
+  "runtimeAndRegressionSourceFiles": [
+    {
+      "path": "apps/indexer/src/seaport-acquisition-safe-admin.test.ts",
+      "gitBlobSha": "78841db4a5ff37358eefd9778de643f98c3f5260",
+      "status": "added"
+    },
+    {
+      "path": "apps/indexer/src/seaport-acquisition-safe-admin.ts",
+      "gitBlobSha": "813e987c04dd755e1a08a9ac2d0f9effdbf50c62",
+      "status": "added"
+    },
+    {
+      "path": "apps/indexer/src/seaport-acquisition-store.ts",
+      "gitBlobSha": "2639dba32d4e52c50d3d14133d84724db82c949f",
+      "status": "modified"
+    },
+    {
+      "path": "apps/indexer/src/seaport-acquisition-types.ts",
+      "gitBlobSha": "dbc96666ced7dbd5fe83c87ff41bddd0d2ab7b45",
+      "status": "modified"
+    },
+    {
+      "path": "apps/indexer/src/seaport-acquisition-worker.ts",
+      "gitBlobSha": "8827dce402f2b4d0375370232bbd8f0dfd0e7c72",
+      "status": "modified"
+    },
+    {
+      "path": "apps/indexer/src/seaport-listing-watch-store.test.ts",
+      "gitBlobSha": "087e497276650d34e141eaa90c478e5634735602",
+      "status": "added"
+    },
+    {
+      "path": "apps/indexer/src/seaport-listing-watch-store.ts",
+      "gitBlobSha": "17773b1a39ecb3c75a80b761edaef93addaca2ef",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/app/_components/seaport-acquisition-dashboard.tsx",
+      "gitBlobSha": "8ce3f26e092a1df70a37b5b19ddb90c3f82b18a4",
+      "status": "modified"
+    },
+    {
+      "path": "apps/launch-website/app/_components/seaport-acquisition-safe-admin.tsx",
+      "gitBlobSha": "b48f2cab89d0ee770668c6f1659ad14b8cea1774",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/lib/seaport-acquisition-safe-recovery.ts",
+      "gitBlobSha": "e891a4d6620dcad8338140d0397504fa7939cc54",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/lib/seaport-acquisition-safe.ts",
+      "gitBlobSha": "38f45c50c1feb1884bb7bd8e2a3964314c571e95",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/lib/server/seaport-acquisition-actions.ts",
+      "gitBlobSha": "6d86347494e4eda60471e5de8d3dd3816fb58b5f",
+      "status": "modified"
+    },
+    {
+      "path": "apps/launch-website/lib/server/seaport-acquisition-diagnostics.test.ts",
+      "gitBlobSha": "fe0cdf4d47fd89031734c7f3a3cbd7c7fb982db0",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/lib/server/seaport-acquisition-diagnostics.ts",
+      "gitBlobSha": "5f202ca6459783b4ecd69c58ce0ecbb09e49b53d",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/lib/server/seaport-acquisition-safe-account.test.ts",
+      "gitBlobSha": "78026913c02b3d6c07fc6211898b81794aa4142d",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/lib/server/seaport-acquisition-safe-account.ts",
+      "gitBlobSha": "811194657a41bf70b6261c61ffe1e6e06a538d7f",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/lib/server/seaport-acquisition-safe.test.ts",
+      "gitBlobSha": "72569a069a7a2e4071cdf1a6cbf16ed0afc0ce85",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/lib/server/seaport-acquisition-safe.ts",
+      "gitBlobSha": "c166f2dcae21c94a6fc14113385d606ded24326f",
+      "status": "added"
+    },
+    {
+      "path": "apps/launch-website/lib/server/seaport-acquisition.ts",
+      "gitBlobSha": "13272def301837b5f66dafbaf31d9b460aaae541",
+      "status": "modified"
+    },
+    {
+      "path": "packages/contracts/seaport-acquisition/test/SeaportTask084Security.t.sol",
+      "gitBlobSha": "5c65e6696a8f4370798b747de840980f4e74ef1e",
+      "status": "added"
+    },
+    {
+      "path": "packages/launchpad-common/seaport-vault-account-code.d.mts",
+      "gitBlobSha": "fe9e60414cbd8755fc08849b8350e4a65abe7e38",
+      "status": "added"
+    },
+    {
+      "path": "packages/launchpad-common/seaport-vault-account-code.mjs",
+      "gitBlobSha": "b1eef9e2b16dede10bccff01a9d731ddf1e89362",
+      "status": "added"
+    },
+    {
+      "path": "packages/launchpad-common/seaport-vault-account-code.test.mjs",
+      "gitBlobSha": "fca2fda959d068002d08e25be50734a93824a8b5",
+      "status": "added"
+    },
+    {
+      "path": "packages/launchpad-common/seaport-vault-safe.d.mts",
+      "gitBlobSha": "9bef94066503093b9ae503b342a2df474e24d6b1",
+      "status": "added"
+    },
+    {
+      "path": "packages/launchpad-common/seaport-vault-safe.mjs",
+      "gitBlobSha": "c0e7c8642e6a0eac6e3f298d8a210b6237b0d533",
+      "status": "added"
+    },
+    {
+      "path": "packages/launchpad-common/seaport-vault-safe.test.mjs",
+      "gitBlobSha": "023fcb35d41345add0866d82dbfbc01d91e056aa",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/browser-checkpoint.mjs",
+      "gitBlobSha": "0c275e7e24e03ae0a72f67a658e46f31b9135b6e",
+      "status": "modified"
+    },
+    {
+      "path": "scripts/seaport-acquisition/browser-integration.mjs",
+      "gitBlobSha": "ecbbf99c542d5ccb94b3a2814519004a326e7949",
+      "status": "modified"
+    },
+    {
+      "path": "scripts/seaport-acquisition/browser-run.mjs",
+      "gitBlobSha": "6b2d0b43f1dc1490065b53bd9923d1069fa809ff",
+      "status": "modified"
+    },
+    {
+      "path": "scripts/seaport-acquisition/browser-safe-admin.mjs",
+      "gitBlobSha": "a94bf4d843d93ae0f8f1059ddffb971da4323f04",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/browser-watcher.mjs",
+      "gitBlobSha": "07db8f44b3d22582c45fa6e377a41f2efec50cc0",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/listing-watcher.d.mts",
+      "gitBlobSha": "35bbe14dec2bcd22aebfc49ea15a33dbcaffb444",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/listing-watcher.mjs",
+      "gitBlobSha": "97c1aeb1a321481e803a7db6bc48a7522e3f50af",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/listing-watcher.test.mjs",
+      "gitBlobSha": "8c2912915f13b4130db207296e8e1913beac663a",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/marketplace-current-qualification.mjs",
+      "gitBlobSha": "95417cb75366b3d26e872d721a176b047904ad03",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/marketplace-current-qualification.test.mjs",
+      "gitBlobSha": "cc95f20ae614d116c7d5e134ab659f8d70771fb2",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/owner-supplied-order.d.mts",
+      "gitBlobSha": "db3d21a136235efe82b1ca027b40eb7e956c381b",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/owner-supplied-order.mjs",
+      "gitBlobSha": "1e2cc2443a838226ff831c575bb6f5b59899a226",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/owner-supplied-order.schema.json",
+      "gitBlobSha": "b81711d049dad92418889c75a7785e57d0c6ee01",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/owner-supplied-order.test.mjs",
+      "gitBlobSha": "6753d232c8c9208ef1a1a3660899a3ced3eb3adc",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/owner-watcher-interop-fixture.mjs",
+      "gitBlobSha": "29225bba4e848d9d77b6f5e2c7ac7b27bfe6f91d",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/owner-watcher-interop.test.mjs",
+      "gitBlobSha": "4a157981394149f11bd9e42dfbcc4dc8bbe0dd33",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/payment-policy.mjs",
+      "gitBlobSha": "07dce497d5797e99245e2af80151a81a95cc94f1",
+      "status": "added"
+    },
+    {
+      "path": "scripts/seaport-acquisition/payment-policy.test.mjs",
+      "gitBlobSha": "e2bf3d93373e8452657c0c4d2da78c60b6715651",
+      "status": "added"
+    }
+  ],
+  "ciConfigurationAtSource": [
+    {
+      "path": ".github/workflows/seaport-acquisition.yml",
+      "gitBlobSha": "81f0bae0eb1df283e8bf223622b44851a98ef69b",
+      "status": "modified"
+    },
+    {
+      "path": "knip.json",
+      "gitBlobSha": "023cba2bce58de862badf25e2bd123491c5ed6af",
+      "status": "modified"
+    }
+  ],
+  "closeoutChangesAllowed": [
+    "Retained documentation and original-byte evidence only",
+    "Exact fresh receipt replay CLI entry and additional replay command in existing Seaport CI; no test/security gate disabled"
+  ],
+  "limitations": [
+    "Seven strict security check failures remain; current Seaport scope all101/48observations/23High strict1.",
+    "One preserved original d9 fail-closed EOA prepare remains unexplained. It did not recur in these four connected runs; no causal fix is claimed.",
+    "Local/fork evidence is not production, physical-iPhone or independent-audit acceptance.",
+    "Final evidence/verification-only commits must not alter the runtime/regression source blobs listed here."
+  ]
+}

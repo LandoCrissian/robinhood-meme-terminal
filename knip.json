@@ -55,7 +55,8 @@
         "scripts/seaport-acquisition/owner-supplied-order.d.mts",
         "scripts/seaport-acquisition/listing-watcher.d.mts",
         "packages/launchpad-common/seaport-vault-account-code.d.mts",
-        "docs/evidence/rmt-task084/browser/replay-raw-proofs.mjs"
+        "docs/evidence/rmt-task084/browser/replay-raw-proofs.mjs",
+        "docs/evidence/rmt-task084/browser/source-73fc6d0/replay-raw-proofs.mjs"
       ]
     },
     "apps/launch-website": {
