@@ -1,0 +1,591 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_4663_SAFE_CONFIGURATION_NOT_RECLAIM_ACTIVATION",
+  "observedAt": "2026-11-19T00:27:01.228Z",
+  "chainId": 4663,
+  "signing": false,
+  "broadcast": false,
+  "productionChanges": false,
+  "sourceUrls": {
+    "network": "https://docs.robinhood.com/chain/connecting/",
+    "safe": "https://docs.safe.global/advanced/smart-account-supported-networks"
+  },
+  "sourceBindings": [
+    {
+      "path": "scripts/reclaim/read-only-4663.mjs",
+      "sha256": "f7372986160e2019f929583304f496f0208f4fe3d9b95ed7e419008d61f31381",
+      "encoding": "UTF8_CRLF_TO_LF_ONLY"
+    },
+    {
+      "path": "scripts/production-readiness/rpc.mjs",
+      "sha256": "456e51835601c802032be78d9e0346d98260ca851376d3825c008b077c55ac67",
+      "encoding": "UTF8_CRLF_TO_LF_ONLY"
+    },
+    {
+      "path": "packages/contracts/test/fixtures/safe-1.4.1/runtime.json",
+      "sha256": "eaf1dc33f150e0a69d1d4a522dc1b51a95cc34ec11b2c4026c7894486a2bdfde",
+      "encoding": "UTF8_CRLF_TO_LF_ONLY"
+    }
+  ],
+  "expectedOwners": [
+    "0xc447a378cfd8460febc2eef67501d7a5473b9001",
+    "0xc3600f2df60929d2ab9ab294cff42eedcb984f51",
+    "0x2bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697"
+  ],
+  "threshold": 2,
+  "pins": {
+    "safe_l2": {
+      "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+      "runtimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff"
+    },
+    "safe_proxy_factory": {
+      "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+      "runtimeHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317"
+    },
+    "compatibility_fallback_handler": {
+      "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+      "runtimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9"
+    },
+    "operations": {
+      "address": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+      "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c"
+    },
+    "reserve": {
+      "address": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+      "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c"
+    }
+  },
+  "providers": {
+    "official": {
+      "source": "https://rpc.mainnet.chain.robinhood.com",
+      "chain": {
+        "status": "observed",
+        "observedAt": "2026-11-19T00:27:01.469Z",
+        "value": 4663
+      },
+      "head": {
+        "status": "observed",
+        "observedAt": "2026-11-19T00:27:01.582Z",
+        "value": {
+          "number": "117812619",
+          "hash": "0xec2e0b23197c077716283aa47b93a024ea76b2651a994fc978c26ba6ba7ae41b",
+          "parentHash": "0xf978479dd6d9d6129a64f7039e0b8d68fcdbc57ba84f2c2ad460d386866c9d91",
+          "timestamp": "2026-11-19T00:27:00.000Z"
+        }
+      },
+      "anchor": {
+        "status": "observed",
+        "observedAt": "2026-11-19T00:27:02.688Z",
+        "value": {
+          "number": "117812614",
+          "hash": "0x8777cb46f1ccc4b211858718775734aed336483ef1fce93d06b66c4945cd621d",
+          "parentHash": "0xf3036357ffc7fba44399582dcf7d2403175e6cad5925b3313904a1c9d71fa264",
+          "timestamp": "2026-11-19T00:27:00.000Z"
+        }
+      },
+      "runtimes": {
+        "safe_l2": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:02.787Z",
+          "value": {
+            "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+            "bytes": 24421,
+            "runtimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+            "matches": true
+          }
+        },
+        "compatibility_fallback_handler": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:02.865Z",
+          "value": {
+            "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+            "bytes": 5637,
+            "runtimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+            "matches": true
+          }
+        },
+        "reserve": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:02.874Z",
+          "value": {
+            "address": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+            "bytes": 171,
+            "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+            "matches": true
+          }
+        },
+        "operations": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:02.875Z",
+          "value": {
+            "address": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "bytes": 171,
+            "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+            "matches": true
+          }
+        },
+        "safe_proxy_factory": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:02.875Z",
+          "value": {
+            "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+            "bytes": 3054,
+            "runtimeHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+            "matches": true
+          }
+        }
+      },
+      "safes": {
+        "operations": {
+          "address": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "views": {
+            "masterCopy": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.096Z",
+              "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+            },
+            "VERSION": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.097Z",
+              "value": "1.4.1"
+            },
+            "nonce": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.098Z",
+              "value": "0"
+            },
+            "getThreshold": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.098Z",
+              "value": "2"
+            },
+            "getOwners": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.565Z",
+              "value": [
+                "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+                "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+                "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+              ]
+            },
+            "erc721Receiver": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.644Z",
+              "value": true
+            },
+            "erc1155Receiver": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.742Z",
+              "value": true
+            }
+          },
+          "approvedConfigurationObserved": true
+        },
+        "reserve": {
+          "address": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+          "views": {
+            "nonce": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.840Z",
+              "value": "0"
+            },
+            "VERSION": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.841Z",
+              "value": "1.4.1"
+            },
+            "masterCopy": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.842Z",
+              "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+            },
+            "getOwners": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.842Z",
+              "value": [
+                "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+                "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+                "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+              ]
+            },
+            "getThreshold": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.842Z",
+              "value": "2"
+            },
+            "erc721Receiver": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.954Z",
+              "value": true
+            },
+            "erc1155Receiver": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.053Z",
+              "value": true
+            }
+          },
+          "approvedConfigurationObserved": true
+        }
+      },
+      "governanceOwnerCode": {
+        "0xc3600f2df60929d2ab9ab294cff42eedcb984f51": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:02.975Z",
+          "value": {
+            "empty": true,
+            "bytes": 0,
+            "runtimeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+          }
+        },
+        "0xc447a378cfd8460febc2eef67501d7a5473b9001": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:02.982Z",
+          "value": {
+            "empty": true,
+            "bytes": 0,
+            "runtimeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+          }
+        },
+        "0x2bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:02.984Z",
+          "value": {
+            "empty": true,
+            "bytes": 0,
+            "runtimeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+          }
+        }
+      },
+      "recheckedAnchor": {
+        "status": "observed",
+        "observedAt": "2026-11-19T00:27:04.158Z",
+        "value": {
+          "number": "117812614",
+          "hash": "0x8777cb46f1ccc4b211858718775734aed336483ef1fce93d06b66c4945cd621d",
+          "parentHash": "0xf3036357ffc7fba44399582dcf7d2403175e6cad5925b3313904a1c9d71fa264",
+          "timestamp": "2026-11-19T00:27:00.000Z"
+        }
+      },
+      "status": "ANCHORED_L2_OBSERVATION"
+    },
+    "pocket": {
+      "source": "https://robinhood.api.pocket.network",
+      "chain": {
+        "status": "observed",
+        "observedAt": "2026-11-19T00:27:01.914Z",
+        "value": 4663
+      },
+      "head": {
+        "status": "observed",
+        "observedAt": "2026-11-19T00:27:02.615Z",
+        "value": {
+          "number": "117812636",
+          "hash": "0x9ca2f50245e70525ea5ea223f5065fcbcdd3da5c3e784de0c0c315bfbc59122c",
+          "parentHash": "0xec02a9ec069c3e4a7c5b7a0e3a347796ed7b12e10e1c9eef1e2db43e792ab65d",
+          "timestamp": "2026-11-19T00:27:02.000Z"
+        }
+      },
+      "anchor": {
+        "status": "observed",
+        "observedAt": "2026-11-19T00:27:02.811Z",
+        "value": {
+          "number": "117812614",
+          "hash": "0x8777cb46f1ccc4b211858718775734aed336483ef1fce93d06b66c4945cd621d",
+          "parentHash": "0xf3036357ffc7fba44399582dcf7d2403175e6cad5925b3313904a1c9d71fa264",
+          "timestamp": "2026-11-19T00:27:00.000Z"
+        }
+      },
+      "runtimes": {
+        "safe_l2": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:03.358Z",
+          "value": {
+            "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+            "bytes": 24421,
+            "runtimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+            "matches": true
+          }
+        },
+        "reserve": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:03.487Z",
+          "value": {
+            "address": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+            "bytes": 171,
+            "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+            "matches": true
+          }
+        },
+        "operations": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:03.501Z",
+          "value": {
+            "address": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "bytes": 171,
+            "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+            "matches": true
+          }
+        },
+        "safe_proxy_factory": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:03.511Z",
+          "value": {
+            "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+            "bytes": 3054,
+            "runtimeHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+            "matches": true
+          }
+        },
+        "compatibility_fallback_handler": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:03.613Z",
+          "value": {
+            "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+            "bytes": 5637,
+            "runtimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+            "matches": true
+          }
+        }
+      },
+      "safes": {
+        "operations": {
+          "address": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "views": {
+            "getOwners": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:03.968Z",
+              "value": [
+                "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+                "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+                "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+              ]
+            },
+            "masterCopy": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.001Z",
+              "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+            },
+            "nonce": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.301Z",
+              "value": "0",
+              "previousAttempt": {
+                "status": "unavailable",
+                "observedAt": "2026-11-19T00:27:03.968Z",
+                "reason": "http",
+                "httpStatus": 429
+              }
+            },
+            "getThreshold": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.305Z",
+              "value": "2",
+              "previousAttempt": {
+                "status": "unavailable",
+                "observedAt": "2026-11-19T00:27:03.968Z",
+                "reason": "http",
+                "httpStatus": 429
+              }
+            },
+            "VERSION": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.306Z",
+              "value": "1.4.1",
+              "previousAttempt": {
+                "status": "unavailable",
+                "observedAt": "2026-11-19T00:27:03.967Z",
+                "reason": "http",
+                "httpStatus": 429
+              }
+            },
+            "erc721Receiver": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.481Z",
+              "value": true
+            },
+            "erc1155Receiver": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.660Z",
+              "value": true
+            }
+          },
+          "approvedConfigurationObserved": true
+        },
+        "reserve": {
+          "address": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+          "views": {
+            "getThreshold": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.832Z",
+              "value": "2"
+            },
+            "masterCopy": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.832Z",
+              "value": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762"
+            },
+            "getOwners": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:04.894Z",
+              "value": [
+                "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+                "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+                "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+              ]
+            },
+            "nonce": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:05.169Z",
+              "value": "0",
+              "previousAttempt": {
+                "status": "unavailable",
+                "observedAt": "2026-11-19T00:27:04.830Z",
+                "reason": "http",
+                "httpStatus": 429
+              }
+            },
+            "VERSION": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:05.172Z",
+              "value": "1.4.1",
+              "previousAttempt": {
+                "status": "unavailable",
+                "observedAt": "2026-11-19T00:27:04.829Z",
+                "reason": "http",
+                "httpStatus": 429
+              }
+            },
+            "erc721Receiver": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:05.355Z",
+              "value": true
+            },
+            "erc1155Receiver": {
+              "status": "observed",
+              "observedAt": "2026-11-19T00:27:05.516Z",
+              "value": true
+            }
+          },
+          "approvedConfigurationObserved": true
+        }
+      },
+      "governanceOwnerCode": {
+        "0x2bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:03.777Z",
+          "value": {
+            "empty": true,
+            "bytes": 0,
+            "runtimeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+          }
+        },
+        "0xc447a378cfd8460febc2eef67501d7a5473b9001": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:03.781Z",
+          "value": {
+            "empty": true,
+            "bytes": 0,
+            "runtimeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+          }
+        },
+        "0xc3600f2df60929d2ab9ab294cff42eedcb984f51": {
+          "status": "observed",
+          "observedAt": "2026-11-19T00:27:03.787Z",
+          "value": {
+            "empty": true,
+            "bytes": 0,
+            "runtimeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470"
+          }
+        }
+      },
+      "recheckedAnchor": {
+        "status": "observed",
+        "observedAt": "2026-11-19T00:27:05.685Z",
+        "value": {
+          "number": "117812614",
+          "hash": "0x8777cb46f1ccc4b211858718775734aed336483ef1fce93d06b66c4945cd621d",
+          "parentHash": "0xf3036357ffc7fba44399582dcf7d2403175e6cad5925b3313904a1c9d71fa264",
+          "timestamp": "2026-11-19T00:27:00.000Z"
+        }
+      },
+      "status": "ANCHORED_L2_OBSERVATION"
+    }
+  },
+  "anchor": {
+    "number": "117812614",
+    "policy": "minimum available provider head minus five blocks; L2 observation only"
+  },
+  "corroboration": {
+    "status": "CORROBORATED",
+    "providers": [
+      "official",
+      "pocket"
+    ],
+    "value": {
+      "anchor": {
+        "number": "117812614",
+        "hash": "0x8777cb46f1ccc4b211858718775734aed336483ef1fce93d06b66c4945cd621d",
+        "parentHash": "0xf3036357ffc7fba44399582dcf7d2403175e6cad5925b3313904a1c9d71fa264",
+        "timestamp": "2026-11-19T00:27:00.000Z"
+      },
+      "runtimeHashes": {
+        "safe_l2": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+        "compatibility_fallback_handler": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+        "reserve": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+        "operations": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+        "safe_proxy_factory": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317"
+      },
+      "safes": {
+        "operations": {
+          "approved": true,
+          "views": {
+            "masterCopy": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+            "VERSION": "1.4.1",
+            "nonce": "0",
+            "getThreshold": "2",
+            "getOwners": [
+              "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+              "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+              "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+            ],
+            "erc721Receiver": true,
+            "erc1155Receiver": true
+          }
+        },
+        "reserve": {
+          "approved": true,
+          "views": {
+            "nonce": "0",
+            "VERSION": "1.4.1",
+            "masterCopy": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+            "getOwners": [
+              "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+              "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+              "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697"
+            ],
+            "getThreshold": "2",
+            "erc721Receiver": true,
+            "erc1155Receiver": true
+          }
+        }
+      }
+    }
+  },
+  "limits": {
+    "providers": 2,
+    "timeoutMs": 8000,
+    "attempts": 2,
+    "responseBytes": 196608,
+    "publicFixedTargetsOnly": true
+  },
+  "limitations": [
+    "Two L2 providers do not verify Ethereum L1 finality or independent market prices.",
+    "This checks existing Safe configuration, not phone control, new Reclaim execution or a security audit.",
+    "No live RMT reward token, USD reference, NFT eligibility policy, campaign or reserve is admitted.",
+    "Receiver interface responses are observations, not arbitrary NFT contract compatibility or safe custody evidence."
+  ],
+  "releaseStatus": "BLOCKED_NO_BROADCAST",
+  "reclaimActivation": false,
+  "configurationStatus": "BOTH_EXISTING_SAFES_APPROVED_CONFIGURATION_CORROBORATED",
+  "completedAt": "2026-11-19T00:27:05.695Z"
+}
