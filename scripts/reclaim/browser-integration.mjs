@@ -159,6 +159,8 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
     evidence.recoveries.push({ reviewHash: original.reviewHash, hashEntered: hash ?? null, result, noSubmission: true }); save(); return result;
   }
   async function capture(name) {
+    await page.evaluate(() => { window.scrollTo({ top: 0, behavior: "instant" }); });
+    await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
     assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true, "No horizontal overflow");
     const state = () => page.evaluate(() => ({ touch: navigator.maxTouchPoints, coarse: matchMedia("(pointer: coarse)").matches }));
     const before = await state(), file = `${name}.png`; await page.screenshot({ path: join(out, file) }); assert.deepEqual(await state(), before);

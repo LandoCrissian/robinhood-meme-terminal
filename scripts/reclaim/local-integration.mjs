@@ -171,8 +171,15 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
     const invalidated=await session.verify({review:orphan.review,hash:orphanHash,status:"unavailable"});
     evidence.reorg={orphanHash,removed:true,recoveryStatus:invalidated.status,originalJournalRetained:true,noAutomaticSubmission:true,
       limitation:"A disappeared transaction alone cannot independently prove a reorg; the journal stays unavailable while the canonical index rolls back"};
-    const auth=await fetch(workerOrigin+"/reclaim-campaigns?campaign="+campaign);assert.equal(auth.status,401);
-    evidence.checks.authenticatedHistory=true;
+    const deniedReads=[];
+    for(const headers of[{}, {"X-RMT-Fixture-Key":"00".repeat(32)}]){
+      const auth=await fetch(workerOrigin+"/reclaim-campaigns?campaign="+campaign,{headers});
+      assert.equal(auth.status,404,"Existing fixture API deliberately conceals unauthenticated routes");
+      const body=await auth.json();assert.equal(body.status,"unavailable");assert.deepEqual(body.launches,[]);
+      assert.equal(body.campaigns,undefined);assert.equal(body.events,undefined);assert.match(auth.headers.get("cache-control")??"",/private, no-store/);
+      deniedReads.push({status:auth.status,unavailable:true,noRecords:true});
+    }
+    evidence.checks.authenticatedHistory=true;evidence.unauthorizedReads=deniedReads;
     evidence.database={campaigns:(await pg.query("SELECT payload FROM rmt_reclaim_fixture_campaigns")).rows,events:(await pg.query("SELECT payload FROM rmt_reclaim_fixture_events ORDER BY block_number,log_index")).rows,
       checkpoints:(await pg.query("SELECT block_number,block_hash FROM rmt_curve_fixture_checkpoints ORDER BY block_number DESC LIMIT 3")).rows};
     evidence.status="passed";save();await session.close();return evidence;
