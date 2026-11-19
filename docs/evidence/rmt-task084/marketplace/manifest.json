@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "exactBase": "663c057746e795f8cde60a4eca8d51d4d685b768",
+  "ownerAuthority": "https://github.com/LandoCrissian/robinhood-meme-terminal/pull/677#issuecomment-7019806025",
+  "initialSourceCommit": "f38a55e0171003ac13043d3b3b8440366a4841cb",
+  "observationScope": "READ_ONLY_4663_NO_LIVE_ORDER_ADMISSION",
+  "files": {
+    "qualification-observation.json": {
+      "bytes": 60164,
+      "sha256": "659f8e161ecffba896e464b39de22877dfe664dc75470e726e650105e11f56b2"
+    },
+    "raw-gitleaks-report.json": {
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    },
+    "qualification-producer-source.mjs.txt": {
+      "bytes": 11133,
+      "sha256": "dc12811ec64972febaf9b274cfb6c0f2e242f39c289df7ca7be3b1b294b15107"
+    }
+  },
+  "sourceFiles": {
+    "scripts/seaport-acquisition/owner-supplied-order.mjs": {
+      "bytes": 18396,
+      "sha256": "4e602b80bce9d0fa0efa1f82f7a60fb55f244621b4fc0d4e19a479e31ef83ed1"
+    },
+    "scripts/seaport-acquisition/owner-supplied-order.test.mjs": {
+      "bytes": 10034,
+      "sha256": "01acb111acddf43b02428966a49fd259866cac47bfb9cd76e480ebe207356ce9"
+    },
+    "scripts/seaport-acquisition/payment-policy.mjs": {
+      "bytes": 2727,
+      "sha256": "17f1b85d498a014ce2110cce89af76da7844e6614167c30d1302f1659940ad13"
+    },
+    "scripts/seaport-acquisition/marketplace-current-qualification.mjs": {
+      "bytes": 11243,
+      "sha256": "e26f3e82c167fdd7043f5c5a256a04e75c1953edacd3a2e2a8a439aae78e502c"
+    },
+    "scripts/seaport-acquisition/owner-supplied-order.d.mts": {
+      "bytes": 2274,
+      "sha256": "2ee6d111ae2f8ed3118a9bfe87f8be4edef5b95bd8540abb83d15e8ce1f8472c"
+    },
+    "scripts/seaport-acquisition/owner-supplied-order.schema.json": {
+      "bytes": 6045,
+      "sha256": "d242f1bad7e140f80a9a90bb6d4373b1db8b272bd7fdeffc39e74bd612825b19"
+    },
+    "scripts/seaport-acquisition/payment-policy.test.mjs": {
+      "bytes": 3432,
+      "sha256": "6f84aba868d4c48589101f8a24ca3e4db3e0a92afce3823b5cd913b3e97a49d1"
+    },
+    "scripts/seaport-acquisition/marketplace-current-qualification.test.mjs": {
+      "bytes": 4160,
+      "sha256": "a050aa518466c5a1f2cdbaa2a2e9c948e76eb3a5f9ed9e0cf5947cef8b4fdb2a"
+    }
+  },
+  "privacy": {
+    "name": "Gitleaks",
+    "version": "8.30.1",
+    "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+    "mode": "stdin, raw in-memory bytes before remote archive; no local files",
+    "inputBytes": 114680,
+    "inputSha256": "69bdd6322b79ec0bd549352d9b1c3b7500fdb81b8f99bf639df4220223ecae38",
+    "scope": "Seven initial implementation/schema/test sources at scan time plus exact qualification observation; later source/test additions are separately checked by scoped unit tests and final repository CI",
+    "exitCode": 0,
+    "findings": 0,
+    "unclassified": 0,
+    "report": "raw-gitleaks-report.json",
+    "suppressionsAdded": false,
+    "historyRewritten": false
+  },
+  "currentPublicListingVerified": false,
+  "productionPaymentAdmitted": false,
+  "productionBroadcast": false,
+  "ownerSignaturesRequested": false,
+  "observationProducer": {
+    "sourceSnapshot": "qualification-producer-source.mjs.txt",
+    "originalPath": "scripts/seaport-acquisition/marketplace-current-qualification.mjs",
+    "sha256": "dc12811ec64972febaf9b274cfb6c0f2e242f39c289df7ca7be3b1b294b15107",
+    "execution": "Node in-memory data module; relative imports/import.meta.url remapped to existing read-only Task083 source paths; no files written",
+    "laterChange": "Final executable waits all settled provider reads before reporting a failed authority probe; positive report behavior is unchanged and tested against retained exact responses"
+  },
+  "unitValidation": {
+    "checks": 15,
+    "passed": 15,
+    "failed": 0,
+    "method": "Actual Node stdin in-memory execution of the three new test modules; module URLs remapped and new evidence bytes injected into memory, no checkout/build/install or local writes",
+    "commandForCheckout": "node --test scripts/seaport-acquisition/owner-supplied-order.test.mjs scripts/seaport-acquisition/payment-policy.test.mjs scripts/seaport-acquisition/marketplace-current-qualification.test.mjs",
+    "ciStatus": "Root integration CI still required"
+  }
+}
