@@ -1,124 +1,106 @@
-import assert from"node:assert/strict";
-import type{Client}from"pg";
-import{encodeAbiParameters,encodeEventTopics,encodeFunctionData,keccak256,parseAbi,type Address,type Hash,type PublicClient}from"viem";
-import{buildReclaimEligibility,materializeReclaimRuntime,reclaimCampaignSignatures,reclaimFactorySignatures}from"../../../packages/launchpad-common/reclaim-runtime.mjs";
-import{verifyReclaimFixtureBirth,readReclaimFixtureRange,readReclaimFixtureSnapshot}from"./reclaim-fixture-evidence.js";
-import type{ReclaimFixtureModule,ReclaimFixtureBirth}from"./reclaim-fixture-types.js";
-import type{FixtureTreasuryProofLog}from"./project-treasury-fixture-store.js";
+import assert from "node:assert/strict";
+import type {Client} from "pg";
+import {ContractFunctionRevertedError,encodeAbiParameters,encodeEventTopics,encodeFunctionData,keccak256,parseAbi,zeroAddress,type Address,type Hash,type PublicClient} from "viem";
+import {buildReclaimEligibility,materializeReclaimRuntime,reclaimCampaignSignatures,reclaimFactorySignatures} from "../../../packages/launchpad-common/reclaim-v2-runtime.mjs";
+import {verifyReclaimFixtureBirth,readReclaimFixtureRange,readReclaimFixtureSnapshot} from "./reclaim-fixture-evidence.js";
+import type {ReclaimFixtureModule} from "./reclaim-fixture-types.js";
+import type {FixtureTreasuryProofLog} from "./project-treasury-fixture-store.js";
 
-const a=(n:number)=>`0x${((1n<<156n)+BigInt(n)).toString(16).padStart(40,"0")}`as Address;
-const h=(n:number)=>`0x${n.toString(16).padStart(64,"0")}`as Hash;
+const a=(n:number)=>`0x${((1n<<156n)+BigInt(n)).toString(16).padStart(40,"0")}` as Address;
+const h=(n:number)=>`0x${n.toString(16).padStart(64,"0")}` as Hash;
 const at=(n:number)=>({blockNumber:String(n),blockHash:h(n),timestamp:new Date((1_800_000_000+n)*1000).toISOString()});
 const codecs={keccak256,encodeAbiParameters:(types:readonly{type:string}[],values:readonly unknown[])=>encodeAbiParameters(types as never,values as never)};
 
-/** Canonical-shaped provider tests, explicitly not blockchain-execution proof. */
+/** Provider doubles exercise proof rejection. Real native burn, irreversible
+ * sink and Safe execution use separate synthetic-chain acceptance receipts. */
 export async function testReclaimFixtureProofs(){
   const factoryAbi=parseAbi(reclaimFactorySignatures),abi=parseAbi(reclaimCampaignSignatures);
-  const transfer=parseAbi(["event Transfer(address indexed from,address indexed to,uint256 value)"]),nft=parseAbi(["event Transfer(address indexed from,address indexed to,uint256 indexed tokenId)",
-    "event TransferBatch(address indexed operator,address indexed from,address indexed to,uint256[] ids,uint256[] values)"]);
-  const creator=a(978100),campaign=a(978101),claimant=a(978102),collection=a(978103),factory=a(978104),reward=a(978105),core=a(978106),origin=a(978107);
-  const factoryCode="0x6000",rewardCode="0x6001",coreCode="0x6002",nftCode="0x6003",intent=h(978001);
-  const m:ReclaimFixtureModule={schemaVersion:1,profile:"rmt-reclaim-v1",chainId:31337,reclaimFactory:factory,factoryRuntimeHash:keccak256(factoryCode),coreFactory:core,coreFactoryRuntimeHash:keccak256(coreCode),
-    rewardToken:reward,rewardTokenRuntimeHash:keccak256(rewardCode),campaignCreationCode:"0x6000",campaignCreationCodeHash:keccak256("0x6000"),campaignRuntimeTemplate:`0x${"00".repeat(160)}`,
-    campaignImmutableReferences:{"1":[{start:0,length:32}],"2":[{start:32,length:32}],"3":[{start:64,length:32}],"4":[{start:96,length:32}],"5":[{start:128,length:32}]},
-    campaignImmutableNames:{"1":"creator","2":"rewardToken","3":"rewardRuntimeHash","4":"deploymentChainId","5":"deploymentFactory"},
-    collections:[{address:collection,runtimeHash:keccak256(nftCode),standard:1,items:[{tokenId:"42",maxQuantity:"1"}]}],
+  const erc20=parseAbi(["event Transfer(address indexed from,address indexed to,uint256 value)"]);
+  const nft=parseAbi(["function ownerOf(uint256) view returns(address)","event Transfer(address indexed from,address indexed to,uint256 indexed tokenId)",
+    "event TransferSingle(address indexed operator,address indexed from,address indexed to,uint256 id,uint256 value)","event TransferBatch(address indexed operator,address indexed from,address indexed to,uint256[] ids,uint256[] values)"]);
+  const creator=a(979100),campaign=a(979101),claimant=a(979102),collection=a(979103),factory=a(979104),reward=a(979105),core=a(979106),origin=a(979107),deployer=a(979108),sink=a(979109),part1=a(979110),part2=a(979111);
+  const factoryCode="0x6000",rewardCode="0x6001",coreCode="0x6002",nftCode="0x6003",deployerCode="0x6004",sinkCode="0x6005",intent=h(979001),policyHash=h(979002);
+  const m:ReclaimFixtureModule={schemaVersion:2,profile:"rmt-reclaim-v2-permanent",chainId:31337,reclaimFactory:factory,factoryRuntimeHash:keccak256(factoryCode),coreFactory:core,coreFactoryRuntimeHash:keccak256(coreCode),
+    rewardToken:reward,rewardTokenRuntimeHash:keccak256(rewardCode),campaignCreationCode:"0x6000",campaignCreationCodeHash:keccak256("0x6000"),campaignRuntimeTemplate:`0x${"00".repeat(224)}`,
+    campaignImmutableReferences:Object.fromEntries(Array.from({length:7},(_,i)=>[String(i+1),[{start:i*32,length:32}]])),
+    campaignImmutableNames:{"1":"creator","2":"rewardToken","3":"rewardRuntimeHash","4":"deploymentChainId","5":"deploymentFactory","6":"permanentSink","7":"sinkRuntimeHash"},
+    campaignDeployer:deployer,deployerRuntimeHash:keccak256(deployerCode),permanentSink:sink,sinkRuntimeHash:keccak256(sinkCode),retirementProfilesHash:h(979003),
+    creationPart1:part1,creationPart1RuntimeHash:keccak256("0x0060"),creationPart2:part2,creationPart2RuntimeHash:keccak256("0x0000"),
+    retirementProfiles:[{runtimeHash:keccak256(nftCode),standard:1,mode:1,policyHash}],collections:[{address:collection,runtimeHash:keccak256(nftCode),standard:1,retirementMode:1,policyHash,items:[{tokenId:"42",maxQuantity:"1"}]}],
     deployment:{transactionHash:h(20),blockNumber:"2",blockHash:h(2)},compilerInputSha256:"a".repeat(64)};
-  const campaignCode=materializeReclaimRuntime(m.campaignRuntimeTemplate,m.campaignImmutableReferences,m.campaignImmutableNames,
-    {creator,rewardToken:reward,rewardRuntimeHash:m.rewardTokenRuntimeHash,deploymentChainId:31337,deploymentFactory:factory});
-  const leaf=buildReclaimEligibility({chainId:31337,campaign,collection,runtimeHash:keccak256(nftCode),standard:1,items:[{tokenId:"42",maxQuantity:"1"}]},codecs);
-  const log=(address:Address,topics:readonly Hash[],data:`0x${string}`,height:number,index:number):FixtureTreasuryProofLog=>({address,topics,data,
-    blockNumber:BigInt(height),blockHash:h(height),transactionHash:h(height*10),transactionIndex:0,logIndex:index,removed:false});
-  const birthLog=log(factory,encodeEventTopics({abi:factoryAbi,eventName:"CampaignCreated",args:{creator,campaign,intent}})as Hash[],
-    encodeAbiParameters([{type:"address"},{type:"uint128"},{type:"uint32"}],[creator,5n,4]),3,0);
-  const funded=log(campaign,encodeEventTopics({abi,eventName:"Funded",args:{controller:creator}})as Hash[],encodeAbiParameters([{type:"uint256"}],[1000n]),4,1);
-  const payout=(height:number,from:Address,to:Address,value:bigint,index:number)=>log(reward,encodeEventTopics({abi:transfer,eventName:"Transfer",args:{from,to}})as Hash[],encodeAbiParameters([{type:"uint256"}],[value]),height,index);
-  const nftTransfer=(height:number,from:Address,to:Address,index:number)=>log(collection,encodeEventTopics({abi:nft,eventName:"Transfer",args:{from,to,tokenId:42n}})as Hash[],"0x",height,index);
-  const accepted=log(campaign,encodeEventTopics({abi,eventName:"TradeInAccepted",args:{receiptId:1n,claimant,collection}})as Hash[],
-    encodeAbiParameters([{type:"uint8"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256"},{type:"uint64"},{type:"uint64"}],[1,[42n],[1n],5n,3n,0n]),5,2);
-  const returned=log(campaign,encodeEventTopics({abi,eventName:"TradeInReturned",args:{receiptId:1n,claimant}})as Hash[],encodeAbiParameters([{type:"uint256"}],[5n]),6,2);
-  const logsByHeight=new Map([[3,[birthLog]],[4,[payout(4,creator,campaign,1000n,0),funded]],[5,[nftTransfer(5,claimant,campaign,0),payout(5,campaign,claimant,5n,1),accepted]],
-    [6,[payout(6,claimant,campaign,5n,0),nftTransfer(6,campaign,claimant,1),returned]]]);
-  const knobs={mode:"",births:true,phase:5,receiptReads:0,duplicate:false,standard:1 as 1|2};
-  const actualLogs=(height:number)=>{
-    let logs=logsByHeight.get(height)??[];
-    if(knobs.standard===2)logs=logs.map(l=>{
-      if(l.address===collection)return log(collection,encodeEventTopics({abi:nft,eventName:"TransferBatch",args:{operator:campaign,from:height===5?claimant:campaign,to:height===5?campaign:claimant}})as Hash[],
-        encodeAbiParameters([{type:"uint256[]"},{type:"uint256[]"}],[[42n],[1n]]),height,l.logIndex!);
-      if(height===5&&l.address===campaign)return{...accepted,data:encodeAbiParameters([{type:"uint8"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256"},{type:"uint64"},{type:"uint64"}],[2,[42n],[1n],5n,3n,0n])};return l;
-    });return logs;
-  };
-  const rpc={
-    getChainId:async()=>knobs.mode==="wrong-chain"?4663:31337,
-    getCode:async({address}:{address:Address})=>[creator,claimant].includes(address)?undefined:address===factory?factoryCode:address===reward?rewardCode:address===core?coreCode:address===collection?nftCode:knobs.mode==="runtime"?"0x6004":campaignCode,
+  const material={creator,rewardToken:reward,rewardRuntimeHash:m.rewardTokenRuntimeHash,deploymentChainId:31337,deploymentFactory:factory,permanentSink:sink,sinkRuntimeHash:m.sinkRuntimeHash};
+  const profilesHash=()=>keccak256(encodeAbiParameters([{type:"tuple[]",components:[{name:"runtimeHash",type:"bytes32"},{name:"standard",type:"uint8"},{name:"mode",type:"uint8"},{name:"policyHash",type:"bytes32"}]}],[m.retirementProfiles]));m.retirementProfilesHash=profilesHash();
+  const campaignCode=materializeReclaimRuntime(m.campaignRuntimeTemplate,m.campaignImmutableReferences,m.campaignImmutableNames,material);
+  const knobs={mode:"",duplicate:false,standard:1 as 1|2,retirementMode:1 as 1|2};
+  const leaf=()=>buildReclaimEligibility({chainId:31337,campaign,collection,runtimeHash:keccak256(nftCode),standard:knobs.standard,retirementMode:knobs.retirementMode,policyHash,items:[{tokenId:"42",maxQuantity:"1"}]},codecs);
+  const destination=()=>knobs.retirementMode===1?zeroAddress:sink;
+  const log=(address:Address,topics:readonly Hash[],data:`0x${string}`,height:number,index:number):FixtureTreasuryProofLog=>({address,topics,data,blockNumber:BigInt(height),blockHash:h(height),transactionHash:h(height*10),transactionIndex:0,logIndex:index,removed:false});
+  const birthLog=log(factory,encodeEventTopics({abi:factoryAbi,eventName:"CampaignCreated",args:{creator,campaign,intent}}) as Hash[],encodeAbiParameters([{type:"address"},{type:"uint128"},{type:"uint32"}],[creator,5n,4]),3,0);
+  const logs=()=>[
+    knobs.standard===1?log(collection,encodeEventTopics({abi:nft,eventName:"Transfer",args:{from:claimant,to:destination(),tokenId:42n}}) as Hash[],"0x",5,0)
+      :knobs.retirementMode===1?log(collection,encodeEventTopics({abi:nft,eventName:"TransferSingle",args:{operator:campaign,from:claimant,to:destination()}}) as Hash[],encodeAbiParameters([{type:"uint256"},{type:"uint256"}],[42n,1n]),5,0)
+        :log(collection,encodeEventTopics({abi:nft,eventName:"TransferBatch",args:{operator:campaign,from:claimant,to:destination()}}) as Hash[],encodeAbiParameters([{type:"uint256[]"},{type:"uint256[]"}],[[42n],[1n]]),5,0),
+    log(reward,encodeEventTopics({abi:erc20,eventName:"Transfer",args:{from:campaign,to:knobs.mode==="recipient"?a(999):claimant}}) as Hash[],encodeAbiParameters([{type:"uint256"}],[knobs.mode==="payout"?999n:5n]),5,1),
+    log(campaign,encodeEventTopics({abi,eventName:"NFTPermanentlyRetired",args:{receiptId:1n,collection}}) as Hash[],encodeAbiParameters([{type:"uint8"},{type:"uint8"},{type:"address"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256[]"}],
+      [knobs.standard,knobs.retirementMode,destination(),[42n],[1n],[10n],[knobs.mode==="event-supply"?1n:knobs.retirementMode===1?9n:10n]]),5,2),
+    log(campaign,encodeEventTopics({abi,eventName:"TradeInAccepted",args:{receiptId:1n,claimant,collection}}) as Hash[],encodeAbiParameters([{type:"uint8"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256"},{type:"uint64"},{type:"uint64"},{type:"uint8"},{type:"address"}],
+      [knobs.standard,[42n],[1n],5n,3n,0n,knobs.retirementMode,destination()]),5,3),
+  ];
+  const actualLogs=()=>{let value=logs();if(knobs.mode==="missing-log")value=value.filter(l=>l.address!==campaign);if(knobs.mode==="nft-log")value=value.filter(l=>l.address!==collection);
+    if(knobs.mode==="missing-retirement")value=value.filter(l=>l.logIndex!==2);if(knobs.mode==="legacy-return")value.push(log(campaign,[keccak256(new TextEncoder().encode("TradeInReturned(uint64,address,uint256)"))],"0x",5,4));return value;};
+  const rpc={getChainId:async()=>knobs.mode==="wrong-chain"?4663:31337,
+    getCode:async({address}:{address:Address})=>[creator,claimant].includes(address)?undefined:address===factory?factoryCode:address===reward?rewardCode:address===core?coreCode:address===collection?nftCode
+      :address===deployer?deployerCode:address===sink?knobs.mode==="sink-runtime"?"0x6006":sinkCode:address===part1?"0x0060":address===part2?knobs.mode==="creation-part"?"0x0001":"0x0000":knobs.mode==="runtime"?"0x6004":campaignCode,
     getTransactionCount:async()=>0,
-    getTransaction:async({hash}:{hash:Hash})=>{const height=Number(BigInt(hash)/10n),input=height===4?encodeFunctionData({abi,functionName:"fund",args:[1000n]}):height===6?encodeFunctionData({abi,functionName:"returnTradeIn",args:[1n,1_800_000_100n]}):encodeFunctionData({abi,functionName:"redeem",args:[collection,[42n],[1n],[1n],[[]],3n,5n,0n,1_800_000_100n]});
-      return{chainId:31337,hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,to:campaign,from:height===4?creator:claimant,value:0n,nonce:0,input};},
-    getBlock:async({blockNumber}:{blockNumber:bigint})=>({number:blockNumber,hash:knobs.mode==="header"?h(999):h(Number(blockNumber)),timestamp:1_800_000_000n+blockNumber,
-      transactions:knobs.mode==="multi-transaction"?[h(Number(blockNumber)*10),h(999)]:knobs.mode==="membership"?[h(999)]:[h(Number(blockNumber)*10)]}),
-    getTransactionReceipt:async({hash}:{hash:Hash})=>{knobs.receiptReads++;if(knobs.mode==="missing-receipt")throw Error("provider receipt unavailable");const height=Number(BigInt(hash)/10n);
-      let logs=actualLogs(height);if(knobs.mode==="missing-log")logs=logs.filter(l=>l.address!==campaign&&l.address!==factory);
-      if(knobs.mode==="payout")logs=logs.map(l=>l.address===reward?{...l,data:encodeAbiParameters([{type:"uint256"}],[999n])}:l);
-      if(knobs.mode==="recipient")logs=logs.map(l=>l.address===reward?payout(height,campaign,a(999),5n,l.logIndex!):l);
-      if(knobs.mode==="nft-log")logs=logs.filter(l=>l.address!==collection);
-      if(knobs.mode==="nft-value")logs=logs.map(l=>l.address===collection?{...l,data:encodeAbiParameters([{type:"uint256[]"},{type:"uint256[]"}],[[42n],[2n]])}:l);
-      return{status:"success",transactionHash:hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,logs,
-        to:height===2?null:height===3?factory:campaign,from:height===4?creator:claimant,contractAddress:height===2?factory:null};},
-    getLogs:async({address,fromBlock,toBlock}:{address:Address|Address[];fromBlock:bigint;toBlock:bigint})=>{
-      const found=[...logsByHeight].filter(([height])=>BigInt(height)>=fromBlock&&BigInt(height)<=toBlock).flatMap(([height])=>actualLogs(height))
-        .filter(l=>Array.isArray(address)?address.includes(l.address):l.address===address);
-      return knobs.duplicate?[...found,...found]:found;
-    },
+    getTransaction:async({hash}:{hash:Hash})=>{const height=Number(BigInt(hash)/10n);return{chainId:31337,hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,to:height===3?factory:campaign,from:height===3?creator:claimant,value:0n,nonce:0,
+      input:height===3?encodeFunctionData({abi:factoryAbi,functionName:"create",args:[intent,creator,5n,4]}):encodeFunctionData({abi,functionName:"redeem",args:[collection,[42n],[1n],[1n],[[]],3n,5n,0n,1_800_000_100n]})};},
+    getBlock:async({blockNumber}:{blockNumber:bigint})=>({number:blockNumber,hash:knobs.mode==="header"?h(999):h(Number(blockNumber)),timestamp:1_800_000_000n+blockNumber,transactions:knobs.mode==="multi-transaction"?[h(Number(blockNumber)*10),h(999)]:knobs.mode==="membership"?[h(999)]:[h(Number(blockNumber)*10)]}),
+    getTransactionReceipt:async({hash}:{hash:Hash})=>{if(knobs.mode==="missing-receipt")throw Error("provider receipt unavailable");const height=Number(BigInt(hash)/10n);return{status:"success",transactionHash:hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,
+      logs:height===3?[birthLog]:height===5?actualLogs():[],to:height===2?null:height===3?factory:campaign,from:height===3?creator:claimant,contractAddress:height===2?factory:null};},
+    getLogs:async({address,fromBlock,toBlock}:{address:Address|Address[];fromBlock:bigint;toBlock:bigint})=>{const all=[...(fromBlock<=3n&&toBlock>=3n?[birthLog]:[]),...(fromBlock<=5n&&toBlock>=5n?actualLogs():[])].filter(l=>Array.isArray(address)?address.includes(l.address):l.address===address);return knobs.duplicate?[...all,...all]:all;},
     readContract:async({address,functionName,args=[],blockNumber}:{address:Address;functionName:string;args?:readonly unknown[];blockNumber:bigint})=>{
-      if(functionName==="originCurveForToken")return origin;
-      if(functionName==="token")return reward;if(functionName==="factory")return core;
-      if(functionName==="totalSupply")return 1_000_000_000n*10n**18n;if(functionName==="decimals")return 18;
-      if(functionName==="rewardToken")return reward;if(functionName==="rewardRuntimeHash")return m.rewardTokenRuntimeHash;
+      if(functionName==="originCurveForToken")return origin;if(functionName==="token")return reward;if(functionName==="factory")return address===deployer?factory:core;
+      if(functionName==="totalSupply")return address===reward?1_000_000_000n*10n**18n:blockNumber<5n?10n:knobs.mode==="supply"?8n:knobs.retirementMode===1?9n:10n;
+      if(functionName==="decimals")return 18;if(functionName==="rewardToken")return reward;if(functionName==="rewardRuntimeHash")return m.rewardTokenRuntimeHash;
       if(functionName==="deploymentChainId")return 31337n;if(functionName==="campaignCreationCodeHash")return m.campaignCreationCodeHash;
+      if(functionName==="creationPart1")return part1;if(functionName==="creationPart2")return part2;if(functionName==="campaignDeployer")return deployer;
+      if(functionName==="creationPart1Hash")return m.creationPart1RuntimeHash;if(functionName==="creationPart2Hash")return m.creationPart2RuntimeHash;
+      if(functionName==="permanentSink")return sink;if(functionName==="sinkRuntimeHash")return m.sinkRuntimeHash;if(functionName==="retirementProfilesHash")return m.retirementProfilesHash;
+      if(functionName==="retirementPolicy")return knobs.mode==="unreviewed-profile"?h(999):policyHash;
       if(functionName==="campaignForIntent"||functionName==="predict")return campaign;
       if(functionName==="creator"||functionName==="controller")return creator;if(functionName==="deploymentFactory")return factory;
-      if(functionName==="rewardPerUnit")return 5n;if(functionName==="walletCap")return 4;
-      if(functionName==="policyEpoch")return 3n;if(functionName==="controllerEpoch")return 1n;
-      if(functionName==="paused"||functionName==="closed")return false;
-      if(functionName==="funded")return 1000n;if(functionName==="paid")return blockNumber>=5n?5n:0n;
-      if(functionName==="repaid")return blockNumber>=6n?5n:0n;if(functionName==="recovered"||functionName==="unsolicited"||functionName==="outstandingLiability")return 0n;
-      if(functionName==="reserve")return knobs.mode==="accounting"?999n:blockNumber===5n?995n:1000n;
-      if(functionName==="tradeInNonce")return blockNumber>=5n?1n:0n;
-      if(functionName==="collections")return[keccak256(nftCode),buildReclaimEligibility({chainId:31337,campaign,collection,runtimeHash:keccak256(nftCode),standard:knobs.standard,items:[{tokenId:"42",maxQuantity:"1"}]},codecs).root,4,4,knobs.standard,true];
-      if(functionName==="tradeIns")return[claimant,collection,knobs.standard,3n,5n,1,blockNumber>=6n?2:1];
+      if(functionName==="rewardPerUnit")return 5n;if(functionName==="walletCap")return 4;if(functionName==="policyEpoch")return 3n;if(functionName==="controllerEpoch")return 1n;
+      if(functionName==="paused"||functionName==="closed")return false;if(functionName==="funded")return 1000n;if(functionName==="paid")return blockNumber>=5n?5n:0n;
+      if(["recovered","unsolicited","outstandingLiability"].includes(functionName))return 0n;if(functionName==="reserve")return knobs.mode==="accounting"?999n:blockNumber<5n?1000n:995n;
+      if(functionName==="tradeInNonce")return blockNumber>=5n?2n:1n;
+      if(functionName==="collections")return[keccak256(nftCode),leaf().root,4,4,knobs.standard,knobs.retirementMode,policyHash,true];
+      if(functionName==="tradeIns")return[claimant,collection,knobs.standard,3n,5n,1,1,knobs.retirementMode,destination()];
       if(functionName==="receiptItems")return[[42n],[1n]];if(functionName==="receiptCollectionHash")return keccak256(nftCode);
-      if(functionName==="ownerOf")return knobs.mode==="custody"?a(999):blockNumber===5n?campaign:claimant;
-      if(functionName==="balanceOf"&&address.toLowerCase()===reward){if(knobs.mode==="archive")throw Error("archive unavailable");const who=String(args[0]).toLowerCase();
-        if(who===campaign)return blockNumber<4n?0n:blockNumber===5n?995n:1000n;
-        if(who===creator)return blockNumber<4n?1000n:0n;if(who===claimant)return blockNumber===5n?5n:0n;}
-      if(functionName==="balanceOf"&&address.toLowerCase()===collection){const who=String(args[0]).toLowerCase();
-        if(who===campaign)return knobs.mode==="nft-balance"?0n:blockNumber===5n?1n:0n;if(who===claimant)return blockNumber===5n?0n:1n;}
-      throw Error("Unexpected Reclaim provider read");
+      if(functionName==="exists")return knobs.mode==="resurrected";
+      if(functionName==="ownerOf"){if(blockNumber<5n)return claimant;if(knobs.mode==="custody")return a(999);if(knobs.retirementMode===2)return sink;
+        if(knobs.mode==="owner-archive")throw Error("owner archive unavailable");throw new ContractFunctionRevertedError({abi:nft,functionName:"ownerOf",data:"0x"});}
+      if(functionName==="balanceOf"&&address===reward){if(knobs.mode==="archive")throw Error("archive unavailable");return String(args[0]).toLowerCase()===campaign.toLowerCase()?blockNumber<5n?1000n:995n:String(args[0]).toLowerCase()===claimant.toLowerCase()?blockNumber<5n?0n:5n:0n;}
+      if(functionName==="balanceOf"&&address===collection){if(String(args[0]).toLowerCase()===claimant.toLowerCase())return blockNumber<5n?1n:0n;if(String(args[0]).toLowerCase()===sink.toLowerCase())return ["sink-balance","custody"].includes(knobs.mode)?0n:blockNumber<5n?0n:1n;return 0n;}
+      throw Error("Unexpected permanent Reclaim provider read "+functionName);
     },
-  }as unknown as PublicClient;
-  const birth=await verifyReclaimFixtureBirth(rpc,m,campaign,at(6),birthLog);assert.equal(birth.creator.toLowerCase(),creator.toLowerCase());assert.equal(birth.runtimeHash,keccak256(campaignCode));
-  const db={query:async()=>({rows:[{payload:birth}]})}as unknown as Client;
-  const scope:[number,string,string]=[31337,core.toLowerCase(),h(1)];
-  const range=await readReclaimFixtureRange(db,scope,m,rpc,[at(5)]);assert.equal(range.events.length,1);assert.equal(range.events[0]?.settlement?.amount,"5");assert.equal(range.states[0]?.reserve,"995");
-  const back=await readReclaimFixtureRange(db,scope,m,rpc,[at(6)]);assert.equal(back.events[0]?.settlement?.kind,"return");assert.equal(back.states[0]?.repaid,"5");
-  knobs.standard=2;m.collections[0]!.standard=2;
-  const multi=await readReclaimFixtureRange(db,scope,m,rpc,[at(5)]);assert.equal(multi.events[0]?.settlement?.standard,2);
-  assert.equal((await readReclaimFixtureRange(db,scope,m,rpc,[at(6)])).events[0]?.settlement?.kind,"return");
-  for(const mode of["nft-value","nft-balance"]){knobs.mode=mode;await assert.rejects(readReclaimFixtureRange(db,scope,m,rpc,[at(5)]),/evidence/);}
-  knobs.mode="";knobs.standard=1;m.collections[0]!.standard=1;
-  for(const mode of["wrong-chain","missing-receipt","header","membership","runtime","missing-log","payout","recipient","nft-log","custody","archive","multi-transaction","accounting"]){
-    knobs.mode=mode;await assert.rejects(readReclaimFixtureRange(db,scope,m,rpc,[at(5)]),/evidence|unavailable/,"Invalid/missing evidence must not advance: "+mode);
+  } as unknown as PublicClient;
+  const birth=await verifyReclaimFixtureBirth(rpc,m,campaign,at(5),birthLog);assert.equal(birth.creator.toLowerCase(),creator.toLowerCase());
+  const db={query:async()=>({rows:[{payload:birth}]})} as unknown as Client,scope:[number,string,string]=[31337,core,h(1)];
+  for(const standard of[1,2] as const)for(const retirementMode of[1,2] as const){
+    knobs.standard=standard;knobs.retirementMode=retirementMode;m.collections[0]!.standard=standard;m.collections[0]!.retirementMode=retirementMode;m.retirementProfiles[0]!.standard=standard;m.retirementProfiles[0]!.mode=retirementMode;m.retirementProfilesHash=profilesHash();
+    const range=await readReclaimFixtureRange(db,scope,m,rpc,[at(5)]);assert.equal(range.events.length,2);const settled=range.events.find(e=>e.settlement);
+    assert.equal(settled?.settlement?.kind,"permanent-surrender");assert.equal(settled?.settlement?.retirementMode,retirementMode);assert.equal(settled?.settlement?.destination,destination());
+    assert.deepEqual(settled?.settlement?.supplyAfter,[retirementMode===1?"9":"10"]);assert.equal(range.states[0]?.reserve,"995");assert.equal("repaid" in range.states[0]!,false);
+    const modes=["wrong-chain","missing-receipt","header","membership","runtime","missing-log","missing-retirement","event-supply","payout","recipient","nft-log","archive","multi-transaction","accounting","supply","unreviewed-profile","creation-part","legacy-return"];
+    if(retirementMode===2)modes.push("custody","sink-runtime","sink-balance");else if(standard===1)modes.push("resurrected","owner-archive");
+    for(const mode of modes){knobs.mode=mode;await assert.rejects(readReclaimFixtureRange(db,scope,m,rpc,[at(5)]),/evidence|unavailable|contract/i,`${standard}/${retirementMode}/${mode}`);}
+    knobs.mode="";knobs.duplicate=true;assert.equal((await readReclaimFixtureRange(db,scope,m,rpc,[at(5)])).events.length,2);knobs.duplicate=false;
   }
-  knobs.mode="";knobs.duplicate=true;const replay=await readReclaimFixtureRange(db,scope,m,rpc,[at(5)]);assert.equal(replay.events.length,1);
-  knobs.duplicate=false;knobs.mode="accounting";await assert.rejects(readReclaimFixtureSnapshot(rpc,m,birth,at(5)),/evidence/);knobs.mode="";
-  const tree=buildReclaimEligibility({chainId:31337,campaign,collection,runtimeHash:keccak256(nftCode),standard:1,
-    items:[{tokenId:"5",maxQuantity:"1"},{tokenId:"1",maxQuantity:"1"},{tokenId:"42",maxQuantity:"1"}]},codecs);
-  assert.deepEqual(tree.items.map(i=>i.tokenId),["1","5","42"]);
-  for(const item of tree.items){let digest=buildReclaimEligibility({chainId:31337,campaign,collection,runtimeHash:keccak256(nftCode),standard:1,items:[item]},codecs).root;
-    for(const sibling of item.proof)digest=keccak256(`0x${BigInt(digest)<BigInt(sibling)?digest.slice(2)+sibling.slice(2):sibling.slice(2)+digest.slice(2)}`);assert.equal(digest,tree.root);}
-  assert.notEqual(buildReclaimEligibility({chainId:4663,campaign,collection,runtimeHash:keccak256(nftCode),standard:1,items:[{tokenId:"42",maxQuantity:"1"}]},codecs).root,leaf.root);
-  assert.throws(()=>buildReclaimEligibility({chainId:31337,campaign,collection,runtimeHash:keccak256(nftCode),standard:1,items:[{tokenId:"42",maxQuantity:"1"},{tokenId:"42",maxQuantity:"1"}]},codecs),/duplicate/);
-  assert.throws(()=>materializeReclaimRuntime(m.campaignRuntimeTemplate,{...m.campaignImmutableReferences,"6":[{start:0,length:32}]},{...m.campaignImmutableNames,"6":"controller"},
-    {creator,rewardToken:reward,rewardRuntimeHash:m.rewardTokenRuntimeHash,deploymentChainId:31337,deploymentFactory:factory}),/coverage/);
-  console.info("Reclaim canonical receipt, NFT/reward settlement, archive/chain/reorg failures, duplicate and Merkle/runtime smoke passed.");
+  knobs.mode="accounting";await assert.rejects(readReclaimFixtureSnapshot(rpc,m,birth,at(5)),/evidence/);knobs.mode="";
+  const input={chainId:31337 as const,campaign,collection,runtimeHash:keccak256(nftCode),standard:1 as const,retirementMode:1 as const,policyHash,items:[{tokenId:"5",maxQuantity:"1"},{tokenId:"1",maxQuantity:"1"},{tokenId:"42",maxQuantity:"1"}]};
+  const tree=buildReclaimEligibility(input,codecs);assert.deepEqual(tree.items.map(i=>i.tokenId),["1","5","42"]);
+  for(const item of tree.items){let digest=buildReclaimEligibility({...input,items:[item]},codecs).root;for(const sibling of item.proof)digest=keccak256(`0x${BigInt(digest)<BigInt(sibling)?digest.slice(2)+sibling.slice(2):sibling.slice(2)+digest.slice(2)}`);assert.equal(digest,tree.root);}
+  for(const fields of[{chainId:4663 as const},{retirementMode:2 as const},{policyHash:h(999)}])assert.notEqual(buildReclaimEligibility({...input,...fields},codecs).root,tree.root);
+  assert.throws(()=>materializeReclaimRuntime(m.campaignRuntimeTemplate,{...m.campaignImmutableReferences,"8":[{start:0,length:32}]},{...m.campaignImmutableNames,"8":"controller"},material),/coverage/);
+  console.info("Permanent Reclaim native-burn/sink ERC721/1155 canonical retirement, no-return, reward, archive, reorg, replay and policy-domain smoke passed.");
 }

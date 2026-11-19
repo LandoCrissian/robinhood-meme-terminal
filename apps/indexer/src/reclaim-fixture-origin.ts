@@ -1,6 +1,6 @@
 import { decodeFunctionData, encodeFunctionData, hashTypedData, keccak256, parseAbi, parseEventLogs,
   recoverAddress, zeroAddress, type Address, type Hash, type Hex, type PublicClient } from "viem";
-import { reclaimCampaignSignatures } from "../../../packages/launchpad-common/reclaim-runtime.mjs";
+import { reclaimCampaignSignatures } from "../../../packages/launchpad-common/reclaim-v2-runtime.mjs";
 
 // The independent ERC-20/NFT settlement checks remain mandatory. These pins
 // identify supported callers; they are not generic contract-wallet approval.
@@ -44,14 +44,13 @@ async function directKind(rpc:PublicClient,who:Address,at:bigint):Promise<"eoa"|
   const code=await rpc.getCode({address:reclaimCallerPins.delegate,blockNumber:at});
   must(code&&same(keccak256(code),reclaimCallerPins.delegateHash));return"metamask-7702";
 }
-function reviewedCall(data:Hex,kind:"fund"|"recover"|"trade-in"|"return",args:Record<string,unknown>,timestamp:bigint){
+function reviewedCall(data:Hex,kind:"fund"|"recover"|"permanent-surrender",args:Record<string,unknown>,timestamp:bigint){
   must(/^0x(?:[0-9a-f]{2}){4,65536}$/i.test(data));
   const decoded=decodeFunctionData({abi:campaignAbi,data});
   must(same(encodeFunctionData({abi:campaignAbi,functionName:decoded.functionName,args:decoded.args as never}),data));
   const a=decoded.args as readonly unknown[];
   if(kind==="fund")must(decoded.functionName==="fund"&&a[0]===args.amount);
   else if(kind==="recover")must(decoded.functionName==="executeRecovery");
-  else if(kind==="return")must(decoded.functionName==="returnTradeIn"&&a[0]===args.receiptId&&validDeadline(a[1],timestamp));
   else {must(decoded.functionName==="redeem"&&same(String(a[0]),String(args.collection))&&JSON.stringify(a[1],(_,v)=>typeof v==="bigint"?v.toString():v)===JSON.stringify(args.ids,(_,v)=>typeof v==="bigint"?v.toString():v)
     &&JSON.stringify(a[2],(_,v)=>typeof v==="bigint"?v.toString():v)===JSON.stringify(args.quantities,(_,v)=>typeof v==="bigint"?v.toString():v)
     &&a[5]===args.policyEpoch&&a[6]===args.reward&&a[7]===args.claimantNonce&&validDeadline(a[8],timestamp));}
@@ -60,17 +59,16 @@ function reviewedCall(data:Hex,kind:"fund"|"recover"|"trade-in"|"return",args:Re
 /** Supports a single exact zero-native CALL, not arbitrary Safe modules,
  * contract signatures, delegatecalls, multisends, or refund relayers. The
  * receipt and block must already have passed canonical membership checks. */
-export async function verifyReclaimOrigin(rpc:PublicClient,receipt:Receipt,header:Header,campaign:Address,kind:"fund"|"recover"|"trade-in"|"return",args:Record<string,unknown>):Promise<ReclaimOrigin>{
+async function verifyBoundOrigin(rpc:PublicClient,receipt:Receipt,header:Header,campaign:Address,actor:Address|null,reviewed:(data:Hex)=>void):Promise<ReclaimOrigin>{
   must(receipt.blockNumber>0n&&header.transactions.length===1&&receipt.transactionIndex===0&&await rpc.getChainId()===31337);
   const tx=await rpc.getTransaction({hash:receipt.transactionHash}),before=receipt.blockNumber-1n;
   must(tx.chainId===31337&&tx.to&&same(tx.hash,receipt.transactionHash)&&same(tx.blockHash??"",receipt.blockHash)
     &&tx.blockNumber===receipt.blockNumber&&tx.transactionIndex===0&&receipt.to&&same(tx.to,receipt.to)&&receipt.from&&same(tx.from,receipt.from)&&tx.value===0n
     &&/^0x(?:[0-9a-f]{2}){4,70000}$/i.test(tx.input));
-  const actor=kind==="fund"?args.controller:kind==="recover"?null:args.claimant;
   const payerKind=await directKind(rpc,tx.from,before);must(await directKind(rpc,tx.from,receipt.blockNumber)===payerKind);
   must(tx.nonce===await rpc.getTransactionCount({address:tx.from,blockNumber:before}));
   if(same(tx.to,campaign)){
-    must(!actor||typeof actor==="string"&&same(tx.from,actor));reviewedCall(tx.input,kind,args,header.timestamp);
+    must(!actor||same(tx.from,actor));reviewed(tx.input);
     return{profile:payerKind,actor:tx.from,gasPayer:tx.from};
   }
   const safe=tx.to;must(!actor||typeof actor==="string"&&same(safe,actor));
@@ -78,7 +76,7 @@ export async function verifyReclaimOrigin(rpc:PublicClient,receipt:Receipt,heade
   const a=decoded.args as readonly[Address,bigint,Hex,number,bigint,bigint,bigint,Address,Address,Hex];
   must(same(a[0],campaign)&&a[1]===0n&&a[3]===0&&a[4]===0n&&a[5]===0n&&a[6]===0n&&same(a[7],zeroAddress)&&same(a[8],zeroAddress)
     &&/^0x[0-9a-f]{260}$/i.test(a[9])&&same(encodeFunctionData({abi:safeAbi,functionName:"execTransaction",args:a}),tx.input));
-  reviewedCall(a[2],kind,args,header.timestamp);
+  reviewed(a[2]);
   const read=(name:string,height:bigint,args:readonly unknown[]=[])=>rpc.readContract({address:safe,abi:safeAbi,functionName:name,args,blockNumber:height}as never);
   const[codePre,codePost,singletonCode,handlerCode,version,singleton,owners,ownersPost,threshold,thresholdPost,nonce,noncePost,modules,modulesPost,guard,guardPost,handler,handlerPost]=await Promise.all([
     rpc.getCode({address:safe,blockNumber:before}),rpc.getCode({address:safe,blockNumber:receipt.blockNumber}),rpc.getCode({address:reclaimCallerPins.singleton,blockNumber:before}),rpc.getCode({address:reclaimCallerPins.handler,blockNumber:before}),
@@ -101,4 +99,17 @@ export async function verifyReclaimOrigin(rpc:PublicClient,receipt:Receipt,heade
   const outcomes=result.filter(l=>l.eventName==="ExecutionSuccess"||l.eventName==="ExecutionFailure");
   must(outcomes.length===1&&outcomes[0]!.eventName==="ExecutionSuccess"&&same(outcomes[0]!.args.txHash,digest)&&outcomes[0]!.args.payment===0n);
   return{profile:"safe-1.4.1",actor:safe,gasPayer:tx.from,safeNonce:nonce.toString(),safeTransactionHash:digest,signers};
+}
+
+export async function verifyReclaimOrigin(rpc:PublicClient,receipt:Receipt,header:Header,campaign:Address,kind:"fund"|"recover"|"permanent-surrender",args:Record<string,unknown>):Promise<ReclaimOrigin>{
+  const actor=kind==="recover"?null:kind==="fund"?args.controller:args.claimant;
+  must(actor===null||typeof actor==="string"&&/^0x[0-9a-f]{40}$/i.test(actor));
+  return verifyBoundOrigin(rpc,receipt,header,campaign,actor as Address|null,data=>reviewedCall(data,kind,args,header.timestamp));
+}
+
+/** Exact reviewed typed call. The caller must independently establish target
+ * runtime and expected calldata from canonical creation/admin evidence. */
+export async function verifyReclaimExactOrigin(rpc:PublicClient,receipt:Receipt,header:Header,target:Address,actor:Address,expectedData:Hex):Promise<ReclaimOrigin>{
+  must(/^0x(?:[0-9a-f]{2}){4,65536}$/i.test(expectedData));
+  return verifyBoundOrigin(rpc,receipt,header,target,actor,data=>must(same(data,expectedData)));
 }
