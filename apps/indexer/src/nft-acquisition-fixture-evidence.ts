@@ -117,10 +117,13 @@ type TraceCall={type:string;from:Address;to:Address;input:Hex;output?:Hex;value:
  * noticed withdrawals. Receipt events alone never establish asset delivery. */
 function exactTrace(raw:unknown,tx:{from:Address;to:Address;input:Hex;value:bigint},vault:Address){
  const nodes:TraceCall[]=[];
+ const traceAddress=(value:unknown):value is Address=>typeof value==="string"&&/^0x[0-9a-f]{40}$/i.test(value);
  function visit(value:unknown,depth:number):TraceCall{
   requireNftAcquisitionEvidence(nodes.length<512&&depth<=32&&value&&typeof value==="object"&&!Array.isArray(value));
   const n=value as Record<string,unknown>,v=n.value??(["STATICCALL","DELEGATECALL"].includes(String(n.type))?"0x0":null);
-  requireNftAcquisitionEvidence(["CALL","STATICCALL","DELEGATECALL"].includes(String(n.type))&&n.error===undefined&&address(n.from)&&address(n.to)
+  // Safe's real ECDSA verification uses the ecrecover precompile. Trace nodes
+  // admit its address; actor/config admission remains separately restricted.
+  requireNftAcquisitionEvidence(["CALL","STATICCALL","DELEGATECALL"].includes(String(n.type))&&n.error===undefined&&traceAddress(n.from)&&traceAddress(n.to)
     &&typeof n.input==="string"&&/^0x(?:[a-f0-9]{2}){0,70000}$/i.test(n.input)&&typeof v==="string"&&/^0x[0-9a-f]{1,64}$/i.test(v)
     &&(n.output===undefined||typeof n.output==="string"&&/^0x(?:[a-f0-9]{2}){0,70000}$/i.test(n.output))&&(n.calls===undefined||Array.isArray(n.calls)));
   const node={type:String(n.type),from:n.from,to:n.to,input:n.input as Hex,...(typeof n.output==="string"&&{output:n.output as Hex}),value:BigInt(v)};nodes.push(node);
