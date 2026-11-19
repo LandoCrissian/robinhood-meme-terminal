@@ -19,7 +19,7 @@ export function validateRailwayRuntime(env) {
   assert.match(env.PORT ?? "3000", /^[1-9][0-9]{0,4}$/, "Invalid service port");
   assert.ok(Number(env.PORT ?? 3000) <= 65535, "Invalid service port");
   for (const [key, value] of Object.entries(env)) {
-    if (value && (/^RMT_(?:PROFILES|CURVE|FIREBASE|MOBILE_REVIEW|PRIVATE_PREVIEW|EARNINGS|CLAIM_|PROJECT_TREASURY)/.test(key)
+    if (value && (/^RMT_(?:PROFILES|CURVE|FIREBASE|MOBILE_REVIEW|PRIVATE_PREVIEW|EARNINGS|CLAIM_|PROJECT_TREASURY|RECLAIM)/.test(key)
       || /^(?:FIREBASE_|FIRESTORE_)/.test(key)
       || /^(?:STORAGE_EMULATOR_HOST|GCLOUD_PROJECT|GOOGLE_CLOUD_PROJECT|GOOGLE_APPLICATION_CREDENTIALS|DATABASE_URL|DATABASE_PRIVATE_URL)$/.test(key)
       || /(?:PRIVATE_KEY|SEED_PHRASE)$/.test(key))) {

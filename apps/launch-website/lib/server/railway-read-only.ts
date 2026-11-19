@@ -20,7 +20,7 @@ export function createRailwayRequestBudget(now: () => number = Date.now) {
   return function admit(path: string, method: string): { allowed: boolean; retryAfter: number } {
     const window = Math.floor(now() / 60_000);
     const mutation = !["GET", "HEAD"].includes(method);
-    const category = mutation && (path.startsWith("/api/account/") || ["/api/launchpad/production-creation", "/api/launchpad/production-earnings", "/api/launchpad/test-claim-profiles", "/api/launchpad/test-project-treasury"].includes(path))
+    const category = mutation && (path.startsWith("/api/account/") || ["/api/launchpad/production-creation", "/api/launchpad/production-earnings", "/api/launchpad/test-claim-profiles", "/api/launchpad/test-project-treasury", "/api/launchpad/test-reclaim"].includes(path))
       ? "account-mutation" : path === "/api/launchpad/creation-review" && method === "POST" ? "draft-review"
       : !mutation && !path.startsWith("/_next/static/") && !["/healthz", "/readyz"].includes(path) ? "reads" : null;
     if (!category) return { allowed: true, retryAfter: 0 };
