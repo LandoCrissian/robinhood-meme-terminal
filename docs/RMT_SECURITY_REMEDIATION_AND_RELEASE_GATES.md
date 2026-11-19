@@ -1,6 +1,6 @@
 # RMT security remediation and release gates
 
-**Task 080 · BLOCKED_NO_BROADCAST · internal engineering, not an independent audit.**
+**Task 080 Â· BLOCKED_NO_BROADCAST Â· internal engineering, not an independent audit.**
 
 Baseline: draft PR#673, `526cf004d267596f6203f977be40439825f1204b`. The [original security task](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/673#issuecomment-6999758673) is narrowed by [the owner clarification](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/673#issuecomment-7000394798). Reclaim's permanent-surrender V2 is a **frozen trial**. Security corrections and tests are permitted; new Reclaim features, a dashboard redesign or production activation are not. NFT collection purchasing is the next separate bounded feature proposal, below. No real campaign, collection, reward token, reserve funding or production controller is approved here.
 
@@ -8,13 +8,13 @@ Baseline: draft PR#673, `526cf004d267596f6203f977be40439825f1204b`. The [origina
 
 The reproducible [cross-module register](evidence/rmt-task080/findings-register.json) binds source/template/runtime references, compiler inputs, distinct analyzer inputs, exact detector IDs, external calls, protected assets, preconditions, existing mitigations/tests, uncertainty, owner decisions and release gates. Deduplication uses **analysis-input SHA256 + detector + exact finding ID**, never a shared description or presumed root cause.
 
-| Scope | Lifecycle | Raw findings / High | Before → after High | Strict gate |
+| Scope | Lifecycle | Raw findings / High | Before â†’ after High | Strict gate |
 | --- | --- | ---: | ---: | --- |
-| Fixed-supply4663 core and dependencies | Deployment-pinned; existing contracts unchanged |233 /22 |22 →22 | Failed |
-| Project Treasury V1 | Asset-bearing, predeployment candidate |25 /6 |6 →6 | Failed |
-| Reclaim V1 | Rejected historical escrow; not the active feature |28 /4 |4 →4 | Failed, retained |
-| Permanent Reclaim V2 | Frozen, isolated trial |45 /7 |7 →7 | Failed |
-| Treasury purchase V2 prototype | Nonspending reference/route model |3 /0 |0 →0 | Narrow analysis passes; execution remains NO-GO |
+| Fixed-supply4663 core and dependencies | Deployment-pinned; existing contracts unchanged |233 /22 |22 â†’22 | Failed |
+| Project Treasury V1 | Asset-bearing, predeployment candidate |25 /6 |6 â†’6 | Failed |
+| Reclaim V1 | Rejected historical escrow; not the active feature |28 /4 |4 â†’4 | Failed, retained |
+| Permanent Reclaim V2 | Frozen, isolated trial |45 /7 |7 â†’7 | Failed |
+| Treasury purchase V2 prototype | Nonspending reference/route model |3 /0 |0 â†’0 | Narrow analysis passes; execution remains NO-GO |
 
 There are **334 raw rows**,39 exact scoped High observations and49 detailed records, including seven previously assessed governance Mediums and the prototype's three lower observations. The remaining285 lower rows stay indexed and explicitly undispositioned, including59 Mediums. Four of the39 Highs concern rejected historical Reclaim V1. Warning counts are not exploit counts; **no High is independently cleared**. The repository-tree security job is retained separately; a gate pass in a narrower scope cannot clear another artifact or the known parser gaps.
 
@@ -74,7 +74,11 @@ Local checks already completed: fresh full V2 static analysis (strict failure), 
 
 Native Forge/Anvil executables from the earlier temporary installation are unavailable on this Windows session. No replacement local runtime, service or paid resource was installed. The existing Linux CI has now [executed the actual suite](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44466792071/job/135366408429): **55 tests passed, zero failed/skipped**, including all18 new tests, two512-run fuzz cases and the128-run/4096-call invariant with zero reverts. [Source/tool/hash-bound execution record and exact raw fragment](evidence/rmt-task080/security/linux-execution.json) identify source `36925b41814896d0279ed71500ff89ce134c9535`. The only job failure is the unchanged seven-High strict analysis gate. Original local syntax-only evidence is preserved separately, not relabeled as EVM execution.
 
-Changed dashboard Chromium/WebKit/PG18.6 acceptance is still pending at this snapshot; a passing old Task079 run is not substituted. The first repository job also exposed a missing exact baseline in the shallow checkout. Its [failed evidence](evidence/rmt-task080/ci-shallow-baseline-failure.json) is retained; CI now fetches that SHA before the unchanged source comparison. The register verifies all dependency source hashes, so that job materializes the same already pinned v4 dependencies with the existing toolchain rather than skipping absent files. Final exact source, receipts/screenshots and CI outcomes will be recorded after execution; pending is not passed.
+The updated dashboard and complete retained lifecycle passed in **both Chromium and WebKit**, using actual synthetic Anvil chain 31337 transactions and isolated PostgreSQL 18.6. Each run recorded nine retirement observations, including one deliberately orphaned transaction; eight canonical retirements cover 16 NFT units and 86 synthetic reward tokens. Eleven observed Safe executions leave ten canonical; 45 SQL events and two campaigns survive restart with the original 22-event checkpoint history unchanged. Reorg rollback removes the orphaned record and restores assets/reserve without another signature or submission. The new owner-policy negative cases, controller notice and genuine two-owner Safe execution all passed. [Exact receipts, database rows, source identities, policy and screenshots](evidence/rmt-task080/browser-acceptance-manifest.json) bind reviewed source `c1ae53179c7e8ad91c637af0471a20a2f2c67b3c` to the identical Actions checkout tree. This is browser emulation, not physical iPhone acceptance.
+
+All **12 functional CI checks passed** on that source: repository, indexer, contracts, Operations Safe, website, Firebase emulators, Chromium, WebKit, Linux build, Railway image, secrets and the nonspending purchase prototype. All **five strict security checks failed** at their retained analysis gates. New raw artifacts were scanned before compression; all 240 scanner matches per browser are exact synthetic public token addresses/runtime hashes, with individual classifications preserved. All 44 archived signature occurrences per browser independently recover their stated synthetic Safe owners. No secret-scanner suppression or financial assertion change was introduced. The final evidence-only commit is checked separately; archived execution is not relabeled as a run of a later commit.
+
+The first repository job exposed a missing exact baseline in its shallow checkout. Its [failed evidence](evidence/rmt-task080/ci-shallow-baseline-failure.json) is retained; the corrected repository job passed after fetching that SHA before the unchanged source comparison. The register verifies all dependency source hashes, so CI materializes the same already pinned v4 dependencies with the existing toolchain rather than skipping absent files.
 
 Both first changed-dashboard browser runs actually passed unrelated-wallet denial, malformed-policy rejection, participant preparation and canonical recovery without policy, and six retirements. They then correctly lacked administrative controls after the fixture restored its temporary EIP7702 code without refreshing the unavailable authority snapshot. [Both original failures and actual partial results](evidence/rmt-task080/ci-initial-authority-refresh-failure.json) are retained. The harness now explicitly verifies unavailable controls under the unadmitted runtime, fetches fresh on-chain state after restoration, and verifies administration returns only with that evidence. No application authorization or error assertion was relaxed; later skipped browser groups in the failed runs are not called passed.
 
