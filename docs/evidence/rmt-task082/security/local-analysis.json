@@ -1,0 +1,127 @@
+{
+  "schemaVersion": 1,
+  "status": "TEST_EXECUTION_PENDING_STRICT_ANALYSIS_FAILED",
+  "scope": "LOCAL_PINNED_WINDOWS_COMPILER_AND_SLITHER_NOT_EVM_EXECUTION",
+  "compilerInputSha256": "147be8aec26e3d2577b8b2812f2d779d3fc6b39024fd05b7c40397ffddefe6e1",
+  "sourceCount": 5,
+  "detectors": 101,
+  "tool": "Slither 0.11.5",
+  "cryticCompile": "0.3.11",
+  "compilerExecutableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "counts": {
+    "High": 22,
+    "Medium": 1,
+    "Low": 15,
+    "Informational": 9
+  },
+  "strictExit": 1,
+  "beforeHighs": 23,
+  "afterHighs": 22,
+  "removedPaymentCapabilityRows": 1,
+  "retainedBalanceRows": 21,
+  "retainedFixedNativeRouteRows": 1,
+  "independentAudit": false,
+  "productionEnabled": false,
+  "testsTypechecked": {
+    "sourceFiles": 9,
+    "errors": 0,
+    "warnings": 0,
+    "EvmExecution": false
+  },
+  "rawSecretScan": {
+    "version": "8.30.1",
+    "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+    "findings": 0,
+    "exit": 0,
+    "rawReportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "rawBeforeCompression": true
+  },
+  "files": [
+    {
+      "path": "compiler-input.json.gz",
+      "bytes": 8200,
+      "sha256": "61aa970b1f875ef9a3325a4a7322361c82f383f227c260cd18e48de587936e0a",
+      "uncompressedBytes": 35049,
+      "uncompressedSha256": "147be8aec26e3d2577b8b2812f2d779d3fc6b39024fd05b7c40397ffddefe6e1"
+    },
+    {
+      "path": "compiler-manifest-windows.json.gz",
+      "bytes": 1754,
+      "sha256": "546b6d6fa9c2de632501549cffeefa4361300b7b5ce9cfc96fae06d9f8bbfd84",
+      "uncompressedBytes": 4583,
+      "uncompressedSha256": "12b254bc571668308ebed340ccc98fc8b96210d6b0afeff3938eeb99fff4657c"
+    },
+    {
+      "path": "slither-windows.json.gz",
+      "bytes": 29663,
+      "sha256": "dc21a5ee1dbd2adafcfffb8f5e402e783e9c3b9e96fd3a0f93c4ff6b45458543",
+      "uncompressedBytes": 946060,
+      "uncompressedSha256": "4c8196a08d045c5b25da7d9edb1c969174024b8cccbfaaaee0f876afa9db0dfd"
+    },
+    {
+      "path": "ast-boundaries.json.gz",
+      "bytes": 128137,
+      "sha256": "265c140e9320e02c56df7d6e2ed44565b051e23d1461bc9bc76d6b41b5e165b0",
+      "uncompressedBytes": 2221421,
+      "uncompressedSha256": "b7e9c0997bc498e23110e902ab2cff44ee117b0e1ca9e8411e4c00a8bf007384"
+    },
+    {
+      "path": "slither-windows-log.txt.gz",
+      "bytes": 55,
+      "sha256": "7d2c8f76411d152ba8f9ee4a2bef4d77a5ec81da8979429c11dacd4cd696eaab",
+      "uncompressedBytes": 37,
+      "uncompressedSha256": "7451bd5ffcc957c9331fa4d8db7809d9302e7423d2e44b4b4283652aa177f3d2"
+    }
+  ],
+  "templates": {
+    "NftAcquisitionAccounts": {
+      "file": "nft-acquisition/src/NftAcquisitionAccounts.sol",
+      "creationBytes": 85,
+      "runtimeBytes": 57,
+      "creationSha256": "9c18c6a8d41f581e4be561240bfe7f8fd10b624670eb6ddf8963432dec4aa4df",
+      "runtimeSha256": "e84913101e83e8d977f8177ce90e36e8e244b19a5ef0b95e39bd07df12236771"
+    },
+    "NftAcquisitionTypes": {
+      "file": "nft-acquisition/src/NftAcquisitionTypes.sol",
+      "creationBytes": 85,
+      "runtimeBytes": 57,
+      "creationSha256": "e4b4cdec93ff082db324fc8b11da4167a303d8a7e88aef4f1384d4634f313855",
+      "runtimeSha256": "ca3cc50c97ad08a6ac8fce717b21378760c23022fba508631fb12b7283b89ae3"
+    },
+    "NftAcquisitionCodePartV1": {
+      "file": "nft-acquisition/src/RMTNftAcquisitionFactoryV1.sol",
+      "creationBytes": 244,
+      "runtimeBytes": 57,
+      "creationSha256": "9e765572ff86d2ab5f08396436e5ed8ceb2b3f2c02d75d815fabffd4ed18aac4",
+      "runtimeSha256": "d02bc1161517a1d00cfe234c4c7b84354ad78da186f7c285ec1a8a7086f11896"
+    },
+    "NftAcquisitionDeployerV1": {
+      "file": "nft-acquisition/src/RMTNftAcquisitionFactoryV1.sol",
+      "creationBytes": 2113,
+      "runtimeBytes": 1834,
+      "creationSha256": "b4641c00d7f8fd8eb336c61e21174500d6758bae18344f8093f462f1ef181ce2",
+      "runtimeSha256": "f0f52d7d98468f17255237598166c12511285cc84d77fd9382d5f4830bcd324d"
+    },
+    "RMTNftAcquisitionFactoryV1": {
+      "file": "nft-acquisition/src/RMTNftAcquisitionFactoryV1.sol",
+      "creationBytes": 31608,
+      "runtimeBytes": 2310,
+      "creationSha256": "21074ce021fe8291b834939737b9029c5b5f159987f1ab18f85e58f3336b0b60",
+      "runtimeSha256": "8f40140f757a300d83638115c13494910f9532497989e745b4ae54d018b3008c"
+    },
+    "RMTNftAcquisitionVaultV1": {
+      "file": "nft-acquisition/src/RMTNftAcquisitionVaultV1.sol",
+      "creationBytes": 25640,
+      "runtimeBytes": 21935,
+      "creationSha256": "f6fd35bb29e41abd8d9abaae88a9c29d32badd994f0d547714d88bf448a40634",
+      "runtimeSha256": "f0216b49a943cf77775f8801b924241f87c78a7a9b0ba09c8f6bd34c53329744"
+    },
+    "SyntheticNftListingVenueV1": {
+      "file": "nft-acquisition/src/SyntheticNftListingVenueV1.sol",
+      "creationBytes": 4896,
+      "runtimeBytes": 4639,
+      "creationSha256": "15bb32e1d3c0a44abb83c22a12c77abe38644a6c636fbbb0480137f82e4265ac",
+      "runtimeSha256": "96cd82f825ac2a3e9c411d7afd74f7891d73f5ee3050c6fea163c885ef20c0c8"
+    }
+  }
+}
