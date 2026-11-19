@@ -1,0 +1,2 @@
+type Address=`0x${string}`;type Hex=`0x${string}`;
+export function assertSeaportVaultTrace(raw:unknown,origin:{from:Address;to:Address;input:Hex;value:bigint},expected:{vault:Address;seaport:Address;collection:Address;purchaseInput:Hex;fulfillInput:Hex;nftTransferInput:Hex;total:bigint;native:boolean;payments:Array<{recipient:Address;amount:bigint}>;currency?:Address;tokenTransferInputs?:Hex[];admittedSafeDelegates?:Array<{proxy:Address;singleton:Address}>}):{evidence:string;frames:number;nativeTransfers:number};
