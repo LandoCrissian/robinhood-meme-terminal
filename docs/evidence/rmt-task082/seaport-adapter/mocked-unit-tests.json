@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "scope": "MOCKED_READ_ONLY_RPC_WITH_GENUINE_EPHEMERAL_ECDSA_NOT_EVM_OR_MAINNET",
+  "productionExecution": false,
+  "walletSignatures": "Ephemeral randomly generated test keys only; never owner keys",
+  "observedAt": "2026-11-19T15:23:59.333303+00:00",
+  "node": "v22.23.2",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "command": "node --test packages/launchpad-common/seaport-order-verifier.test.mjs",
+  "exitCode": 0,
+  "tests": 10,
+  "passed": 10,
+  "failed": 0,
+  "skipped": 0,
+  "tap": {
+    "path": "mocked-unit-tests.tap.gz",
+    "uncompressedSha256": "0ba5c257e36a8fcc9a690e55d02be0d2ad7bbfe2ec12ca095ab9cc382517a363",
+    "uncompressedBytes": 2633
+  },
+  "sourceFiles": [
+    {
+      "path": "packages/launchpad-common/seaport-order-verifier.mjs",
+      "canonicalLfSha256": "4339052d5d7710e784aad378d25b0141ad757018282aa864212834e8f4a750a3",
+      "bytes": 32690
+    },
+    {
+      "path": "packages/launchpad-common/seaport-order-verifier.d.mts",
+      "canonicalLfSha256": "4a5e0f68b960419ccf341e5e01d44d0aed2a88955b3445b60168a29a203545b0",
+      "bytes": 4434
+    },
+    {
+      "path": "packages/launchpad-common/seaport-order-verifier.test.mjs",
+      "canonicalLfSha256": "958f02227c8061725bfed5d822771cfbfcd428231a14422c04c43d3eb3980304",
+      "bytes": 18961
+    }
+  ],
+  "limitations": [
+    "Mocked provider observations exercise verifier boundaries; genuine Seaport execution is separate evidence.",
+    "ERC1271 unit transport returns a bounded mocked magic value; it is not hosted wallet acceptance.",
+    "No independent security audit or production deployment clearance."
+  ]
+}
