@@ -18,7 +18,7 @@ const safeAbi=parseAbi(["function setup(address[] owners,uint256 threshold,addre
   "function VERSION() view returns(string)","function masterCopy() view returns(address)","function getOwners() view returns(address[])","function getThreshold() view returns(uint256)","function nonce() view returns(uint256)",
   "function getTransactionHash(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,uint256) view returns(bytes32)",
   "function execTransaction(address to,uint256 value,bytes data,uint8 operation,uint256 safeTxGas,uint256 baseGas,uint256 gasPrice,address gasToken,address refundReceiver,bytes signatures) payable returns(bool)",
-  "event ExecutionSuccess(bytes32 txHash,uint256 payment)"]);
+  "event ExecutionSuccess(bytes32 indexed txHash,uint256 payment)"]);
 
 /** Genuine SafeL2 1.4.1 execution using fresh synthetic test-owner keys. No
  * impersonated Safe/owner, production signer, signature upload or live RPC. */

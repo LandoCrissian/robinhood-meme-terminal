@@ -18,7 +18,7 @@ export async function testReclaimFixtureOrigins(){
   const h=(n:number)=>`0x${n.toString(16).padStart(64,"0")}` as Hash;
   const campaign=addr(1),safe=addr(2),payer=addr(3),hash=h(44078),blockHash=h(10),abi=parseAbi(reclaimCampaignSignatures);
   const safeAbi=parseAbi(["function execTransaction(address,uint256,bytes,uint8,uint256,uint256,uint256,address,address,bytes) payable returns(bool)",
-    "event ExecutionSuccess(bytes32 txHash,uint256 payment)","event ExecutionFailure(bytes32 txHash,uint256 payment)"]);
+    "event ExecutionSuccess(bytes32 indexed txHash,uint256 payment)","event ExecutionFailure(bytes32 indexed txHash,uint256 payment)"]);
   const data=encodeFunctionData({abi,functionName:"fund",args:[100n]}),nonce=21n;
   const types={SafeTx:[{name:"to",type:"address"},{name:"value",type:"uint256"},{name:"data",type:"bytes"},{name:"operation",type:"uint8"},
     {name:"safeTxGas",type:"uint256"},{name:"baseGas",type:"uint256"},{name:"gasPrice",type:"uint256"},{name:"gasToken",type:"address"},{name:"refundReceiver",type:"address"},{name:"nonce",type:"uint256"}]}as const;
@@ -30,8 +30,8 @@ export async function testReclaimFixtureOrigins(){
   const outer=()=>encodeFunctionData({abi:safeAbi,functionName:"execTransaction",args:[knobs.mode==="redirect"?addr(99):campaign,0n,data,knobs.mode==="delegatecall"?1:0,0n,0n,0n,zeroAddress,zeroAddress,
     knobs.mode==="duplicate"?`0x${sorted[0]!.signature.slice(2).repeat(2)}`:knobs.mode==="reverse"?`0x${[...sorted].reverse().map(s=>s.signature.slice(2)).join("")}`:knobs.mode==="short"?sorted[0]!.signature:signatures]});
   const receipt=()=>({status:"success",transactionHash:hash,blockNumber:10n,blockHash,transactionIndex:0,to:safe,from:payer,
-    logs:knobs.mode==="missing-success"?[]:[{address:safe,topics:encodeEventTopics({abi:safeAbi,eventName:knobs.mode==="failure"?"ExecutionFailure":"ExecutionSuccess"}),
-      data:encodeAbiParameters([{type:"bytes32"},{type:"uint256"}],[knobs.mode==="digest"?h(99):digest,knobs.mode==="payment"?1n:0n])}]});
+    logs:knobs.mode==="missing-success"?[]:[{address:safe,topics:encodeEventTopics({abi:safeAbi,eventName:knobs.mode==="failure"?"ExecutionFailure":"ExecutionSuccess",args:{txHash:knobs.mode==="digest"?h(99):digest}}),
+      data:encodeAbiParameters([{type:"uint256"}],[knobs.mode==="payment"?1n:0n])}]});
   const header={number:10n,hash:blockHash,timestamp:1_800_000_000n,transactions:[hash]};
   const same=(a:string,b:string)=>a.toLowerCase()===b.toLowerCase();
   const rpc={getChainId:async()=>31337,
@@ -51,8 +51,9 @@ export async function testReclaimFixtureOrigins(){
   }as unknown as PublicClient;
   const result=await verifyReclaimOrigin(rpc,receipt() as never,header as never,campaign,"fund",{controller:safe,amount:100n});
   assert.equal(result.profile,"safe-1.4.1");assert.equal(result.actor,safe);assert.equal(result.safeNonce,"21");assert.deepEqual(result.signers,sorted.map(s=>s.address));
-  for(const mode of["payer-nonce","redirect","delegatecall","duplicate","reverse","short","missing-success","failure","digest","payment","proxy","contract-owner","guard","handler","outsider","threshold","stale","module"]){
-    knobs.mode=mode;await assert.rejects(verifyReclaimOrigin(rpc,receipt()as never,header as never,campaign,"fund",{controller:safe,amount:100n}),/evidence|signature/i,mode);
+  for(const mode of["payer-nonce","redirect","delegatecall","duplicate","reverse","short","missing-success","failure","digest","payment","proxy","contract-owner","guard","handler","outsider","threshold","stale","module","nonindexed-outcome"]){
+    knobs.mode=mode;const observed=receipt();if(mode==="nonindexed-outcome"){observed.logs[0]!.topics=observed.logs[0]!.topics.slice(0,1)as never;observed.logs[0]!.data=encodeAbiParameters([{type:"bytes32"},{type:"uint256"}],[digest,0n]);}
+    await assert.rejects(verifyReclaimOrigin(rpc,observed as never,header as never,campaign,"fund",{controller:safe,amount:100n}),/evidence|signature/i,mode);
   }
   console.info("Reclaim Safe origin, actual ECDSA owner signatures, envelope/nonce/custody-profile rejection smoke passed.");
 }
