@@ -12,6 +12,8 @@ export async function verifySeaportVaultRuntime(rpc:PublicClient,m:SeaportVaultM
   const read=async(name:string)=>rpc.readContract({address:m.vault,abi:seaportVaultAbi,functionName:name,blockNumber}as never);
   for(const[name,wanted]of Object.entries({creator:m.creator,projectToken:m.projectToken,checks:m.checks,checksHash:m.checksRuntimeHash,coreFactory:m.coreFactory,coreFactoryHash:m.coreFactoryRuntimeHash,seaport:m.seaport,seaportHash:m.seaportRuntimeHash,paymentToken:m.paymentToken,paymentTokenHash:m.paymentTokenRuntimeHash})){if(!same(await read(name),wanted))throw Error("Seaport V2 immutable binding mismatch");}
   if(await read("deploymentChainId")!==31337n||await read("productionExecutionAvailable")!==false)throw Error("Seaport V2 local binding mismatch");
+  const cc=await read("conduitController")as Address,ccHash=await read("conduitControllerHash"),tokenHash=await read("tokenRuntimeHash");
+  for(const[address,wanted]of[[cc,ccHash],[m.projectToken,tokenHash]]as[Address,Hash][]){const code=await rpc.getCode({address,blockNumber});if(!code||!same(keccak256(code),wanted))throw Error("Seaport V2 dependent runtime mismatch");}
   const born=await rpc.getTransactionReceipt({hash:m.deployment.transactionHash}),header=await rpc.getBlock({blockNumber:BigInt(m.deployment.blockNumber)});
   if(born.status!=="success"||!same(born.contractAddress,m.vault)||!same(born.blockHash,m.deployment.blockHash)||!same(header.hash,m.deployment.blockHash))throw Error("Seaport V2 creation mismatch");
 }

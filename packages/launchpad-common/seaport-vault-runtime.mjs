@@ -11,6 +11,7 @@ export const seaportVaultSignatures=[
  "function creator() view returns(address)","function projectToken() view returns(address)","function coreFactory() view returns(address)","function coreFactoryHash() view returns(bytes32)",
  "function seaport() view returns(address)","function seaportHash() view returns(bytes32)","function paymentToken() view returns(address)","function paymentTokenHash() view returns(bytes32)",
  "function checks() view returns(address)","function checksHash() view returns(bytes32)",
+ "function tokenRuntimeHash() view returns(bytes32)","function conduitController() view returns(address)","function conduitControllerHash() view returns(bytes32)","function originCurve() view returns(address)",
  "function policy() view returns(address currency,uint128 perNftCap,uint128 totalBudget,uint128 periodBudget,uint32 cooldownSeconds)",
  "function available(address) view returns(uint256)","function nftHeld(address,uint256) view returns(uint256)","function orderConsumed(bytes32) view returns(bool)",
  "function collections(address) view returns(bytes32 runtimeHash,uint8 standard,bool enabled,bool anyTokenId)","function allowedTokenId(address,uint256) view returns(bool)",
