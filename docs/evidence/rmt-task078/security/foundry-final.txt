@@ -1,0 +1,86 @@
+Compiling 2 files with Solc 0.8.26
+Solc 0.8.26 finished in 53.75s
+Compiler run successful!
+2026-11-19T00:02:33.958047Z  WARN forge::test: failed calling "targetArtifactSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+
+Ran 7 tests for test/RMTReclaimHostile.t.sol:RMTReclaimHostileTest
+2026-11-19T00:02:33.958477Z  WARN forge::test: failed calling "targetArtifacts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.958493Z  WARN forge::test: failed calling "excludeArtifacts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.958514Z  WARN forge::test: failed calling "targetSenders()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.958524Z  WARN forge::test: failed calling "excludeSenders()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.958835Z  WARN forge::test: failed calling "excludeContracts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.958891Z  WARN forge::test: failed calling "targetInterfaces()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.958919Z  WARN forge::test: failed calling "targetSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.958939Z  WARN forge::test: failed calling "excludeSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+[PASS] testHostileFundingDeltaCannotIncreaseAdvertisedReserve() (gas: 10174651)
+[PASS] testHostileRewardCannotReenterFundPayoutOrReturn() (gas: 10642333)
+[PASS] testHostileRewardFalseMalformedFeeAndExtraDebitRollbackNftAndEveryCredit() (gas: 12352208)
+[PASS] testInterruptedRewardRepaymentCannotReleaseNftOrConsumeReceipt() (gas: 10634210)
+[PASS] testRejectedNftReturnRollsBackRepaymentAndKeepsReceiptClaimable() (gas: 879460)
+[PASS] testRevertingWrongAndMissing721CallbacksOrWrongCustodyCannotPayRewards() (gas: 3308893)
+[PASS] testWrong1155CallbackAndShortRecipientOrExtraSenderDebitRollbackAllUnits() (gas: 3295847)
+Suite result: ok. 7 passed; 0 failed; 0 skipped; finished in 17.91ms (20.92ms CPU time)
+2026-11-19T00:02:33.979800Z  WARN forge::test: failed calling "targetArtifactSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.979863Z  WARN forge::test: failed calling "targetArtifacts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.979898Z  WARN forge::test: failed calling "excludeArtifacts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.979927Z  WARN forge::test: failed calling "targetSenders()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.979948Z  WARN forge::test: failed calling "excludeSenders()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.980008Z  WARN forge::test: failed calling "excludeContracts()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.980035Z  WARN forge::test: failed calling "targetInterfaces()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.980079Z  WARN forge::test: failed calling "targetSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+2026-11-19T00:02:33.980106Z  WARN forge::test: failed calling "excludeSelectors()": execution reverted: EvmError: Revert (gas: 21199)
+
+Ran 29 tests for test/RMTReclaimV1.t.sol:RMTReclaimV1Test
+[PASS] testBatchDuplicateUnsafelyLargeAndZeroQuantitiesRejectAtomically() (gas: 157336)
+[PASS] testCollectionRuntimeMutationFailsClosedAndPreservesOriginalCustodyEvidence() (gas: 566818)
+[PASS] testControllerAcceptanceInvalidatesNoticesAndCannotResumeSilently() (gas: 195544)
+[PASS] testCreate2IdentityDuplicateAndCreatorIsolation() (gas: 4447742)
+[PASS] testEligibleTokenCannotBeReplayedOrSpentByUnrelatedWallet() (gas: 926360)
+[PASS] testErc1155BatchUsesExactCallbackAndQuantityAccounting() (gas: 619196)
+[PASS] testErc721AtomicEscrowRewardAndImmutableReceipt() (gas: 518407)
+[PASS] testExpiredNoticeCanBeCancelledWithoutRedirectingAssets() (gas: 92187)
+[PASS] testFiniteEligibilityRejectsSelfMintedAndCrossCampaignProofs() (gas: 127158)
+[PASS] testFuzzExactFundingAndSurrenderReturnConserveReserves(uint96) (runs: 512, μ: 580204, ~: 580208)
+[PASS] testFuzzQuantityNeverExceedsFiniteTokenIdAllowance(uint8) (runs: 512, μ: 825789, ~: 891615)
+[PASS] testGlobalErc1155QuantityCapCoversConcurrentClaimants() (gas: 892346)
+[PASS] testIllustrativeFixedUnitsBudgetExhaustionIsFundedNotUsdOracle() (gas: 8442116)
+[PASS] testInsufficientBudgetCannotCreateNftReceiptOrDebt() (gas: 133347)
+[PASS] testManualFundingHasExactAllowanceAndNoUnsecuredUsdReward() (gas: 55171)
+[PASS] testMaximumPerTransactionQuantityAndInsufficientBalanceAreAtomic() (gas: 603329)
+[PASS] testMerkleProofCannotCrossCampaignOrChain() (gas: 4713390)
+[PASS] testNoReserveNoCollectionAndPausedCampaignAreHardNoGo() (gas: 4468553)
+[PASS] testNonceReplayDoesNotConsumeAnotherEligibleNft() (gas: 525712)
+[PASS] testNoticedCloseAndRecoveryOnlyUncommittedRewardTokens() (gas: 622839)
+[PASS] testPerWalletAndCollectionCapsStopSeparateEligibleIds() (gas: 772800)
+[PASS] testRateNoticeAndQuoteEpochRejectRetroactiveOrExpiredSubmission() (gas: 116823)
+[PASS] testReturnRequiresOriginalClaimantExactRewardAndApproval() (gas: 551874)
+[PASS] testReturnRightsSurvivePauseDisableRootChangesAndCampaignClose() (gas: 610055)
+[PASS] testUnsafeForcedNftTransferHasNoInventedClaimOrOwnerDrain() (gas: 60968)
+[PASS] testUnsolicitedRewardTokensAreSeparateAndNoNativeRewardFallbackExists() (gas: 82304)
+[PASS] testUnsolicitedSafeTransfersAndForgedReceiverCallbacksReject() (gas: 141584)
+[PASS] testUnsupportedChainAndInvalidRewardPinsCannotDeploy() (gas: 334084)
+[PASS] testWalletAndCollectionCapsRemainConsumedAfterReturn() (gas: 571927)
+Suite result: ok. 29 passed; 0 failed; 0 skipped; finished in 120.38ms (217.76ms CPU time)
+
+Ran 1 test for test/RMTReclaimHostile.t.sol:RMTReclaimInvariantTest
+[PASS] invariantSegregatedReservesAndNoUnpaidRewardLiability() (runs: 128, calls: 4096, reverts: 0)
+
+╭-------------------------+---------------+-------+---------+----------╮
+| Contract                | Selector      | Calls | Reverts | Discards |
++======================================================================+
+| ReclaimInvariantHandler | fund          | 682   | 0       | 0        |
+|-------------------------+---------------+-------+---------+----------|
+| ReclaimInvariantHandler | gift          | 705   | 0       | 0        |
+|-------------------------+---------------+-------+---------+----------|
+| ReclaimInvariantHandler | pause         | 682   | 0       | 0        |
+|-------------------------+---------------+-------+---------+----------|
+| ReclaimInvariantHandler | redeem721     | 638   | 0       | 0        |
+|-------------------------+---------------+-------+---------+----------|
+| ReclaimInvariantHandler | resume        | 713   | 0       | 0        |
+|-------------------------+---------------+-------+---------+----------|
+| ReclaimInvariantHandler | returnReceipt | 676   | 0       | 0        |
+╰-------------------------+---------------+-------+---------+----------╯
+
+Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 962.84ms (947.33ms CPU time)
+
+Ran 3 test suites in 971.78ms (1.10s CPU time): 37 tests passed, 0 failed, 0 skipped (37 total tests)
