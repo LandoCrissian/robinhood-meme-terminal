@@ -27,18 +27,21 @@ test("revalidation after an earlier success actually re-reads state and does not
 
 // Exercise viem2's actual HTTP JSON-RPC/getCode decoder with mocked endpoint
 // responses. No server, external RPC request or transaction is created.
-async function viemCodeEndpoints(f,{primary="0x",witness="0x",rpcError=false}={}){
+async function viemCodeEndpoints(f,{primary="0x",witness="0x",rpcError=false,rawProofShape}={}){
  const calls=[];
  function endpoint(name,sellerCode){
+  let sellerRequests=0;
   return v.createPublicClient({transport:v.http("https://mock-"+name+".invalid/owner-code",{retryCount:0,timeout:1000,fetchFn:async(url,init)=>{
    assert.equal(String(url),"https://mock-"+name+".invalid/owner-code");const request=JSON.parse(init.body);assert.equal(request.method,"eth_getCode");assert.equal(request.params[1],"0x7b");calls.push({provider:name,address:request.params[0]});
    const seller=request.params[0].toLowerCase()===f.envelope.order.parameters.offerer.toLowerCase();
+   if(seller)sellerRequests++;
+   if(seller&&rawProofShape&&(sellerRequests>1||rawProofShape==="missing")){const base={jsonrpc:"2.0",id:request.id};return Response.json(rawProofShape==="missing"?base:rawProofShape==="error"?{...base,error:{code:-32000,message:"MOCK_RAW_CODE_UNAVAILABLE"}}:{...base,result:rawProofShape==="null"?null:rawProofShape==="nonhex"?"not-hex":"0x60016000"});}
    return Response.json(rpcError&&seller?{jsonrpc:"2.0",id:request.id,error:{code:-32000,message:"MOCK_RPC_CODE_UNAVAILABLE"}}:{jsonrpc:"2.0",id:request.id,result:seller?sellerCode:f.state.code});
   }})});
  }
  const a=endpoint("primary",primary),b=endpoint("witness",witness);
- f.options.verifierOptions.rpc={...f.options.verifierOptions.rpc,getCode:args=>a.getCode(args)};
- f.options.verifierOptions.witnessRpc={...f.options.verifierOptions.witnessRpc,getCode:args=>b.getCode(args)};
+ f.options.verifierOptions.rpc={...f.options.verifierOptions.rpc,getCode:args=>a.getCode(args),request:(payload,opts)=>{assert.equal(opts.retryCount,0);return a.request(payload,opts);}};
+ f.options.verifierOptions.witnessRpc={...f.options.verifierOptions.witnessRpc,getCode:args=>b.getCode(args),request:(payload,opts)=>{assert.equal(opts.retryCount,0);return b.request(payload,opts);}};
  return{primary:a,witness:b,calls};
 }
 test("actual viem HTTP getCode decoder maps raw0x to undefined and admits the signed EOA order",async()=>{
@@ -50,4 +53,13 @@ test("empty-code normalization preserves witness contradictions and rejects null
   const f=await fixture();await viemCodeEndpoints(f,config);const r=await ingestOwnerSuppliedSignedOrder(f.bytes(),f.options);assert.equal(r.status,"UNAVAILABLE",JSON.stringify(r));assert.equal(r.currentOrderIndependentlyVerified,false);assert.equal(r.executionEnabled,false);
   if(config.primary==="0x"&&config.witness!=="0x")assert.equal(r.reason,"PROVIDER_DISAGREEMENT");
  }
+});
+
+test("undefined viem code requires same-block exact raw0x proof and counts both extra provider reads",async()=>{
+ const f=await fixture(),baseline=await ingestOwnerSuppliedSignedOrder(f.bytes(),f.options);assert.equal(baseline.status,"OWNER_SUPPLIED_CURRENT_ORDER_VERIFIED");
+ const endpoints=await viemCodeEndpoints(f),r=await ingestOwnerSuppliedSignedOrder(f.bytes(),f.options);assert.equal(r.status,"OWNER_SUPPLIED_CURRENT_ORDER_VERIFIED",JSON.stringify(r));assert.equal(r.verified.reads,baseline.verified.reads+2);assert.equal(endpoints.calls.filter(c=>c.address.toLowerCase()===f.envelope.order.parameters.offerer.toLowerCase()).length,4);
+ const absent=await fixture();await viemCodeEndpoints(absent);delete absent.options.verifierOptions.rpc.request;const noRaw=await ingestOwnerSuppliedSignedOrder(absent.bytes(),absent.options);assert.equal(noRaw.reason,"EMPTY_CODE_RAW_PROOF_UNAVAILABLE");assert.equal(noRaw.currentOrderIndependentlyVerified,false);
+});
+test("actual viem missing-result JSONRPC and other malformed raw confirmations never establish empty EOA code",async()=>{
+ for(const rawProofShape of["missing","null","nonhex","error","contract"]){const f=await fixture();await viemCodeEndpoints(f,{rawProofShape});const r=await ingestOwnerSuppliedSignedOrder(f.bytes(),f.options);assert.equal(r.status,"UNAVAILABLE",JSON.stringify(r));assert.equal(r.currentOrderIndependentlyVerified,false);assert.equal(r.executionEnabled,false);}
 });
