@@ -55,6 +55,9 @@ test("an admitted address alone cannot administer another campaign or bypass cha
   await assert.rejects(authorizeReclaimAdministration(config,rpc,head,incoming,campaign,"execute-collection",{},controller),/Only the admitted current/);
   state.controller=incoming;await assert.rejects(authorizeReclaimAdministration(config,rpc,head,controller,campaign,"fund",{amountWei:"1"},controller),/Canonical campaign controller changed/);
   state.controller=controller;state.code.set(controller,"0x6000");await assert.rejects(admittedReclaimController(config,rpc,head,controller),/runtime changed/);
+  config.administration!.authorizedControllers[0].runtimeHash=keccak256("0x6000");
+  await assert.rejects(admittedReclaimController(config,rpc,head,controller),/Unsupported controller account authority/);
+  config.administration!.authorizedControllers[0].runtimeHash=keccak256("0x");
   state.code.delete(controller);await assert.rejects(authorizeReclaimAdministration(config,rpc,head,controller,campaign,"propose-controller",{next:unrelated},controller),/not explicitly admitted/);
   await assert.rejects(authorizeReclaimAdministration(config,rpc,head,controller,campaign,"create-campaign",{controller:unrelated},unrelated),/not explicitly admitted/);
 });
