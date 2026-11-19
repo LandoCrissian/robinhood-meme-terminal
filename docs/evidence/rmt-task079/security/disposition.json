@@ -1,0 +1,635 @@
+{
+  "schemaVersion": 1,
+  "task": 79,
+  "status": "BLOCKED_NO_BROADCAST",
+  "baseCommit": "da5ba64636c4da67a6a2b0447d1c2849bf01fa97",
+  "implementationCommit": "2b4985ff",
+  "ownerCorrection": "https://github.com/LandoCrissian/robinhood-meme-terminal/pull/672#issuecomment-6996801185",
+  "independentAudit": false,
+  "tools": {
+    "slither": "0.11.5",
+    "cryticCompile": "0.3.11",
+    "forge": "1.7.1",
+    "solc": "0.8.26+commit.8a97fa7a"
+  },
+  "detectorFilters": [],
+  "sourceFilters": [],
+  "sourceTransformations": [],
+  "snapshots": [
+    {
+      "name": "initial",
+      "inputSha256": "2b017850a7ae4d7be06fe05fdfc77fa896c3ff8756a52c939c2b695767b3c922",
+      "reportSha256": "3def00f35bea2e321c0efb09d1e3a8be28a429e82f4f03d33a1b5391fa7d6cde",
+      "sourceCount": 6,
+      "detectorCount": 101,
+      "total": 44,
+      "counts": {
+        "High": 8,
+        "Medium": 1,
+        "Low": 26,
+        "Informational": 8,
+        "Optimization": 1
+      },
+      "strictExit": 1,
+      "input": "compiler-initial.json.gz",
+      "report": "slither-initial.json.gz"
+    },
+    {
+      "name": "typed",
+      "inputSha256": "e5cc12ac9a5a836661e6921a505633a3599b3ced3e2ffc52ae8873e29d7ca8cc",
+      "reportSha256": "f7258968df8bfb3a46f595286edac3deafffcc8a5925c237df8a1e5add8b3201",
+      "sourceCount": 6,
+      "detectorCount": 101,
+      "total": 43,
+      "counts": {
+        "High": 8,
+        "Medium": 1,
+        "Low": 26,
+        "Informational": 7,
+        "Optimization": 1
+      },
+      "strictExit": 1,
+      "input": "compiler-typed.json.gz",
+      "report": "slither-typed.json.gz"
+    },
+    {
+      "name": "final",
+      "inputSha256": "fece6e205ff52f8369c732cbddaa663a0d19530062b7539dc4b4467099a08cdc",
+      "reportSha256": "88c454313d798825acdbd084fca5f2b0f5a05645b359b18b17f0ff775351bbf6",
+      "sourceCount": 6,
+      "detectorCount": 101,
+      "total": 45,
+      "counts": {
+        "High": 7,
+        "Medium": 1,
+        "Low": 29,
+        "Informational": 7,
+        "Optimization": 1
+      },
+      "strictExit": 1,
+      "input": "compiler-final.json.gz",
+      "report": "slither-final.json.gz"
+    }
+  ],
+  "previousV1": {
+    "source": "Retained byte-for-byte as rejected historical escrow behavior, never an approved current feature",
+    "report": "../../rmt-task078/security/slither-current.json.gz",
+    "counts": {
+      "High": 4
+    },
+    "findings": [
+      {
+        "id": "11cb4e56d2d851b14c372a3ff8e1360e03988e781ca81fc9e632f2725e9fdf7e",
+        "version": "V1",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV1._pull(address,uint256) (reclaim/src/RMTReclaimCampaignV1.sol#97-101):",
+        "description": "Reentrancy in RMTReclaimCampaignV1._pull(address,uint256) (reclaim/src/RMTReclaimCampaignV1.sol#97-101):\n\tExternal call allowing reentrancy:\n\t- _call(abi.encodeCall(IReclaimERC20.transferFrom,(from,address(this),amount))) (reclaim/src/RMTReclaimCampaignV1.sol#99)\n\t\t- (ok,result) = rewardToken.call(data) (reclaim/src/RMTReclaimCampaignV1.sol#108)\n\tBalance read before the call:\n\t- b = IReclaimERC20(rewardToken).balanceOf(from) (reclaim/src/RMTReclaimCampaignV1.sol#98)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimERC20(rewardToken).balanceOf(address(this)) != a + amount || IReclaimERC20(rewardToken).balanceOf(from) + amount != b (reclaim/src/RMTReclaimCampaignV1.sol#100)\n\t\t- stale variable `b`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Manual reward deposits",
+        "stateTransition": "funded/reserve effects are recorded before guarded transferFrom; all state rolls back on failure",
+        "potentialReentry": "Token low-level call can attempt a callback; V1 nonReentrant and exact deltas remain intact. Its return path is rejected historical behavior, not an approved product",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testHostileFundingCannotInventReserveAndCallbackCannotReenter"
+        ],
+        "assumptions": "Production must bind the actual independently reviewed fixed-supply TokenV2 runtime; a malicious token can lie about balances and is not admitted by the canonical fixture profile",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      },
+      {
+        "id": "2d21f375eb597358c720041270c79165d716c9ff9d60cde0b6a212b7bb80a34b",
+        "version": "V1",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV1._pull(address,uint256) (reclaim/src/RMTReclaimCampaignV1.sol#97-101):",
+        "description": "Reentrancy in RMTReclaimCampaignV1._pull(address,uint256) (reclaim/src/RMTReclaimCampaignV1.sol#97-101):\n\tExternal call allowing reentrancy:\n\t- _call(abi.encodeCall(IReclaimERC20.transferFrom,(from,address(this),amount))) (reclaim/src/RMTReclaimCampaignV1.sol#99)\n\t\t- (ok,result) = rewardToken.call(data) (reclaim/src/RMTReclaimCampaignV1.sol#108)\n\tBalance read before the call:\n\t- a = IReclaimERC20(rewardToken).balanceOf(address(this)) (reclaim/src/RMTReclaimCampaignV1.sol#98)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimERC20(rewardToken).balanceOf(address(this)) != a + amount || IReclaimERC20(rewardToken).balanceOf(from) + amount != b (reclaim/src/RMTReclaimCampaignV1.sol#100)\n\t\t- stale variable `a`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Manual reward deposits",
+        "stateTransition": "funded/reserve effects are recorded before guarded transferFrom; all state rolls back on failure",
+        "potentialReentry": "Token low-level call can attempt a callback; V1 nonReentrant and exact deltas remain intact. Its return path is rejected historical behavior, not an approved product",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testHostileFundingCannotInventReserveAndCallbackCannotReenter"
+        ],
+        "assumptions": "Production must bind the actual independently reviewed fixed-supply TokenV2 runtime; a malicious token can lie about balances and is not admitted by the canonical fixture profile",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      },
+      {
+        "id": "8d40ee02cb52f19dae4e477414d2fb75929c8b27f5ea2381b7b26610c6fd5901",
+        "version": "V1",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV1._pay(address,uint256) (reclaim/src/RMTReclaimCampaignV1.sol#102-106):",
+        "description": "Reentrancy in RMTReclaimCampaignV1._pay(address,uint256) (reclaim/src/RMTReclaimCampaignV1.sol#102-106):\n\tExternal call allowing reentrancy:\n\t- _call(abi.encodeCall(IReclaimERC20.transfer,(to,amount))) (reclaim/src/RMTReclaimCampaignV1.sol#104)\n\t\t- (ok,result) = rewardToken.call(data) (reclaim/src/RMTReclaimCampaignV1.sol#108)\n\tBalance read before the call:\n\t- b = IReclaimERC20(rewardToken).balanceOf(to) (reclaim/src/RMTReclaimCampaignV1.sol#103)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimERC20(rewardToken).balanceOf(address(this)) + amount != a || IReclaimERC20(rewardToken).balanceOf(to) != b + amount (reclaim/src/RMTReclaimCampaignV1.sol#105)\n\t\t- stale variable `b`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Funded reward reserve and exact claimant/controller payout",
+        "stateTransition": "reserve/paid or recovery counters are updated before guarded transfer; exact sender and recipient deltas are mandatory",
+        "potentialReentry": "Token low-level call can attempt a callback; V1 nonReentrant and exact deltas remain intact. Its return path is rejected historical behavior, not an approved product",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testRewardFalseMalformedTaxAndExtraDebitRollbackNativeBurn",
+          "testRewardFailureRollsBackSinkTransferAndReservation",
+          "testRewardCallbackCannotReenterEitherAccountingBoundary",
+          "testCloseAndNoticedRecoveryOnlyUncommittedRewardNeverNFT"
+        ],
+        "assumptions": "Production must bind the actual independently reviewed fixed-supply TokenV2 runtime; a malicious token can lie about balances and is not admitted by the canonical fixture profile",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      },
+      {
+        "id": "acc31aefac80caa64663fbfc0a8ee9f998df1ea934d96c3221ab803152052255",
+        "version": "V1",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV1._pay(address,uint256) (reclaim/src/RMTReclaimCampaignV1.sol#102-106):",
+        "description": "Reentrancy in RMTReclaimCampaignV1._pay(address,uint256) (reclaim/src/RMTReclaimCampaignV1.sol#102-106):\n\tExternal call allowing reentrancy:\n\t- _call(abi.encodeCall(IReclaimERC20.transfer,(to,amount))) (reclaim/src/RMTReclaimCampaignV1.sol#104)\n\t\t- (ok,result) = rewardToken.call(data) (reclaim/src/RMTReclaimCampaignV1.sol#108)\n\tBalance read before the call:\n\t- a = IReclaimERC20(rewardToken).balanceOf(address(this)) (reclaim/src/RMTReclaimCampaignV1.sol#103)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimERC20(rewardToken).balanceOf(address(this)) + amount != a || IReclaimERC20(rewardToken).balanceOf(to) != b + amount (reclaim/src/RMTReclaimCampaignV1.sol#105)\n\t\t- stale variable `a`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Funded reward reserve and exact claimant/controller payout",
+        "stateTransition": "reserve/paid or recovery counters are updated before guarded transfer; exact sender and recipient deltas are mandatory",
+        "potentialReentry": "Token low-level call can attempt a callback; V1 nonReentrant and exact deltas remain intact. Its return path is rejected historical behavior, not an approved product",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testRewardFalseMalformedTaxAndExtraDebitRollbackNativeBurn",
+          "testRewardFailureRollsBackSinkTransferAndReservation",
+          "testRewardCallbackCannotReenterEitherAccountingBoundary",
+          "testCloseAndNoticedRecoveryOnlyUncommittedRewardNeverNFT"
+        ],
+        "assumptions": "Production must bind the actual independently reviewed fixed-supply TokenV2 runtime; a malicious token can lie about balances and is not admitted by the canonical fixture profile",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      }
+    ]
+  },
+  "currentV2": {
+    "inputSha256": "fece6e205ff52f8369c732cbddaa663a0d19530062b7539dc4b4467099a08cdc",
+    "roots": [
+      "reclaim-v2/src/RMTReclaimCampaignDeployerV2.sol",
+      "reclaim-v2/src/RMTReclaimCampaignV2.sol",
+      "reclaim-v2/src/RMTReclaimCodePartV2.sol",
+      "reclaim-v2/src/RMTReclaimFactoryV2.sol",
+      "reclaim-v2/src/RMTReclaimSinkV2.sol",
+      "reclaim-v2/src/ReclaimV2Interfaces.sol"
+    ],
+    "findings": [
+      {
+        "id": "038203753e67495c6d3977d2feb348f88fcf58e2537c8f2151b80cb5b9fe4e73",
+        "version": "V2",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV2._pay(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#104-108):",
+        "description": "Reentrancy in RMTReclaimCampaignV2._pay(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#104-108):\n\tExternal call allowing reentrancy:\n\t- ! IReclaimV2ERC20(rewardToken).transfer(to,amount) (reclaim-v2/src/RMTReclaimCampaignV2.sol#106)\n\tBalance read before the call:\n\t- a = IReclaimV2ERC20(rewardToken).balanceOf(address(this)) (reclaim-v2/src/RMTReclaimCampaignV2.sol#105)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimV2ERC20(rewardToken).balanceOf(address(this)) + amount != a || IReclaimV2ERC20(rewardToken).balanceOf(to) != b + amount (reclaim-v2/src/RMTReclaimCampaignV2.sol#107)\n\t\t- stale variable `a`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Funded reward reserve and exact claimant/controller payout",
+        "stateTransition": "reserve/paid or recovery counters are updated before guarded transfer; exact sender and recipient deltas are mandatory",
+        "potentialReentry": "Typed token call can attempt callbacks; state-changing campaign entry points require entered==1 while the call is entered==2",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testRewardFalseMalformedTaxAndExtraDebitRollbackNativeBurn",
+          "testRewardFailureRollsBackSinkTransferAndReservation",
+          "testRewardCallbackCannotReenterEitherAccountingBoundary",
+          "testCloseAndNoticedRecoveryOnlyUncommittedRewardNeverNFT"
+        ],
+        "assumptions": "Production must bind the actual independently reviewed fixed-supply TokenV2 runtime; a malicious token can lie about balances and is not admitted by the canonical fixture profile",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      },
+      {
+        "id": "42aa40d8940c42003ea7217efaa4e79305480992f92e1ed4a821f4c166cacd4e",
+        "version": "V2",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV2._pay(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#104-108):",
+        "description": "Reentrancy in RMTReclaimCampaignV2._pay(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#104-108):\n\tExternal call allowing reentrancy:\n\t- ! IReclaimV2ERC20(rewardToken).transfer(to,amount) (reclaim-v2/src/RMTReclaimCampaignV2.sol#106)\n\tBalance read before the call:\n\t- b = IReclaimV2ERC20(rewardToken).balanceOf(to) (reclaim-v2/src/RMTReclaimCampaignV2.sol#105)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimV2ERC20(rewardToken).balanceOf(address(this)) + amount != a || IReclaimV2ERC20(rewardToken).balanceOf(to) != b + amount (reclaim-v2/src/RMTReclaimCampaignV2.sol#107)\n\t\t- stale variable `b`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Funded reward reserve and exact claimant/controller payout",
+        "stateTransition": "reserve/paid or recovery counters are updated before guarded transfer; exact sender and recipient deltas are mandatory",
+        "potentialReentry": "Typed token call can attempt callbacks; state-changing campaign entry points require entered==1 while the call is entered==2",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testRewardFalseMalformedTaxAndExtraDebitRollbackNativeBurn",
+          "testRewardFailureRollsBackSinkTransferAndReservation",
+          "testRewardCallbackCannotReenterEitherAccountingBoundary",
+          "testCloseAndNoticedRecoveryOnlyUncommittedRewardNeverNFT"
+        ],
+        "assumptions": "Production must bind the actual independently reviewed fixed-supply TokenV2 runtime; a malicious token can lie about balances and is not admitted by the canonical fixture profile",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      },
+      {
+        "id": "52cf77345bbec869272cadf4006cbbc1c162567dd0b4058b3f60e82f06c45c49",
+        "version": "V2",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV2._sink721(address,uint256,uint64) (reclaim-v2/src/RMTReclaimCampaignV2.sol#244-251):",
+        "description": "Reentrancy in RMTReclaimCampaignV2._sink721(address,uint256,uint64) (reclaim-v2/src/RMTReclaimCampaignV2.sol#244-251):\n\tExternal call allowing reentrancy:\n\t- IReclaimV2ERC721(asset).safeTransferFrom(msg.sender,permanentSink,id,abi.encode(receiptId)) (reclaim-v2/src/RMTReclaimCampaignV2.sol#247)\n\tBalance read before the call:\n\t- fromBalance = IReclaimV2ERC721(asset).balanceOf(msg.sender) (reclaim-v2/src/RMTReclaimCampaignV2.sol#246)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimV2ERC721(asset).ownerOf(id) != permanentSink || IReclaimV2ERC721(asset).balanceOf(permanentSink) != sinkBalance + 1 || IReclaimV2ERC721(asset).balanceOf(msg.sender) + 1 != fromBalance || afterSupply != beforeSupply (reclaim-v2/src/RMTReclaimCampaignV2.sol#249-250)\n\t\t- stale variable `fromBalance`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Permanent NFT retirement and the funded claimant reward",
+        "stateTransition": "Lifetime eligibility, nonce, immutable receipt and reward debit precede retirement; failed retirement or reward rolls back every effect",
+        "potentialReentry": "NFT call can attempt callbacks; campaign state-changing entry points are guarded, sink callbacks are pure, and admitted NFT runtimes are immutable reviewed policy inputs",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testSink721IsPermanentContractCustodyNotBurn",
+          "testNoReturnOrRepaymentOrNFTWithdrawalSelectorExists",
+          "testRewardFailureRollsBackSinkTransferAndReservation"
+        ],
+        "assumptions": "Only reviewed non-upgradeable, non-seizable, mint-once collection runtimes and the exact immutable contract sink are admitted; unknown issuer powers remain unsupported",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      },
+      {
+        "id": "8bcc0917b31624ba8b96be62357cfc0c1c64f56d769d57abbceca39e051b2ed1",
+        "version": "V2",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV2._sink721(address,uint256,uint64) (reclaim-v2/src/RMTReclaimCampaignV2.sol#244-251):",
+        "description": "Reentrancy in RMTReclaimCampaignV2._sink721(address,uint256,uint64) (reclaim-v2/src/RMTReclaimCampaignV2.sol#244-251):\n\tExternal call allowing reentrancy:\n\t- IReclaimV2ERC721(asset).safeTransferFrom(msg.sender,permanentSink,id,abi.encode(receiptId)) (reclaim-v2/src/RMTReclaimCampaignV2.sol#247)\n\tBalance read before the call:\n\t- sinkBalance = IReclaimV2ERC721(asset).balanceOf(permanentSink) (reclaim-v2/src/RMTReclaimCampaignV2.sol#246)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimV2ERC721(asset).ownerOf(id) != permanentSink || IReclaimV2ERC721(asset).balanceOf(permanentSink) != sinkBalance + 1 || IReclaimV2ERC721(asset).balanceOf(msg.sender) + 1 != fromBalance || afterSupply != beforeSupply (reclaim-v2/src/RMTReclaimCampaignV2.sol#249-250)\n\t\t- stale variable `sinkBalance`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Permanent NFT retirement and the funded claimant reward",
+        "stateTransition": "Lifetime eligibility, nonce, immutable receipt and reward debit precede retirement; failed retirement or reward rolls back every effect",
+        "potentialReentry": "NFT call can attempt callbacks; campaign state-changing entry points are guarded, sink callbacks are pure, and admitted NFT runtimes are immutable reviewed policy inputs",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testSink721IsPermanentContractCustodyNotBurn",
+          "testNoReturnOrRepaymentOrNFTWithdrawalSelectorExists",
+          "testRewardFailureRollsBackSinkTransferAndReservation"
+        ],
+        "assumptions": "Only reviewed non-upgradeable, non-seizable, mint-once collection runtimes and the exact immutable contract sink are admitted; unknown issuer powers remain unsupported",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      },
+      {
+        "id": "a96183466e37e93a577f6d28a0d7aa7105278a34556a6a40998f07e7f6dcce32",
+        "version": "V2",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV2._pull(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#99-103):",
+        "description": "Reentrancy in RMTReclaimCampaignV2._pull(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#99-103):\n\tExternal call allowing reentrancy:\n\t- ! IReclaimV2ERC20(rewardToken).transferFrom(from,address(this),amount) (reclaim-v2/src/RMTReclaimCampaignV2.sol#101)\n\tBalance read before the call:\n\t- b = IReclaimV2ERC20(rewardToken).balanceOf(from) (reclaim-v2/src/RMTReclaimCampaignV2.sol#100)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimV2ERC20(rewardToken).balanceOf(address(this)) != a + amount || IReclaimV2ERC20(rewardToken).balanceOf(from) + amount != b (reclaim-v2/src/RMTReclaimCampaignV2.sol#102)\n\t\t- stale variable `b`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Manual reward deposits",
+        "stateTransition": "funded/reserve effects are recorded before guarded transferFrom; all state rolls back on failure",
+        "potentialReentry": "Typed token call can attempt callbacks; state-changing campaign entry points require entered==1 while the call is entered==2",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testHostileFundingCannotInventReserveAndCallbackCannotReenter"
+        ],
+        "assumptions": "Production must bind the actual independently reviewed fixed-supply TokenV2 runtime; a malicious token can lie about balances and is not admitted by the canonical fixture profile",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      },
+      {
+        "id": "bea68a9af0e85a3c89db730362b6edf9916f02b68e498df99364a0e3f67d2ec2",
+        "version": "V2",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV2._burn721(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#235-243):",
+        "description": "Reentrancy in RMTReclaimCampaignV2._burn721(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#235-243):\n\tExternal call allowing reentrancy:\n\t- IReclaimV2ERC721(asset).burn(id) (reclaim-v2/src/RMTReclaimCampaignV2.sol#238)\n\tBalance read before the call:\n\t- fromBalance = IReclaimV2ERC721(asset).balanceOf(msg.sender) (reclaim-v2/src/RMTReclaimCampaignV2.sol#237)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimV2ERC721(asset).balanceOf(msg.sender) + 1 != fromBalance || afterSupply + 1 != beforeSupply (reclaim-v2/src/RMTReclaimCampaignV2.sol#242)\n\t\t- stale variable `fromBalance`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Permanent NFT retirement and the funded claimant reward",
+        "stateTransition": "Lifetime eligibility, nonce, immutable receipt and reward debit precede retirement; failed retirement or reward rolls back every effect",
+        "potentialReentry": "NFT call can attempt callbacks; campaign state-changing entry points are guarded, sink callbacks are pure, and admitted NFT runtimes are immutable reviewed policy inputs",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testNative721BurnActuallyDestroysIDAndSupplyForever",
+          "testCollectionBurnCallbackCannotReenterAndInterruptedBurnRollsBack",
+          "testRewardFalseMalformedTaxAndExtraDebitRollbackNativeBurn"
+        ],
+        "assumptions": "Only reviewed non-upgradeable, non-seizable, mint-once collection runtimes and the exact immutable contract sink are admitted; unknown issuer powers remain unsupported",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      },
+      {
+        "id": "c2a152d6a4c79d60f57f2bc2e847f28478ef139b1cf78cff5b7bf968cdc14fd7",
+        "version": "V2",
+        "detector": "reentrancy-balance",
+        "impact": "High",
+        "confidence": "Medium",
+        "functionAndSource": "Reentrancy in RMTReclaimCampaignV2._pull(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#99-103):",
+        "description": "Reentrancy in RMTReclaimCampaignV2._pull(address,uint256) (reclaim-v2/src/RMTReclaimCampaignV2.sol#99-103):\n\tExternal call allowing reentrancy:\n\t- ! IReclaimV2ERC20(rewardToken).transferFrom(from,address(this),amount) (reclaim-v2/src/RMTReclaimCampaignV2.sol#101)\n\tBalance read before the call:\n\t- a = IReclaimV2ERC20(rewardToken).balanceOf(address(this)) (reclaim-v2/src/RMTReclaimCampaignV2.sol#100)\n\tPossible stale balance used after the call in a condition:\n\t- IReclaimV2ERC20(rewardToken).balanceOf(address(this)) != a + amount || IReclaimV2ERC20(rewardToken).balanceOf(from) + amount != b (reclaim-v2/src/RMTReclaimCampaignV2.sol#102)\n\t\t- stale variable `a`\n",
+        "classification": "UNRESOLVED_STATIC_ANALYSIS_OBSERVATION_NO_CONCRETE_EXPLOIT_ESTABLISHED_IN_EXECUTED_PROFILE",
+        "cleared": false,
+        "protectedAssets": "Manual reward deposits",
+        "stateTransition": "funded/reserve effects are recorded before guarded transferFrom; all state rolls back on failure",
+        "potentialReentry": "Typed token call can attempt callbacks; state-changing campaign entry points require entered==1 while the call is entered==2",
+        "invariant": "Actual standard-token balance deltas, permanent retirement/supply/ownership evidence and atomic rollback; invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking",
+        "tests": [
+          "testHostileFundingCannotInventReserveAndCallbackCannotReenter"
+        ],
+        "assumptions": "Production must bind the actual independently reviewed fixed-supply TokenV2 runtime; a malicious token can lie about balances and is not admitted by the canonical fixture profile",
+        "uncertainty": "Passing finite tests is not a proof for every external token/collection or future chain state. Strict analysis remains failed and independent disposition is not claimed."
+      }
+    ],
+    "allOtherFindingsRetained": true
+  },
+  "changes": [
+    {
+      "kind": "Narrower standard reward-token interaction",
+      "effect": "Typed transfer/transferFrom require true, rejecting previously permissive empty return data; exact two-sided balance checks and guard stay intact",
+      "clearance": "None: four token balance warnings remain"
+    },
+    {
+      "kind": "Separate native and sink 721 settlement functions",
+      "effect": "Removes invalid cross-branch burn-to-sinkBalance dataflow and makes the two retirement mechanisms independently reviewable; every original balance/supply/ownership check retained",
+      "clearance": "Not zero: final seven high observations remain and total findings increased from initial44 to final45"
+    }
+  ],
+  "coverageLimits": [
+    "Every production root and reachable import is parsed, with all101detectors. Lack of findings for ERC1155 array-held balance/supply baselines is not proof of complete precision.",
+    "Assembly CREATE2/data-part code retrieval requires source and bytecode identity review in addition to static analysis.",
+    "NFT issuer/upgrade/remint rights cannot be universally inferred from ERC165 or runtime code hash alone; no real collection is admitted.",
+    "Historical core V1/V2 funding-parser gaps,22core/dependencyhighs and6TreasuryV1highs remain separately unresolved."
+  ],
+  "sizes": {
+    "oldV1FactoryRuntime": 24009,
+    "oldV1RuntimeHeadroom": 567,
+    "oldV1EncodedInitcode": 47050,
+    "finalTemplates": {
+      "RMTReclaimCampaignDeployerV2": {
+        "file": "reclaim-v2/src/RMTReclaimCampaignDeployerV2.sol",
+        "creationBytes": 2900,
+        "runtimeBytes": 2201,
+        "creationSha256": "f3b50cd264140a07ba528bab736e8bf7e9f489747524f996ff8000f244071097",
+        "runtimeSha256": "516f04c7df944ec7eb1fc1f2cd6bf9d20dbb58c8c55a698954d96f71779eb588"
+      },
+      "RMTReclaimCampaignV2": {
+        "file": "reclaim-v2/src/RMTReclaimCampaignV2.sol",
+        "creationBytes": 23676,
+        "runtimeBytes": 22077,
+        "creationSha256": "ef0b1d2b388d1f31d635eb6e17e322b28161dcc6ea92f66d662edc714c59aae0",
+        "runtimeSha256": "1d64361f363acbadf37d55e3e251f93ec8d78f3ba2f8753abecc0f0064aa54d1"
+      },
+      "RMTReclaimCodePartV2": {
+        "file": "reclaim-v2/src/RMTReclaimCodePartV2.sol",
+        "creationBytes": 301,
+        "runtimeBytes": 57,
+        "creationSha256": "f9d4a5c5ad990eb0bc31e8f349f4c4354670ae0eec43a5b23abbf0fd91edd60e",
+        "runtimeSha256": "c80e25be674c9854c3e9b2a5f0c806cad8a5067ecf3192fb3d2e7a62395d3a51"
+      },
+      "RMTReclaimFactoryV2": {
+        "file": "reclaim-v2/src/RMTReclaimFactoryV2.sol",
+        "creationBytes": 31898,
+        "runtimeBytes": 2132,
+        "creationSha256": "e01e61c4c2bf984f729bef047827d3954e4da81f6f50ca628580148f527c1c68",
+        "runtimeSha256": "7f857f65023dc2b72a9086c59d1d9de4c38fd5ef4fbdee272d597b5013545061"
+      },
+      "RMTReclaimSinkV2": {
+        "file": "reclaim-v2/src/RMTReclaimSinkV2.sol",
+        "creationBytes": 731,
+        "runtimeBytes": 705,
+        "creationSha256": "ea9476f27c89c1f40441b6e4494716c9ddb8673c998443e86425740820efb4a2",
+        "runtimeSha256": "7d454f3e1055e98d332eefe308db8ae8ab4b7b7ae03b0e39af96b65d665a6d24"
+      },
+      "ReclaimV2Eligibility": {
+        "file": "reclaim-v2/src/ReclaimV2Interfaces.sol",
+        "creationBytes": 85,
+        "runtimeBytes": 57,
+        "creationSha256": "a06e34011e5bfa67da7e1d2822a71cdf1a1d8f9758ec406e8ca15c97cb1718de",
+        "runtimeSha256": "a5b183c1c3a4fbe2108d686034f5b7e168ef34629c3874806707379eb3bbfb71"
+      }
+    },
+    "fourProfileFactoryConstructorBytes": 640,
+    "encodedFactoryInitcodeBytes": 32538,
+    "encodedCampaignInitcodeBytes": 23932,
+    "actualCodePartRuntimeBytes": [
+      11839,
+      11839
+    ],
+    "codePartNote": "The compiler-reported57-byte unreachable deployed template is NOT the actual data runtime. Actual parts are STOP plus each exact half of the23676-byte campaign creation code, reconstructed and hash-checked."
+  },
+  "tests": {
+    "foundry": 37,
+    "failed": 0,
+    "skipped": 0,
+    "fuzzTests": 2,
+    "fuzzRunsPerTest": 512,
+    "invariantRuns": 128,
+    "invariantDepth": 32,
+    "invariantCalls": 4096,
+    "log": "foundry-final.txt"
+  },
+  "preservedExistingSolidity": [
+    {
+      "file": "docs/evidence/rmt-task040/foundry/RMTLaunchTask040Review.t.sol",
+      "sha256": "3d4da11aa50859a60675546d64d56bd67284767c908f7281f216d7d5f01d0a64"
+    },
+    {
+      "file": "docs/evidence/rmt-task041/RejectingTreasury.sol",
+      "sha256": "3ff4af02679fff778e5f1c4f6fdcec912fa12bd19b68b321a8d9cb9f52373a26"
+    },
+    {
+      "file": "docs/evidence/rmt-task042/foundry/RMTLaunchTreasuryReview.t.sol",
+      "sha256": "9a8a7da35094731ca305a587af0fed3848c192b947351a771269b2290c69ef18"
+    },
+    {
+      "file": "packages/contracts/project-treasury/src/RMTProjectTreasuryFactoryV1.sol",
+      "sha256": "ae4e43069cf61ae3887bb6db1f11eeb479705f1892adb29be1186dba180d7e7b"
+    },
+    {
+      "file": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+      "sha256": "5d4c696cf8cc1caa98d696695164319b6da12fcb5003ad1edde84039d091c888"
+    },
+    {
+      "file": "packages/contracts/project-treasury/src/TreasuryInterfaces.sol",
+      "sha256": "3aa24a3b5b55550f9cd4bfdfa49ebe59c4aec00889069a7b0cf4339191a59f3d"
+    },
+    {
+      "file": "packages/contracts/project-treasury/test/RMTProjectTreasuryInvariant.t.sol",
+      "sha256": "50b6a819fd35cff6f4d8e8b2878464cff5bf176506e5dd0e91f6500e6671823c"
+    },
+    {
+      "file": "packages/contracts/project-treasury/test/RMTProjectTreasuryV1.t.sol",
+      "sha256": "2096395b1bc20eccede4dc1d3e3b4b15d5be5d2c2e42a48771b25c884fe65755"
+    },
+    {
+      "file": "packages/contracts/project-treasury/test/TreasuryMocks.sol",
+      "sha256": "f0bbabe75d978ffbb6b5854d3229eef65d7ce7d305513293be004e0827588e2d"
+    },
+    {
+      "file": "packages/contracts/reclaim/src/RMTReclaimCampaignV1.sol",
+      "sha256": "c512460a491fc6a5e003bcdb5519994bf4b4b81aa154c08f3aad08ec63863844"
+    },
+    {
+      "file": "packages/contracts/reclaim/src/RMTReclaimFactoryV1.sol",
+      "sha256": "48b97d7c8cd6811465d5f3e7f3ee610a6d158e09f46949fe40cfdfe56bf9fbdb"
+    },
+    {
+      "file": "packages/contracts/reclaim/src/ReclaimInterfaces.sol",
+      "sha256": "7118e2c8ce61d185def272b47ac2f330d1dc92240f2969fe19662800bb10b1f0"
+    },
+    {
+      "file": "packages/contracts/reclaim/test/RMTReclaimHostile.t.sol",
+      "sha256": "a7d4927524530a1eec7294451066510db96dd00a2789bdcf2b95cc5e3ac2d548"
+    },
+    {
+      "file": "packages/contracts/reclaim/test/RMTReclaimV1.t.sol",
+      "sha256": "f47473d07a6b049789fa490da7d11dee47b8b0f08dc7357f8335c4cbbd9c69fc"
+    },
+    {
+      "file": "packages/contracts/reclaim/test/ReclaimAssets.sol",
+      "sha256": "48369f8b95f5e8e90e432cbcb6c64c4ebc3b3996d9c3a57d4137435251c86a03"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchBondingCurveV1.sol",
+      "sha256": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchBondingCurveV2.sol",
+      "sha256": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchBondingCurveV3.sol",
+      "sha256": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveDeploymentV2.sol",
+      "sha256": "31e3173f1999f8d68e4bbc6cd55196d618d02de7d9a2da37c53d76dfc7ccfb93"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveDirectoryV1.sol",
+      "sha256": "cc8e4b76a3783b5422a309d0ed83a3346985e363e68fa2145b37cf0fba1fe3e0"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+      "sha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "sha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "sha256": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+      "sha256": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveRevenueLedgerV1.sol",
+      "sha256": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "sha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchProjectRegistryV1.sol",
+      "sha256": "48fa079c05c0cb840dc0c7027d407e54b1472ff0924c30d8e4dc4780a490e717"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchProjectRegistryV2.sol",
+      "sha256": "67f22eed981c6627ce6045001dbcfd23eff2e7d8b178c540b9f9979b7acee6ab"
+    },
+    {
+      "file": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+      "sha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c"
+    },
+    {
+      "file": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "sha256": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e"
+    },
+    {
+      "file": "packages/contracts/src/RMTV4CurveInitializationGuardV1.sol",
+      "sha256": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f"
+    },
+    {
+      "file": "packages/contracts/src/interfaces/IRMTLaunchCurveExecution.sol",
+      "sha256": "9b5793ca3cfbffc912e53f6e26d6744aa49a1dfce913791e867e466a5bfa451c"
+    },
+    {
+      "file": "packages/contracts/src/interfaces/IRMTV4CurveGraduationV1.sol",
+      "sha256": "d3fe566a9b14f907c5289860d96f26b58649027f0ea6d1718862c377839ebefe"
+    },
+    {
+      "file": "packages/contracts/test/RMTDependencyArithmeticReview.t.sol",
+      "sha256": "030491f216ffeadde1e4c60715095fc5cb7dda79e25cbbd9923f462767a799ba"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchAdjacentMigrationProof.t.sol",
+      "sha256": "72459d50784b0e7bc2631e68a23d68b7597b45ad2bc5e0b02e840669ed730853"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchBondingCurveV1.t.sol",
+      "sha256": "486e7fc0018a79261ad60b0d270adf3ea957039373df5cd6ebd658026f98f487"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCreatorEarnings.t.sol",
+      "sha256": "b7c81e81b008ece8cab270d1cefd815745845933de46c4c50d0e80ba9f502401"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveAccountingInvariant.t.sol",
+      "sha256": "367ff93c9cc30b8349098696522e6f5c914c401d3fb9bdcef7d7d90720005aa0"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveCreationFeeV1.t.sol",
+      "sha256": "db42861f5a55e8be52786720db3690e16e0e6d9a12585eb83cbc79a6e1e983c0"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveDirectoryV1.t.sol",
+      "sha256": "4606cf9e959c176af11fe3869ff0b63971e4b1056431300e049276b5231b9cef"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveDirectoryV2.t.sol",
+      "sha256": "3e08403cdd4801d32210198899c3e5c1249f20386c6f3b456db710f493838236"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchCurveSymbolic.t.sol",
+      "sha256": "2c84db5a0dc7bba267d2ea39bf4f01b347006e35c7bbb680a035fe216c820764"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchMigrationReadiness.t.sol",
+      "sha256": "7b811ac656f393d80b36cc639fbc1798d194ca7089697da5804a50efecd91901"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchProjectRegistryV1.t.sol",
+      "sha256": "f1ba0190be9ac82a0b128c302e543223cfde7ab1605a7febae22f1b4fcd0a6af"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchProjectRegistryV2.t.sol",
+      "sha256": "9edb5b27502096dd78a17de26059debabf830197fbd6b48e0b8c6881bd30410d"
+    },
+    {
+      "file": "packages/contracts/test/RMTLaunchProjectRegistryV3.t.sol",
+      "sha256": "91276bbb300a91625291af6a35d5a609d6dde1a8b1b04559133926122bb0b1e8"
+    },
+    {
+      "file": "packages/contracts/test/RMTV4CurveGraduationV1.t.sol",
+      "sha256": "efcbb6cbfa479f2c2c46d47b9b7c938e6dd64c20460a539acf44069c7fd6f832"
+    },
+    {
+      "file": "packages/contracts/test/RMTV4SharedPoolSettlement.t.sol",
+      "sha256": "11393f4d11e2f024675ab35b3d33dc7cd6440eb24b7185311f3fe1f8d0e583ff"
+    },
+    {
+      "file": "packages/contracts/treasury-purchase-v2/src/PurchaseEvidenceV2.sol",
+      "sha256": "654423ffc7489285a6d238403af0431357195d67ee561f6d6aa89f928e9b8ae4"
+    },
+    {
+      "file": "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol",
+      "sha256": "de7b6de01b74909152e1096effd3be9be6a48ca115f70e9e59b1102a4ac8791c"
+    },
+    {
+      "file": "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol",
+      "sha256": "9f3394afa0779e752fde073ef8324e5220934bd80b11f8cbb884af589eb788f8"
+    },
+    {
+      "file": "packages/contracts/treasury-purchase-v2/test/PurchaseBoundaryV2.t.sol",
+      "sha256": "4fb1010326364d69b35a698b51eb110bf3f2d8d91acaf8ca8c9b8d1c24ae8c01"
+    },
+    {
+      "file": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol",
+      "sha256": "68dc5a973c6d4df34d21eceb8e0ac90630ab5e8c8eeeb1ec6c8dc4ac4c9683d6"
+    }
+  ]
+}

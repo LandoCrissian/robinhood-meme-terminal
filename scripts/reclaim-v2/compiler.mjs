@@ -98,7 +98,11 @@ export function compileReclaimV2(options) {
     templates[name] = { file, creationBytes, runtimeBytes,
       creationSha256: sha256(Buffer.from(bytecode.slice(2), "hex")), runtimeSha256: sha256(Buffer.from(runtime.slice(2), "hex")) };
   }
-  return { artifacts, immutableNames, manifest: { ...manifest, templates }, input };
+  return {
+    artifacts, immutableNames,
+    sourceAsts: Object.fromEntries(Object.entries(output.sources).map(([file, unit]) => [file, unit.ast])),
+    manifest: { ...manifest, templates }, input,
+  };
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
