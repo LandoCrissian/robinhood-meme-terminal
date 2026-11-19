@@ -4,6 +4,10 @@ on:
   pull_request:
     paths:
       - "packages/contracts/reclaim-v2/**"
+      # Task081 touches shared wallet recovery; retain fresh frozen-trial regressions.
+      - "packages/contracts/nft-acquisition/**"
+      - "scripts/nft-acquisition/**"
+      - ".github/workflows/nft-acquisition.yml"
       - "packages/contracts/lib/**"
       - "scripts/reclaim-v2/**"
       - "docs/evidence/rmt-task043/analyze-rotation.py"

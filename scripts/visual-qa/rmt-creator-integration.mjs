@@ -30,6 +30,9 @@ import { testReclaimJourney } from "../reclaim-v2/local-integration.mjs";
 import { fixtureCallRevert } from "../reclaim-v2/read-proxy-errors.mjs";
 import { postgresRuntimeEnvironment } from "../reclaim-v2/postgres-runtime-env.mjs";
 import { observeOriginalReceipt } from "./receipt-observation.mjs";
+import { compileNftAcquisition, compileNftAcquisitionFixtures } from "../nft-acquisition/compiler.mjs";
+import { deployNftAcquisitionFixture } from "../nft-acquisition/deploy-fixture.mjs";
+import { testNftAcquisitionJourney } from "../nft-acquisition/local-integration.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
 const require = createRequire(new URL("../../apps/indexer/package.json", import.meta.url));
@@ -46,10 +49,11 @@ const { values: args } = parseArgs({ options: {
   "treasury-only": { type: "boolean", default: false },
   "treasury-v2": { type: "boolean", default: false },
   "reclaim-only": { type: "boolean", default: false },
+  "nft-acquisition-only": { type: "boolean", default: false },
 } });
 for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
 assert.ok(["chromium", "webkit"].includes(args.browser), "Use --browser chromium or --browser webkit");
-assert.ok([args["successor-only"], args["profiles-only"], args["treasury-only"],args["reclaim-only"]].filter(Boolean).length <= 1, "Select one focused acceptance scope");
+assert.ok([args["successor-only"], args["profiles-only"], args["treasury-only"],args["reclaim-only"],args["nft-acquisition-only"]].filter(Boolean).length <= 1, "Select one focused acceptance scope");
 assert.ok(!args["treasury-v2"] || args["treasury-only"], "V2 prototype acceptance requires the actual treasury journey");
 const out = resolve(args.output);
 const anvil = resolve(args.anvil);
@@ -71,6 +75,8 @@ const treasuryCompilation = args["treasury-only"] ? compileProjectTreasury({ sol
 const purchaseV2Compilation = args["treasury-v2"] ? compileTreasuryPurchaseV2({ solc }) : undefined;
 const reclaimCompilation=args["reclaim-only"]?compileReclaim({solc}):undefined;
 const reclaimAssets=args["reclaim-only"]?compileReclaimFixtureAssets({solc}):undefined;
+const nftCompilation=args["nft-acquisition-only"]?compileNftAcquisition({solc}):undefined;
+const nftAssets=args["nft-acquisition-only"]?compileNftAcquisitionFixtures({solc}):undefined;
 const anchor = JSON.parse(execFileSync("git", ["show",
   historical + ":packages/contracts/test/fixtures/rmt-v4-deployment-identities.json",
 ], { cwd: repository, encoding: "utf8" })).baseSepolia;
@@ -279,7 +285,7 @@ const rpcProxy = loopback(proxy.address().port) + "/";
 // outage. Both proxies are read-only, loopback-only facades of the same synthetic
 // chain; neither is claimed as an independent production provider. The worker
 // must prove its own rows rather than receiving fabricated indexed evidence.
-const claimProofProxy = args["profiles-only"] || args["treasury-only"] || args["reclaim-only"] ? createServer(proxyHandler(true)) : undefined;
+const claimProofProxy = args["profiles-only"] || args["treasury-only"] || args["reclaim-only"] || args["nft-acquisition-only"] ? createServer(proxyHandler(true)) : undefined;
 if (claimProofProxy) await new Promise((done, fail) => { claimProofProxy.once("error", fail); claimProofProxy.listen(0, "127.0.0.1", done); });
 const claimRpcProxy = claimProofProxy ? loopback(claimProofProxy.address().port) + "/" : rpcProxy;
 
@@ -307,7 +313,7 @@ try {
     await rpc("anvil_setBalance", [address, toHex(20n * 10n ** 18n)]);
     await rpc("anvil_impersonateAccount", [address]);
   }
-  let deployed, treasuryDeployment,reclaimDeployment;
+  let deployed, treasuryDeployment,reclaimDeployment,nftDeployment;
   try {
     const client = await localFixtureClient(rpcUrl, 31337);
     const { poolManager, positionManager, permit2: allowanceTransfer, universalRouter212, quoter, stateView } = anchor;
@@ -332,6 +338,8 @@ try {
       authorizedControllers:[{address:creator.address,runtimeHash:keccak256("0x")},
         {address:reclaimDeployment.safe,runtimeHash:keccak256(safeCode)}]},null,2)+"\n");
   }
+  if(nftCompilation)nftDeployment=await deployNftAcquisitionFixture({client:await localFixtureClient(rpcUrl,31337),rpc,
+    compilation:nftCompilation,assetCompilation:nftAssets,core:deployed,coreArtifacts:artifacts,creator,out});
   assert.equal(deployed.chainId, 31337);
   assert.equal(deployed.creationFeeWei, feeWei.toString());
   assert.equal(deployed.terms.backingWei, backingWei.toString());
@@ -386,6 +394,7 @@ try {
       RMT_PROJECT_TREASURY_DEPLOYMENT: join(out, "project-treasury-deployment.json") }),
     ...(args["reclaim-only"]&&{RMT_RECLAIM_FIXTURE:"local-reviewed-reclaim-v2-permanent",RMT_RECLAIM_DEPLOYMENT:join(out,"reclaim-deployment.json"),
       RMT_RECLAIM_ADMIN_POLICY:join(out,"reclaim-administration-policy.json")}),
+    ...(nftDeployment&&{RMT_NFT_ACQUISITION_FIXTURE:"local-reviewed-nft-acquisition-v1",RMT_NFT_ACQUISITION_DEPLOYMENT:join(out,"nft-acquisition-deployment.json")}),
     ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
       RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_TEST_DELEGATION: "synthetic-7702-v1",
       RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
@@ -437,7 +446,16 @@ try {
   const snapshot = await rpc("evm_snapshot");
   const beforeSnapshot = await rpc("eth_getBlockByNumber", ["latest", false]);
   const countBefore = BigInt(await rpc("eth_getTransactionCount", [creator.address, "latest"]));
-  if(args["reclaim-only"]){
+  if(args["nft-acquisition-only"]){
+    let worker=startWorker("worker-nft-acquisition");await rpc("anvil_mine",["0x3"]);await workerReady(worker);
+    browser=await({chromium,webkit})[args.browser].launch();
+    await testNftAcquisitionJourney({browserEngine:browser,rpcUrl,rpc,compilation:nftCompilation,deployment:nftDeployment,creatorAccount:creator,
+      sourceIdentity:{commit:candidateCommit,browser:args.browser,coreCompiler:manifest,anchor:{block:anchor.block,blockHash:anchor.blockHash},mode:"isolated-31337-nft-acquisition"},
+      site,workerOrigin,indexReadKey,out,pg,waitFor,mine:()=>rpc("anvil_mine",["0x3"]),ready:()=>workerReady(worker),restart:async()=>{
+        await stop(web);await stop(worker);web=startWeb("website-nft-acquisition-restart");worker=startWorker("worker-nft-acquisition-restart");await webReady(web);await workerReady(worker);
+      },hideReceipt:hash=>{hideReceipt=hash??undefined;},hideNativeProof:hidden=>{hideClaimTrace=hidden;}});
+    console.log("Same-app controlled NFT collection acquisition and canonical recovery passed on synthetic31337. No production execution occurred.");
+  }else if(args["reclaim-only"]){
     let worker=startWorker("worker-reclaim");await rpc("anvil_mine",["0x3"]);await workerReady(worker);
     browser=await({chromium,webkit})[args.browser].launch();
     await testReclaimJourney({browserEngine:browser,rpcUrl,rpc,reclaimCompilation,reclaimDeployment,creatorAccount:creator,

@@ -21,6 +21,8 @@ import { configuredFixtureTreasuryModule, verifyFixtureTreasuryModule, projectTr
   initializeProjectTreasuryFixtureStore, readProjectTreasuryFixtureRange, commitProjectTreasuryFixtureRange, readProjectTreasuryFixture } from "./project-treasury-fixture-store.js";
 import { configuredReclaimFixtureModule, verifyReclaimFixtureModule, readReclaimFixtureRange } from "./reclaim-fixture-evidence.js";
 import { localReclaimSourceDiagnostic } from "./reclaim-fixture-diagnostics.js";
+import { configuredNftAcquisitionModule, verifyNftAcquisitionModule, readNftAcquisitionRange } from "./nft-acquisition-fixture-evidence.js";
+import { nftAcquisitionTables, initializeNftAcquisitionStore, commitNftAcquisitionRange, readNftAcquisitionStore } from "./nft-acquisition-fixture-store.js";
 import { reclaimFixtureTables, initializeReclaimFixtureStore, commitReclaimFixtureRange, readReclaimFixture } from "./reclaim-fixture-store.js";
 import { indexFixtureSuccessorGraduation, verifyFixtureGraduationCoverage } from "./curve-fixture-successor-graduation.js";
 import { fixtureFeeActivityEventAbi, fixtureFeeActivityTopics, fixtureLpFeeActivity, indexFixtureFeeActivity,
@@ -308,6 +310,8 @@ async function main() {
   if (treasuryModule) await verifyFixtureTreasuryModule(rpc, treasuryModule);
   const reclaimModule = configuredReclaimFixtureModule(process.env, binding);
   if (reclaimModule) await verifyReclaimFixtureModule(rpc, reclaimModule);
+  const nftModule = configuredNftAcquisitionModule(process.env, binding);
+  if (nftModule) await verifyNftAcquisitionModule(rpc, nftModule);
   const admitTreasury = treasuryModule ? projectTreasuryAdmission(rpc, treasuryModule) : undefined;
   const reserveRecipient = await rpc.readContract({ address: binding.factory,
     abi: parseAbi(["function futureReserveRecipient() view returns (address)"]), functionName: "futureReserveRecipient",
@@ -342,8 +346,10 @@ async function main() {
     const isTreasury = url.pathname === "/project-treasuries" && !!treasuryModule;
     const isReclaim = (url.pathname === "/reclaim-campaigns" || url.pathname === "/reclaim-activity") && !!reclaimModule;
     const isReclaimActivity = isReclaim && url.pathname === "/reclaim-activity";
+    const isNftAcquisition = !!nftModule && (url.pathname === "/nft-acquisitions" || url.pathname === "/nft-acquisition-activity");
+    const isNftActivity = isNftAcquisition && url.pathname === "/nft-acquisition-activity";
     const token = path.startsWith("/curve-launches/") ? path.slice("/curve-launches/".length).toLowerCase() : undefined;
-    if (path !== "/ready" && path !== "/curve-launches" && !isEarnings && !isActivity && !isTreasury && !isReclaim && !(token && isAddress(token, { strict: false }))) {
+    if (path !== "/ready" && path !== "/curve-launches" && !isEarnings && !isActivity && !isTreasury && !isReclaim && !isNftAcquisition && !(token && isAddress(token, { strict: false }))) {
       return send(404, unavailable);
     }
     if (req.method !== "GET" && req.method !== "HEAD") return send(405, unavailable);
@@ -362,6 +368,10 @@ async function main() {
       const treasuryAddress = isTreasury ? url.searchParams.get("address") : undefined;
       const reclaimCampaign = isReclaim && !isReclaimActivity ? url.searchParams.get("campaign") : undefined;
       const reclaimTransaction = isReclaimActivity ? url.searchParams.get("transaction") : undefined;
+      const nftTransaction = isNftActivity ? url.searchParams.get("transaction") : undefined;
+      const nftVault = isNftAcquisition && !isNftActivity ? url.searchParams.get("vault") : undefined;
+      if (isNftAcquisition && (isNftActivity ? url.searchParams.size !== 1 || !hexHash(nftTransaction)
+        : url.searchParams.size !== 1 || !nftVault || !isAddress(nftVault, {strict:false}))) return send(400,unavailable);
       if (isReclaim && (isReclaimActivity ? url.searchParams.size !== 1 || !hexHash(reclaimTransaction)
         : url.searchParams.size > 1 || url.searchParams.size === 1 && (!reclaimCampaign || !isAddress(reclaimCampaign, {strict:false})))) return send(400,unavailable);
       if (isTreasury && (url.searchParams.size !== 1 || !treasuryAddress || !isAddress(treasuryAddress, { strict: false }))) return send(400, unavailable);
@@ -376,7 +386,9 @@ async function main() {
       const treasuries = isTreasury && treasuryModule && treasuryAddress ? await readProjectTreasuryFixture(reader, scope, treasuryModule, checkpoint, treasuryAddress as `0x${string}`) : undefined;
       const reclaim = isReclaim && reclaimModule ? await readReclaimFixture(reader,scope,reclaimModule,checkpoint,
         reclaimTransaction ? {transaction:reclaimTransaction as Hash} : reclaimCampaign ? {campaign:reclaimCampaign as `0x${string}`} : {}) : undefined;
-      const launches = path === "/ready" || isEarnings || isActivity || isTreasury || isReclaim ? [] : await readCurveFixtureRows(reader, scope, checkpoint, token);
+      const nft = isNftAcquisition && nftModule ? await readNftAcquisitionStore(reader,scope,nftModule,checkpoint,
+        nftTransaction ? {transaction:nftTransaction as Hash} : {vault:nftVault as `0x${string}`}) : undefined;
+      const launches = path === "/ready" || isEarnings || isActivity || isTreasury || isReclaim || isNftAcquisition ? [] : await readCurveFixtureRows(reader, scope, checkpoint, token);
       const height = BigInt(checkpoint.blockNumber);
       const [canonical, head] = await Promise.all([
         rpc.getBlock({ blockNumber: height, includeTransactions: false }), rpc.getBlockNumber({ cacheTime: 0 }),
@@ -385,6 +397,7 @@ async function main() {
       if (!same(block.blockHash, checkpoint.blockHash) || head - BigInt(fixtureConfirmations) !== height
           || !verified || !same(verified.blockHash, checkpoint.blockHash) || storeFailed) return send(503, unavailable);
       if (treasuries) return send(200, treasuries);
+      if (nft) return Buffer.byteLength(JSON.stringify(nft),"utf8") <= 262144 ? send(200,nft) : send(503,unavailable);
       if (reclaim) return Buffer.byteLength(JSON.stringify(reclaim),"utf8") <= 262144 ? send(200,reclaim) : send(503,unavailable);
       if (activities) return send(200, { schemaVersion: 1, profile: creatorEarningsProfile, status: "ready", chainId: 31337,
         transactionHash: activityHash, activities, checkpoint: { ...checkpoint, confirmations: fixtureConfirmations,
@@ -427,9 +440,10 @@ async function main() {
   try {
     await writer.connect();
     await initializeCurveFixtureStore(writer, config.databaseName, binding, graduation,
-      [...(treasuryModule ? projectTreasuryFixtureTables : []),...(reclaimModule ? reclaimFixtureTables : [])]);
+      [...(treasuryModule ? projectTreasuryFixtureTables : []),...(reclaimModule ? reclaimFixtureTables : []),...(nftModule ? nftAcquisitionTables : [])]);
     if (treasuryModule) await initializeProjectTreasuryFixtureStore(writer, scope, treasuryModule);
     if (reclaimModule) await initializeReclaimFixtureStore(writer,scope,reclaimModule);
+    if (nftModule) await initializeNftAcquisitionStore(writer,scope,nftModule);
     await new Promise<void>((resolve, reject) => {
       server.once("error", reject);
       server.listen(config.port, "127.0.0.1", resolve);
@@ -469,9 +483,11 @@ async function main() {
           const range = await readSegment(rpc, binding, graduation, cursors, next, end, latest, nextUnsupported, admitTreasury);
           const treasuryRange = treasuryModule ? await readProjectTreasuryFixtureRange(writer, scope, treasuryModule, rpc, range.blocks) : null;
           const reclaimRange = reclaimModule ? await readReclaimFixtureRange(writer,scope,reclaimModule,rpc,range.blocks) : null;
-          await commitCurveFixtureRange(writer, scope, range, treasuryModule || reclaimModule ? async db => {
+          const nftRange = nftModule ? await readNftAcquisitionRange(rpc,nftModule,range.blocks) : null;
+          await commitCurveFixtureRange(writer, scope, range, treasuryModule || reclaimModule || nftModule ? async db => {
             if (treasuryModule && treasuryRange) await commitProjectTreasuryFixtureRange(db,scope,treasuryModule,treasuryRange);
             if (reclaimModule && reclaimRange) await commitReclaimFixtureRange(db,scope,reclaimModule,reclaimRange);
+            if (nftModule && nftRange) await commitNftAcquisitionRange(db,scope,nftModule,nftRange);
           } : undefined);
           unsupportedSuccessors = nextUnsupported;
           latest = range.blocks.at(-1);
@@ -483,8 +499,12 @@ async function main() {
           const stillCanonical = blockEvidence(await rpc.getBlock({ blockNumber: BigInt(latest.blockNumber) }), BigInt(latest.blockNumber));
           if (!same(stillCanonical.blockHash, latest.blockHash)) throw new Error("Fixture checkpoint changed during state recovery");
           const reclaimRange = reclaimModule ? await readReclaimFixtureRange(writer,scope,reclaimModule,rpc,[latest]) : null;
+          const nftRange = nftModule ? await readNftAcquisitionRange(rpc,nftModule,[latest]) : null;
           await commitCurveFixtureRange(writer, scope, { blocks: [], launches: [], trades: [], graduations: [], postEvents: [], states },
-            reclaimModule && reclaimRange ? db => commitReclaimFixtureRange(db,scope,reclaimModule,reclaimRange) : undefined);
+            reclaimModule || nftModule ? async db => {
+              if (reclaimModule && reclaimRange) await commitReclaimFixtureRange(db,scope,reclaimModule,reclaimRange);
+              if (nftModule && nftRange) await commitNftAcquisitionRange(db,scope,nftModule,nftRange);
+            } : undefined);
           unsupportedSuccessors = nextUnsupported;
         }
         verified = latest && BigInt(latest.blockNumber) === safe && !stop.signal.aborted ? latest : null;
