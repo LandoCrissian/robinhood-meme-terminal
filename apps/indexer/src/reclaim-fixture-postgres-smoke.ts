@@ -23,7 +23,7 @@ export async function testReclaimFixturePostgres(writer:Client,competing:Client,
   const birth:ReclaimFixtureBirth={campaign:a(978010),creator:a(978011),controller:a(978011),intentId:h(978012),
     rewardToken:module.rewardToken,rewardTokenRuntimeHash:module.rewardTokenRuntimeHash,runtimeHash:h(978013),initialRewardPerUnit:"5",walletCap:4,
     deployment:{...point,transactionHash:h(978014),logIndex:0}};
-  const event:ReclaimFixtureEvent={...point,campaign:birth.campaign,transactionHash:h(978015),logIndex:1,event:"TradeInAccepted",
+  const event:ReclaimFixtureEvent={...point,campaign:birth.campaign,transactionHash:h(978015),logIndex:1,eventName:"TradeInAccepted",
     args:{receiptId:"1",claimant:a(978020),collection:a(978021),standard:1,ids:["42"],quantities:["1"],reward:"5",policyEpoch:"3",claimantNonce:"0"},
     settlement:{kind:"trade-in",rewardToken:module.rewardToken,from:birth.campaign,to:a(978020),amount:"5",receiptId:"1",claimant:a(978020),
       collection:a(978021),standard:1,tokenIds:["42"],quantities:["1"],evidence:"exact-receipt-transfer-and-single-transaction-block-deltas"}};

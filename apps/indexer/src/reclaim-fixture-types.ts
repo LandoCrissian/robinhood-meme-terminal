@@ -20,7 +20,7 @@ export type ReclaimFixtureBirth = {
   deployment: BlockEvidence & { transactionHash: Hash; logIndex: number };
 };
 export type ReclaimFixtureEvent = BlockEvidence & {
-  campaign: Address; transactionHash: Hash; logIndex: number; event: string;
+  campaign: Address; transactionHash: Hash; logIndex: number; eventName: string;
   args: Record<string, unknown>; settlement?: {
     kind: "fund" | "recover" | "trade-in" | "return";
     rewardToken: Address; from: Address; to: Address; amount: string;

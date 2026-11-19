@@ -204,7 +204,7 @@ export async function readReclaimFixtureRange(db:Pick<Client,"query">,scope:Recl
       requireReclaimEvidence(addr(args.controller)&&typeof args.amount==="bigint");const fund=name==="Funded",fromAddress=fund?args.controller:log.address,toAddress=fund?log.address:args.controller;
       await exactRewardTransfer(rpc,m,receipt,header,fromAddress,toAddress,args.amount);settlement={kind:fund?"fund":"recover",rewardToken:m.rewardToken,from:fromAddress,to:toAddress,amount:args.amount.toString(),evidence:"exact-receipt-transfer-and-single-transaction-block-deltas"};
     }
-    events.push({...at,campaign:log.address,transactionHash:log.transactionHash,logIndex:log.logIndex,event:name,args:JSON.parse(stringify(args))as Record<string,unknown>,...(settlement&&{settlement})});
+    events.push({...at,campaign:log.address,transactionHash:log.transactionHash,logIndex:log.logIndex,eventName:name,args:JSON.parse(stringify(args))as Record<string,unknown>,...(settlement&&{settlement})});
   }
   const states=[];for(const birth of all.values())states.push(await readReclaimFixtureSnapshot(rpc,m,birth,blocks.at(-1)!));
   return{births,events,states};
