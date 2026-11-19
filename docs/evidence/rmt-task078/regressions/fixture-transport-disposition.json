@@ -48,5 +48,13 @@
   ],
   "signing": false,
   "broadcast": false,
-  "productionChanges": false
+  "productionChanges": false,
+  "originalFailureEvidence": {
+    "file": "graduation-review-evidence.json",
+    "originalDownloadSha256": "f183c10a72c7d7f0e48513e3b4e59bbde94e0d4460fe8872425b0f43c5b81f63",
+    "originalDownloadBytes": 544,
+    "preservedCopy": "ci-first-graduation-review.json",
+    "preservedCopySha256": "f183c10a72c7d7f0e48513e3b4e59bbde94e0d4460fe8872425b0f43c5b81f63",
+    "normalization": "UTF8_CRLF_TO_LF_ONLY"
+  }
 }
