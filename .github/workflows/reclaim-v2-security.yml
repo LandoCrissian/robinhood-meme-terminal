@@ -8,6 +8,12 @@ on:
       - "packages/contracts/nft-acquisition/**"
       - "scripts/nft-acquisition/**"
       - ".github/workflows/nft-acquisition.yml"
+      # Retain the frozen trial's strict regression beside the separate V2 vault.
+      - "packages/contracts/seaport-acquisition/**"
+      - "packages/launchpad-common/seaport-vault-*"
+      - "scripts/seaport-acquisition/**"
+      - "apps/indexer/src/seaport-acquisition*"
+      - "apps/launch-website/**"
       - "packages/contracts/lib/**"
       - "scripts/reclaim-v2/**"
       - "docs/evidence/rmt-task043/analyze-rotation.py"
