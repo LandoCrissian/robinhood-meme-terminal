@@ -1,10 +1,12 @@
 import {createServer} from "node:http";
 import {timingSafeEqual} from "node:crypto";
 import type {Client} from "pg";
-import {parseEventLogs,type PublicClient,type Hash} from "viem";
+import {parseEventLogs,decodeFunctionData,parseAbi,type PublicClient,type Hash} from "viem";
 import {verifySeaportVaultRuntime,verifySeaportVaultReceipt,seaportVaultAbi} from "./seaport-acquisition-evidence.js";
 import {initializeSeaportVaultStore,commitSeaportVaultBlock,rollbackSeaportVaultStore,readSeaportVaultStore} from "./seaport-acquisition-store.js";
 import type {SeaportVaultManifest,SeaportVaultSettlement} from "./seaport-acquisition-types.js";
+import {seaportSafeSignatures} from "../../../packages/launchpad-common/seaport-vault-safe.mjs";
+import {isSeaportSafeExecution,seaportSafeAdminCandidates,readSeaportSafeAdminReceipt,type SeaportSafeAdminReceipt} from "./seaport-acquisition-safe-admin.js";
 const json=(v:unknown)=>JSON.stringify(v,(_,x)=>typeof x==="bigint"?x.toString():x);
 /** Background polls and explicit synchronization must await the same canonical
  * verification. Returning early during a poll can starve readiness observers. */
@@ -14,7 +16,7 @@ export function shareSeaportVerification(work:()=>Promise<void>){
 }
 /** Private sidecar, explicitly constructed by the synthetic fixture harness.
  * No environment discovery, production startup or migration is registered. */
-export async function startSeaportAcquisitionIndexer({db,rpc,manifest:m,readKey,port}:{db:Client;rpc:PublicClient;manifest:SeaportVaultManifest;readKey:string;port:number}){
+export async function startSeaportAcquisitionIndexer({db,rpc,manifest:m,readKey,port,verifiedCycle}:{db:Client;rpc:PublicClient;manifest:SeaportVaultManifest;readKey:string;port:number;verifiedCycle?:(point:{blockNumber:string;blockHash:Hash})=>Promise<void>}){
   if(!/^[a-f0-9]{64}$/.test(readKey)||/^0+$/.test(readKey)||!Number.isSafeInteger(port)||port<1024||port>65535)throw Error("Seaport V2 fixture binding required");
   await initializeSeaportVaultStore(db,m);await verifySeaportVaultRuntime(rpc,m);
   let status:"ready"|"pending"="pending",closed=false,attempts=0,successfulCycles=0,stage="NOT_STARTED",targetHeight:string|undefined,checkpointHeight:string|undefined,verifyingBlock:string|undefined,verifyingTransaction:string|undefined;
@@ -41,7 +43,7 @@ export async function startSeaportAcquisitionIndexer({db,rpc,manifest:m,readKey,
     let parent=saved.checkpoint?.blockHash;
     for(let height=from;height<=target;height++){
       stage="READ_BLOCK";verifyingBlock=String(height);verifyingTransaction=undefined;
-      const h=await rpc.getBlock({blockNumber:height});if(!h.hash)throw Error("Seaport V2 header unavailable");
+      const h=await rpc.getBlock({blockNumber:height,includeTransactions:true});if(!h.hash)throw Error("Seaport V2 header unavailable");
       stage="CANONICAL_PARENT";
       if(parent&&h.parentHash.toLowerCase()!==parent.toLowerCase())throw Error("Seaport V2 canonical ancestry mismatch");
       stage="READ_LOGS";
@@ -50,13 +52,29 @@ export async function startSeaportAcquisitionIndexer({db,rpc,manifest:m,readKey,
       const hashes=[...new Set(events.map(e=>e.transactionHash))];if(hashes.length>32)throw Error("Seaport V2 transaction bound exceeded");
       stage="SETTLEMENT_PROOF";
       for(const hash of hashes){if(!hash)throw Error("Seaport V2 log identity unavailable");verifyingTransaction=hash;rows.push(await verifySeaportVaultReceipt(rpc,m,hash as Hash));}
+      stage="SAFE_ADMIN_CANDIDATES";
+      const adminRows:SeaportSafeAdminReceipt[]=[];
+      if(h.transactions.length>32)throw Error("Seaport V2 block transaction bound exceeded");
+      // Only the actual current or noticed Safe controller and the two admitted
+      // targets enter this profile. Unrelated Safe activity is not indexed here.
+      if(h.transactions.some(t=>isSeaportSafeExecution(t.input))){
+        const safes=await seaportSafeAdminCandidates(rpc,m,height),abi=parseAbi(seaportSafeSignatures);
+        for(const tx of h.transactions){
+          if(!tx.to||!safes.some(s=>s.toLowerCase()===tx.to!.toLowerCase())||!isSeaportSafeExecution(tx.input))continue;
+          const decoded=decodeFunctionData({abi,data:tx.input}),args=decoded.args as readonly unknown[]|undefined,target=args?.[0];
+          if(typeof target!=="string"||![m.vault,m.paymentToken].some(a=>a.toLowerCase()===target.toLowerCase()))continue;
+          stage="SAFE_ADMIN_PROOF";verifyingTransaction=tx.hash;
+          const row=await readSeaportSafeAdminReceipt(rpc,m,tx.hash);if(row)adminRows.push(row);
+        }
+      }
       verifyingTransaction=undefined;
       stage="CANONICAL_RECHECK";
       const canonical=await rpc.getBlock({blockNumber:height});if(canonical.hash!==h.hash)throw Error("Seaport V2 reorg during indexing");
       stage="COMMIT_BLOCK";
-      await commitSeaportVaultBlock(db,{blockNumber:String(height),blockHash:h.hash,timestamp:new Date(Number(h.timestamp)*1000).toISOString()},rows,m);
+      await commitSeaportVaultBlock(db,{blockNumber:String(height),blockHash:h.hash,timestamp:new Date(Number(h.timestamp)*1000).toISOString()},rows,m,adminRows);
       parent=h.hash;checkpointHeight=String(height);
     }
+    if(verifiedCycle){stage="VERIFIED_READ_ONLY_CYCLE";const point=await readSeaportVaultStore(db);if(!point.checkpoint)throw Error("Watcher checkpoint unavailable");await verifiedCycle({blockNumber:point.checkpoint.blockNumber,blockHash:point.checkpoint.blockHash});}
     status="ready";successfulCycles++;stage="READY";lastFailure=null;verifyingBlock=undefined;
   }catch(error){status="pending";lastFailure={stage,message:String(error instanceof Error?error.message:error).slice(0,2048),...(verifyingBlock&&{blockNumber:verifyingBlock}),...(verifyingTransaction&&{transactionHash:verifyingTransaction})};throw error;}}
   const verification=shareSeaportVerification(verifyCycle);
