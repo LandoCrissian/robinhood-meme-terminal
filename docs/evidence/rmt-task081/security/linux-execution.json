@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "task": "081",
+  "status": "TESTS_PASSED_STATIC_RELEASE_GATE_FAILED",
+  "scope": "ISOLATED_SYNTHETIC_CHAIN_31337_NOT_PRODUCTION_OR_PHYSICAL_WALLET",
+  "baseCommit": "c7e75623ff1163d8c36fd110fc7cf5188b814db1",
+  "sourceCommit": "d01937b1d10310f1faa6e6520691632d3c366af3",
+  "runUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44536834512",
+  "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44536834512/job/135604373227",
+  "jobConclusion": "failure",
+  "failedStep": "Run all 101 detectors and fail on any new production-scope high",
+  "independentAudit": false,
+  "broadcastAuthorized": false,
+  "productionContractsChanged": false,
+  "tools": {
+    "forge": "1.7.1",
+    "solc": "0.8.26+commit.8a97fa7a",
+    "solcExecutableSha256": "d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef",
+    "slither": "Slither 0.11.5",
+    "cryticCompile": "0.3.11",
+    "gitleaks": "8.30.1"
+  },
+  "compilerInputSha256": "de1c5645525e7bc7b1a692974f158fec4e3f62f39a690db37d3377990c66838c",
+  "compilation": "passed",
+  "tests": {
+    "passed": 30,
+    "failed": 0,
+    "skipped": 0,
+    "unitAndFuzz": 29,
+    "unitTestNames": [
+      "testCreatorAndExactProjectBindingAndUniqueIntent",
+      "testNewVaultIsOffByDefaultAndProductionChainCannotDeployOrExecute",
+      "testNative721ExactSellerFeeRoyaltyAndRealCustody",
+      "testToken1155FullQuantityAndBoundedApprovalConsumedExactly",
+      "testForgedCrossDomainAndModifiedQuantitySignaturesFail",
+      "testVenueCannotUseAnotherApprovedPayersCurrencyEvenWithValidSellerOrder",
+      "testExpiredFutureCancelledAndNonceInvalidatedOrdersFail",
+      "testRoyaltyOrFeeChangeCannotOverrideSignedConsideration",
+      "testLostOwnershipAndRevokedSellerApprovalFailAtomically",
+      "testPerUnitTotalPeriodBudgetAndCooldownAreNotResetByReconfiguration",
+      "testExplicitIdsUnknownCollectionCurrencyAndWrongVaultFail",
+      "testImmediateDisableAndStalePolicyOrControllerEpochStopPurchase",
+      "testOnlyCurrentControllerCanConfigureOrQueueCustodyTransfers",
+      "testReplayCannotDoubleSpendOrPartiallyFill",
+      "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+      "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+      "testMaliciousNftCallbackCannotDisableControllerPolicyOrRedirectFunds",
+      "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+      "testReservedOrInsufficientFundsAreNeverSpent",
+      "testUnsolicitedNFTAndSpoofedReceiverCallbackCannotInventCustody",
+      "testRejectingRoyaltyRecipientRollsBackEveryPayoutAndNft",
+      "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance",
+      "testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout",
+      "testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior",
+      "testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept",
+      "testControllerRotationNoticeInvalidatesOldEpochAndKeepsBudgets",
+      "testChangedRouteCodeAndCreationPartsFailClosed",
+      "testFuzzNativeAllInConservation",
+      "testFuzz1155QuantityAndAllInPerUnitCap"
+    ],
+    "unitSourceSha256": "0d8540d9093b847c854fe7f6feeda5dcf83f92542d5d9c9640cb15fe58b04ae1",
+    "fuzz": [
+      {
+        "name": "testFuzz1155QuantityAndAllInPerUnitCap(uint8)",
+        "runs": 512
+      },
+      {
+        "name": "testFuzzNativeAllInConservation(uint64)",
+        "runs": 512
+      }
+    ],
+    "invariant": {
+      "name": "invariantFundsAndCustodyNeverExceedActualSettlement()",
+      "runs": 128,
+      "depth": 32,
+      "calls": 4096,
+      "reverts": 0
+    }
+  },
+  "staticAnalysis": {
+    "detectors": 101,
+    "productionSources": 5,
+    "detectorFilters": [],
+    "sourceFilters": [],
+    "sourceTransformations": [],
+    "strictExit": 1,
+    "findings": 48,
+    "counts": {
+      "High": 23,
+      "Medium": 1,
+      "Low": 15,
+      "Informational": 9
+    },
+    "highsCleared": 0,
+    "rawReportSha256": "7dacd4318d8b96096c7507f3e24acdbd6cc08322c5d8e3ae0007ee8ddaa735da",
+    "analysisInputSha256": "fa84044c1f2a44cbd3cfe9c469022516419105cc3ae8f12f95070f31b381d79e",
+    "all48IdsIdenticalToOriginalLocalReport": true,
+    "artifactId": 14536217941,
+    "artifactArchiveSha256": "b4c0b89ecf1ce29290ec1b9e30fe4ccd6e0c795e64908628b58679d425ddb48f"
+  },
+  "sizes": {
+    "vaultCreationBytes": 25640,
+    "vaultConstructorBytes": 384,
+    "vaultEncodedInitcodeBytes": 26024,
+    "vaultRuntimeBytes": 21935,
+    "vaultRuntimeHeadroom": 2641,
+    "factoryCreationBytes": 31608,
+    "factoryConstructorBytes": 224,
+    "factoryEncodedInitcodeBytes": 31832,
+    "factoryRuntimeBytes": 2310,
+    "deployerRuntimeBytes": 1834,
+    "actualStopCodePartRuntimeBytesEach": 12821,
+    "venueRuntimeBytes": 4688,
+    "notProductionGasQuote": true
+  },
+  "rawEvidence": {
+    "fullJobLogSha256": "1dce9d00f8c2423ac37339e0b4769e313d465f15875c36d2cc7fae756e2ee9c4",
+    "fragment": "foundry-linux-fragment.txt.gz",
+    "fragmentSha256": "50216aba47dbabec46005b170e049cc1db332dc14b82a774012d1bea0f2c336a",
+    "fragmentBytes": 6129,
+    "exactExtraction": "Unmodified original forge test step bytes, stopping before pinned Slither installation; no test results removed.",
+    "artifacts": [
+      {
+        "file": "nft-acquisition.json",
+        "sha256": "de1c5645525e7bc7b1a692974f158fec4e3f62f39a690db37d3377990c66838c",
+        "bytes": 34890
+      },
+      {
+        "file": "nft-acquisition-manifest.json",
+        "sha256": "bed6b250c35be17dc09b6bc61fcaa6cc4c13cc934770568e397d5b30e59423e1",
+        "bytes": 4583
+      },
+      {
+        "file": "nft-acquisition-slither.json",
+        "sha256": "7dacd4318d8b96096c7507f3e24acdbd6cc08322c5d8e3ae0007ee8ddaa735da",
+        "bytes": 938867
+      },
+      {
+        "file": "slither-windows.json",
+        "sha256": "f4162a209492842db29c48ee469140fc1376a0777243e3af05e42976e5a527fe",
+        "bytes": 952243
+      },
+      {
+        "file": "foundry-linux-fragment.txt",
+        "sha256": "50216aba47dbabec46005b170e049cc1db332dc14b82a774012d1bea0f2c336a",
+        "bytes": 6129
+      }
+    ]
+  },
+  "secretScan": {
+    "version": "8.30.1",
+    "config": ".gitleaks.toml",
+    "configSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+    "rawBeforeCompression": true,
+    "method": "gitleaks stdin with exact full input/manifest/Linux+Windows reports/Forge-fragment bytes, separated only by filenames; --redact=100; unchanged configuration.",
+    "exit": 0,
+    "findings": 0,
+    "stdinBytes": 1936844,
+    "stdinSha256": "e527c67a4e9b8217490c1494e256278feea4f808f3497dbcbd2307e31890a46c",
+    "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "output": "6:52AM INF scanned ~1936844 bytes (1.94 MB) in 254ms\n6:52AM INF no leaks found"
+  },
+  "disclosures": [
+    "A synthetic listing venue is not Seaport/OpenSea. Actual 4663 route and source research does not authorize this adapter. Constructors and execution remain 31337-only.",
+    "No new source/risk approval or independent security audit follows from passing finite tests. All 23 new highs and historical holds remain unresolved.",
+    "No production wallet keys, owner signatures, transactions, database migration or funded NFT purchase occurred."
+  ]
+}
