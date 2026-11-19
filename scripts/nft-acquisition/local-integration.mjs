@@ -12,7 +12,8 @@ const json = value => JSON.stringify(value, (_, item) => typeof item === "bigint
 const same = (a, b) => a.toLowerCase() === b.toLowerCase();
 
 /** One loopback chain, the existing authoritative fixture worker and its named
- * PostgreSQL database. Every wallet send below comes from the NEW NFT page. */
+ * PostgreSQL database. Accepted acquisitions use the NEW NFT page. The second
+ * same-block fill is a separate direct harness negative, expected to revert. */
 export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, compilation, deployment, creatorAccount, sourceIdentity,
   site, workerOrigin, indexReadKey, out, pg, waitFor, mine, ready, restart, hideReceipt, hideNativeProof }) {
   const client = await localFixtureClient(rpcUrl, 31337), { module: m, send, seller, fee, royalty, safe, owners, signers } = deployment;
@@ -150,13 +151,19 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
     const after = Number((await pg.query("SELECT count(*)::int AS n FROM rmt_nft_acquisition_fixture_events")).rows[0].n); assert.equal(after, before);
     evidence.restart = { before, after, unchanged: true };
     await safeComplete("configure", normalConfig());
-    const snapshot = await rpc("evm_snapshot"), beforeHeld = await read("nftHeld", [m.collections[0].address, 4n]);
+    const reorgAssets=async()=>({
+      held:String(await read("nftHeld",[m.collections[0].address,4n])),
+      owner:await client.readContract({address:m.collections[0].address,abi:deployment.assets.Acquisition721Fixture.abi,functionName:"ownerOf",args:[4n]}),
+      accounted:String(await read("accountedHeld",[zeroAddress])),available:String(await read("available",[zeroAddress])),spent:String(await read("totalSpent",[zeroAddress])),
+      balances:Object.fromEntries(await Promise.all([m.vault,seller.address,fee.address,royalty.address].map(async address=>[address,String(await client.getBalance({address}))])))
+    });
+    const snapshot = await rpc("evm_snapshot"), beforeAssets=await reorgAssets();
     const orphanOrder = await order(m.collections[0], 4), orphan = await safeComplete("buy", orphanOrder.fields);
     assert.equal(await rpc("evm_revert", [snapshot]), true); await sync();
     await waitFor("NFT acquisition reorg rollback", async () => Number((await pg.query("SELECT count(*)::int AS n FROM rmt_nft_acquisition_fixture_events WHERE transaction_hash=$1", [orphan.receipt.transactionHash.toLowerCase()])).rows[0].n) === 0);
-    assert.equal(await read("nftHeld", [m.collections[0].address, 4n]), beforeHeld);
+    const afterAssets=await reorgAssets();assert.deepEqual(afterAssets,beforeAssets,"Reorg must restore NFT ownership, reserve accounting and all payment recipients");
     const failedRecovery = await session.safeVerify(orphan.outer, orphan.receipt.transactionHash, "unavailable");
-    evidence.reorg = { transactionHash: orphan.receipt.transactionHash, custodyAndDatabaseRolledBack: true, recovery: failedRecovery.status, noAutomaticRetry: true };
+    evidence.reorg = { transactionHash: orphan.receipt.transactionHash, custodyAndDatabaseRolledBack: true, beforeAssets,afterAssets, paymentRecipientsAndReserveRolledBack:true,recovery: failedRecovery.status, noAutomaticRetry: true };
     for (const headers of [{}, { "x-rmt-fixture-key": "00".repeat(32) }]) {
       const response = await fetch(new URL("/nft-acquisitions?vault=" + m.vault, workerOrigin), { headers }); assert.equal(response.status, 404);
     }
