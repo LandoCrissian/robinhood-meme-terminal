@@ -40,7 +40,7 @@ jobs:
       - name: Verify bounded listings, custody proofs and unavailable evidence
         run: node --test scripts/seaport-acquisition/*.test.mjs packages/launchpad-common/seaport-vault-*.test.mjs
       - run: pnpm --filter indexer typecheck
-      - run: pnpm --filter indexer exec tsx --test src/seaport-acquisition*.test.ts
+      - run: pnpm --filter indexer exec tsx --test src/seaport-acquisition*.test.ts src/seaport-listing-watch*.test.ts
       - run: pnpm --filter @rmt/launch-website typecheck
 
   seaport-vault-strict-security:
@@ -82,6 +82,14 @@ jobs:
         run: |
           python docs/evidence/rmt-task043/analyze-rotation.py "$RUNNER_TEMP/seaport-acquisition.json" \
             "$RUNNER_TEMP/solc" "$RUNNER_TEMP/seaport-acquisition-source" "$RUNNER_TEMP/seaport-acquisition-slither.json"
+      - name: Bind all 23 Task084 observations to exact source and raw AST evidence
+        if: ${{ always() && !cancelled() }}
+        run: |
+          test -f "$RUNNER_TEMP/seaport-acquisition-slither.json"
+          node docs/evidence/rmt-task084/security/build-dispositions.mjs \
+            --report "$RUNNER_TEMP/seaport-acquisition-slither.json" \
+            --output "$RUNNER_TEMP/task084-security-dispositions"
+          node --test docs/evidence/rmt-task084/security/review.test.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
@@ -90,6 +98,7 @@ jobs:
             ${{ runner.temp }}/seaport-acquisition.json
             ${{ runner.temp }}/seaport-acquisition-manifest.json
             ${{ runner.temp }}/seaport-acquisition-slither.json
+            ${{ runner.temp }}/task084-security-dispositions/**
           retention-days: 14
 
   seaport-vault-robinhood-fork:
@@ -191,3 +200,4 @@ jobs:
             !${{ runner.temp }}/seaport-vault-browser/**/postgres-data/**
             !${{ runner.temp }}/seaport-vault-browser/**/anvil-state*
           retention-days: 14
+

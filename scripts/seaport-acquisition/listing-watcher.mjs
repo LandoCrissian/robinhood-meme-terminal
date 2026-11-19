@@ -17,14 +17,14 @@ export function watcherBinding(configuration){
 function assertSnapshot(s,b){
  need(s&&s.chainId===b.chainId&&same(s.vault,b.vault)&&same(s.projectToken,b.projectToken)&&same(s.seaport,b.seaport)&&same(s.vaultRuntimeHash,b.vaultRuntimeHash)&&s.runtimeVerified===true&&s.productionExecutionAvailable===false,"VAULT_BINDING_UNVERIFIED");
  need(s.canonical&&hash.test(s.canonical.hash),"CANONICAL_STATE_UNAVAILABLE");uint(s.canonical.number);uint(s.canonical.timestamp);uint(s.controllerEpoch);uint(s.policyEpoch);
- need(address.test(s.controller)&&typeof s.purchasesEnabled==="boolean"&&s.policy&&address.test(s.policy.currency),"POLICY_UNAVAILABLE");
+ need(address.test(s.controller)&&hash.test(s.controllerAuthorityHash)&&typeof s.purchasesEnabled==="boolean"&&s.policy&&address.test(s.policy.currency),"POLICY_UNAVAILABLE");
  for(const k of["perNftCap","totalBudget","periodBudget","cooldownSeconds"])uint(s.policy[k]);
  for(const k of["availableWei","totalSpentWei","periodSpentWei","lastPurchaseAt"])uint(s[k]);
  need(s.gasPayer&&same(s.gasPayer.address,b.gasPayer),"GAS_PAYER_UNASSIGNED");for(const k of["latestNonce","pendingNonce","balanceWei"])uint(s.gasPayer[k]);
  need(s.gasPayer.latestNonce===s.gasPayer.pendingNonce,"GAS_PAYER_TRANSACTION_PENDING");
 }
 function fingerprint(s){
- return digest({chainId:s.chainId,vault:s.vault.toLowerCase(),runtime:s.vaultRuntimeHash,project:s.projectToken.toLowerCase(),controller:s.controller.toLowerCase(),controllerEpoch:s.controllerEpoch,policyEpoch:s.policyEpoch,enabled:s.purchasesEnabled,policy:s.policy,available:s.availableWei,totalSpent:s.totalSpentWei,periodSpent:s.periodSpentWei,lastPurchase:s.lastPurchaseAt,gasPayer:s.gasPayer});
+ return digest({chainId:s.chainId,vault:s.vault.toLowerCase(),runtime:s.vaultRuntimeHash,project:s.projectToken.toLowerCase(),controller:s.controller.toLowerCase(),authority:s.controllerAuthorityHash,controllerEpoch:s.controllerEpoch,policyEpoch:s.policyEpoch,enabled:s.purchasesEnabled,policy:s.policy,available:s.availableWei,totalSpent:s.totalSpentWei,periodSpent:s.periodSpentWei,lastPurchase:s.lastPurchaseAt,gasPayer:s.gasPayer});
 }
 function normalizeProof(p,s,b,nowMs){
  need(p&&["OWNER_SUPPLIED_CURRENT_ORDER_VERIFIED","CURRENT_ORDER_INDEPENDENTLY_VERIFIED"].includes(p.status)&&p.currentOrderIndependentlyVerified===true&&p.executionApproved===false&&p.executionEnabled===false,"CURRENT_ORDER_UNPROVEN");
