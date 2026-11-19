@@ -1,0 +1,118 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "note": "Checksums establish integrity only. Hash text after LF normalization for cross-platform checkout; compressed raw originals remain byte-exact. Raw originals outside repository preserved.",
+  "files": [
+    {
+      "path": "FINDINGS.md",
+      "bytes": 6754,
+      "sha256": "aac5667b4357514f32455b4ecf66c3cf3c40c26de856e221196fdb02ddb6b47e",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "REVIEW.md",
+      "bytes": 13833,
+      "sha256": "eaf0e329f564462ff9d0bf8478534110ae1ad088b911e6924ba77a1a97237d4f",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "build-register.mjs",
+      "bytes": 14083,
+      "sha256": "b1f84611e5194f1080442b0a954132780dd9fe7e57f8cc0d0abec293f2ec53f6",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "compiler-input.json.gz",
+      "bytes": 8897,
+      "sha256": "f47f92c88970f6ed39398d87b46446a4dedfbd45b35711b495d133c0d811dc71",
+      "uncompressedBytes": 38851,
+      "uncompressedSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5"
+    },
+    {
+      "path": "compiler-manifest.json",
+      "bytes": 3353,
+      "sha256": "33ef13447c4b39faee863c75ae978da40854a58dbafad2a6f1a536db096c8fa7",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "findings.json",
+      "bytes": 184583,
+      "sha256": "286b1289b910b2ef108ba93be916cb48601da65e38520e8872507359c244439f",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "local-syntax.json",
+      "bytes": 4292,
+      "sha256": "8cac6dabc1240b450ec30c5353aa22a5f81eeb2b308bd9921ffad77f8da25aae",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "preliminary-slither.json.gz",
+      "bytes": 71987,
+      "sha256": "6ee44448dcf4bc0bdf3bdc554ddc734a0a563775199a43fe737b0db9ec60c132",
+      "uncompressedBytes": 1963705,
+      "uncompressedSha256": "dc58c88072e0aa8bec8c7b1a87d97db008d8e1468007bdab23be08286886d8b7"
+    },
+    {
+      "path": "raw-input-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-input-gitleaks.log",
+      "bytes": 81,
+      "sha256": "a158bdf3e8eee65c7d050660f9f5f25c612dd1d993a7fbfe4f4ed459e2760d56",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-manifest-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-manifest-gitleaks.log",
+      "bytes": 79,
+      "sha256": "410b71ff2a9c6147e48caf36702be54afdbb81517c0b377a1df0866a848b6f72",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-preliminary-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-preliminary-gitleaks.log",
+      "bytes": 80,
+      "sha256": "74af055220f8bfef1e02841ce2b82116cd1c8b7a051ede8cb4b98f056cc77187",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-scan.json",
+      "bytes": 2678,
+      "sha256": "cbe28e2f65b976f10ff0f3e1d32059483302f0a381f9c51ec5b0f365ca64f968",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-slither-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-slither-gitleaks.log",
+      "bytes": 82,
+      "sha256": "01715036163b5d9e3c8d2543295dbeca1a5fef12acb44e0fb446a019274532a5",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "windows-slither.json.gz",
+      "bytes": 72088,
+      "sha256": "d555495f9e66bc1738d4409474f0b089c137b76b5a0e4453d213b8d681337247",
+      "uncompressedBytes": 1962101,
+      "uncompressedSha256": "a5f89274dbecfac900f9d07b23158d4b68440b6a5a1699706a837254b6f56e98"
+    }
+  ]
+}

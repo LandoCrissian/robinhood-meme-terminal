@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-seaport-acquisition-local-v2",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "coreModified": false,
+  "compilerVersion": "0.8.26+commit.8a97fa7a",
+  "executablePlatform": "win32-x64",
+  "executableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "compilerSettings": {
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "metadata": {
+      "bytecodeHash": "ipfs",
+      "appendCBOR": true,
+      "useLiteralContent": false
+    },
+    "remappings": [
+      "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+      "@uniswap/v4-core/=lib/v4-core/",
+      "@uniswap/v4-periphery/=lib/v4-periphery/"
+    ]
+  },
+  "roots": [
+    "seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+    "seaport-acquisition/src/SeaportAcquisitionChecksV2.sol",
+    "seaport-acquisition/src/SeaportAcquisitionTypes.sol"
+  ],
+  "sourceCount": 4,
+  "sourceSha256": [
+    [
+      "nft-acquisition/src/NftAcquisitionAccounts.sol",
+      "3aa7822061e9f6347dbba1db3625347270c1a905a43ccc5ac20acaa86a056e3f"
+    ],
+    [
+      "seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+      "f48907ea5f030c02b6ae17488f8d23ac0bd919b6f870e382c62a2d15e651987b"
+    ],
+    [
+      "seaport-acquisition/src/SeaportAcquisitionChecksV2.sol",
+      "164c110271d6d34ef08cac6c945e8de338139595cf151b1447799893a4e44461"
+    ],
+    [
+      "seaport-acquisition/src/SeaportAcquisitionTypes.sol",
+      "f928c9a60af0ea630427ca229805f5a008a809cb60de88c06e971beb19bf55c0"
+    ]
+  ],
+  "inputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+  "scope": "All new production module sources plus every reachable import; tests excluded unless imported by production source",
+  "transformations": [],
+  "dependencyPinManifest": "docs/evidence/rmt-task043/4663-rotation-profile.json",
+  "templates": {
+    "NftAcquisitionAccounts": {
+      "file": "nft-acquisition/src/NftAcquisitionAccounts.sol",
+      "creationBytes": 85,
+      "runtimeBytes": 57,
+      "creationSha256": "9c18c6a8d41f581e4be561240bfe7f8fd10b624670eb6ddf8963432dec4aa4df",
+      "runtimeSha256": "e84913101e83e8d977f8177ce90e36e8e244b19a5ef0b95e39bd07df12236771"
+    },
+    "RMTSeaportAcquisitionVaultV2": {
+      "file": "seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+      "creationBytes": 38180,
+      "runtimeBytes": 24071,
+      "creationSha256": "957e0a11070999d97c81ecc7399b28182306cf3caf0e287ad5686de702e95844",
+      "runtimeSha256": "9c53d1bdd57535e10fcc2d8a5485eac68de5d56cd6ab7c63a565908d337d2a77"
+    },
+    "SeaportAcquisitionChecksV2": {
+      "file": "seaport-acquisition/src/SeaportAcquisitionChecksV2.sol",
+      "creationBytes": 9906,
+      "runtimeBytes": 9880,
+      "creationSha256": "57d7b9dcd55c9fbb2b09e672814643a2055bb0b6d381813c505a4d8cd6724cd7",
+      "runtimeSha256": "7a771d827100a291d2dd31e9e5d7411de530df57891f5f7560bfb6f7abf65986"
+    },
+    "SeaportAcquisitionTypes": {
+      "file": "seaport-acquisition/src/SeaportAcquisitionTypes.sol",
+      "creationBytes": 85,
+      "runtimeBytes": 57,
+      "creationSha256": "c4ab18fb6523ebedc9a3e24195ff305b572bebd5516fbc3c4c325983e2c4360e",
+      "runtimeSha256": "d75b008f69f0555b0d4f35248db72e681d797bdca74811d3f1b990eb5ea24cd3"
+    }
+  }
+}

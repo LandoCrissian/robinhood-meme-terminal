@@ -1,0 +1,58 @@
+{
+  "schemaVersion": 1,
+  "tool": "Gitleaks 8.30.1",
+  "newRulesOrIgnores": false,
+  "rulesSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+  "ignoreSha256": "35eb2c010b521f72d46054079f2cd4e43e2901e0eba570d9755389560c699cff",
+  "scans": [
+    {
+      "scope": "input",
+      "file": "seaport-acquisition-initial.json",
+      "sha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+      "bytes": 38851,
+      "command": "gitleaks dir <raw-file> --config .gitleaks.toml --gitleaks-ignore-path .gitleaksignore --no-banner --redact --report-format json --report-path <fresh-report>",
+      "exit": 0,
+      "findings": 0,
+      "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "finishedAt": "2026-11-19T17:20:37.471Z",
+      "compressedArtifactCheckOnly": true
+    },
+    {
+      "scope": "manifest",
+      "file": "seaport-acquisition-initial-manifest.json",
+      "sha256": "33ef13447c4b39faee863c75ae978da40854a58dbafad2a6f1a536db096c8fa7",
+      "bytes": 3353,
+      "command": "gitleaks dir <raw-file> --config .gitleaks.toml --gitleaks-ignore-path .gitleaksignore --no-banner --redact --report-format json --report-path <fresh-report>",
+      "exit": 0,
+      "findings": 0,
+      "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "finishedAt": "2026-11-19T17:24:21.094Z",
+      "compressedArtifactCheckOnly": true
+    },
+    {
+      "scope": "slither",
+      "file": "security-final-slither.json",
+      "sha256": "a5f89274dbecfac900f9d07b23158d4b68440b6a5a1699706a837254b6f56e98",
+      "bytes": 1962101,
+      "command": "gitleaks dir <raw-file> --config .gitleaks.toml --gitleaks-ignore-path .gitleaksignore --no-banner --redact --report-format json --report-path <fresh-report>",
+      "exit": 0,
+      "findings": 0,
+      "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "finishedAt": "2026-11-19T17:20:24.519Z",
+      "compressedArtifactCheckOnly": true
+    },
+    {
+      "scope": "preliminary",
+      "file": "security-initial-slither.json",
+      "sha256": "dc58c88072e0aa8bec8c7b1a87d97db008d8e1468007bdab23be08286886d8b7",
+      "bytes": 1963705,
+      "command": "gitleaks dir <raw-file> --config .gitleaks.toml --gitleaks-ignore-path .gitleaksignore --no-banner --redact --report-format json --report-path <fresh-report>",
+      "exit": 0,
+      "findings": 0,
+      "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "finishedAt": "2026-11-19T17:24:20.626Z",
+      "compressedArtifactCheckOnly": true
+    }
+  ],
+  "fullHistoryGateCleared": false
+}
