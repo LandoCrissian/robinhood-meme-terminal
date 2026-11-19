@@ -1,0 +1,24 @@
+import assert from "node:assert/strict";
+import {readFileSync} from "node:fs";
+import {createHash} from "node:crypto";
+import {gunzipSync} from "node:zlib";
+import test from "node:test";
+const raw=gunzipSync(readFileSync(new URL("robinhood-4663.json.gz",import.meta.url))),evidence=JSON.parse(raw);
+test("all raw secret-scanner observations remain recorded and resolve to exact public protocol/token identities",()=>{
+ const sha=bytes=>createHash("sha256").update(bytes).digest("hex"),classification=JSON.parse(readFileSync(new URL("public-data-classification.json",import.meta.url))),scan=gunzipSync(readFileSync(new URL("raw-gitleaks-report.json.gz",import.meta.url))),scriptScan=gunzipSync(readFileSync(new URL("script-gitleaks-report.json.gz",import.meta.url)));
+ assert.equal(sha(raw),classification.sourceUncompressedSha256);assert.equal(sha(scan),classification.rawScannerReportSha256);assert.equal(sha(scriptScan),classification.scriptScannerReportSha256);assert.equal(JSON.parse(scan).length,9);assert.equal(JSON.parse(scriptScan).length,1);assert.equal(classification.rows.length,9);assert.equal(classification.scannerSuppressed,false);assert.equal(classification.scannerConfigurationModified,false);
+ const lines=raw.toString("utf8").split(/\r?\n/);for(const row of classification.rows){const value=JSON.parse("{"+lines[row.line-1].trim().replace(/,$/,"")+"}")[row.field].toLowerCase();assert.ok([evidence.pins.conduitKey,evidence.pins.weth,evidence.publicApi.historicalCollection.summary.contracts[0].address].some(publicValue=>publicValue.toLowerCase()===value));assert.equal(sha(Buffer.from(value)),row.valueSha256);}
+});
+test("actual public RPC observations agree on chain, numbered header and full venue/payment runtime identities",()=>{
+ assert.equal(evidence.status,"BLOCKED_NO_BROADCAST");assert.equal(evidence.broadcast,false);assert.equal(evidence.signatures,false);assert.equal(evidence.productionChanged,false);assert.equal(evidence.anchorBlock,"118245029");
+ const providers=Object.values(evidence.providers);assert.equal(providers.length,2);for(const row of providers){assert.equal(row.chain.status,"observed");assert.equal(row.chain.value,4663);assert.equal(row.header.value.number,evidence.anchorBlock);assert.equal(row.header.value.hash,row.headerAfter.value.hash);assert.equal(row.header.value.hash,providers[0].header.value.hash);
+  assert.equal(row.seaportInformation.value[0],"1.6");assert.equal(row.seaportInformation.value[1],evidence.expectedSeaportDomain);assert.equal(row.seaportInformation.value[2].toLowerCase(),evidence.pins.conduitController.toLowerCase());assert.equal(row.conduitBinding.value[0].toLowerCase(),evidence.pins.conduit.toLowerCase());assert.equal(row.conduitBinding.value[1],true);assert.equal(row.seaportChannelOpen.value,true);
+  for(const[name,contract]of Object.entries(row.contracts)){assert.equal(contract.code.status,"observed");assert.ok(contract.code.value.bytes>0);assert.equal(contract.code.value.runtimeHash,providers[0].contracts[name].code.value.runtimeHash);}
+  assert.equal(row.contracts.seaport.code.value.bytes,23981);assert.equal(row.contracts.seaport.code.value.runtimeHash,"0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00");assert.equal(row.weth.symbol.value,"WETH");assert.equal(row.weth.decimals.value,18);
+ }
+});
+test("official chain support and historical order receipt do not become current listing, source or execution clearance",()=>{
+ assert.equal(evidence.sources.sdkChainIds.chain4663Mention,true);assert.equal(evidence.sources.seaportDeployment.robinhoodMention,true);assert.equal(evidence.publicApi.chains.summary.robinhood[0].chain,"robinhood");assert.equal(evidence.publicApi.oneListingHint.httpStatus,401);
+ for(const row of Object.values(evidence.providers)){const receipt=row.historicalSettlement.value;assert.equal(receipt.status,"0x1");assert.equal(receipt.blockHash,row.historicalCanonicalHeader.value.hash);assert.equal(receipt.orderFulfilled.length,1);assert.equal(receipt.orderFulfilled[0].args.orderHash,"0x43a7a74fc97f32219eb11fcf4f18f259403fd324a780462f8aee72fb5a55f386");}
+ assert.ok(Object.values(evidence.sourceVerification).every(row=>row.status==="unavailable"&&row.httpStatus===403));assert.equal(evidence.sourceReproduction,"UNVERIFIED_EXPLORER_ACCESS_BLOCKED_NO_INDEPENDENT_BYTECODE_REBUILD");assert.equal(evidence.listingVerified,false);assert.equal(evidence.productionAdapterImplemented,false);assert.equal(evidence.executionApproved,false);assert.equal(evidence.bindingsObserved,true);
+});

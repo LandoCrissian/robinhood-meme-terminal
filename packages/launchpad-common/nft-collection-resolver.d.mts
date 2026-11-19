@@ -1,0 +1,11 @@
+type Address=`0x${string}`;type Hex=`0x${string}`;
+export type NftCollectionInput={kind:"contract";address:Address}|{kind:"opensea-collection";slug:string;canonicalUrl:string};
+export type NftCollectionProof={address:Address;standard:721|1155;runtimeHash:Hex;sourceInputSha256:Hex;evidenceBlock:string;evidenceBlockHash:Hex;evidenceTimestamp:string};
+export type NftCollectionResolution={schemaVersion:1;profile:"rmt-nft-collection-identity-v1";chainId:number|null;status:"verified"|"rejected"|"unavailable";code:string;collectionVerified:boolean;listingVerified:false;routeSupported:false;executionAvailable:false;purchasesEnabled:false;contracts:NftCollectionProof[];name?:string;slug?:string;canonicalUrl?:string;limitations?:string[]};
+export type NftCollectionResolverOptions={chainId:31337|4663;paymentAsset:Address;allowedCurrencies:Address[];nowMs?:number;timeoutMs?:number;
+ codecs:{getAddress(value:string):Address;isAddress(value:unknown,options?:{strict?:boolean}):boolean;keccak256(value:Hex):Hex};
+ rpc:{getChainId():Promise<number>;getBlock(args:{blockTag:"latest"}|{blockNumber:bigint}):Promise<{number?:bigint|null;hash?:Hex|null;timestamp:bigint}>;getCode(args:{address:Address;blockNumber:bigint}):Promise<Hex|undefined>;readContract(args:unknown):Promise<unknown>};
+ trustedCollectionHint?:(slug:string)=>Promise<unknown>;
+ verifiedSource:(evidence:{chainId:number;address:Address;runtimeHash:Hex;blockNumber:bigint;blockHash:Hex})=>Promise<unknown>};
+export function parseNftCollectionInput(input:unknown):NftCollectionInput;
+export function resolveNftCollection(input:unknown,options:NftCollectionResolverOptions):Promise<NftCollectionResolution>;
