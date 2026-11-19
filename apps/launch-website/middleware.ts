@@ -48,6 +48,10 @@ export function middleware(request: NextRequest) {
   // The handler repeats all local manifest/origin/runtime checks. Hosted GET
   // and POST both return 404; this is never a production transaction route.
   if (pathname === "/api/nft-acquisition" && ["GET", "HEAD", "POST"].includes(request.method)) return NextResponse.next();
+  // Forward only the separately versioned review surface to its complete
+  // loopback/manifest/runtime gate. Both handlers return public 404s.
+  if ((pathname === "/api/seaport-acquisition" && ["GET", "HEAD", "POST"].includes(request.method)) ||
+      (pathname === "/my-launches/treasury/seaport-purchases" && ["GET", "HEAD"].includes(request.method))) return NextResponse.next();
   // These read-only handlers validate recipient/deployment/checkpoint context;
   // test claims repeat the explicit local fixture gate, production claims stay off.
   if ((["GET", "HEAD"].includes(request.method) && /^\/api\/launchpad\/earnings(?:\/(?:factory|history|0x[0-9a-fA-F]{40}))?$/.test(pathname))

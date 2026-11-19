@@ -7,11 +7,17 @@ import {configuredSeaportAcquisition} from "./seaport-acquisition";
 import {handleSeaportAcquisitionRead,handleSeaportAcquisitionTest} from "./seaport-acquisition-actions";
 import {saveSeaportJournal,loadSeaportJournal} from "../seaport-acquisition-recovery";
 import {seaportAcquisitionReviewHash,type SeaportAcquisitionReview} from "../seaport-acquisition";
+import {NextRequest} from "next/server";
+import {middleware} from "../../middleware";
 const a=(n:number)=>"0x"+n.toString(16).padStart(40,"1"),h=(n:number)=>"0x"+n.toString(16).padStart(64,"1");
 test("Seaport V2 public route denies all reads and financial requests before RPC or wallet capability",async()=>{
   const saved=process.env.RMT_SEAPORT_ACQUISITION_FIXTURE;delete process.env.RMT_SEAPORT_ACQUISITION_FIXTURE;
   try{for(const method of["GET","HEAD","POST"]){const request=new Request("https://rmt.example/api/seaport-acquisition",{method,headers:{host:"rmt.example",origin:"https://rmt.example","content-type":"application/json"},...(method==="POST"&&{body:JSON.stringify({action:"prepare",operation:"buy"})})});const response=await(method==="POST"?handleSeaportAcquisitionTest:handleSeaportAcquisitionRead)(request);assert.equal(response.status,404);assert.equal(response.headers.get("cache-control"),"no-store");}}
   finally{if(saved!==undefined)process.env.RMT_SEAPORT_ACQUISITION_FIXTURE=saved;}
+});
+test("V2 middleware forwards only exact review routes to their full public-404 gates",()=>{
+ for(const[path,methods]of[["/api/seaport-acquisition",["GET","HEAD","POST"]],["/my-launches/treasury/seaport-purchases",["GET","HEAD"]]]as const){for(const method of methods){const response=middleware(new NextRequest("http://127.0.0.1:4201"+path,{method}));assert.equal(response.headers.get("x-middleware-next"),"1");}for(const method of["PUT","DELETE","PATCH"]){assert.equal(middleware(new NextRequest("http://127.0.0.1:4201"+path,{method})).status,404);}}
+ for(const path of["/api/seaport-acquisition/execute","/api/seaport-acquisition-other","/my-launches/treasury/seaport-purchases/execute"])assert.equal(middleware(new NextRequest("http://127.0.0.1:4201"+path)).status,404);
 });
 test("V2 recovery retains the original account and vault across context changes and rejects tampering",()=>{
  const map=new Map<string,string>(),storage={get length(){return map.size;},getItem:(k:string)=>map.get(k)??null,setItem:(k:string,v:string)=>{map.set(k,v);},key:(i:number)=>[...map.keys()][i]??null,removeItem:(k:string)=>{map.delete(k);},clear:()=>map.clear()}as Storage;
