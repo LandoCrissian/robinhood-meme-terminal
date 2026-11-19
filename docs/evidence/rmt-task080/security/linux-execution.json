@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "task": "080",
+  "status": "TESTS_PASSED_STATIC_RELEASE_GATE_FAILED",
+  "scope": "ISOLATED_SYNTHETIC_EVM_NOT_PRODUCTION_OR_PHYSICAL_WALLET",
+  "sourceCommit": "36925b41814896d0279ed71500ff89ce134c9535",
+  "ciRunUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44466792071",
+  "ciJobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44466792071/job/135366408429",
+  "jobConclusion": "failure",
+  "failureStep": "Run all 101 detectors and fail on any V2 high",
+  "compilation": "passed",
+  "tools": {
+    "runner": "ubuntu-24.04",
+    "foundry": "1.7.1",
+    "forgeVersionObservedInJobLog": "forge Version: 1.7.1",
+    "solc": "0.8.26+commit.8a97fa7a",
+    "solcExecutableSha256": "d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef",
+    "slither": "0.11.5",
+    "cryticCompile": "0.3.11"
+  },
+  "compilerInputSha256": "fece6e205ff52f8369c732cbddaa663a0d19530062b7539dc4b4467099a08cdc",
+  "testCommand": "forge test --root packages/contracts/reclaim-v2 --use \"$RUNNER_TEMP/solc\" -vvv",
+  "tests": {
+    "passed": 55,
+    "failed": 0,
+    "skipped": 0,
+    "newBoundaryTestsPassed": 18,
+    "newBoundaryTestNames": [
+      "testHigh038203PayCampaignDebitBaselineRejectsExtraDebitAndRestoresBurn",
+      "testHigh42aa40PayBeneficiaryCreditBaselineRejectsUndercreditAndRestoresBurn",
+      "testHigha96183PullControllerDebitBaselineRejectsExtraDebit",
+      "testHighc2a152PullCampaignCreditBaselineRejectsUndercredit",
+      "testHighbea68aNativeBurnOwnerBalanceMustActuallyDecrease",
+      "testHigh52cf77SinkTransferOwnerBalanceMustActuallyDecrease",
+      "testHigh8bcc09SinkBalanceMustActuallyIncrease",
+      "testCorrectBalancesDoNotSubstituteForBurnSupplyDestruction",
+      "testSinkRetirementMustNotMasqueradeAsSupplyDestruction",
+      "testFundingCallbackObservesCommittedReserveButGuardRejectsNestedAccounting",
+      "testRewardCallbackObservesConsumedNonceAndGuardRejectsNestedAccounting",
+      "testNativeBurnCallbackObservesReservedRewardButCannotEnterBeforePayment",
+      "testSinkTransferCallbackObservesReservedRewardButCannotEnterBeforePayment",
+      "testInterruptedBurnAndSinkInteractionRestoreAllLifetimeState",
+      "testMalformedAndIssuerControlledRuntimeCannotEnterKnownFactoryPolicy",
+      "testStaleClaimantNonceCannotRedeemAnotherOtherwiseEligibleID",
+      "testForcedUnsafeNFTAndEtherCreateNoRewardOrWithdrawalAuthority",
+      "testUnsolicitedERC20GiftCannotBeClaimedAsAnUnretiredNFTReward"
+    ],
+    "newBoundarySourceSha256": "cd745b9fcb614de090b213243097c46464cf265b8006051bac9bb146bc2cde42",
+    "retainedUnitAndFuzzPassed": 29,
+    "retainedHostilePassed": 7,
+    "fuzz": [
+      {
+        "name": "testFuzzIntegerRewardConservation(uint8)",
+        "runs": 512
+      },
+      {
+        "name": "testFuzzPermanentSinkQuantityConservation(uint8)",
+        "runs": 512
+      }
+    ],
+    "invariant": {
+      "name": "invariantEveryPaidRewardHasPermanentRetirementAndConservedBacking()",
+      "runs": 128,
+      "depth": 32,
+      "calls": 4096,
+      "reverts": 0
+    }
+  },
+  "staticAnalysis": {
+    "all101Detectors": true,
+    "sourceOrDetectorFilters": [],
+    "productionSourceChanged": false,
+    "findings": 45,
+    "counts": {
+      "High": 7,
+      "Medium": 1,
+      "Low": 29,
+      "Informational": 7,
+      "Optimization": 1
+    },
+    "strictExit": 1,
+    "cleared": false,
+    "allFindingIdsIdenticalToFreshLocalTask080": true,
+    "reportSha256": "d96d9e717aff106726cc2ffb2ca5db06c009abd9a6f36e35c6b07092ec2fe0d9",
+    "analysisInputSha256": "40d0a724f9ec8c206bf11efd4aa626362749386dc33ad9ed2bbee84ec01b2f73",
+    "artifactId": 14502895709,
+    "artifactArchiveSha256": "4b1a95324a49283430144b828b606e43d9509663ca6547f46fa2b98874370772"
+  },
+  "evidence": {
+    "rawFullJobLogSha256": "0b327334fabc060cb1f404fdb4490ae60d76fc925514da508bfdf18263413d19",
+    "foundryFragment": "foundry-linux-fragment.txt.gz",
+    "uncompressedFragmentSha256": "2175d551cd44dbcddb391d68676560ba2143050a1f1eafe24b25d2b1fa073886",
+    "uncompressedFragmentBytes": 11347,
+    "extraction": "Exact original log bytes from the forge test step group through its completion, stopping before the pinned Slither installation step; no result lines removed or rewritten.",
+    "gitleaks": {
+      "version": "8.30.1",
+      "config": ".gitleaks.toml",
+      "configSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+      "command": "gitleaks dir <raw-fragment-directory> --config .gitleaks.toml --redact=100 --no-banner --report-format json --report-path <report.json>",
+      "scannedRawBeforeCompression": true,
+      "exit": 0,
+      "findings": 0,
+      "rawReportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    }
+  },
+  "disclosures": [
+    "The original reproduction.json retains executedLocally=false because no native Forge execution occurred; this separate record establishes actual pinned Linux CI execution.",
+    "All seven V2 high observations remain unresolved. Passing finite synthetic tests does not clear static gates or establish independent audit or mainnet safety.",
+    "Configurable hostile token/NFT fixtures are counterfactual only and not proposed production runtime policies.",
+    "No contracts, production services, balances, delegated wallet authority, economic policy or release activation changed."
+  ]
+}

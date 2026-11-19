@@ -24,7 +24,17 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit:production
       - run: pnpm check:repo
+      - name: Fetch exact Task080 envelope-evidence baseline
+        run: git fetch --no-tags --depth=1 origin 526cf004d267596f6203f977be40439825f1204b
       - run: pnpm test:release-evidence
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - name: Materialize existing pinned contract dependencies for full source verification
+        run: bash scripts/install-v4-deps.sh
+        working-directory: packages/contracts
+      - run: node scripts/security/findings-register.mjs --check
+      - run: node --test scripts/security/findings-register.test.mjs
       - run: node --test scripts/treasury-v2/*.test.mjs
       - run: node --test scripts/reclaim/*.test.mjs
       - name: Fetch exact historical Reclaim source boundary

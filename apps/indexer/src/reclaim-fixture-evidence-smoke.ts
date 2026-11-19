@@ -52,7 +52,12 @@ export async function testReclaimFixtureProofs(){
     getCode:async({address}:{address:Address})=>[creator,claimant].includes(address)?undefined:address===factory?factoryCode:address===reward?rewardCode:address===core?coreCode:address===collection?nftCode
       :address===deployer?deployerCode:address===sink?knobs.mode==="sink-runtime"?"0x6006":sinkCode:address===part1?"0x0060":address===part2?knobs.mode==="creation-part"?"0x0001":"0x0000":knobs.mode==="runtime"?"0x6004":campaignCode,
     getTransactionCount:async()=>0,
-    getTransaction:async({hash}:{hash:Hash})=>{const height=Number(BigInt(hash)/10n);return{chainId:31337,hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,to:height===3?factory:campaign,from:height===3?creator:claimant,value:0n,nonce:0,
+    getTransaction:async({hash}:{hash:Hash})=>{const height=Number(BigInt(hash)/10n);return{chainId:31337,
+      type:knobs.mode==="legacy-format"?"legacy":knobs.mode==="delegation-format"?"eip7702":"eip1559",
+      ...(knobs.mode==="authorization-list"&&{authorizationList:[]}),
+      ...(knobs.mode==="access-list"&&{accessList:[{address:campaign,storageKeys:[]}]}),
+      ...(knobs.mode==="malformed-access-list"&&{accessList:"invalid-provider-shape"}),
+      hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,to:height===3?factory:campaign,from:height===3?creator:claimant,value:0n,nonce:0,
       input:height===3?encodeFunctionData({abi:factoryAbi,functionName:"create",args:[intent,creator,5n,4]}):encodeFunctionData({abi,functionName:"redeem",args:[collection,[42n],[1n],[1n],[[]],3n,5n,0n,1_800_000_100n]})};},
     getBlock:async({blockNumber}:{blockNumber:bigint})=>({number:blockNumber,hash:knobs.mode==="header"?h(999):h(Number(blockNumber)),timestamp:1_800_000_000n+blockNumber,transactions:knobs.mode==="multi-transaction"?[h(Number(blockNumber)*10),h(999)]:knobs.mode==="membership"?[h(999)]:[h(Number(blockNumber)*10)]}),
     getTransactionReceipt:async({hash}:{hash:Hash})=>{if(knobs.mode==="missing-receipt")throw Error("provider receipt unavailable");const height=Number(BigInt(hash)/10n);return{status:"success",transactionHash:hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,
@@ -95,7 +100,7 @@ export async function testReclaimFixtureProofs(){
     assert.equal(settled?.settlement?.kind,"permanent-surrender");assert.equal(settled?.settlement?.retirementMode,retirementMode);assert.equal(settled?.settlement?.destination,destination());
     assert.deepEqual(settled?.settlement?.supplyAfter,[retirementMode===1?"9":"10"]);assert.equal(range.states[0]?.reserve,"995");assert.equal("repaid" in range.states[0]!,false);
     assert.equal(range.states[0]?.tradeInNonce,"1");assert.equal(settled?.settlement?.receiptId,"1","The first V2 accepted receipt is ID1");
-    const modes=["wrong-chain","missing-receipt","header","membership","runtime","missing-log","missing-retirement","receipt-id-gap","event-supply","payout","recipient","nft-log","archive","multi-transaction","accounting","supply","unreviewed-profile","creation-part","legacy-return"];
+    const modes=["delegation-format","legacy-format","authorization-list","access-list","malformed-access-list","wrong-chain","missing-receipt","header","membership","runtime","missing-log","missing-retirement","receipt-id-gap","event-supply","payout","recipient","nft-log","archive","multi-transaction","accounting","supply","unreviewed-profile","creation-part","legacy-return"];
     if(retirementMode===2)modes.push("custody","sink-runtime","sink-balance");else if(standard===1)modes.push("resurrected","owner-archive");
     for(const mode of modes){knobs.mode=mode;await assert.rejects(readReclaimFixtureRange(db,scope,m,rpc,[at(5)]),/evidence|unavailable|contract/i,`${standard}/${retirementMode}/${mode}`);}
     knobs.mode="";knobs.duplicate=true;assert.equal((await readReclaimFixtureRange(db,scope,m,rpc,[at(5)])).events.length,2);knobs.duplicate=false;

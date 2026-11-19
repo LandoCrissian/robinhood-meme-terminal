@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "status": "VERIFICATION_POLICY_FIXED_STATIC_GATES_REMAIN_FAILED",
+  "baseCommit": "526cf004d267596f6203f977be40439825f1204b",
+  "scope": "Local provider doubles with genuine synthetic ECDSA Safe approvals; not public-chain exploitation or new independent security clearance",
+  "source": "apps/indexer/src/reclaim-fixture-origin.ts",
+  "beforeSourceSha256Lf": "662a1ee47da8444a03302f7a03c7a3b04ac629fffe80bba93da88eea2333cc75",
+  "afterSourceSha256Lf": "ba5b5430c6a1d63f308f44705b4f73f80b7a123834055478cf32a07fe56a2e1c",
+  "before": {
+    "log": "origin-format-before.log.gz",
+    "sha256": "aa25884b6683526f2bf5a31f63f1f3a97f9674991300574a4022e6ca47130083",
+    "observed": "Missing expected rejection: delegation-format",
+    "meaning": "Unsupported type4 transaction metadata was accepted by the origin verifier despite the type2 wallet-review policy",
+    "exit": "Nonzero enforced by harness; exact numeric code not persisted",
+    "sha256AppliesTo": "uncompressed original bytes"
+  },
+  "after": {
+    "log": "origin-format-after.log.gz",
+    "sha256": "39c866e10ffdeed7669a8347df059179742d7d533076315a515fc077b23fd37e",
+    "exit": 0,
+    "rejections": [
+      "delegation-format",
+      "legacy-format",
+      "authorization-list",
+      "access-list",
+      "malformed-access-list"
+    ],
+    "positive": "Ordinary type2 envelope with exact Safe approvals and canonical-shaped receipt accepted",
+    "sha256AppliesTo": "uncompressed original bytes"
+  },
+  "permanentProof": {
+    "log": "permanent-proof-after.log.gz",
+    "sha256": "b7eec456c38aac33163a4a0aa560332b524b8b06d857578884dd98737a628b17",
+    "exit": 0,
+    "standards": [
+      "ERC721",
+      "ERC1155"
+    ],
+    "retirementModes": [
+      "native-burn",
+      "immutable-sink"
+    ],
+    "unprovedMultiTransactionBlock": "unavailable, not added under feature freeze",
+    "sha256AppliesTo": "uncompressed original bytes"
+  },
+  "solidityChanged": false,
+  "highFindingsCleared": 0,
+  "productionChanged": false,
+  "broadcastAuthorized": false
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "status": "FAILED_BEFORE_CI_SETUP_CORRECTION",
+  "sourceCommit": "36925b41814896d0279ed71500ff89ce134c9535",
+  "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44466792180/job/135366409303",
+  "cause": "New strict Git-blob evidence test requested exact baseline526cf004... absent from the shallow Actions checkout",
+  "correction": "Fetch that exact SHA before pnpm test:release-evidence; no source/hash/settlement assertion changed",
+  "fullJobLogSha256": "8041468782f4c9099c916e90d78eb4225008c8b9591849c45d82afb44c94e0ef",
+  "fragment": "ci-shallow-baseline-failure.txt.gz",
+  "fragmentRawSha256": "20d27b62361dd29ff5ee9c1892836c8e204483ac6dbc354d581da39677d8688e",
+  "productionChanged": false,
+  "securityGateWeakened": false
+}

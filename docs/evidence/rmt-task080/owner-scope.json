@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "ownerClarification": "https://github.com/LandoCrissian/robinhood-meme-terminal/pull/673#issuecomment-7000394798",
+  "ownerClarificationUpdatedAt": "2026-11-19T05:12:41Z",
+  "ownerClarificationBodySha256Utf8": "2ed9ecb5e9b1e76c8c1e593ace9d3c1e67bf359fafc229af73692808c6efbce6",
+  "baseCommit": "526cf004d267596f6203f977be40439825f1204b",
+  "reclaim": {
+    "featureScope": "FROZEN_PERMANENT_SURRENDER_V2_TRIAL",
+    "newFeaturesAuthorized": false,
+    "productionController": null,
+    "realCollections": [],
+    "rewardToken": null,
+    "liveFunding": null,
+    "activationAuthorized": false,
+    "dashboardRequires": "Explicit server policy plus actual onchain current/pending controller/runtime; actual wallet/Safe signatures remain necessary"
+  },
+  "nextSeparateFeatureProposal": {
+    "name": "PROJECT_TREASURY_NFT_COLLECTION_PURCHASING",
+    "currentlyImplemented": false,
+    "independentFromTokenBuybacks": true,
+    "defaultEnabled": false,
+    "realPurchasesAuthorized": false,
+    "royaltyChangesAuthorized": false,
+    "scope": "Reusable creator-selected verified collection, exact signed order, caps, approved route and custody/receipt verification; never an executable URL"
+  },
+  "ownTokenBuybacks": "NO_GO_WITHOUT_ACCEPTED_INDEPENDENT_PROJECT_TOKEN_REFERENCE",
+  "productionChangesAuthorized": false,
+  "paidServicesAuthorized": false,
+  "newProductionWalletsAuthorized": false
+}

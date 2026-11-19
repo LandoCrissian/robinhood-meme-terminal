@@ -6,6 +6,8 @@ import {reclaimProfile,reclaimFixtureFlag,reclaimAddress,reclaimHash,reclaimUint
 import {configuredCurveFixture,fixtureRpc,verifyCurveFixture,type CurveFixture} from "./curve-fixture";
 import {projectTreasuryControllerKind} from "./project-treasury-fixture";
 import {readTreasuryBody} from "./project-treasury-actions";
+import type {ReclaimAdministrationPolicy} from "../reclaim-administration";
+import {configuredReclaimAdministration,reclaimAdministrationEvidence} from "./reclaim-administration";
 
 export const reclaimFactoryAbi=parseAbi(reclaimFactorySignatures);
 export const reclaimCampaignAbi=parseAbi(reclaimCampaignSignatures);
@@ -20,7 +22,7 @@ export type ReclaimDeployment={schemaVersion:2;profile:typeof reclaimProfile;cha
   creationPart1:Address;creationPart1RuntimeHash:Hex;creationPart2:Address;creationPart2RuntimeHash:Hex;
   retirementProfiles:{runtimeHash:Hex;standard:1|2;mode:1|2;policyHash:Hex}[];
   deployment:ReclaimPoint&{transactionHash:Hex};compilerInputSha256:string;collections:ReclaimAsset[]};
-export type ReclaimFixture={curve:CurveFixture;module:ReclaimDeployment};
+export type ReclaimFixture={curve:CurveFixture;module:ReclaimDeployment;administration?:ReclaimAdministrationPolicy|null};
 export type ReclaimRpc=ReturnType<typeof fixtureRpc>;
 export type ReclaimHead=Awaited<ReturnType<ReclaimRpc["getBlock"]>>&{number:bigint;hash:Hex};
 export const sameReclaim=(a:string,b:string)=>a.toLowerCase()===b.toLowerCase();
@@ -54,7 +56,7 @@ export function configuredReclaimFixture(headers:Headers):ReclaimFixture|null{
     if(new Set(m.collections.map(c=>c.address.toLowerCase())).size!==m.collections.length)return null;
     materializeReclaimRuntime(m.campaignRuntimeTemplate,m.campaignImmutableReferences,m.campaignImmutableNames,
       {creator:m.coreFactory,deploymentFactory:m.reclaimFactory,rewardToken:m.rewardToken,rewardRuntimeHash:m.rewardTokenRuntimeHash,deploymentChainId:31337,permanentSink:m.permanentSink,sinkRuntimeHash:m.sinkRuntimeHash});
-    return{curve,module:m};
+    return{curve,module:m,administration:configuredReclaimAdministration(m)};
   }catch{return null;}
 }
 export function reclaimEligibility(config:ReclaimFixture,campaign:Address,collection:Address){
@@ -207,5 +209,5 @@ export async function readReclaimSnapshot(config:ReclaimFixture,campaign:Address
     controllerEpoch:String(state.controllerEpoch),policyEpoch:String(state.policyEpoch),controllerKind:await projectTreasuryControllerKind(rpc,controller,head.number),
     rewardToken:m.rewardToken,rewardRuntimeHash:m.rewardTokenRuntimeHash,rewardDecimals:18,rewardSymbol:"Synthetic RMT",rewardMode:"fixed-token-units",rewardPerUnit:String(state.rewardPerUnit),walletCap:String(state.walletCap),
     paused:state.paused as boolean,closed:state.closed as boolean,reserve:{heldWei:tokenBalance.toString(),availableWei:reserve.toString(),fundedWei:funded.toString(),paidWei:paid.toString(),recoveredWei:recovered.toString(),unsolicitedWei:unsolicited.toString(),liabilityWei:"0"},
-    collections,receipts,pending,history,observed:reclaimPoint(head),notices:["Local synthetic campaign; no live RMT or USD-priced reward exists.","Permanent surrender: an approved native burn destroys these NFT units; an approved immutable sink permanently removes them from circulation without calling it a burn. No returns or buyback exist.","Only source-reviewed immutable collection profiles and finite IDs are admitted. An unknown issuer, upgrade, seizure or remint path makes a collection unsupported.","No creator fees, protocol treasuries or royalties fund this campaign automatically."]};
+    collections,receipts,pending,history,administration:await reclaimAdministrationEvidence(config,rpc,head,campaign,controller),observed:reclaimPoint(head),notices:["Local synthetic campaign; no live RMT or USD-priced reward exists.","Permanent surrender: an approved native burn destroys these NFT units; an approved immutable sink permanently removes them from circulation without calling it a burn. No returns or buyback exist.","Only source-reviewed immutable collection profiles and finite IDs are admitted. An unknown issuer, upgrade, seizure or remint path makes a collection unsupported.","No creator fees, protocol treasuries or royalties fund this campaign automatically."]};
 }

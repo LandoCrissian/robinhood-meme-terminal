@@ -2,6 +2,10 @@
 
 **DRAFT / NO PRODUCTION APPROVAL / BLOCKED_NO_BROADCAST.** The [owner correction](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/672#issuecomment-6996801185) supersedes the earlier Task078 escrow design and the reversible-custody paragraph in the original Task079 instructions. Reversible escrow was an assistant-introduced deviation. V1 source and reports are historical evidence only. The active V2 product has no NFT return, repayment, buyback, administrator withdrawal or rescue path.
 
+**Feature scope frozen as a trial.** [The Task 080 addendum](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/673#issuecomment-7000394798) allows security work, not new Reclaim features. Production controller admission remains **unassigned**. Local administration requires an explicit server-only deployment/controller policy plus the campaign's actual current or accepted incoming controller/runtime. Safe owners and the outer gas payer are separate roles; unsigned preparation is not authentication of wallet ownership. Actual execution still needs the controller's signature or required Safe approvals. Removing dashboard admission blocks new preparation/revalidation without deleting historical journals or preventing read-only reconciliation.
+
+This dashboard restriction does not rewrite the immutable factory's permissionless creation or the campaign's permissionless execution/expired-notice rules. It grants no platform override, custody or NFT recovery power. Multi-transaction settlement expansion is deferred under the feature freeze; current unproven cases stay unavailable. See [the security register and release holds](RMT_SECURITY_REMEDIATION_AND_RELEASE_GATES.md).
+
 ## Admission matrix
 
 There are **zero approved real collections, IDs or reward-token addresses**. The four fixture profiles below are local synthetic contracts, not a real collection allowlist. Deployment must bind the separately accepted owner-created RMT token by chain, address, origin, runtime, 18 decimals and fixed one-billion supply. A ticker is insufficient.

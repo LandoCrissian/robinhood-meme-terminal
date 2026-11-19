@@ -1,0 +1,598 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "scope": "ISOLATED_SYNTHETIC_CHAIN_31337_BROWSER_AND_POSTGRESQL_NOT_PRODUCTION",
+  "sourceCommit": "c1ae53179c7e8ad91c637af0471a20a2f2c67b3c",
+  "checkoutCommit": "95c23092ce5910cb09547ab9474f61a5a4cfd0eb",
+  "identicalSourceTree": "e65e60f5af218de5b14482c46841911aba68150c",
+  "baseCommit": "526cf004d267596f6203f977be40439825f1204b",
+  "compilerInputSha256": "fece6e205ff52f8369c732cbddaa663a0d19530062b7539dc4b4467099a08cdc",
+  "productionAuthorization": false,
+  "physicalIPhoneAcceptance": false,
+  "runUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427776",
+  "recordedAt": "2026-11-19T06:10:09.047801+00:00",
+  "browsers": {
+    "chromium": {
+      "artifactId": "14504360346",
+      "archiveSha256": "4d1f11f23f1a9c1a94c22b7e7380ca029f4629696c3706ae45a9f357ae11776f",
+      "archiveBytes": 45561505,
+      "checkoutCommit": "95c23092ce5910cb09547ab9474f61a5a4cfd0eb",
+      "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427776/job/135371719965",
+      "status": "passed",
+      "postgresql": {
+        "serverVersion": "18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+        "encoding": "UTF8",
+        "isolatedTestDatabase": true
+      },
+      "administration": {
+        "explicitSyntheticPolicy": true,
+        "productionControllerAssigned": false,
+        "unrelatedWallet": "0x4c863029FC41E952a73F88F302936b3648AfD800",
+        "permissionlessContractSimulation": "0x",
+        "dashboardPreparationDenied": true,
+        "unrelatedAdminControlsAbsent": true,
+        "participantPreparationWithoutPolicy": true,
+        "malformedPolicyBlocksRevalidation": true,
+        "canonicalRecoveryWithoutPolicy": true,
+        "noWalletSubmission": true,
+        "runtimeMismatchBlocksAdmin": true,
+        "restoredRuntimeRequiresFreshOnchainSnapshot": true,
+        "incomingControllerBlockedBeforeNotice": true,
+        "formerControllerBlockedAfterHandoff": true,
+        "safeOwnerDistinctFromGasPayer": true
+      },
+      "observedRetirements": 9,
+      "canonicalRetirements": 8,
+      "canonicalNftUnits": 16,
+      "canonicalRewardWei": "86000000000000000000",
+      "observedSafeOuterExecutions": 11,
+      "canonicalSafeOuterExecutions": 10,
+      "canonicalSqlEvents": 45,
+      "restart": {
+        "before": 22,
+        "after": 22,
+        "unchanged": true
+      },
+      "reorg": {
+        "orphanHash": "0xb187c3b6dc76ef941930b3b2b8e76c42a6e87fdd948fb9dfe205e95463728215",
+        "canonicalRowsRemoved": true,
+        "allAssetAndReserveStateRolledBack": true,
+        "originalHashRetained": true,
+        "recoveryStatus": "unavailable",
+        "noAutomaticRetry": true
+      },
+      "files": [
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/archive-provenance.json.gz",
+          "sha256": "ab3e3f61ba1a07d667beba25d77dbda15131e0af21e44f7fc0313ee09a13a361",
+          "bytes": 585,
+          "uncompressedSha256": "d0e0ef718b579ac9a22996e6ac5cc9114dc21180f3114f9a4afcf07a9004d5de",
+          "uncompressedBytes": 2491
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/budget-browser--reclaim-browser-evidence.json.gz",
+          "sha256": "d6a8f0d26cfd8bb34530196536954cfc440524fe6f27c7e19c52c60fbdce8b4a",
+          "bytes": 17986,
+          "uncompressedSha256": "73404cb89ea3b3a9364e18d859858f56be08a10115cf627cb0005a4df5b7af4d",
+          "uncompressedBytes": 255878
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/public-data-classification.json",
+          "sha256": "a5cb9c845555f0d7521c8fbd0ac2c36e23fcec37f8c774784ad411b24fa9858b",
+          "bytes": 99873
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/raw-gitleaks-report.json.gz",
+          "sha256": "191d4b3819a8334df147ec4cfd7062f9777b2d8c828258889bed76dea0c26cd7",
+          "bytes": 3839
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-acceptance.json.gz",
+          "sha256": "5459080d612974557cc10d45b475be48807441fae515dac73534494fec22647b",
+          "bytes": 74428,
+          "uncompressedSha256": "93ac4757726ba3f45b429224350381f20fadf7b78620710e8b99a3612ba6fa3d",
+          "uncompressedBytes": 618528
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-admin-policy-unassigned.png",
+          "sha256": "c366b0b1c3d38cad8cb00858b5b240771b2eabc7e9263268b3217bcb946563c3",
+          "bytes": 289241
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-administration-policy.json.gz",
+          "sha256": "6ddd3a41426279b23353a6385e4af6d4b2b028c20354bc6b892eb4b1986bc35c",
+          "bytes": 417,
+          "uncompressedSha256": "455b78e7b4c7ee8aa4464a74783d09cb5f61aac6debbaf90dcbb12e8f1df0e1e",
+          "uncompressedBytes": 652
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-browser-evidence.json.gz",
+          "sha256": "28f15ec9ced8d819f2ffa56dc1256a0d97923b3335fec9dc610ac0f5382e940d",
+          "bytes": 76417,
+          "uncompressedSha256": "b6e04bca6d38703805ef2b331cba6fd89125bb2b61ceada6b950245f63fb6596",
+          "uncompressedBytes": 1323024
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-compiler-manifest.json.gz",
+          "sha256": "f2d48538aaf8432541b85c8b346361ac7227d8e8d1bcb85b9c130df63a882aae",
+          "bytes": 1699,
+          "uncompressedSha256": "471ee910ded067ae9725093d81745bae19cd86a0f5c6b2cf6941c37b80df0ff3",
+          "uncompressedBytes": 4273
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-deployment.json.gz",
+          "sha256": "23959c7d58ceb69c593918465b99438ab42b471722157f9baf6ba9a8c74df406",
+          "bytes": 26661,
+          "uncompressedSha256": "0709d5791f131d38aeb1d279a1ad5b4682ecd48d3cfcd0cb768ce04c9038d33d",
+          "uncompressedBytes": 100272
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-direct-review-native-burn-cost-viewport.png",
+          "sha256": "469419cdb7824d3b2d2345933054a3eb0e4b677b6f56a1fede3ba41a4a737fe6",
+          "bytes": 235194
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-direct-review-native-burn-top-viewport.png",
+          "sha256": "8d61dabaa93bd3e4a81fac68fef902cee943c89775408cfd9f464e285f9898a1",
+          "bytes": 181776
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-direct-review-permanent-sink-cost-viewport.png",
+          "sha256": "30de89e3a3ef64e7bc38630b66162a4ff73c560e42942f3941a36525d95f03e3",
+          "bytes": 254802
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-direct-review-permanent-sink-top-viewport.png",
+          "sha256": "562c069d7aac5e818164c68c7605da25320cc9ccf3c20c9acf57c059758661b8",
+          "bytes": 181758
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-permanent-active-landscape.png",
+          "sha256": "93cd1b569c68216d1ffdec02d0cfed48a6bbbd62a5d4c63f0eb351517092929c",
+          "bytes": 183096
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-permanent-active-portrait.png",
+          "sha256": "25bffc91342afe1a30d3a8a939c14baf78b7c273d4579575d348d39a078bd823",
+          "bytes": 289174
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-safe-outer-review-native-burn-cost-viewport.png",
+          "sha256": "c63b3192cc6a5129a7d3245fc4d3bd426749bf6eeacbd1fb24b25636d089cf38",
+          "bytes": 288367
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-safe-outer-review-native-burn-top-viewport.png",
+          "sha256": "683f180f057370beb14ee2b6e82ffceede1f800945b0cd77813ce5c49671f14a",
+          "bytes": 304968
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-safe-outer-review-permanent-sink-cost-viewport.png",
+          "sha256": "862d4d0351e43f48a6001b4405b3f371b927eac28a348dbb698f69a011cbaef7",
+          "bytes": 293097
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-safe-outer-review-permanent-sink-top-viewport.png",
+          "sha256": "7829db427f33e3d85d265501909f6239afd54573a7d827ee82ef1dc3e458dbc4",
+          "bytes": 309706
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-setup.json.gz",
+          "sha256": "ebd8ad10395efd6ab4d734387cdeb050563fe58d8286496f1d6f8d2374743089",
+          "bytes": 9131,
+          "uncompressedSha256": "572eb270432749b04b405aee26df567cefb2ede919247c19bccd7feb297bf8f1",
+          "uncompressedBytes": 43285
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-standard-desktop.png",
+          "sha256": "9950fa4ebce9d7c010d03693c55f79b1e4bc1a88aa3222ebbf4f9310e788948a",
+          "bytes": 114625
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/chromium/reclaim-unauthorized-administration.png",
+          "sha256": "c366b0b1c3d38cad8cb00858b5b240771b2eabc7e9263268b3217bcb946563c3",
+          "bytes": 289241
+        }
+      ]
+    },
+    "webkit": {
+      "artifactId": "14503862101",
+      "archiveSha256": "699ec5b95649785269af6cccf61fbc2f98ef604ca96b19dbf1344efae3642f1e",
+      "archiveBytes": 53122099,
+      "checkoutCommit": "95c23092ce5910cb09547ab9474f61a5a4cfd0eb",
+      "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427776/job/135371720304",
+      "status": "passed",
+      "postgresql": {
+        "serverVersion": "18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+        "encoding": "UTF8",
+        "isolatedTestDatabase": true
+      },
+      "administration": {
+        "explicitSyntheticPolicy": true,
+        "productionControllerAssigned": false,
+        "unrelatedWallet": "0xFC4f228ee60D6e61477FdCca80Bf66B202fBc1f2",
+        "permissionlessContractSimulation": "0x",
+        "dashboardPreparationDenied": true,
+        "unrelatedAdminControlsAbsent": true,
+        "participantPreparationWithoutPolicy": true,
+        "malformedPolicyBlocksRevalidation": true,
+        "canonicalRecoveryWithoutPolicy": true,
+        "noWalletSubmission": true,
+        "runtimeMismatchBlocksAdmin": true,
+        "restoredRuntimeRequiresFreshOnchainSnapshot": true,
+        "incomingControllerBlockedBeforeNotice": true,
+        "formerControllerBlockedAfterHandoff": true,
+        "safeOwnerDistinctFromGasPayer": true
+      },
+      "observedRetirements": 9,
+      "canonicalRetirements": 8,
+      "canonicalNftUnits": 16,
+      "canonicalRewardWei": "86000000000000000000",
+      "observedSafeOuterExecutions": 11,
+      "canonicalSafeOuterExecutions": 10,
+      "canonicalSqlEvents": 45,
+      "restart": {
+        "before": 22,
+        "after": 22,
+        "unchanged": true
+      },
+      "reorg": {
+        "orphanHash": "0x91cb66ae6d5097b3eb3c818afd3371aca2a52cbeb9e63c66011422205a37c35a",
+        "canonicalRowsRemoved": true,
+        "allAssetAndReserveStateRolledBack": true,
+        "originalHashRetained": true,
+        "recoveryStatus": "unavailable",
+        "noAutomaticRetry": true
+      },
+      "files": [
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/archive-provenance.json.gz",
+          "sha256": "4ee55dceaef7c5896987c1c828e391513631420c479cab964debe4c998aafea2",
+          "bytes": 585,
+          "uncompressedSha256": "80d6c9f53b89b8644feb32f811348e4386c256d54c9d3a17539e7e1ffa7954e0",
+          "uncompressedBytes": 2489
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/budget-browser--reclaim-browser-evidence.json.gz",
+          "sha256": "b7695aa0490825ec8043583ab8a6e669b12973c5208abc065d0bd591a5d36681",
+          "bytes": 17978,
+          "uncompressedSha256": "e5bc46b0b4d71477a512a167045fa6b7d94bd257253acf59dacea1eaf74791b9",
+          "uncompressedBytes": 255878
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/public-data-classification.json",
+          "sha256": "148b8fcdae2f8b966d1a277039fbd7874fbcea8ddf49486da5b238c8e7bc0970",
+          "bytes": 99867
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/raw-gitleaks-report.json.gz",
+          "sha256": "8dfd2a4793c58cf9e34153e12a52623d43861455819e883f81da0f65177ddc6b",
+          "bytes": 3856
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-acceptance.json.gz",
+          "sha256": "67d8a60cf09b892d5611c9f8d21b42c9e52070ba8383d48b31b5267678a37323",
+          "bytes": 74360,
+          "uncompressedSha256": "09de6c4883eebe97f7e64c4d1a0e869deef5a7146f8b8ae99d093f27c1d9c7e1",
+          "uncompressedBytes": 618526
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-admin-policy-unassigned.png",
+          "sha256": "cfdf48f2b9a02b61e9c3733f84568c3150138816b715341493a92eb736a60104",
+          "bytes": 340559
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-administration-policy.json.gz",
+          "sha256": "370b7f0c76d23873d6093f3271a28890b19a960352810613bac1c4bc6ae852a8",
+          "bytes": 418,
+          "uncompressedSha256": "82b2b10c41d19932bc6ea28e41402b5142cd446f4c78c818c6419f566fe935e6",
+          "uncompressedBytes": 652
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-browser-evidence.json.gz",
+          "sha256": "249c32a289fde5ee057466fa9b79a3f1882c3b25a726deefb98c827e886eef1b",
+          "bytes": 76330,
+          "uncompressedSha256": "f6cd5166b49d583ccc55058eb00cdac00ced63a47fc743488c4594cb3ee4f381",
+          "uncompressedBytes": 1322772
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-compiler-manifest.json.gz",
+          "sha256": "f2d48538aaf8432541b85c8b346361ac7227d8e8d1bcb85b9c130df63a882aae",
+          "bytes": 1699,
+          "uncompressedSha256": "471ee910ded067ae9725093d81745bae19cd86a0f5c6b2cf6941c37b80df0ff3",
+          "uncompressedBytes": 4273
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-deployment.json.gz",
+          "sha256": "48e0c7871dbfb7dbbd699f9b570dac74ef650342cfb1b689ac93eb523c580706",
+          "bytes": 26658,
+          "uncompressedSha256": "0077b9c963da2166590df8f9bd690468192b73fa68e0875246b21b2e714fdb20",
+          "uncompressedBytes": 100272
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-direct-review-native-burn-cost-viewport.png",
+          "sha256": "df0540b47c2e5219f6c2884ec8e5f544aaeaf6ae1b662fe85ddff6c62ad9d4b0",
+          "bytes": 271311
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-direct-review-native-burn-top-viewport.png",
+          "sha256": "c3fa1ad6e266d53464d15cdeb9106bdf7947801637b5d4f2680341a6ed857c5e",
+          "bytes": 215859
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-direct-review-permanent-sink-cost-viewport.png",
+          "sha256": "d37ff6024b48cfa9bd76aa7f59dae2cba18796c135a18ebe7e228e3a8058ce87",
+          "bytes": 286011
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-direct-review-permanent-sink-top-viewport.png",
+          "sha256": "c3fa1ad6e266d53464d15cdeb9106bdf7947801637b5d4f2680341a6ed857c5e",
+          "bytes": 215859
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-permanent-active-landscape.png",
+          "sha256": "12e7a1d013ec179d6a84df9661ce8c2af1e40ea11e255ef06803c0bc62977278",
+          "bytes": 218833
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-permanent-active-portrait.png",
+          "sha256": "3d7ad3e7ee38e2d50016df47cbce2c6f008bc0bb73e519d7cfe64d4c073d9647",
+          "bytes": 340189
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-safe-outer-review-native-burn-cost-viewport.png",
+          "sha256": "7a9b3a1956cf2084f1d872ac30451645dac06c66ae75f0f262bae4c8ca475a0e",
+          "bytes": 335622
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-safe-outer-review-native-burn-top-viewport.png",
+          "sha256": "e2d7e6086e1026bc7dfc43c4fe6c4df3f11b14bd2fae62bc2465e5919564fcac",
+          "bytes": 351051
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-safe-outer-review-permanent-sink-cost-viewport.png",
+          "sha256": "ef3c1ba429d2b500fb743fed43a220af1ee82dd971be3d15e88149c2759572ec",
+          "bytes": 334423
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-safe-outer-review-permanent-sink-top-viewport.png",
+          "sha256": "03208278b39ac1b9462bc61ee1fc9348381418c83b1aac5a2c03796d23f218c8",
+          "bytes": 349028
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-setup.json.gz",
+          "sha256": "e890210f998d8a83ffb78f9d7956adaf7b6c703ac92daedbf99ec0bee2d96237",
+          "bytes": 9120,
+          "uncompressedSha256": "044dcbdbc43d25dd438f4b04bc41cd276143343a1cdaa6733448e7dc39562792",
+          "uncompressedBytes": 43285
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-standard-desktop.png",
+          "sha256": "e4ec1127dcf4105afa88e2bdc597dd38cf592130feca93593290c230de4d1879",
+          "bytes": 135511
+        },
+        {
+          "path": "docs/evidence/rmt-task080/browser/webkit/reclaim-unauthorized-administration.png",
+          "sha256": "cfdf48f2b9a02b61e9c3733f84568c3150138816b715341493a92eb736a60104",
+          "bytes": 340559
+        }
+      ]
+    }
+  },
+  "ciChecks": [
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427914/job/135371720798",
+      "name": "contracts",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427861/job/135371720443",
+      "name": "fixed-supply-4663",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427746/job/135371719830",
+      "name": "gitleaks",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427914/job/135371720731",
+      "name": "indexer",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427827/job/135371719941",
+      "name": "isolated-firebase",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427776/job/135371719965",
+      "name": "isolated-lifecycle (chromium)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427776/job/135371720304",
+      "name": "isolated-lifecycle (webkit)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427805/job/135371719984",
+      "name": "linux-netlify-artifact",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427914/job/135371720747",
+      "name": "operations-safe",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427861/job/135371720399",
+      "name": "project-treasury-v1",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427809/job/135371720040",
+      "name": "railway-container",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427875/job/135371720164",
+      "name": "reclaim-permanent-v2",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427861/job/135371720393",
+      "name": "reclaim-v1",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427914/job/135371720573",
+      "name": "repository",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427861/job/135371720475",
+      "name": "slither",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427861/job/135371720125",
+      "name": "treasury-purchase-v2-prototype",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44468427776/job/135371720451",
+      "name": "web",
+      "state": "SUCCESS"
+    }
+  ],
+  "verifiedSourceFiles": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "normalization": "canonical-lf",
+      "sha256": "0a1cc7a30e2a83d75c78d6810825dd004d3cebec4b236ad2943651ca8ffeb710",
+      "bytes": 6961
+    },
+    {
+      "path": ".github/workflows/launch-website-review.yml",
+      "normalization": "canonical-lf",
+      "sha256": "270bf98538eac508ec30bb3b6698cbd261dd9f717ec3b75a04df195aeeb765eb",
+      "bytes": 15097
+    },
+    {
+      "path": "apps/indexer/src/reclaim-fixture-evidence-smoke.ts",
+      "normalization": "canonical-lf",
+      "sha256": "664f38e3a6cbb9c8d2125732e81b8db87deaa4bebc88ccf3c32998661613654b",
+      "bytes": 17265
+    },
+    {
+      "path": "apps/indexer/src/reclaim-fixture-origin-smoke.ts",
+      "normalization": "canonical-lf",
+      "sha256": "2ecf693a27880efa2c95a72376f9ed0d2f1937c02cdf6d0c0b315f37c940f20a",
+      "bytes": 7025
+    },
+    {
+      "path": "apps/indexer/src/reclaim-fixture-origin.ts",
+      "normalization": "canonical-lf",
+      "sha256": "ba5b5430c6a1d63f308f44705b4f73f80b7a123834055478cf32a07fe56a2e1c",
+      "bytes": 11916
+    },
+    {
+      "path": "apps/launch-website/app/_components/reclaim-dashboard.tsx",
+      "normalization": "canonical-lf",
+      "sha256": "9fbb1e9c5b15eadcf17af8e453322a7662e540cff755beb96eb8febb97e077e2",
+      "bytes": 61800
+    },
+    {
+      "path": "apps/launch-website/app/reclaim/page.tsx",
+      "normalization": "canonical-lf",
+      "sha256": "41864f80c1794f88134032eff5bf380d23b1f81072ff91943554dc4f0e2041f9",
+      "bytes": 954
+    },
+    {
+      "path": "apps/launch-website/lib/reclaim-administration.ts",
+      "normalization": "canonical-lf",
+      "sha256": "9d31950c27fd365f7263427f4ead60e3279bae830c845634ef983b44a6a79932",
+      "bytes": 3077
+    },
+    {
+      "path": "apps/launch-website/lib/reclaim.ts",
+      "normalization": "canonical-lf",
+      "sha256": "60adda5be44593ed4f993e889d1674ce8d066ab3616dcc7087d8f729371b399f",
+      "bytes": 21339
+    },
+    {
+      "path": "apps/launch-website/lib/server/reclaim-actions.ts",
+      "normalization": "canonical-lf",
+      "sha256": "7c9b1a00eba1ff5771996295af48705b0998ee22540a65b2cc397b31adda1c54",
+      "bytes": 37548
+    },
+    {
+      "path": "apps/launch-website/lib/server/reclaim-administration.test.ts",
+      "normalization": "canonical-lf",
+      "sha256": "1d5c870d27a3d3a3b3c041581887d123e1cdfbfe97ef3423fd0116733c07243b",
+      "bytes": 8421
+    },
+    {
+      "path": "apps/launch-website/lib/server/reclaim-administration.ts",
+      "normalization": "canonical-lf",
+      "sha256": "fabf8c4b3a44b52ace89184717d7bdc8fe7bafd6231b5ca5eb5c7d92ee4c53e2",
+      "bytes": 5533
+    },
+    {
+      "path": "apps/launch-website/lib/server/reclaim-fixture.ts",
+      "normalization": "canonical-lf",
+      "sha256": "2ff016e4d7cb4625b0ae4854ce230aa55ddec7f29c4d82176b6f02be372d299d",
+      "bytes": 29560
+    },
+    {
+      "path": "apps/launch-website/lib/server/reclaim-safe-actions.test.ts",
+      "normalization": "canonical-lf",
+      "sha256": "0410078c2d21974bce639c13d8e9242ee4680e57b822f8f1c80d553c1099baec",
+      "bytes": 7785
+    },
+    {
+      "path": "config/reclaim-administration.local.schema.json",
+      "normalization": "canonical-lf",
+      "sha256": "681033b69caaa609bca8cca9c012963c6324e171eaf36dce705696c8f2f555c1",
+      "bytes": 1223
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/test/RMTReclaimV2BoundarySecurity.t.sol",
+      "normalization": "canonical-lf",
+      "sha256": "cd745b9fcb614de090b213243097c46464cf265b8006051bac9bb146bc2cde42",
+      "bytes": 15191
+    },
+    {
+      "path": "scripts/reclaim-v2/local-integration.mjs",
+      "normalization": "canonical-lf",
+      "sha256": "78e7d4c509b02da758c7398c4fb95b551089167251c65f0a817778156a7925aa",
+      "bytes": 27576
+    },
+    {
+      "path": "scripts/security/findings-register.mjs",
+      "normalization": "canonical-lf",
+      "sha256": "20e96a5626fe06404ac134d9a9d9c68f69d8f169f1cd0a21ec0d51af94136fbb",
+      "bytes": 27037
+    },
+    {
+      "path": "scripts/security/findings-register.test.mjs",
+      "normalization": "canonical-lf",
+      "sha256": "36b1c61e79c5373a77428b34031149a72612eebfaa6c646cea3d41d0e99ed525",
+      "bytes": 8362
+    },
+    {
+      "path": "scripts/visual-qa/rmt-creator-integration.mjs",
+      "normalization": "canonical-lf",
+      "sha256": "56e50f3c0e037ece2a16530a827346bad8f4dd868dec93fc1eacee67aec75cd2",
+      "bytes": 92341
+    }
+  ],
+  "limitations": [
+    "GitHub Actions synthetic merge checkout has an identical Git tree to the reviewed PR head; raw source identities are not rewritten.",
+    "Public-data scanner exit1 is retained: all240 generic-api-key matches per engine resolve to the exact synthetic public reward-token address or runtime hash, not credentials. All44 signature occurrences per engine recover the stated synthetic Safe owners on chain31337. No detector was suppressed.",
+    "Final evidence/docs-only head is separately checked; this archived full browser execution identifies its actual source commit.",
+    "No physical iPhone, hosted deployment, mainnet settlement or independent Ethereum L1 finality was tested.",
+    "Single-transaction block proof limit and all strict security failures remain."
+  ]
+}

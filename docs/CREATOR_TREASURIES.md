@@ -1,5 +1,9 @@
 # Creator treasuries
 
+The [Task 080 owner clarification](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/673#issuecomment-7000394798) makes NFT collection purchasing the next separately scoped feature proposal after security work. Creators must independently choose a verified collection, review actual chain/contracts and order terms, set purchase/aggregate budgets and per-NFT caps, and retain an OFF-by-default, immediately stoppable purchasing control. Existing treasury V1 and the nonspending V2 prototype do not implement that purchase capability.
+
+NFT acquisition is separate from buying a project's own fungible token. The latter's independent-price requirement remains a buyback release gate; it is not a claim that a verified NFT listing is a fungible-token quote. Future NFT execution needs its own approved marketplace/payment route, exact order/fees/royalties and receipt/custody verification. An OpenSea URL must never become an executable target. Reclaim remains a frozen, separately manually funded trial. No real purchase, royalty change or automatic reciprocal transfer is authorized by this direction.
+
 Each launch can direct its own project earnings to the creator and an independent treasury. The treasury may receive **0–100% of the project's 90% share**. On creation, review both public beneficiary addresses and the exact allocation. RMT does not take custody of project earnings.
 
 The development [creator earnings dashboard](CREATOR_EARNINGS.md) separates recipient-aware discovery, verified balances, original-ledger migration continuity and synthetic claim recovery. Production claims remain disabled.
