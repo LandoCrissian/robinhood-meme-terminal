@@ -32,6 +32,8 @@ test("active browser acceptance uses V2 while old V1 is syntax-checked as histor
   assert.doesNotMatch(workflow,/^\s+node scripts\/reclaim\/browser-public\.mjs/m);
   assert.match(workflow,/^\s+node scripts\/reclaim-v2\/browser-public\.mjs/m);
   for(const retained of["--profiles-only","--treasury-only --treasury-v2","--reclaim-only","browser: [chromium, webkit]"])assert.ok(workflow.includes(retained));
+  assert.ok(workflow.indexOf("--reclaim-only")<workflow.indexOf("--profiles-only"));
+  assert.ok(workflow.indexOf("--reclaim-only")<workflow.indexOf("--mobile-plan docs/evidence/mobile-signing/review-plan-4663.json"));
   assert.match(workflow,/reclaim-safe-acceptance\.json/);assert.match(workflow,/budget-browser\/\*\.png/);
   assert.match(workflow,/timeout-minutes: 30/);
   const repository=read(".github/workflows/ci.yml");

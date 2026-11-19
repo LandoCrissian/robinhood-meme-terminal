@@ -171,6 +171,13 @@ jobs:
           "$(pg_config --bindir)/pg_ctl" --version
           node packages/contracts/scripts/mobile-review-plan.mjs --solc "$RUNNER_TEMP/solc-0.8.26" \
             --fixture-lifecycle --verify docs/evidence/mobile-signing/review-plan-4663.json
+      - name: Verify permanent Reclaim and two-owner Safe execution on synthetic chain 31337
+        run: |
+          node scripts/visual-qa/rmt-creator-integration.mjs --reclaim-only \
+            --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --browser "${{ matrix.browser }}" \
+            --output "$RUNNER_TEMP/rmt-reclaim"
       - name: Verify the same-app lifecycle on synthetic chain 31337
         run: |
           node --test scripts/visual-qa/receipt-observation.test.mjs
@@ -194,13 +201,6 @@ jobs:
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-project-treasury"
-      - name: Verify permanent Reclaim and two-owner Safe execution on synthetic chain 31337
-        run: |
-          node scripts/visual-qa/rmt-creator-integration.mjs --reclaim-only \
-            --anvil "$(command -v anvil)" \
-            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
-            --browser "${{ matrix.browser }}" \
-            --output "$RUNNER_TEMP/rmt-reclaim"
       - name: Read local PostgreSQL diagnostics after failure
         if: failure()
         run: |
