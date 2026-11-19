@@ -63,11 +63,22 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   if(decision==="reject")return{review:outer,submission};
   await mine();
   if(decision==="lose"){
+   const wrongHash=evidence.safeExecutions.at(-1).receipt.transactionHash;
+   await session.safeVerify({review:outer,hash:wrongHash,status:"unavailable"});
+   const unknown=await session.page.evaluate(key=>{const e=JSON.parse(localStorage.getItem("rmt.reclaim.safe.v2:"+key));return{proposalHash:e.proposal.proposalHash,stage:e.stage,transactionHash:e.transactionHash,result:e.result};},outer.proposal.proposalHash);
+   assert.equal(unknown.transactionHash,null);assert.equal(unknown.result.transactionHash,undefined);
+   await session.fill("Original Safe transaction hash (if available)","");
    const pending=await session.safeVerify({review:outer,status:"pending"});assert.equal(pending.status,"pending");assert.notEqual(pending.indexed,true);
+   assert.equal(await session.page.evaluate(key=>JSON.parse(localStorage.getItem("rmt.reclaim.safe.v2:"+key)).transactionHash,outer.proposal.proposalHash),null);
+   evidence.manualHashRecovery??=[];evidence.manualHashRecovery.push({kind:"safe",originalReviewHash:outer.reviewHash,candidateHash:wrongHash,unboundJournal:unknown,actualTransactionHash:submission.receipt.transactionHash});
    hideReceipt(undefined);await ready();
   }else await ready();
   const verified=await session.safeVerify({review:outer,...(decision!=="lose"&&{hash:submission.receipt.transactionHash}),indexed:true});
   assert.equal(verified.transactionHash,submission.receipt.transactionHash);assert.ok(same(verified.safe,reclaimDeployment.safe));
+  if(decision==="lose"){
+   const bound=await session.page.evaluate(key=>JSON.parse(localStorage.getItem("rmt.reclaim.safe.v2:"+key)).transactionHash,outer.proposal.proposalHash);
+   assert.equal(bound,submission.receipt.transactionHash);evidence.manualHashRecovery.find(r=>r.originalReviewHash===outer.reviewHash).resolvedJournalHash=bound;
+  }
   await record(operation,submission,outer,verified);evidence.safeExecutions.push({operation,proposalHash:proposal.proposalHash,digest:proposal.digest,safeNonce:proposal.safeNonce,
    gasPayer:creator,owners:owners.slice(0,2),receipt:submission.receipt,result:verified,missingHashRecovered:decision==="lose"});save();return{review:outer,submission,verified};
  }
@@ -107,7 +118,15 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   await complete("pause");await complete("propose-rate",{rewardPerUnit:units(7)});await advance();await complete("execute-rate");
   assert.equal((await read(campaign,campaignAbi,"tradeIns",[1n]))[4],BigInt(units(5)));await complete("resume");
   await session.selectCollection(burn721.address);const lost=await session.action("approve-721",{collection:burn721.address,tokenId:"2"}),missing=await session.confirm("lose");await mine();
-  await session.verify({review:lost.review,status:"pending"});hideReceipt(undefined);await ready();const recovered=await session.verify({review:lost.review,indexed:true});assert.equal(recovered.transactionHash,missing.receipt.transactionHash);
+  await session.verify({review:lost.review,hash:created.submission.receipt.transactionHash,status:"unavailable"});
+  const unknown=await session.page.evaluate(key=>{const e=JSON.parse(localStorage.getItem("rmt.reclaim.pending.v2:"+key));return{reviewHash:e.review.reviewHash,stage:e.stage,transactionHash:e.transactionHash,result:e.result};},lost.review.reviewHash);
+  assert.equal(unknown.transactionHash,null);assert.equal(unknown.result.transactionHash,undefined);
+  await session.fill("Original transaction hash (if available)","");await session.verify({review:lost.review,status:"pending"});
+  assert.equal(await session.page.evaluate(key=>JSON.parse(localStorage.getItem("rmt.reclaim.pending.v2:"+key)).transactionHash,lost.review.reviewHash),null);
+  evidence.manualHashRecovery??=[];evidence.manualHashRecovery.push({kind:"direct",originalReviewHash:lost.review.reviewHash,candidateHash:created.submission.receipt.transactionHash,unboundJournal:unknown,actualTransactionHash:missing.receipt.transactionHash});
+  hideReceipt(undefined);await ready();const recovered=await session.verify({review:lost.review,indexed:true});assert.equal(recovered.transactionHash,missing.receipt.transactionHash);
+  const bound=await session.page.evaluate(key=>JSON.parse(localStorage.getItem("rmt.reclaim.pending.v2:"+key)).transactionHash,lost.review.reviewHash);
+  assert.equal(bound,missing.receipt.transactionHash);evidence.manualHashRecovery.find(r=>r.originalReviewHash===lost.review.reviewHash).resolvedJournalHash=bound;
   evidence.checks.missingHashNoDuplicate=true;
   const beforeRestart=await worker();assert.equal(beforeRestart.status,200);const countBefore=(await pg.query("SELECT count(*)::int AS count FROM rmt_reclaim_v2_fixture_events")).rows[0].count;
   await restart();await session.page.reload();await session.page.locator('[data-reclaim-ready="true"]').waitFor();await session.connect();await session.lookup(campaign);
