@@ -303,10 +303,12 @@ export async function readReclaimFixtureRange(db:Pick<Client,"query">,scope:Recl
   }
   const states=[];for(const birth of all.values()){
     const state=await readReclaimFixtureSnapshot(rpc,m,birth,blocks.at(-1)!);
-    const previousNonce=BigInt(birth.deployment.blockNumber)>=from?1n:await read<bigint>(rpc,birth.campaign,false,"tradeInNonce",[],from-1n);
+    // V2 stores the count of accepted surrenders, starting at zero. Its
+    // ++tradeInNonce receipt IDs begin at one; V1 used a next-ID counter.
+    const previousNonce=BigInt(birth.deployment.blockNumber)>=from?0n:await read<bigint>(rpc,birth.campaign,false,"tradeInNonce",[],from-1n);
     const accepted=events.filter(e=>same(e.campaign,birth.campaign)&&e.eventName==="TradeInAccepted").sort((a,b)=>BigInt(a.args.receiptId as string)<BigInt(b.args.receiptId as string)?-1:1);
     requireReclaimEvidence(BigInt(state.tradeInNonce)===previousNonce+BigInt(accepted.length));
-    for(let i=0;i<accepted.length;i++)requireReclaimEvidence(BigInt(accepted[i]!.args.receiptId as string)===previousNonce+BigInt(i));
+    for(let i=0;i<accepted.length;i++)requireReclaimEvidence(BigInt(accepted[i]!.args.receiptId as string)===previousNonce+BigInt(i)+1n);
     states.push(state);
   }
   return{births,events,states};

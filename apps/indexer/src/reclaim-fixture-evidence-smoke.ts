@@ -41,9 +41,9 @@ export async function testReclaimFixtureProofs(){
       :knobs.retirementMode===1?log(collection,encodeEventTopics({abi:nft,eventName:"TransferSingle",args:{operator:campaign,from:claimant,to:destination()}}) as Hash[],encodeAbiParameters([{type:"uint256"},{type:"uint256"}],[42n,1n]),5,0)
         :log(collection,encodeEventTopics({abi:nft,eventName:"TransferBatch",args:{operator:campaign,from:claimant,to:destination()}}) as Hash[],encodeAbiParameters([{type:"uint256[]"},{type:"uint256[]"}],[[42n],[1n]]),5,0),
     log(reward,encodeEventTopics({abi:erc20,eventName:"Transfer",args:{from:campaign,to:knobs.mode==="recipient"?a(999):claimant}}) as Hash[],encodeAbiParameters([{type:"uint256"}],[knobs.mode==="payout"?999n:5n]),5,1),
-    log(campaign,encodeEventTopics({abi,eventName:"NFTPermanentlyRetired",args:{receiptId:1n,collection}}) as Hash[],encodeAbiParameters([{type:"uint8"},{type:"uint8"},{type:"address"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256[]"}],
+    log(campaign,encodeEventTopics({abi,eventName:"NFTPermanentlyRetired",args:{receiptId:knobs.mode==="receipt-id-gap"?2n:1n,collection}}) as Hash[],encodeAbiParameters([{type:"uint8"},{type:"uint8"},{type:"address"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256[]"}],
       [knobs.standard,knobs.retirementMode,destination(),[42n],[1n],[10n],[knobs.mode==="event-supply"?1n:knobs.retirementMode===1?9n:10n]]),5,2),
-    log(campaign,encodeEventTopics({abi,eventName:"TradeInAccepted",args:{receiptId:1n,claimant,collection}}) as Hash[],encodeAbiParameters([{type:"uint8"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256"},{type:"uint64"},{type:"uint64"},{type:"uint8"},{type:"address"}],
+    log(campaign,encodeEventTopics({abi,eventName:"TradeInAccepted",args:{receiptId:knobs.mode==="receipt-id-gap"?2n:1n,claimant,collection}}) as Hash[],encodeAbiParameters([{type:"uint8"},{type:"uint256[]"},{type:"uint256[]"},{type:"uint256"},{type:"uint64"},{type:"uint64"},{type:"uint8"},{type:"address"}],
       [knobs.standard,[42n],[1n],5n,3n,0n,knobs.retirementMode,destination()]),5,3),
   ];
   const actualLogs=()=>{let value=logs();if(knobs.mode==="missing-log")value=value.filter(l=>l.address!==campaign);if(knobs.mode==="nft-log")value=value.filter(l=>l.address!==collection);
@@ -72,7 +72,7 @@ export async function testReclaimFixtureProofs(){
       if(functionName==="rewardPerUnit")return 5n;if(functionName==="walletCap")return 4;if(functionName==="policyEpoch")return 3n;if(functionName==="controllerEpoch")return 1n;
       if(functionName==="paused"||functionName==="closed")return false;if(functionName==="funded")return 1000n;if(functionName==="paid")return blockNumber>=5n?5n:0n;
       if(["recovered","unsolicited","outstandingLiability"].includes(functionName))return 0n;if(functionName==="reserve")return knobs.mode==="accounting"?999n:blockNumber<5n?1000n:995n;
-      if(functionName==="tradeInNonce")return blockNumber>=5n?2n:1n;
+      if(functionName==="tradeInNonce")return blockNumber>=5n?1n:0n;
       if(functionName==="collections")return[keccak256(nftCode),leaf().root,4,4,knobs.standard,knobs.retirementMode,policyHash,true];
       if(functionName==="tradeIns")return[claimant,collection,knobs.standard,3n,5n,1,1,knobs.retirementMode,destination()];
       if(functionName==="receiptItems")return[[42n],[1n]];if(functionName==="receiptCollectionHash")return keccak256(nftCode);
@@ -86,12 +86,16 @@ export async function testReclaimFixtureProofs(){
   } as unknown as PublicClient;
   const birth=await verifyReclaimFixtureBirth(rpc,m,campaign,at(5),birthLog);assert.equal(birth.creator.toLowerCase(),creator.toLowerCase());
   const db={query:async()=>({rows:[{payload:birth}]})} as unknown as Client,scope:[number,string,string]=[31337,core,h(1)];
+  const emptyBirth=await readReclaimFixtureRange(db,scope,m,rpc,[at(3)]);
+  assert.equal(emptyBirth.births.length,1);assert.equal(emptyBirth.events.length,0);
+  assert.equal(emptyBirth.states[0]?.tradeInNonce,"0","A real V2 birth has zero accepted surrenders and must index before funding or eligibility");
   for(const standard of[1,2] as const)for(const retirementMode of[1,2] as const){
     knobs.standard=standard;knobs.retirementMode=retirementMode;m.collections[0]!.standard=standard;m.collections[0]!.retirementMode=retirementMode;m.retirementProfiles[0]!.standard=standard;m.retirementProfiles[0]!.mode=retirementMode;m.retirementProfilesHash=profilesHash();
     const range=await readReclaimFixtureRange(db,scope,m,rpc,[at(5)]);assert.equal(range.events.length,2);const settled=range.events.find(e=>e.settlement);
     assert.equal(settled?.settlement?.kind,"permanent-surrender");assert.equal(settled?.settlement?.retirementMode,retirementMode);assert.equal(settled?.settlement?.destination,destination());
     assert.deepEqual(settled?.settlement?.supplyAfter,[retirementMode===1?"9":"10"]);assert.equal(range.states[0]?.reserve,"995");assert.equal("repaid" in range.states[0]!,false);
-    const modes=["wrong-chain","missing-receipt","header","membership","runtime","missing-log","missing-retirement","event-supply","payout","recipient","nft-log","archive","multi-transaction","accounting","supply","unreviewed-profile","creation-part","legacy-return"];
+    assert.equal(range.states[0]?.tradeInNonce,"1");assert.equal(settled?.settlement?.receiptId,"1","The first V2 accepted receipt is ID1");
+    const modes=["wrong-chain","missing-receipt","header","membership","runtime","missing-log","missing-retirement","receipt-id-gap","event-supply","payout","recipient","nft-log","archive","multi-transaction","accounting","supply","unreviewed-profile","creation-part","legacy-return"];
     if(retirementMode===2)modes.push("custody","sink-runtime","sink-balance");else if(standard===1)modes.push("resurrected","owner-archive");
     for(const mode of modes){knobs.mode=mode;await assert.rejects(readReclaimFixtureRange(db,scope,m,rpc,[at(5)]),/evidence|unavailable|contract/i,`${standard}/${retirementMode}/${mode}`);}
     knobs.mode="";knobs.duplicate=true;assert.equal((await readReclaimFixtureRange(db,scope,m,rpc,[at(5)])).events.length,2);knobs.duplicate=false;
