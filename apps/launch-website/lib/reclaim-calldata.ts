@@ -1,5 +1,5 @@
 import { decodeFunctionData, encodeFunctionData, parseAbi } from "viem";
-import { reclaimCampaignSignatures, reclaimFactorySignatures } from "../../../packages/launchpad-common/reclaim-runtime.mjs";
+import { reclaimCampaignSignatures, reclaimFactorySignatures } from "../../../packages/launchpad-common/reclaim-v2-runtime.mjs";
 import type { ReclaimReview } from "./reclaim";
 
 // Browser-safe source-bound ABI. Unknown selectors and trailing/noncanonical
@@ -31,11 +31,11 @@ export function reclaimCalldataMatchesReview(review: ReclaimReview): boolean {
       case "create-campaign": return named("create", 4) && same(args[0], field.intentId) && same(args[1], field.controller)
         && numberEquals(args[2], field.rewardPerUnit) && integer(args[2], 128) && numberEquals(args[3], field.walletCap) && integer(args[3], 32);
       case "approve-funding": return named("approve", 2) && same(args[0], review.campaign) && numberEquals(args[1], field.amountWei);
-      case "approve-return": return named("approve", 2) && same(args[0], review.campaign) && numberEquals(args[1], review.rewardWei);
       case "fund": return named("fund", 1) && numberEquals(args[0], field.amountWei);
-      case "propose-collection": return named("proposeCollection", 7) && same(args[0], field.collection) && [1, 2].includes(Number(args[1]))
+      case "propose-collection": return named("proposeCollection", 9) && same(args[0], field.collection) && [1, 2].includes(Number(args[1]))
         && hash(args[2]) && hash(args[3]) && numberEquals(args[4], field.collectionCap) && integer(args[4], 32)
-        && numberEquals(args[5], field.collectionWalletCap) && integer(args[5], 32) && numberEquals(args[6], field.expiresAt) && integer(args[6], 48);
+        && numberEquals(args[5], field.collectionWalletCap) && integer(args[5], 32) && [1, 2].includes(Number(args[6])) && hash(args[7])
+        && numberEquals(args[8], field.expiresAt) && integer(args[8], 48);
       case "disable-collection": return named("disableCollection", 1) && same(args[0], field.collection);
       case "approve-721": return named("approve", 2) && same(args[0], review.campaign) && numberEquals(args[1], field.tokenId);
       case "approve-1155": case "revoke-1155": return named("setApprovalForAll", 2) && same(args[0], review.campaign) && args[1] === (review.operation === "approve-1155");
@@ -47,8 +47,6 @@ export function reclaimCalldataMatchesReview(review: ReclaimReview): boolean {
         return args[3].every((maximum, index) => integer(maximum) && BigInt(maximum) >= BigInt(field.quantities![index]) && BigInt(maximum) > 0n)
           && args[4].every(proof => Array.isArray(proof) && proof.length <= 32 && proof.every(hash));
       }
-      case "return": return named("returnTradeIn", 2) && numberEquals(args[0], field.receiptId) && integer(args[0], 64)
-        && numberEquals(args[1], String(review.expiresAt)) && integer(args[1], 48);
       case "propose-rate": return named("proposeRate", 2) && numberEquals(args[0], field.rewardPerUnit) && integer(args[0], 128) && numberEquals(args[1], field.expiresAt) && integer(args[1], 48);
       case "propose-close": return named("proposeClose", 1) && numberEquals(args[0], field.expiresAt) && integer(args[0], 48);
       case "propose-recovery": return named("proposeRecovery", 2) && numberEquals(args[0], field.amountWei) && numberEquals(args[1], field.expiresAt) && integer(args[1], 48);

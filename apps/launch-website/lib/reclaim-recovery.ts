@@ -1,22 +1,24 @@
 import { isReclaimReview, reclaimAddress, reclaimHash, reclaimVerificationMatches, sameReclaimHex, type ReclaimReview, type ReclaimVerification } from "./reclaim";
 import { isTestLifecycleRequest } from "./test-lifecycle";
+import { claimProfileDigest } from "./claim-profiles";
+import { assertNoPendingReclaimSafe } from "./reclaim-safe-recovery";
 
-export const reclaimJournalNamespace = "rmt.reclaim.pending.v1";
+export const reclaimJournalNamespace = "rmt.reclaim.pending.v2";
 const indexKey = reclaimJournalNamespace + ":index";
 type StoragePort = Pick<Storage, "getItem" | "setItem">;
-export type ReclaimJournal = { schemaVersion: 1; review: ReclaimReview; stage: "awaiting-wallet" | "wallet-rejected" | "hash-missing" | ReclaimVerification["status"];
+export type ReclaimJournal = { schemaVersion: 2; review: ReclaimReview; stage: "awaiting-wallet" | "wallet-rejected" | "hash-missing" | ReclaimVerification["status"];
   transactionHash: string | null; result: ReclaimVerification | null; createdAt: number; updatedAt: number };
 const keyFor = (review: ReclaimReview) => `${reclaimJournalNamespace}:${review.reviewHash}`;
 const byteLength = (value: string) => new TextEncoder().encode(value).byteLength;
 export function reclaimCampaignIntentKey(account: string): string {
   if (!reclaimAddress(account)) throw Error("A valid campaign creator is required.");
-  return "rmt.reclaim.intent.v1:" + account.toLowerCase();
+  return "rmt.reclaim.intent.v2:" + account.toLowerCase();
 }
 export const reclaimJournalTerminal = (entry: ReclaimJournal) => ["confirmed", "reverted", "wallet-rejected"].includes(entry.stage);
 export function validReclaimJournal(value: unknown): value is ReclaimJournal {
   try {
     const entry = value as ReclaimJournal;
-    return !!entry && Object.keys(entry).length === 7 && entry.schemaVersion === 1 && isReclaimReview(entry.review) && entry.review.status === "prepared"
+    return !!entry && Object.keys(entry).length === 7 && entry.schemaVersion === 2 && isReclaimReview(entry.review) && entry.review.status === "prepared"
       && ["awaiting-wallet", "wallet-rejected", "hash-missing", "pending", "confirmed", "reverted", "unavailable", "reorged"].includes(entry.stage)
       && (entry.transactionHash === null || reclaimHash(entry.transactionHash)) && Number.isSafeInteger(entry.createdAt) && entry.createdAt > 0
       && Number.isSafeInteger(entry.updatedAt) && entry.updatedAt >= entry.createdAt
@@ -30,7 +32,7 @@ export function listReclaimJournals(storage: StoragePort): ReclaimJournal[] {
   if (byteLength(raw) > 8192) throw Error("Reclaim recovery index exceeds its bound. Preserve the original requests.");
   let keys: unknown; try { keys = JSON.parse(raw); } catch { throw Error("Reclaim recovery index is invalid. Preserve the original requests."); }
   if (!Array.isArray(keys) || keys.length > 32 || new Set(keys).size !== keys.length
-    || keys.some(key => typeof key !== "string" || !/^rmt\.reclaim\.pending\.v1:0x[0-9a-f]{64}$/i.test(key))) throw Error("Reclaim recovery index is invalid.");
+    || keys.some(key => typeof key !== "string" || !/^rmt\.reclaim\.pending\.v2:0x[0-9a-f]{64}$/i.test(key))) throw Error("Reclaim recovery index is invalid.");
   return keys.map(key => {
     const body = storage.getItem(key); if (!body || byteLength(body) > 65536) throw Error("An original Reclaim request is missing or exceeds its bound.");
     let entry: unknown; try { entry = JSON.parse(body); } catch { throw Error("An original Reclaim request is malformed."); }
@@ -50,8 +52,34 @@ export function storeReclaimJournal(storage: StoragePort, entry: ReclaimJournal)
   if (storage.getItem(keyFor(entry.review)) !== body || !listReclaimJournals(storage).some(item => item.review.reviewHash === entry.review.reviewHash)) throw Error("The original Reclaim request could not be saved before wallet confirmation.");
 }
 export function assertNoPendingReclaim(storage: StoragePort, account: string): void {
+  assertNoPendingHistoricalReclaim(storage, account);
+  assertNoPendingReclaimSafe(storage, account);
   if (listReclaimJournals(storage).some(entry => sameReclaimHex(entry.review.actor, account) && !reclaimJournalTerminal(entry))) {
     throw Error("Recover the earlier Reclaim transaction before requesting another wallet submission.");
+  }
+}
+
+/** Preserve rejected V1 records without admitting any old operation, selector
+ * or repayment/return request into the active V2 interface. */
+export function assertNoPendingHistoricalReclaim(storage: Pick<Storage, "getItem">, account: string): void {
+  const raw = storage.getItem("rmt.reclaim.pending.v1:index"); if (raw === null) return;
+  if (byteLength(raw) > 8192) throw Error("Historical Reclaim index exceeds its bound. Preserve original evidence.");
+  let keys: unknown; try { keys = JSON.parse(raw); } catch { throw Error("Historical Reclaim index is malformed. Preserve original evidence."); }
+  if (!Array.isArray(keys) || keys.length > 32 || new Set(keys).size !== keys.length
+    || keys.some(k => typeof k !== "string" || !/^rmt\.reclaim\.pending\.v1:0x[0-9a-f]{64}$/i.test(k))) throw Error("Historical Reclaim identity is invalid.");
+  for (const key of keys) {
+    const body = storage.getItem(key); if (!body || byteLength(body) > 65536) throw Error("Historical Reclaim request is missing or exceeds its bound.");
+    let value: unknown; try { value = JSON.parse(body); } catch { throw Error("Historical Reclaim record is malformed."); }
+    const entry = value as { schemaVersion: number; stage: string; transactionHash: string | null; result: null | {status: string;transactionHash?:string;reviewHash:string}; review: {schemaVersion:number;profile:string;actor:string;reviewHash:string} };
+    if (!entry || entry.schemaVersion !== 1 || !entry.review || entry.review.schemaVersion !== 1 || entry.review.profile !== "rmt-reclaim-v1"
+      || !reclaimAddress(entry.review.actor) || !reclaimHash(entry.review.reviewHash) || key !== "rmt.reclaim.pending.v1:" + entry.review.reviewHash
+      || !["awaiting-wallet", "wallet-rejected", "hash-missing", "pending", "confirmed", "reverted", "unavailable", "reorged"].includes(entry.stage)
+      || entry.transactionHash !== null && !reclaimHash(entry.transactionHash)) throw Error("Historical Reclaim record has an invalid identity.");
+    const {reviewHash,...reviewBody}=entry.review;
+    if (claimProfileDigest(reviewBody) !== reviewHash) throw Error("Historical Reclaim review digest changed. Preserve original evidence.");
+    const terminal = entry.stage === "wallet-rejected" && entry.transactionHash === null || ["confirmed", "reverted"].includes(entry.stage)
+      && entry.result?.status === entry.stage && entry.result.reviewHash === reviewHash && !!entry.transactionHash && sameReclaimHex(entry.result.transactionHash ?? "",entry.transactionHash);
+    if (sameReclaimHex(entry.review.actor,account) && !terminal) throw Error("Historical V1 Reclaim request remains unresolved. It cannot be executed by this permanent-retirement candidate.");
   }
 }
 
