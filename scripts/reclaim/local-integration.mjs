@@ -156,6 +156,16 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
     evidence.safe=await testReclaimSafe({client,rpc,send,creatorAccount,campaign,module:m,compilation:reclaimCompilation,assets:reclaimDeployment.assetArtifacts,
       mine,ready,workerOrigin,indexReadKey,out,waitFor});
     await session.lookup(campaign);await session.layouts("reclaim-complete");
+    const safeDetails=session.page.locator("details").filter({has:session.page.locator("summary",{hasText:"Act through an existing Safe"})});
+    await safeDetails.locator("summary").click();await session.fill("Safe acting address (optional)",evidence.safe.safe);
+    const sendsBeforeSafeReview=session.evidence.sends.length;
+    const inner=await session.action("pause");assert.equal(inner.review.status,"needs-safe-approvals");assert.equal(inner.review.request,null);
+    assert.equal(await session.page.getByRole("button",{name:"Confirm test Reclaim transaction",exact:true}).count(),0);
+    await session.page.getByText("Not estimated — Safe outer transaction required",{exact:true}).waitFor();
+    assert.equal(session.evidence.sends.length,sendsBeforeSafeReview);
+    await session.page.getByRole("region",{name:"Reviewed Reclaim transaction",exact:true}).screenshot({path:join(out,"reclaim-safe-inner-review.png")});
+    evidence.checks.safeInnerReviewNeverImpersonatesOwnerOrQuotesFreeGas=true;
+    await session.fill("Safe acting address (optional)","");
     // Keep an unresolved original transaction intact. Its recovery guard must
     // block later submissions, so perform this final state transition only
     // after the normal wallet/Safe journeys and their screenshots are complete.
