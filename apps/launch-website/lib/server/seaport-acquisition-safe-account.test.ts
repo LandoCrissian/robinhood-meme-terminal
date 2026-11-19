@@ -8,7 +8,8 @@ import {claimDelegatePin} from "../claim-profiles";
 const actor="0x0000000000000000000000000000000000018600" as Address;
 const fixture=JSON.parse(gunzipSync(readFileSync(new URL("./claim-delegate-runtime.test.json.gz",import.meta.url))).toString("utf8")).delegate;
 assert.equal(keccak256(fixture.code),claimDelegatePin.runtimeHash);
-function provider(actorCode:unknown,delegateCode:unknown=fixture.code){
+function provider(actorCode:unknown,...delegateOverride:unknown[]){
+ const delegateCode=delegateOverride.length===0?fixture.code:delegateOverride[0];
  const calls:Array<{address:string;tag:string}>=[];const rpc={getChainId:async()=>31337,getCode:async()=>undefined,
   request:async({method,params}:{method:string;params:string[]},options:{retryCount:number})=>{assert.equal(method,"eth_getCode");assert.equal(options.retryCount,0);calls.push({address:params[0]!,tag:params[1]!});return params[0]!.toLowerCase()===claimDelegatePin.address.toLowerCase()?delegateCode:actorCode;}};
  return{rpc:rpc as unknown as PublicClient,calls};
