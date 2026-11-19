@@ -23,10 +23,10 @@ import { compileProjectTreasury } from "../treasury/compiler.mjs";
 import { deployProjectTreasuryFixture } from "../treasury/deploy-fixture.mjs";
 import { testProjectTreasuryJourney } from "../treasury/local-integration.mjs";
 import { compileTreasuryPurchaseV2 } from "../treasury-v2/compiler.mjs";
-import { compileReclaim } from "../reclaim/compiler.mjs";
-import { compileReclaimFixtureAssets } from "../reclaim/fixture-assets.mjs";
-import { deployReclaimFixture } from "../reclaim/deploy-fixture.mjs";
-import { testReclaimJourney } from "../reclaim/local-integration.mjs";
+import { compileReclaimV2 as compileReclaim } from "../reclaim-v2/compiler.mjs";
+import { compileReclaimFixtureAssets } from "../reclaim-v2/fixture-assets.mjs";
+import { deployReclaimFixture } from "../reclaim-v2/deploy-fixture.mjs";
+import { testReclaimJourney } from "../reclaim-v2/local-integration.mjs";
 import { observeOriginalReceipt } from "./receipt-observation.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
@@ -365,7 +365,7 @@ try {
     ...(args["profiles-only"] && { RMT_CLAIM_PROFILES_FIXTURE: "local-reviewed-claims-31337-v1" }),
     ...(args["treasury-only"] && { RMT_PROJECT_TREASURY_FIXTURE: "local-reviewed-project-treasury-v1",
       RMT_PROJECT_TREASURY_DEPLOYMENT: join(out, "project-treasury-deployment.json") }),
-    ...(args["reclaim-only"]&&{RMT_RECLAIM_FIXTURE:"local-reviewed-reclaim-v1",RMT_RECLAIM_DEPLOYMENT:join(out,"reclaim-deployment.json")}),
+    ...(args["reclaim-only"]&&{RMT_RECLAIM_FIXTURE:"local-reviewed-reclaim-v2-permanent",RMT_RECLAIM_DEPLOYMENT:join(out,"reclaim-deployment.json")}),
     ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
       RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_TEST_DELEGATION: "synthetic-7702-v1",
       RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
@@ -425,7 +425,7 @@ try {
       site,workerOrigin,indexReadKey,out,pg,waitFor,mine:()=>rpc("anvil_mine",["0x3"]),ready:()=>workerReady(worker),restart:async()=>{
         await stop(web);await stop(worker);web=startWeb("website-reclaim-restart");worker=startWorker("worker-reclaim-restart");await webReady(web);await workerReady(worker);
       },hideReceipt:hash=>{hideReceipt=hash??undefined;}});
-    console.log("Same-app manually funded Reclaim escrow, exact reward settlement and durable recovery passed on synthetic 31337. No production execution occurred.");
+    console.log("Same-app permanent Reclaim V2 retirement, funded rewards, Safe outer execution and canonical recovery passed on synthetic 31337. No production execution occurred.");
   }else if (args["treasury-only"]) {
     assert.ok(treasuryDeployment && treasuryCompilation);
     let worker = startWorker("worker-project-treasury");

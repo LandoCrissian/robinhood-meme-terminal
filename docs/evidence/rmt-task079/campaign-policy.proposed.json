@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 2,
+  "profile": "rmt-reclaim-v2-permanent",
+  "status": "PROPOSED_UNAPPROVED",
+  "releaseStatus": "BLOCKED_NO_BROADCAST",
+  "chainId": 4663,
+  "productionEnabled": false,
+  "rewardToken": null,
+  "rewardRuntimeHash": null,
+  "controller": null,
+  "rewardUnitsPerEligibleQuantity": null,
+  "manualFundingUnits": null,
+  "usdReference": null,
+  "nominalUsdGoals": { "initialReserve": "20", "initialReward": "0.05", "futureRewardTarget": "0.50", "approvedConversion": false },
+  "allowedRoutes": ["reviewed-native-burn", "reviewed-immutable-contract-sink"],
+  "immutableRuntimeProfiles": [],
+  "collections": [],
+  "returnOrRepaymentAllowed": false,
+  "automaticFundingAllowed": false,
+  "automaticPurchasesAllowed": false,
+  "securityCleared": false,
+  "ownerApproved": false
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rmtlaunch.fun/schemas/reclaim-permanent-v2-proposal",
+  "title": "Unapproved RMT Reclaim V2 permanent-retirement inputs",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "profile", "status", "releaseStatus", "chainId", "productionEnabled", "rewardToken", "rewardRuntimeHash", "controller", "rewardUnitsPerEligibleQuantity", "manualFundingUnits", "usdReference", "nominalUsdGoals", "allowedRoutes", "immutableRuntimeProfiles", "collections", "returnOrRepaymentAllowed", "automaticFundingAllowed", "automaticPurchasesAllowed", "securityCleared", "ownerApproved"],
+  "properties": {
+    "schemaVersion": {"const": 2},
+    "profile": {"const": "rmt-reclaim-v2-permanent"},
+    "status": {"const": "PROPOSED_UNAPPROVED"},
+    "releaseStatus": {"const": "BLOCKED_NO_BROADCAST"},
+    "chainId": {"const": 4663},
+    "productionEnabled": {"const": false},
+    "rewardToken": {"type": "null"},
+    "rewardRuntimeHash": {"type": "null"},
+    "controller": {"type": "null"},
+    "rewardUnitsPerEligibleQuantity": {"type": "null"},
+    "manualFundingUnits": {"type": "null"},
+    "usdReference": {"type": "null"},
+    "nominalUsdGoals": {"type": "object", "additionalProperties": false, "required": ["initialReserve", "initialReward", "futureRewardTarget", "approvedConversion"], "properties": {"initialReserve": {"const": "20"}, "initialReward": {"const": "0.05"}, "futureRewardTarget": {"const": "0.50"}, "approvedConversion": {"const": false}}},
+    "allowedRoutes": {"const": ["reviewed-native-burn", "reviewed-immutable-contract-sink"]},
+    "immutableRuntimeProfiles": {"type": "array", "maxItems": 0},
+    "collections": {"type": "array", "maxItems": 0},
+    "returnOrRepaymentAllowed": {"const": false},
+    "automaticFundingAllowed": {"const": false},
+    "automaticPurchasesAllowed": {"const": false},
+    "securityCleared": {"const": false},
+    "ownerApproved": {"const": false}
+  }
+}

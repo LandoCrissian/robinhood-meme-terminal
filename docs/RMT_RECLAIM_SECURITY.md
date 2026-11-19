@@ -1,5 +1,7 @@
 # Reclaim V1 security boundary
 
+> **Historical rejected reversible-custody implementation.** The owner correction in Task079 requires permanent surrender and no NFT return path. Preserve the four V1 high findings and raw source/report as historical security evidence; no V1 production deployment is approved. The separately versioned V2 has its own compiler closure, analysis and acceptance. See [current policy](RMT_RECLAIM_CAMPAIGN_POLICY.md).
+
 **Local development only. BLOCKED_NO_BROADCAST.** This internal assessment is not an independent audit. It does not clear the existing 22 core/dependency highs, six V1 treasury highs, or any earlier release gate. No approved core/treasury source, economics, production NFT royalty setting or deployment changed.
 
 ## Custody and authority matrix
