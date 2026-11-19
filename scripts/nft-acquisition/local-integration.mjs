@@ -75,7 +75,7 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
   try {
     await session.connect(); assert.equal(await read("purchasesEnabled"), false);
     const outsiders = await post({ action: "prepare", operation: "configure", account: seller.address, fields: normalConfig() });
-    assert.equal(outsiders.body.status, "unavailable"); evidence.checks.foreignControllerDenied = true;
+    assert.equal(outsiders.http,200,json(outsiders)); assert.equal(outsiders.body.status, "unavailable",json(outsiders)); evidence.checks.foreignControllerDenied = true;
     await session.page.getByLabel("OpenSea collection URL or NFT contract address", { exact: true }).fill("https://opensea.io/collection/" + m.collections[0].slug);
     const resolvedResponse = session.page.waitForResponse(r => new URL(r.url()).pathname === "/api/nft-acquisition" && r.request().postDataJSON()?.action === "resolve").then(r => r.json());
     await session.page.getByRole("button", { name: "Verify collection identity", exact: true }).click();
