@@ -7,6 +7,7 @@
         "scripts/seaport-verification/provenance-proxy.mjs",
         "scripts/seaport-verification/replay-historical.mjs",
         "scripts/seaport-acquisition/provenance-qualify.mjs",
+        "scripts/seaport-acquisition/marketplace-archive.mjs",
         "packages/launchpad-common/seaport-vault-proof.d.mts",
         "packages/launchpad-common/seaport-vault-runtime.d.mts",
         "scripts/treasury-v2/routes.mjs",
@@ -64,7 +65,8 @@
       "entry": [
         "src/**/*-smoke.ts",
         "src/**/*.test.ts",
-        "src/curve-fixture-worker.ts"
+        "src/curve-fixture-worker.ts",
+        "src/seaport-acquisition-worker.ts"
       ]
     }
   }

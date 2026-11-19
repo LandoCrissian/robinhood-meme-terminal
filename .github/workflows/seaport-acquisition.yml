@@ -180,6 +180,9 @@ jobs:
           path: |
             ${{ runner.temp }}/seaport-vault-browser/*.json
             ${{ runner.temp }}/seaport-vault-browser/*.png
+            ${{ runner.temp }}/seaport-vault-browser/next.log
+            ${{ runner.temp }}/seaport-vault-browser/chain/seaport-acquisition-fixture-evidence.json
+            ${{ runner.temp }}/seaport-vault-browser/chain/seaport-acquisition-deployment.json
             ${{ runner.temp }}/seaport-vault-browser/website*.log
             ${{ runner.temp }}/seaport-vault-browser/worker*.log
             !${{ runner.temp }}/seaport-vault-browser/*password*
