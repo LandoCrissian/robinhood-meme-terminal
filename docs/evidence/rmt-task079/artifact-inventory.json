@@ -1,0 +1,445 @@
+{
+  "schemaVersion": 1,
+  "scope": "TRACKED_TASK079_ARTIFACTS_EXCLUDING_SELF",
+  "productionAuthorization": false,
+  "artifacts": [
+    {
+      "path": "docs/evidence/rmt-task079/.gitattributes",
+      "bytes": 95,
+      "sha256": "c648da6d2e6d4a2aea47ad42bf9dea0584cbc33c4d15e6f4493aee6ce3115408",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/README.md",
+      "bytes": 3254,
+      "sha256": "33db11263ec92ac9984e0a9a07c802189229d639ac4147d21d87be082e926125",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/artifact-inventory.test.mjs",
+      "bytes": 1803,
+      "sha256": "7ae8cc7c4b37eccb49da600b588b6901f887016f1082ac1a9d1469d0a0946992",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser-acceptance-manifest.json",
+      "bytes": 6608,
+      "sha256": "82a12ed60a3715d64451580199703703087b2cd586bb9268daa6320c43778ef4",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser-acceptance.test.mjs",
+      "bytes": 35146,
+      "sha256": "fb34f5c7a720c16aa1e9a6ea199d16afff2187cffce1b383b08cd7a8e9cf6c55",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/budget-browser--reclaim-browser-evidence.json.gz",
+      "bytes": 17910,
+      "sha256": "400ae686b6aa9151ff00fe435000269b25f506c3907be7bdf4e49c87a2162067",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/gitleaks-redacted-report.json.gz",
+      "bytes": 3849,
+      "sha256": "78d4e0e792f92d61eed08a1258ec2afed916a922bf6bdbb2d84b5cd414ca06d2",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/public-data-classification.json",
+      "bytes": 99209,
+      "sha256": "d165eb0b6d655f06564a0b9aa462f023777ce1946fe59975c77c863824a5249c",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-acceptance.json.gz",
+      "bytes": 73853,
+      "sha256": "f96d4e0c9b85304e0c2194f7d60c4dd6224c058f924cb58538593c02d4e2202b",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-browser-evidence.json.gz",
+      "bytes": 75818,
+      "sha256": "607dc7cd9d2ff0bb5c4c4a36094d124c8e9cabbbbc95f41eebe95752a4b3e305",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-compiler-manifest.json.gz",
+      "bytes": 1699,
+      "sha256": "f2d48538aaf8432541b85c8b346361ac7227d8e8d1bcb85b9c130df63a882aae",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-deployment.json.gz",
+      "bytes": 26668,
+      "sha256": "724bb24d782baf6e23d5fcc4a900d1b6974a64aca42f1994a0b2d5d0767b12da",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-direct-review-native-burn-cost-viewport.png",
+      "bytes": 235093,
+      "sha256": "621863eb56643e6ac36b964b1489e2685eb6ef8b892acac2564afc9b431362d1",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-direct-review-native-burn-top-viewport.png",
+      "bytes": 160722,
+      "sha256": "c97e9c2faa6681137a262e63acf433d4abaa3b411e0a0b79362611ebf70089d8",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-direct-review-permanent-sink-cost-viewport.png",
+      "bytes": 253151,
+      "sha256": "e37edfab189e963e1d77934b2e4d148fde611b9cb557de0c273a26e9d7cc4473",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-direct-review-permanent-sink-top-viewport.png",
+      "bytes": 160722,
+      "sha256": "7a132853a6009bd26fc222f89a845110820bbf91146ddf6a6f529decbd789b9f",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-permanent-active-landscape.png",
+      "bytes": 183096,
+      "sha256": "93cd1b569c68216d1ffdec02d0cfed48a6bbbd62a5d4c63f0eb351517092929c",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-permanent-active-portrait.png",
+      "bytes": 288995,
+      "sha256": "2e00a2221fe9c0a3070a7f06a81fff06a5784593d55dc2952cef800101fa4a6a",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-safe-outer-review-native-burn-cost-viewport.png",
+      "bytes": 286016,
+      "sha256": "d64a6f7adaa89aa56a02688f12bd4b89b864110a1731bd6eaa5fc95f280bc2c1",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-safe-outer-review-native-burn-top-viewport.png",
+      "bytes": 313726,
+      "sha256": "b48139f8a5cb05c370a9d84476caa2651933f4b6c1e3132656f95413d5277bbb",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-safe-outer-review-permanent-sink-cost-viewport.png",
+      "bytes": 287950,
+      "sha256": "08a4b79b00c87484089ec33b9dafd33f0e5edee73ae9ad727015247c845da02e",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-safe-outer-review-permanent-sink-top-viewport.png",
+      "bytes": 315738,
+      "sha256": "b747e1106afc70c02270e7671aa87b282545a13f9c44922daaca5bbebc85c26b",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-setup.json.gz",
+      "bytes": 9087,
+      "sha256": "e6d14416e83508032f6935697b67ee4b3a639dfc099d17b2340583cb8c9189d2",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/chromium/reclaim-standard-desktop.png",
+      "bytes": 114841,
+      "sha256": "7a798dfd3ba107e53cd1079ae8c28762aa080a8d6cb1c408d5e59a9fd6b62df3",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/budget-browser--reclaim-browser-evidence.json.gz",
+      "bytes": 17865,
+      "sha256": "7e574fb9865c293ce53cc807f10ba2d13b78abb1c8da110f18fe215981314e86",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/gitleaks-redacted-report.json.gz",
+      "bytes": 3857,
+      "sha256": "c7d4a0118b285db94b94d500e3a9f0f45b8f0823e181149c7e3b8e6da274d26e",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/public-data-classification.json",
+      "bytes": 99205,
+      "sha256": "45d0d02de38321f39040a93cc4685aae27935a1cb2f8fa8b0fa8292e160e8246",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-acceptance.json.gz",
+      "bytes": 73883,
+      "sha256": "b6def1e90e20941d619ec312cdf30bdd00e50aa10f4895e0122e45b3923f0e7a",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-browser-evidence.json.gz",
+      "bytes": 75751,
+      "sha256": "78909b98860df81c845c20e7ccf86de0f4cbc0eb7faa715c07ec5bbfff216cae",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-compiler-manifest.json.gz",
+      "bytes": 1699,
+      "sha256": "f2d48538aaf8432541b85c8b346361ac7227d8e8d1bcb85b9c130df63a882aae",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-deployment.json.gz",
+      "bytes": 26661,
+      "sha256": "4e147836465d646d7e2d1bfbec381ef6247f7e0ab67f30d4f122cf613d8a8f95",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-direct-review-native-burn-cost-viewport.png",
+      "bytes": 269306,
+      "sha256": "09d38102ecde9aff7b3f58d965d0488f2ce1259794dbdd002af1f5c19ebabf28",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-direct-review-native-burn-top-viewport.png",
+      "bytes": 217063,
+      "sha256": "268db9ca36c3398a1be711d710ac7e260030e8933ce288a5aa13a3c0cbe0339a",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-direct-review-permanent-sink-cost-viewport.png",
+      "bytes": 286202,
+      "sha256": "2c0ccba23f498b5634997b8d678f102c4186d3b7c6c61cf4e097654e78f1e70f",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-direct-review-permanent-sink-top-viewport.png",
+      "bytes": 217063,
+      "sha256": "268db9ca36c3398a1be711d710ac7e260030e8933ce288a5aa13a3c0cbe0339a",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-permanent-active-landscape.png",
+      "bytes": 218833,
+      "sha256": "12e7a1d013ec179d6a84df9661ce8c2af1e40ea11e255ef06803c0bc62977278",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-permanent-active-portrait.png",
+      "bytes": 345281,
+      "sha256": "222bf2c84b6d9d9a1a66b3a38fc83922e9a7a54ad0ba140d3e1deaef64d09091",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-safe-outer-review-native-burn-cost-viewport.png",
+      "bytes": 332166,
+      "sha256": "cf6982a9ab7db61f98e513e80ab9a7ac9268286b79d0a879461ccdd70c6980be",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-safe-outer-review-native-burn-top-viewport.png",
+      "bytes": 348612,
+      "sha256": "8fc5badb281d1a8a07ba91b9466149dab62b4b2fc0e3481aa7ac58241ade0fef",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-safe-outer-review-permanent-sink-cost-viewport.png",
+      "bytes": 333014,
+      "sha256": "e8c40e40d55643b0fee9683b306b6310e0e2f020ce72d7bb6e6ebd3ba70eeb19",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-safe-outer-review-permanent-sink-top-viewport.png",
+      "bytes": 349533,
+      "sha256": "7f3f0dbd2fd4f456f3bbe533dd0c7fda5081995280a469c1942458317c8c1f4e",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-setup.json.gz",
+      "bytes": 9124,
+      "sha256": "f10b4bad7f2088b517df8633f3b6668c805014be0a22a3d1e0dbaf71f1e87358",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/browser/webkit/reclaim-standard-desktop.png",
+      "bytes": 136469,
+      "sha256": "0d4f85bfca483cc33416916b3d0ba47cb42e0bc32623531a08a2fe025236c6e6",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/campaign-policy.proposed.json",
+      "bytes": 797,
+      "sha256": "e32f7e7ee3229cceeda9eb3ded4c7f83956a7985ba781b3bec0a9f1f9f92e687",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/campaign-policy.schema.json",
+      "bytes": 2003,
+      "sha256": "359821d44cafafd3e7628e54a3fb15c74b0b2877f5e6f3135f8e3c927fe65d21",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/linux-first-reclaim-acceptance.json.gz",
+      "bytes": 35337,
+      "sha256": "3ec608befba5f043b67f6305f7f958cf58343707f33d43798f0e729a88e60551",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/linux-first-reclaim-browser.json.gz",
+      "bytes": 2363,
+      "sha256": "59914aa613142192080d9594dc540c31a4f2156fadbf8419a70f1bb6fd2ab8f6",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/linux-first-worker.log.gz",
+      "bytes": 71,
+      "sha256": "90bc830e2aac2d55d7dc2fa35de00e3eadb54f3375c3e7a737924214692aa2e9",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/linux-native-burn-browser.json.gz",
+      "bytes": 18176,
+      "sha256": "4047ed5813883671700cee3423e7594a2fd5934025e92888fd601b79dcf818c4",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/linux-native-burn-indexer-acceptance.json.gz",
+      "bytes": 38911,
+      "sha256": "cec2f6f3d6eef981cdc2e594ff98efaab3fb491b0ff9c4cfaa7a56318d51a3b7",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/linux-native-burn-worker.log.gz",
+      "bytes": 71,
+      "sha256": "90bc830e2aac2d55d7dc2fa35de00e3eadb54f3375c3e7a737924214692aa2e9",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/manifest.json",
+      "bytes": 3440,
+      "sha256": "58ae77a97a608e3b79329386f3e0d3edba313480ca1c097752166f0470ef522f",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/failed-before/windows-postgres-init.log.gz",
+      "bytes": 670,
+      "sha256": "25115120fb8eb5ebf4c7a1c31b293ef411bd2cc12a69388d598c60fbb7e4a357",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/indexer-isolated-postgres.json",
+      "bytes": 1960,
+      "sha256": "0f27041880aeb89af37718298d7f1982e5f29f6b319363b385ca664721c0f80b",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/public/chromium--reclaim--reclaim-public.json.gz",
+      "bytes": 657,
+      "sha256": "b6a4314a461f888b0ff8bad394bbb711c8a45ded89022108c477da07264277fc",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/public/chromium--website-preview-checks.json.gz",
+      "bytes": 1230,
+      "sha256": "87307dbca3dfd65ffcb3071e847ee8b4ec907e38ea25f903a69b551d7e8be050",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/public/gitleaks-redacted-report.json.gz",
+      "bytes": 23,
+      "sha256": "abc129be8d26e8d4afe9ce45f9d5a73c8ed9aa62810ca24ee789fe4581dc4a80",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/public/polish--after-report.json.gz",
+      "bytes": 18517,
+      "sha256": "e147244dd85aecbcbb7bc793e9aff8d7efcf36f1a33399a15a1de326145147b8",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/public/public-data-classification.json",
+      "bytes": 1706,
+      "sha256": "ee52b1b9172a9ff6d3c5a94ebb7eed003c3b9dace9503e2329fc68b3516b739e",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/public/webkit--reclaim--reclaim-public.json.gz",
+      "bytes": 639,
+      "sha256": "1c9fdcf986c75310c7b8c67748f320e27f966784c597098ac8c8c8429a800616",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/public/webkit--website-preview-checks.json.gz",
+      "bytes": 1229,
+      "sha256": "8ef0abb3d7438a72726a303b6033f7cb893f2167136574189a3634ce82c872cd",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/revert-transport-probe.json",
+      "bytes": 951,
+      "sha256": "d40064e0382b5f043f8f49fb82f43ea2fd3b083f9873660410fe8729583658e2",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/compiler-asts.json.gz",
+      "bytes": 88316,
+      "sha256": "75527d1c095a62c889d887f19e157623f82ec44c75fe3521f1ada181dc087275",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/compiler-final.json.gz",
+      "bytes": 7343,
+      "sha256": "595268501c212c75301fc10d6cfde659a4fbc6184eefe53429996a9d370a1fd5",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/compiler-initial.json.gz",
+      "bytes": 7355,
+      "sha256": "ec3d88ab9e2b09c8970a21be0ef6dbe4dfb611377f69713a696d7a6255dd3cd6",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/compiler-manifest.json",
+      "bytes": 4273,
+      "sha256": "fa51b2902afccc5b34ee200ed98e3d46a4367fbb1166513c2906152c5cff0a1c",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/compiler-typed.json.gz",
+      "bytes": 7287,
+      "sha256": "63c31b3cdb3acad92129f3ea3cbd113887da653a394ec9f37aa174f7f5bd0f97",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/disposition.json",
+      "bytes": 43331,
+      "sha256": "c698dbb44dd1d3b16d9e94a2addbcfe60555e0ec03cdce2260ad2c88da0dbed4",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/foundry-final.txt",
+      "bytes": 7411,
+      "sha256": "9bc867d0051cb3b54cda1f37e8affce077083f08c45810c6c73ce28499fda67d",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/initial-size-rejection.txt",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "normalization": "canonical-lf"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/slither-final.json.gz",
+      "bytes": 32265,
+      "sha256": "b35d6ba1d8141ffc1323729dc349c85c06a833cca9ebb3f642a761bfc12032ff",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/slither-initial.json.gz",
+      "bytes": 32507,
+      "sha256": "42a558ad25020f345f553a46c90137f17bcda7359dca626e3874b94ff4f7221a",
+      "normalization": "binary"
+    },
+    {
+      "path": "docs/evidence/rmt-task079/security/slither-typed.json.gz",
+      "bytes": 31506,
+      "sha256": "1023df41e29f080745bb92cd217acb1d840cf59ca4a99e8677bbe8e69cb13a4d",
+      "normalization": "binary"
+    }
+  ]
+}

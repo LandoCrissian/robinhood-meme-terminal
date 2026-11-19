@@ -39,4 +39,38 @@ Required before release: disposition material security observations; actual inde
 
 ## Integrated acceptance
 
-Browser/Safe outer execution, PostgreSQL restart/reorg, public-build negative tests and exact-head CI are **pending actual parent-harness results** at the time of this contract handoff. The parent task will append verified receipts, hashes, screenshots, costs, supported/unsupported wallet scope and remaining operational limits. The 37 contract tests do not substitute for those results.
+Verified implementation commit: **`14440d3bb06fe309e4d281f83c34308ac09c834a`**. [The completed Linux run](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612234) passed both Chromium and WebKit against actual isolated **PostgreSQL 18.6 / UTF8**, Anvil 1.7.1 and synthetic chain31337. Actions checked out merge `f93a037a66c8bb2f9ba469dac9ccb028acec199f`; its tree `2e461a2bf224376e5e20e8f5a3381e330fa27504` exactly equals the PR head tree. Raw identity is preserved, not relabeled. [Machine-readable acceptance](evidence/rmt-task079/browser-acceptance-manifest.json) binds the source, compiler, artifacts and all17 CI results. The final evidence-only commit has its own checks on PR#673.
+
+Each engine exercised all four retirement profiles through the existing website, EOA/pinned EIP-7702 and a genuine SafeL2 1.4.1 2-of-3 account. Nine observed retirement transactions include one deliberately orphaned Safe transaction: final SQL contains **eight canonical acceptances,16 NFT units,86 synthetic RMT**,45 canonical campaign events and two campaigns. It does not count orphaned activity as paid rewards. Eleven observed Safe outer executions reduce to ten canonical executions after rollback. The Safe evidence includes two actual test-owner typed signatures, exact inner call, CALL-only outer calldata, gas-payer nonce, maximum network fee, ExecutionSuccess and unchanged owners/threshold. One-owner and rejected-wallet attempts did not execute.
+
+Application/indexer restart retained22 existing main-campaign events. Duplicate replay did not create duplicates; reorg removed orphaned rows and restored NFT, supply and reserve state. Missing receipt and interrupted reads stayed pending/unavailable without another signature or transaction. A discovered manual-hash poisoning defect was fixed: direct and Safe tests enter a real unrelated hash, prove it remains unbound, then reconcile the one original transaction by its preserved request identity. No journal is deleted and no automatic resubmission occurs.
+
+The public build passed desktop/portrait/landscape checks in both engines,111 existing blocked route/method combinations per engine, and11 Reclaim action denials including the obsolete return actions. Wallet, external and financial requests were zero. No live token, campaign, reserve or USD price was assigned. Physical iPhone, wallet-extension and production-chain acceptance are **not established** by these browser fixtures.
+
+All12 functional CI checks passed at the recorded implementation head; **five strict security checks failed**: core full-tree, fixed-supply4663, TreasuryV1, historical ReclaimV1 and permanent ReclaimV2. These are unresolved release holds, not waived tests. Both complete older browser lifecycle/profile/treasury regression groups, Firebase emulators, repository/dependency checks, indexer, core Foundry, Operations Safe, Linux build and Railway image checks passed. Existing source/data and production configuration were not changed.
+
+The archived [viewport screenshots and receipt/SQL inputs](evidence/rmt-task079/README.md) show permanent consent, actual retirement mode/destination, exact reward and network-cost review before wallet confirmation. They are ordinary viewport captures preserving touch/coarse emulation, not cropped element screenshots or physical-device evidence. Costs are synthetic local gas estimates, **not4663 production quotes**. Default Safe signatures have no general contract-level expiry; an expired app review does not revoke a still-unused Safe nonce. Native Reclaim redemption separately enforces its contract deadline.
+
+Settlement evidence remains deliberately bounded: exact single-transaction-per-block local attribution, finite log/receipt windows, canonical receipts and local confirmations. No multi-transaction block balance proof, production trace/archive readiness, independent L1 finality or real collection admission is claimed. Unsupported or unavailable evidence fails closed. The initial Windows ENOSPC run and subsequent nonce/revert-transport failures are retained under [failed-before](evidence/rmt-task079/failed-before/); the passing Linux evidence does not rewrite them.
+
+Reproduce with the pinned tools from the workflow:
+
+```sh
+pnpm install --frozen-lockfile
+pnpm --filter @rmt/launch-website build
+pnpm --filter indexer build
+forge test --root packages/contracts/reclaim-v2 --use /path/to/solc-0.8.26 -vvv
+node scripts/visual-qa/rmt-creator-integration.mjs --reclaim-only \
+  --anvil /path/to/anvil-1.7.1 --solc /path/to/solc-0.8.26 \
+  --pg-bin /path/to/postgresql-18.6/bin --browser chromium --output /tmp/rmt-reclaim
+# Repeat the same command with --browser webkit and a distinct output directory.
+pnpm test:release-evidence
+```
+
+Use isolated loopback databases/assets only. The workflow also runs the existing creator lifecycle, claims/profile and treasury regressions separately. No hosted deployment, production schema change, wallet signing or activation is part of these commands.
+
+Final local archive verification: **131/131 release-evidence tests passed**, zero failures/skips, including nine new browser/public acceptance cases and the complete tracked-artifact inventory. Deliberate mutations of NFT destination, SQL reward and Safe signature are rejected. The raw selected artifacts were secret-scanned before compression; retained public address/hash findings are individually classified rather than hidden by archiving.
+
+## Consolidated release decisions
+
+No new owner input is required to review this isolated implementation. Before any separate live release, approve the actual future RMT token/runtime, a source-reviewed irreversible collection/ID policy, exact fixed-token rewards and caps, campaign controller and manually funded reserve. Real collection admissions are currently empty. Resolve applicable material security observations and establish production receipt/trace/indexing/finality plus physical-wallet acceptance. Deployment and activation require separate authorization. Do not fund a campaign or infer a USD reward from the illustrative budget sheet.
