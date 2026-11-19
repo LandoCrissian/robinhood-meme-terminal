@@ -69,6 +69,23 @@ The initial fork completed ERC721 settlement before an unchanged local clock hit
 
 ## Remaining acceptance stages
 
+### Reproduce isolated review
+
+The pinned workflow [seaport-acquisition.yml](../.github/workflows/seaport-acquisition.yml) installs the existing lockfile, pins solc 0.8.26, Foundry 1.7.1 and PostgreSQL 18.6, and verifies the recorded compiler/PostgreSQL checksums. Its exact dependency preparation and compiler arguments are review inputs, not a request to change the owner's machine. On a prepared Linux review runner:
+
+```sh
+node --test scripts/seaport-acquisition/*.test.mjs packages/launchpad-common/seaport-vault-*.test.mjs
+node --test docs/evidence/rmt-task083/security/integrity.test.mjs
+forge test --root packages/contracts/seaport-acquisition --use <verified-solc-path> -vvv
+node scripts/seaport-acquisition/fixture-run.mjs --anvil <anvil-path> --solc <verified-solc-path> --fork-robinhood --output <fresh-fork-output>
+pnpm --filter @rmt/launch-website build
+pnpm --filter indexer build
+node scripts/seaport-acquisition/browser-run.mjs --anvil <anvil-path> --solc <verified-solc-path> --pg-bin <postgres-18.6-bin> --browser chromium --output <fresh-chromium-output>
+node scripts/seaport-acquisition/browser-run.mjs --anvil <anvil-path> --solc <verified-solc-path> --pg-bin <postgres-18.6-bin> --browser webkit --output <fresh-webkit-output>
+```
+
+Every execution CLI owns its loopback Anvil and generated test keys; it accepts no public transaction endpoint or production key. Each browser command owns a separate PostgreSQL instance, database, indexer and existing Next app. Use a fresh output path for each run. This is automated Chromium/WebKit acceptance, not a physical iPhone test or a hosted purchasing preview.
+
 1. Complete isolated V2 receipt, custody, database, restart/reorg and browser acceptance with exact source/evidence hashes.
 2. Admit real current-order transport/schema, relevant original source/payment implementation/upgrade policy and supported wallet profiles; resolve or explicitly disposition plausible material loss paths without changing detector gates.
 3. Separately review any production-chain build, constructor inputs, deployment/custody costs, operators, trace/archive providers, durable indexing and independent L1 finality.
