@@ -48,14 +48,14 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
   async function complete(operation, fields = {}, { lose = false, safeMode = false } = {}) {
     const review = await session.action(operation, fields);
     if (safeMode) throw Error("Use actual Safe owner sequence");
-    const result = await session.confirm(lose ? "lose" : "normal"); assert.ok(result); await sync();
+    const result = await session.confirm(lose ? "lose" : "normal"); assert.ok(result);
     if (lose) {
       const pending = await post({ action: "verify", review }); assert.ok(["pending", "unavailable"].includes(pending.body.status));
       const before = session.evidence.sends.length;
-      hideReceipt(undefined); await session.reload(); await session.connect();
+      hideReceipt(undefined); await sync();await session.reload(); await session.connect();
       const verified = await session.verify(review, undefined, "confirmed"); assert.equal(verified.transactionHash, result.receipt.transactionHash);
       assert.equal(session.evidence.sends.length, before); evidence.checks.missingHashWithoutDuplicate = true;
-    } else await session.verify(review, result.receipt.transactionHash, "confirmed");
+    } else {await sync();await session.verify(review, result.receipt.transactionHash, "confirmed");}
     return { review, ...result };
   }
   async function safeComplete(operation, fields = {}, lose = false) {
@@ -68,8 +68,9 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
     assert.notEqual(single.body.status, "prepared"); assert.equal(session.evidence.sends.length, before);
     await session.account(owners[1].address); await session.safeApprove();
     await session.account(creator); const outer = await session.safePrepare();
-    const sent = await session.safeConfirm(lose ? "lose" : "normal"); assert.ok(sent); await sync();
-    if (lose) { hideReceipt(undefined); await session.reload(); await session.connect(); }
+    const sent = await session.safeConfirm(lose ? "lose" : "normal"); assert.ok(sent);
+    if (lose) {const unavailable=await post({action:"safe-verify",review:outer});assert.ok(["pending","unavailable"].includes(unavailable.body.status));hideReceipt(undefined);}
+    await sync();if(lose){await session.reload(); await session.connect();}
     const verified = await session.safeVerify(outer, lose ? undefined : sent.receipt.transactionHash, "confirmed");
     evidence.safeExecutions.push({ operation, proposal, outer, receipt: sent.receipt, verified }); save(); return { review: inner, outer, ...sent };
   }
