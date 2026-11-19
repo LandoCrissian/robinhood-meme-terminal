@@ -7,7 +7,7 @@ import {gunzipSync} from "node:zlib";
 
 const repository=fileURLToPath(new URL("../../",import.meta.url));
 const policyPath="docs/evidence/rmt-task082/history/exact-public-identities.json";
-const policySha="2e50898d6172b1dd7fcc403bb504fa54cf168cbeb41bde4bbb0d4fb1a447c18f";
+const policySha="2f213f9e480c4fe89c7926caec316228494fa6f0b65a2d85727ac912c49f42e3";
 const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
 const git=(commit,path)=>execFileSync("git",["show",`${commit}:${path}`],{cwd:repository,windowsHide:true,maxBuffer:4*1024*1024});
 const fail=()=>{throw Error("Exact public Git identity proof is unavailable or changed");};
@@ -18,13 +18,13 @@ const fail=()=>{throw Error("Exact public Git identity proof is unavailable or c
  */
 export function verifyHistoryPublicIdentities(findings,{readGit=git,configuration=readFileSync(new URL("../../.gitleaks.toml",import.meta.url)),policyBytes=readFileSync(new URL("../../"+policyPath,import.meta.url)),ignoreBytes=readFileSync(new URL("../../.gitleaksignore",import.meta.url))}={}){
   try{
-    assert.equal(sha(Buffer.from(policyBytes).toString().replaceAll("\r\n","\n")),policySha);const policy=JSON.parse(policyBytes);assert.equal(policy.records.length,3);
+    assert.equal(sha(Buffer.from(policyBytes).toString().replaceAll("\r\n","\n")),policySha);const policy=JSON.parse(policyBytes);assert.equal(policy.records.length,5);
     assert.equal(Buffer.from(ignoreBytes).toString().replaceAll("\r\n","\n"),readGit(policy.baselineCommit,".gitleaksignore").toString());
     const originalConfig=readGit(policy.baselineCommit,".gitleaks.toml");assert.equal(sha(originalConfig),policy.scannerConfigurationSha256);
     assert.equal(Buffer.from(configuration).toString().replaceAll("\r\n","\n"),originalConfig.toString());
     const proof=new Map();
     for(const record of policy.records){
-      assert.match(record.commit,/^[0-9a-f]{40}$/);assert.match(record.path,/^(?:scripts\/nft-marketplace\/probe-4663\.mjs|apps\/launch-website\/lib\/server\/nft-acquisition-snapshot\.test\.json)$/);
+      assert.match(record.commit,/^[0-9a-f]{40}$/);assert.match(record.path,/^(?:scripts\/nft-marketplace\/probe-4663\.mjs|apps\/launch-website\/lib\/server\/nft-acquisition-snapshot\.test\.json|docs\/evidence\/rmt-task082\/seaport-marketplace\/source-manifest\.json)$/);
       const blob=readGit(record.commit,record.path);assert.ok(blob.length<=65536);assert.equal(sha(blob),record.blobSha256);
       const gitBlob=createHash("sha1").update(Buffer.from(`blob ${blob.length}\0`)).update(blob).digest("hex");assert.equal(gitBlob,record.gitBlobSha1);
       const lines=blob.toString().split(/(?<=\n)/),line=lines[record.line-1];assert.equal(sha(line),record.lineSha256);
@@ -37,6 +37,13 @@ export function verifyHistoryPublicIdentities(findings,{readGit=git,configuratio
         assert.equal(market.pins.conduitKey,value);assert.equal(market.bindingsObserved,true);
         assert.equal(market.sources.sdkConstants.sha256,old.binding.officialSourceSha256);
         for(const name of ["official","pocket"]){const p=market.providers[name];assert.equal(p.chain.value,4663);assert.equal(p.conduitBinding.status,"observed");assert.equal(p.conduitBinding.value[0].toLowerCase(),market.pins.conduit.toLowerCase());assert.equal(p.conduitBinding.value[1],true);}
+      }else if(record.publicKind==="PUBLIC_SOURCE_RESPONSE_SHA256"){
+        assert.equal(record.field,"sourceApiRawSha256");assert.ok(["seaport","controller"].includes(record.sourceInput));
+        const manifest=JSON.parse(blob),entry=manifest.inputs[record.sourceInput];value=entry.sourceApiRawSha256;assert.match(value,/^[0-9a-f]{64}$/);
+        assert.equal(entry.sourceApi,record.publicSourceUrl);const url=new URL(entry.sourceApi);assert.equal(url.protocol,"https:");assert.equal(url.host,"sourcify.dev");assert.equal(url.username,"");assert.equal(url.password,"");
+        assert.ok(line.includes(`"sourceApiRawSha256": "${value}"`));
+        assert.match(record.responseArchive,/^docs\/evidence\/rmt-task082\/seaport-marketplace\/(?:sourcify-seaport-4663|controller-mainnet)\.json\.gz$/);
+        const response=gunzipSync(readGit(record.commit,record.responseArchive),{maxOutputLength:8*1024*1024});assert.equal(sha(response),value);assert.ok(JSON.parse(response));
       }else{
         assert.ok(["projectToken","paymentToken"].includes(record.field));const snapshot=JSON.parse(blob);
         assert.equal(snapshot.profile,"rmt-nft-acquisition-local-v1");assert.equal(snapshot.chainId,31337);assert.equal(snapshot.executionEnabled,false);

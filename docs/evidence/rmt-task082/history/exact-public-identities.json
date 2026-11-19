@@ -49,9 +49,51 @@
       "field": "conduitKey",
       "publicValueSha256": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a",
       "publicKind": "OPENSEA_PUBLIC_CONDUIT_IDENTIFIER"
+    },
+    {
+      "fingerprint": "25e2a1f41b58b3f7b0b98f31aa1c61bf8e9cfce1:docs/evidence/rmt-task082/seaport-marketplace/source-manifest.json:generic-api-key:8",
+      "commit": "25e2a1f41b58b3f7b0b98f31aa1c61bf8e9cfce1",
+      "path": "docs/evidence/rmt-task082/seaport-marketplace/source-manifest.json",
+      "ruleId": "generic-api-key",
+      "line": 8,
+      "gitBlobSha1": "434d54a114f8725344eacd6aa38bc6d7cc82c756",
+      "blobSha256": "36dd5b47b278c02e0bfa2428b6c31de3b7a0c8edc5a5b602d4356b172b41043c",
+      "lineSha256": "ee30ca5cc4be0e398785a7960b1033eb05a0e602d6c16012f791b8215173c263",
+      "field": "sourceApiRawSha256",
+      "publicValueSha256": "8d460aefa35ecabbb98539a0680ec74a2e826a0911a256b5c464d0afce613eb4",
+      "publicKind": "PUBLIC_SOURCE_RESPONSE_SHA256",
+      "sourceInput": "seaport",
+      "responseArchive": "docs/evidence/rmt-task082/seaport-marketplace/sourcify-seaport-4663.json.gz",
+      "publicSourceUrl": "https://sourcify.dev/server/v2/contract/4663/0x0000000000000068F116a894984e2DB1123eB395?fields=all"
+    },
+    {
+      "fingerprint": "25e2a1f41b58b3f7b0b98f31aa1c61bf8e9cfce1:docs/evidence/rmt-task082/seaport-marketplace/source-manifest.json:generic-api-key:381",
+      "commit": "25e2a1f41b58b3f7b0b98f31aa1c61bf8e9cfce1",
+      "path": "docs/evidence/rmt-task082/seaport-marketplace/source-manifest.json",
+      "ruleId": "generic-api-key",
+      "line": 381,
+      "gitBlobSha1": "434d54a114f8725344eacd6aa38bc6d7cc82c756",
+      "blobSha256": "36dd5b47b278c02e0bfa2428b6c31de3b7a0c8edc5a5b602d4356b172b41043c",
+      "lineSha256": "90d55f9d4b27ccd50871d79d6e13aa2e1c8def21e4dfbc29bbcf52ab644325a2",
+      "field": "sourceApiRawSha256",
+      "publicValueSha256": "251dcb38a610603e24f3d1e2ac50c98e1c7be42a6c2ebb2a2f19e522bcc83540",
+      "publicKind": "PUBLIC_SOURCE_RESPONSE_SHA256",
+      "sourceInput": "controller",
+      "responseArchive": "docs/evidence/rmt-task082/seaport-marketplace/controller-mainnet.json.gz",
+      "publicSourceUrl": "https://sourcify.dev/server/v2/contract/1/0x00000000F9490004C11Cef243f5400493c00Ad63?fields=all"
     }
   ],
   "financialSecurityClearance": false,
   "historyRewritten": false,
-  "detectorSuppression": false
+  "detectorSuppression": false,
+  "firstCIRawScan": {
+    "sourceCommit": "68ba9f7a498226a7c44945c7cf3ad39189280fcb",
+    "jobId": "135667455198",
+    "artifactId": "14542474139",
+    "exitCode": 1,
+    "findings": 5,
+    "unclassifiedAtThatRun": 2,
+    "sha256": "0fdf65750c44660487d5fa88fe9edf55bd5df97d813f9770c167b157e605e5ce",
+    "archive": "ci-history-68-raw-redacted.json.gz"
+  }
 }

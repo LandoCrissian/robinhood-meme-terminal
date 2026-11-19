@@ -96,6 +96,10 @@ jobs:
           node scripts/seaport-verification/fixture-compile.mjs --solc "$RUNNER_TEMP/solc0.8.26" \
             --output packages/contracts/seaport-verification/official-artifacts.json
           forge test --root packages/contracts/seaport-verification --use "$RUNNER_TEMP/solc0.8.26" -vvv
+      - name: Verify the read-only adapter against genuine local Seaport receipts
+        run: |
+          node scripts/seaport-verification/fixture-run.mjs --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc0.8.26" --output "$RUNNER_TEMP/rmt-seaport-fixture"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
@@ -103,6 +107,8 @@ jobs:
           path: |
             ${{ runner.temp }}/seaport-source.json
             packages/contracts/seaport-verification/official-artifacts.json
+            ${{ runner.temp }}/rmt-seaport-fixture/seaport-fixture-evidence.json
+            ${{ runner.temp }}/rmt-seaport-fixture/official-artifacts.json
           retention-days: 7
 
   nft-acquisition-strict-security:

@@ -6,10 +6,10 @@ import {fileURLToPath} from "node:url";
 import {test} from "node:test";
 import {verifyHistoryPublicIdentities} from "./public-history-identities.mjs";
 const repository=fileURLToPath(new URL("../../",import.meta.url));
-const findings=JSON.parse(gunzipSync(readFileSync(new URL("../../docs/evidence/rmt-task082/history/baseline-history-redacted.json.gz",import.meta.url))));
+const findings=JSON.parse(gunzipSync(readFileSync(new URL("../../docs/evidence/rmt-task082/history/ci-history-68-raw-redacted.json.gz",import.meta.url))));
 const git=(commit,path)=>execFileSync("git",["show",`${commit}:${path}`],{cwd:repository,windowsHide:true});
-test("exact immutable public conduit and two synthetic contract address matches preserve raw failure",()=>{
-  const result=verifyHistoryPublicIdentities(findings);assert.equal(result.status,"PASSED_EXACT_PUBLIC_DATA_ONLY");assert.equal(result.rawFindingCount,3);assert.equal(result.classified.length,3);assert.equal(result.rawScanPassed,false);assert.equal(result.financialSecurityClearance,false);assert.equal(result.productionAuthorization,false);assert.equal(result.detectorsChanged,false);
+test("exact immutable public conduit, two synthetic addresses and two source-response hashes preserve raw failure",()=>{
+  const result=verifyHistoryPublicIdentities(findings);assert.equal(result.status,"PASSED_EXACT_PUBLIC_DATA_ONLY");assert.equal(result.rawFindingCount,5);assert.equal(result.classified.length,5);assert.equal(result.rawScanPassed,false);assert.equal(result.financialSecurityClearance,false);assert.equal(result.productionAuthorization,false);assert.equal(result.detectorsChanged,false);
 });
 test("every new finding, duplicate or missing raw match blocks",()=>{
   assert.equal(verifyHistoryPublicIdentities([...findings,{...findings[0],Fingerprint:"new unrelated finding"}]).status,"BLOCKED_UNCLASSIFIED_OR_MISSING_FINDING");
