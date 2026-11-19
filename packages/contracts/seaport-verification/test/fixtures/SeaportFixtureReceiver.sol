@@ -37,7 +37,7 @@ contract SeaportFixtureReceiver {
         SeaportFixtureTypes.OfferItem calldata item=order.parameters.offer[0];expectedCollection=item.token;expectedSeller=order.parameters.offerer;expectedId=item.identifierOrCriteria;expectedQuantity=item.startAmount;
         uint256 beforeHeld=item.itemType==3?IFixture1155(item.token).balanceOf(address(this),item.identifierOrCriteria):0;
         if(paymentToken!=address(0))require(IFixtureToken(paymentToken).approve(address(seaport),total));
-        require(seaport.fulfillAdvancedOrder{value:msg.value}(order,new SeaportFixtureTypes.CriteriaResolver[](0),bytes32(0),address(this)),"FILL");
+        require(seaport.fulfillAdvancedOrder{value:paymentToken==address(0)?total:0}(order,new SeaportFixtureTypes.CriteriaResolver[](0),bytes32(0),address(this)),"FILL");
         if(paymentToken!=address(0))require(IFixtureToken(paymentToken).approve(address(seaport),0));
         if(paymentToken==address(0))require(address(this).balance+total==nativeBefore,"EXACT_NATIVE_SETTLEMENT");
         else require(IFixtureToken(paymentToken).balanceOf(address(this))+total==paymentBefore,"EXACT_TOKEN_SETTLEMENT");
