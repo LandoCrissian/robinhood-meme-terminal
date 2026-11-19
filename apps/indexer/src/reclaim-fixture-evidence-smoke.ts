@@ -50,7 +50,10 @@ export async function testReclaimFixtureProofs(){
   };
   const rpc={
     getChainId:async()=>knobs.mode==="wrong-chain"?4663:31337,
-    getCode:async({address}:{address:Address})=>address===factory?factoryCode:address===reward?rewardCode:address===core?coreCode:address===collection?nftCode:knobs.mode==="runtime"?"0x6004":campaignCode,
+    getCode:async({address}:{address:Address})=>[creator,claimant].includes(address)?undefined:address===factory?factoryCode:address===reward?rewardCode:address===core?coreCode:address===collection?nftCode:knobs.mode==="runtime"?"0x6004":campaignCode,
+    getTransactionCount:async()=>0,
+    getTransaction:async({hash}:{hash:Hash})=>{const height=Number(BigInt(hash)/10n),input=height===4?encodeFunctionData({abi,functionName:"fund",args:[1000n]}):height===6?encodeFunctionData({abi,functionName:"returnTradeIn",args:[1n,1_800_000_100n]}):encodeFunctionData({abi,functionName:"redeem",args:[collection,[42n],[1n],[1n],[[]],3n,5n,0n,1_800_000_100n]});
+      return{chainId:31337,hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,to:campaign,from:height===4?creator:claimant,value:0n,nonce:0,input};},
     getBlock:async({blockNumber}:{blockNumber:bigint})=>({number:blockNumber,hash:knobs.mode==="header"?h(999):h(Number(blockNumber)),timestamp:1_800_000_000n+blockNumber,
       transactions:knobs.mode==="multi-transaction"?[h(Number(blockNumber)*10),h(999)]:knobs.mode==="membership"?[h(999)]:[h(Number(blockNumber)*10)]}),
     getTransactionReceipt:async({hash}:{hash:Hash})=>{knobs.receiptReads++;if(knobs.mode==="missing-receipt")throw Error("provider receipt unavailable");const height=Number(BigInt(hash)/10n);
@@ -60,7 +63,7 @@ export async function testReclaimFixtureProofs(){
       if(knobs.mode==="nft-log")logs=logs.filter(l=>l.address!==collection);
       if(knobs.mode==="nft-value")logs=logs.map(l=>l.address===collection?{...l,data:encodeAbiParameters([{type:"uint256[]"},{type:"uint256[]"}],[[42n],[2n]])}:l);
       return{status:"success",transactionHash:hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,logs,
-        to:height===2?null:height===3?factory:campaign,contractAddress:height===2?factory:null};},
+        to:height===2?null:height===3?factory:campaign,from:height===4?creator:claimant,contractAddress:height===2?factory:null};},
     getLogs:async({address,fromBlock,toBlock}:{address:Address|Address[];fromBlock:bigint;toBlock:bigint})=>{
       const found=[...logsByHeight].filter(([height])=>BigInt(height)>=fromBlock&&BigInt(height)<=toBlock).flatMap(([height])=>actualLogs(height))
         .filter(l=>Array.isArray(address)?address.includes(l.address):l.address===address);

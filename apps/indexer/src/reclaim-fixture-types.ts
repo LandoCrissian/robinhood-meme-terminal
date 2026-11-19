@@ -1,5 +1,6 @@
 import type { Address, Hash, Hex } from "viem";
 import type { BlockEvidence } from "./curve-launch-evidence.js";
+import type { ReclaimOrigin } from "./reclaim-fixture-origin.js";
 
 export const reclaimFixtureProfile = "rmt-reclaim-v1" as const;
 export type ReclaimFixtureScope = [number, string, string];
@@ -27,6 +28,7 @@ export type ReclaimFixtureEvent = BlockEvidence & {
     receiptId?: string; claimant?: Address; collection?: Address; standard?: 1 | 2;
     tokenIds?: string[]; quantities?: string[];
     evidence: "exact-receipt-transfer-and-single-transaction-block-deltas";
+    origin?: ReclaimOrigin;
   };
 };
 export type ReclaimFixtureSnapshot = BlockEvidence & {

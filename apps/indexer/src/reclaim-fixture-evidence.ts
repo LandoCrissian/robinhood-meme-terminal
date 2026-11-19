@@ -8,6 +8,7 @@ import {storedReclaimFixtureBirths} from "./reclaim-fixture-store.js";
 import {reclaimFixtureProfile,type ReclaimFixtureModule,type ReclaimFixtureBirth,type ReclaimFixtureEvent,type ReclaimFixtureSnapshot,
   type ReclaimFixtureScope,type ReclaimFixtureRange} from "./reclaim-fixture-types.js";
 import type{Client}from"pg";
+import{verifyReclaimOrigin}from"./reclaim-fixture-origin.js";
 
 const factoryAbi=parseAbi(reclaimFactorySignatures),campaignAbi=parseAbi(reclaimCampaignSignatures);
 const birthEvent=parseAbiItem("event CampaignCreated(address indexed creator,address indexed campaign,bytes32 indexed intent,address controller,uint128 rewardPerUnit,uint32 walletCap)");
@@ -204,6 +205,7 @@ export async function readReclaimFixtureRange(db:Pick<Client,"query">,scope:Recl
       requireReclaimEvidence(addr(args.controller)&&typeof args.amount==="bigint");const fund=name==="Funded",fromAddress=fund?args.controller:log.address,toAddress=fund?log.address:args.controller;
       await exactRewardTransfer(rpc,m,receipt,header,fromAddress,toAddress,args.amount);settlement={kind:fund?"fund":"recover",rewardToken:m.rewardToken,from:fromAddress,to:toAddress,amount:args.amount.toString(),evidence:"exact-receipt-transfer-and-single-transaction-block-deltas"};
     }
+    if(settlement)settlement.origin=await verifyReclaimOrigin(rpc,receipt,header,log.address,settlement.kind,args);
     events.push({...at,campaign:log.address,transactionHash:log.transactionHash,logIndex:log.logIndex,eventName:name,args:JSON.parse(stringify(args))as Record<string,unknown>,...(settlement&&{settlement})});
   }
   const states=[];for(const birth of all.values())states.push(await readReclaimFixtureSnapshot(rpc,m,birth,blocks.at(-1)!));
