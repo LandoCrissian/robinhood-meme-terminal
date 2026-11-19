@@ -197,11 +197,23 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
   }
   try { await page.goto(site + "/reclaim"); await page.locator('[data-reclaim-ready="true"]').waitFor(); save(); }
   catch (error) { evidence.failure = error instanceof Error ? error.stack : String(error); save(); await context.close(); throw error; }
-  return { page, context, evidence, connect, lookup, ownerOpen, review, reviewRejected, action, confirm, verify, capture, layouts, desktopRead,
+  async function diagnose(error) {
+    evidence.failure = error instanceof Error ? error.stack : String(error);
+    try {
+      if (!page.isClosed()) {
+        const mainText = await page.getByRole("main").innerText({ timeout: 3000 });
+        writeFileSync(join(out, "reclaim-browser-failure.txt"), mainText.slice(0, 65536), "utf8");
+        await page.screenshot({ path: join(out, "reclaim-browser-failure.png"), timeout: 5000 });
+      }
+    } catch (diagnosticError) { evidence.diagnosticFailure = diagnosticError instanceof Error ? diagnosticError.message : String(diagnosticError); }
+    save();
+  }
+  const protect = fn => async (...args) => { try { return await fn(...args); } catch (error) { await diagnose(error); throw error; } };
+  return { page, context, evidence, diagnose, ...Object.fromEntries(Object.entries({ connect, lookup, ownerOpen, review, reviewRejected, action, confirm, verify, capture, layouts, desktopRead,
     fill: async (name, value) => page.getByLabel(name, { exact: true }).fill(value),
     selectCollection: async address => page.getByLabel("Collection", { exact: true }).selectOption(address),
     async refresh(campaign) { if (campaign) await lookup(campaign); else await button("Refresh campaign evidence").click(); },
     async mineReady() { await mine(); await ready(); },
     async close() { assert.deepEqual(evidence.pageErrors, []); assert.deepEqual(evidence.externalRequests, []); assert.deepEqual(evidence.forbiddenRequests, []); evidence.status = "passed"; save(); await context.close(); },
-  };
+  }).map(([name, fn]) => [name, protect(fn)])) };
 }
