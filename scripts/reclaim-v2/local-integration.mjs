@@ -34,7 +34,8 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
  let session=await newSession(out),campaign;
  const record=async(operation,submission,review,verified)=>{const receipt=await client.getTransactionReceipt({hash:submission.receipt.transactionHash});
   evidence.canonicalReceipts.push({operation,reviewHash:review.reviewHash,...submission.receipt,effectiveGasPrice:receipt.effectiveGasPrice.toString(),syntheticCostWei:(receipt.gasUsed*receipt.effectiveGasPrice).toString(),productionCostQuote:false});
-  if(operation==="redeem"){assert.equal(verified.settlement.kind,"permanent-surrender");evidence.retirements.push(verified.settlement);}save();};
+  if(operation==="redeem"){assert.equal(verified.settlement.kind,"permanent-surrender");evidence.retirements.push(verified.settlement);}save();
+  console.log(`Permanent Reclaim ${review.proposal?"Safe outer":"direct"}: ${operation} confirmed and indexed at synthetic block ${receipt.blockNumber}`);};
  async function complete(operation,fields={},decision="normal"){
   const {review}=await session.action(operation,fields),submission=await session.confirm(decision);
   if(decision==="reject")return{review,submission};

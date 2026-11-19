@@ -43,6 +43,35 @@
       "originalSha256": "86f0974d666cb67a606cbf6ba064ef6d1d44d099475f04a57c365ec3191fb87d",
       "archiveBytes": 71,
       "archiveSha256": "90bc830e2aac2d55d7dc2fa35de00e3eadb54f3375c3e7a737924214692aa2e9"
+    },
+    {
+      "file": "linux-native-burn-indexer-acceptance.json.gz",
+      "originalBytes": 150165,
+      "originalSha256": "a606be86d45779183424ab07154a7df1fb976244c3af71cb9650abf9d42c6fd0",
+      "archiveBytes": 38911,
+      "archiveSha256": "cec2f6f3d6eef981cdc2e594ff98efaab3fb491b0ff9c4cfaa7a56318d51a3b7"
+    },
+    {
+      "file": "linux-native-burn-browser.json.gz",
+      "originalBytes": 261031,
+      "originalSha256": "938556d527c453c7adedd74398d8423a7c711163b11e1b9ae8b1736fbf3bdbb6",
+      "archiveBytes": 18176,
+      "archiveSha256": "4047ed5813883671700cee3423e7594a2fd5934025e92888fd601b79dcf818c4"
+    },
+    {
+      "file": "linux-native-burn-worker.log.gz",
+      "originalBytes": 52,
+      "originalSha256": "86f0974d666cb67a606cbf6ba064ef6d1d44d099475f04a57c365ec3191fb87d",
+      "archiveBytes": 71,
+      "archiveSha256": "90bc830e2aac2d55d7dc2fa35de00e3eadb54f3375c3e7a737924214692aa2e9"
     }
-  ]
+  ],
+  "linuxNativeBurn": {
+    "sourceCommit": "d78a7424479bed1b2de5f1a0c5698317c32796ea",
+    "artifactId": 14492627730,
+    "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44443752461/job/135290720966",
+    "result": "Actual native721 retirement and reward succeeded atomically; indexer failed closed because local proxy stripped ownerOf EVM revert data",
+    "productionChanges": false,
+    "settlementChecksWeakened": false
+  }
 }

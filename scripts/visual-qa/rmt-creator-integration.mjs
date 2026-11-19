@@ -27,6 +27,7 @@ import { compileReclaimV2 as compileReclaim } from "../reclaim-v2/compiler.mjs";
 import { compileReclaimFixtureAssets } from "../reclaim-v2/fixture-assets.mjs";
 import { deployReclaimFixture } from "../reclaim-v2/deploy-fixture.mjs";
 import { testReclaimJourney } from "../reclaim-v2/local-integration.mjs";
+import { fixtureCallRevert } from "../reclaim-v2/read-proxy-errors.mjs";
 import { observeOriginalReceipt } from "./receipt-observation.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
@@ -201,7 +202,11 @@ async function rpc(method, params = []) {
   const response = await fetch(rpcUrl, { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: AbortSignal.timeout(12_000) });
   const body = await response.json();
-  assert.ok(response.ok && !body.error, `${method} failed on the isolated chain`);
+  if(!response.ok||body.error){
+    const error=new Error(`${method} failed on the isolated chain`),revert=response.ok&&fixtureCallRevert(method,body);
+    if(revert)Object.defineProperty(error,"fixtureCallRevert",{value:revert});
+    throw error;
+  }
   return body.result;
 }
 const fetchAt = (base, path, options) => fetch(new URL(path, base), { signal: AbortSignal.timeout(10_000), ...options });
@@ -258,7 +263,8 @@ const proxyHandler = (claimReader = false) => async (request, response) => {
         return { id, jsonrpc: "2.0", result: { ...await rpc(method, params), authorizationList: [] } };
       }
       try { return { id, jsonrpc: "2.0", result: await rpc(method, params) }; }
-      catch { return { id, jsonrpc: "2.0", error: { code: -32000, message: "Isolated upstream read failed" } }; }
+      catch(error) { return { id, jsonrpc: "2.0", error: error instanceof Error&&error.fixtureCallRevert
+        ? error.fixtureCallRevert : { code: -32000, message: "Isolated upstream read failed" } }; }
     };
     write(Array.isArray(incoming) ? await Promise.all(incoming.map(route)) : await route(incoming));
   } catch { write({ error: "Invalid fixture RPC request" }, 400); }
