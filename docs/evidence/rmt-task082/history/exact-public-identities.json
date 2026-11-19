@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "scope": "EXACT_IMMUTABLE_PUBLIC_GIT_IDENTITIES_NOT_CREDENTIAL_EXCEPTIONS",
+  "baselineCommit": "4892d2af5ac09ae00975c2b799b66bec0d172779",
+  "scannerVersion": "8.30.1",
+  "scannerConfigurationSha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+  "rawBaseline": {
+    "exitCode": 1,
+    "findings": 3,
+    "sha256": "2b3629851a9b26bbbca236c282563d0634ed80fe6c50f48a06e567e10fc23764",
+    "archive": "baseline-history-redacted.json.gz"
+  },
+  "records": [
+    {
+      "fingerprint": "a744d5f614e749bda781027acd526699cd52f278:apps/launch-website/lib/server/nft-acquisition-snapshot.test.json:generic-api-key:10",
+      "commit": "a744d5f614e749bda781027acd526699cd52f278",
+      "path": "apps/launch-website/lib/server/nft-acquisition-snapshot.test.json",
+      "ruleId": "generic-api-key",
+      "line": 10,
+      "gitBlobSha1": "9c5a54e5f46b1ad5340cc457e2857310683e492c",
+      "blobSha256": "997d38cc2534fa95350764e4893fdcd99f424d3d5b2fce517c672f85dba334d8",
+      "lineSha256": "4bd54590308c534609138b9b12551d9080c23c21a5c4e09fb1492fef91d0088c",
+      "field": "projectToken",
+      "publicValueSha256": "0e92945784d1dd3aff094fad5cefccba2e7ded0aee6ebbe4b8ef9e65737437eb",
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_CONTRACT_ADDRESS"
+    },
+    {
+      "fingerprint": "a744d5f614e749bda781027acd526699cd52f278:apps/launch-website/lib/server/nft-acquisition-snapshot.test.json:generic-api-key:18",
+      "commit": "a744d5f614e749bda781027acd526699cd52f278",
+      "path": "apps/launch-website/lib/server/nft-acquisition-snapshot.test.json",
+      "ruleId": "generic-api-key",
+      "line": 18,
+      "gitBlobSha1": "9c5a54e5f46b1ad5340cc457e2857310683e492c",
+      "blobSha256": "997d38cc2534fa95350764e4893fdcd99f424d3d5b2fce517c672f85dba334d8",
+      "lineSha256": "8af5908251e74571f1ba852fb8e77ce3ccbc713a443a44dbccb60ec75486d984",
+      "field": "paymentToken",
+      "publicValueSha256": "07a72a6cccabff8611095e3f1454ce8d83cdd44a77d966c87eecbd2258fe5e4f",
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_CONTRACT_ADDRESS"
+    },
+    {
+      "fingerprint": "1eec8bee33023db343bcd5ae1373f540f613d9a4:scripts/nft-marketplace/probe-4663.mjs:generic-api-key:12",
+      "commit": "1eec8bee33023db343bcd5ae1373f540f613d9a4",
+      "path": "scripts/nft-marketplace/probe-4663.mjs",
+      "ruleId": "generic-api-key",
+      "line": 12,
+      "gitBlobSha1": "6021400052fb006b4869382364abbb37010fac36",
+      "blobSha256": "2ff371353a83e9cb52ea5def0ce9f211d31c9451b86b7179e665b97e0d05a761",
+      "lineSha256": "65cd838ea57d24e35a3b48527fa1951a778c0e60c5c3130c509182c5b1dfbd3c",
+      "field": "conduitKey",
+      "publicValueSha256": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a",
+      "publicKind": "OPENSEA_PUBLIC_CONDUIT_IDENTIFIER"
+    }
+  ],
+  "financialSecurityClearance": false,
+  "historyRewritten": false,
+  "detectorSuppression": false
+}
