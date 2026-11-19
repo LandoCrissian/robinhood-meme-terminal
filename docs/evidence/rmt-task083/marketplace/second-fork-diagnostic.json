@@ -1,0 +1,57 @@
+{
+  "schemaVersion": 1,
+  "status": "INITIAL_FIXTURE_EVENT_DECODER_FAILURE_ACTUAL_SAFE_EXECUTION_SUCCEEDED",
+  "runId": "44576823363",
+  "jobId": "135746426693",
+  "artifactId": "14555564552",
+  "sourceCommit": "dbaccb83dcb5d1b96a5804b277de681792ecd6f4",
+  "sourceEvidenceSha256": "b5954c2454b7965d5629d880e2dffe1167041981c750149b4a174204ec80a857",
+  "completedFillGroups": [
+    "actual-Seaport-V2-721-native-custody-accounted-replay-denied",
+    "actual-Seaport-V2-1155-native-custody-accounted-replay-denied",
+    "actual-Seaport-V2-721-ERC20-custody-accounted-replay-denied",
+    "actual-Seaport-V2-1155-ERC20-custody-accounted-replay-denied"
+  ],
+  "safeApproval": {
+    "transactionHash": "0x9b5397f8e677f73801c4ff8ae82ac7bc1c53a7a61ce9fde05fff7487f0a9c156",
+    "blockNumber": "118391874",
+    "blockHash": "0x1c158728d2c031f90c3205781d6d389bbaab28cf4f49b877046b0af7b9b76a97",
+    "receiptStatus": "success",
+    "safe": "0x5e55fAF1Ce7980Fdf48c49869F1755eDde3c0f3E",
+    "executionSuccessLog": {
+      "address": "0x5e55faf1ce7980fdf48c49869f1755edde3c0f3e",
+      "topics": [
+        "0x442e715f626346e8c54381002da614f62bee8d27386535b2521ec8540898556e",
+        "0x1cfb719dc1e386a1d95ed50c8169f5690d586aa6e2565e0ee0bbdf4f055e91ce"
+      ],
+      "data": "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "blockHash": "0x1c158728d2c031f90c3205781d6d389bbaab28cf4f49b877046b0af7b9b76a97",
+      "blockNumber": "118391874",
+      "blockTimestamp": "1795109122",
+      "transactionHash": "0x9b5397f8e677f73801c4ff8ae82ac7bc1c53a7a61ce9fde05fff7487f0a9c156",
+      "transactionIndex": 0,
+      "logIndex": 2,
+      "removed": false
+    },
+    "nftApprovalLog": {
+      "address": "0xc37ebdf4aa5d8271fe40913183d5ee5e1379bfdd",
+      "topics": [
+        "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925",
+        "0x0000000000000000000000005e55faf1ce7980fdf48c49869f1755edde3c0f3e",
+        "0x0000000000000000000000000000000000000068f116a894984e2db1123eb395",
+        "0x0000000000000000000000000000000000000000000000000000000000000009"
+      ],
+      "data": "0x",
+      "blockHash": "0x1c158728d2c031f90c3205781d6d389bbaab28cf4f49b877046b0af7b9b76a97",
+      "blockNumber": "118391874",
+      "blockTimestamp": "1795109122",
+      "transactionHash": "0x9b5397f8e677f73801c4ff8ae82ac7bc1c53a7a61ce9fde05fff7487f0a9c156",
+      "transactionIndex": 0,
+      "logIndex": 1,
+      "removed": false
+    }
+  },
+  "diagnosis": "Canonical Safe1.4.1 ExecutionSuccess indexes txHash. The fixture declared that field unindexed and decoded zero events despite the successful inner NFT approval. The corrected ABI retains exact event address, digest and zero-payment checks.",
+  "contractGuardRelaxed": false,
+  "productionStatus": "NO_GO"
+}
