@@ -11,8 +11,8 @@
     },
     {
       "path": "REVIEW.md",
-      "bytes": 16247,
-      "sha256": "68d045375d98102c61d9680de9af07f499db52c1b49dfd15e1a944b9dda21907",
+      "bytes": 18276,
+      "sha256": "34f8e6703f0404f7f6f2d6c18de4f30b273cc2d4a36f53b318eb3f1dcb65e374",
       "textNormalization": "LF"
     },
     {
@@ -58,6 +58,12 @@
       "sha256": "dee13f923d01ce5eb0d23376a326551aaa76aa4a89ac6893ee4c6da9b19ad4ab",
       "uncompressedBytes": 11824,
       "uncompressedSha256": "514392636e24432f69c69ffe2e41e26170cddfc5a046fe0f8b6fc9cb44540af5"
+    },
+    {
+      "path": "integrity.test.mjs",
+      "bytes": 2926,
+      "sha256": "1545d0c123cb571847a6c5ff71a0f520042e166c54599385f0c9e6acf1bc84f7",
+      "textNormalization": "LF"
     },
     {
       "path": "linux-compiler-manifest.json",
@@ -143,6 +149,18 @@
       "path": "security-linux-dbacc-gitleaks.json",
       "bytes": 3,
       "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "source-preservation.json",
+      "bytes": 45882,
+      "sha256": "4012912a99225af64346c7839ca8870cc48e1fb2b81f04c52d728403dce35916",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "verify-artifacts.mjs",
+      "bytes": 12086,
+      "sha256": "0c9a87fcc755be4121cde44460527df93b4667e216d7c6905433b971b5503354",
       "textNormalization": "LF"
     },
     {

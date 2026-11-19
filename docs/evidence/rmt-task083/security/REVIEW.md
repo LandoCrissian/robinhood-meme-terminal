@@ -59,6 +59,14 @@ The new tests use genuine archived Seaport/controller creation bytecode, separat
 
 The unchanged Gitleaks 8.30.1 rules and historical ignore file separately scanned the final raw compiler input, compiler manifest, preliminary raw Slither and final raw Slither before their final compression. All four file scans returned zero; [scan provenance](raw-scan.json) retains bytes/hashes/commands/exits. The later raw Linux artifact directory and unedited Forge step log were also scanned before compression, both exit zero, with provenance in the CI execution record. These narrow artifact checks do **not** replace or clear the retained full-history raw scanner failure or its exact public-identifier adjudication.
 
+## Independent preservation and artifact checks
+
+The [machine preservation inventory](source-preservation.json) compares exact Git blobs against Task 082 base `50e278401ef6e0e66a5f38045295b97cf6b5d930`: **all 74 existing Solidity files remain byte-identical**, with zero changes/deletions and no old-source working-tree differences. All five tracked package/dependency manifests and lock/workspace files remain identical. Eighty retained gate/analyzer/release/security/history files remain byte-identical, including old scanner rules, historical ignores, source reports, strict workflow commands and release evaluator. The report includes every path and both blob IDs rather than inferring preservation from an aggregate count.
+
+Two existing workflows have explicitly bounded additive changes: the website review adds exactly one Seaport public-negative check, while frozen Reclaim V2 adds exactly five trigger paths and a comment so the unchanged seven-High trial regression reruns beside the new module. The verifier removes only those exact additions and requires every remaining baseline byte to match; it does not call those workflows byte-identical or permit altered security commands. The new Seaport strict job still calls the unfiltered historical analyzer and cannot swallow its failure.
+
+Fresh recompilation with the checksum-pinned native compiler exactly reproduces the retained production input, all three new roots, four-source closure, settings and bytecode-template hashes. Each current source is checked against its recorded SHA-256. [Integrity tests](integrity.test.mjs) pass **six groups** and reject deleted/altered old sources, altered scanner policy, corrupted but parseable finding reports, changed compiler/source bytes and an omitted new production root. These are preservation/tamper checks; they do not clear any High or certify live production state.
+
 ## Reproduction
 
 Run from the repository root with the checksum-pinned compiler and existing Slither 0.11.5 / Crytic Compile 0.3.11 environment. Use fresh output/source paths; the historical analyzer asserts they do not already exist. It changes only outputSelection to request necessary AST/source maps, and registers every installed detector.
@@ -71,6 +79,8 @@ node scripts/seaport-acquisition/compiler.mjs --solc <pinned-solc> --check-found
 node scripts/seaport-verification/fixture-compile.mjs --solc <pinned-solc> --output packages/contracts/seaport-acquisition/official-artifacts.json
 forge test --root packages/contracts/seaport-acquisition --use <pinned-solc> -vvv
 node docs/evidence/rmt-task083/security/build-register.mjs
+node docs/evidence/rmt-task083/security/verify-artifacts.mjs --solc <pinned-solc>
+node --test docs/evidence/rmt-task083/security/integrity.test.mjs
 ```
 
 The first CI attempt failed before Foundry because its separate root could not resolve preserved sibling imports. The new Foundry configuration adds a narrow sibling remapping and retains allowed paths; no production source or import target was changed to bypass analysis. Preserve that initial failed log and require actual later execution evidence. No production transaction, funding, owner signature, deployment, fee/royalty change or service mutation follows from this review.
