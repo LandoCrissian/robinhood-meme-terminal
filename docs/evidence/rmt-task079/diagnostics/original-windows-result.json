@@ -1,0 +1,50 @@
+{
+  "scope": "PINNED_PLAYWRIGHT_LOCAL_DOCUMENT_REPLACEMENT_DIAGNOSTIC_NOT_APP_ACCEPTANCE",
+  "version": "1.55.1",
+  "platform": "win32",
+  "cells": [
+    {
+      "navigation": false,
+      "result": {
+        "id": "b65f7785-a914-45be-b429-a29d9d0b7f1c",
+        "sameOrigin": true,
+        "caught": false,
+        "status": 200,
+        "body": {
+          "status": "read-only-probe"
+        }
+      },
+      "pageErrors": [],
+      "serverRequests": [
+        {
+          "method": "POST",
+          "path": "/api/launchpad/test-lifecycle"
+        }
+      ]
+    },
+    {
+      "navigation": true,
+      "result": {
+        "id": "d4cd2a78-a579-4415-b92c-e52dcca3a789",
+        "sameOrigin": true,
+        "caught": true,
+        "name": "TypeError",
+        "message": "Load failed"
+      },
+      "pageErrors": [
+        {
+          "name": "Fetch API cannot load http",
+          "message": "/127.0.0.1:51365/api/launchpad/test-lifecycle due to access control checks."
+        }
+      ],
+      "serverRequests": [
+        {
+          "method": "GET",
+          "path": "/replacement"
+        }
+      ]
+    }
+  ],
+  "controlValid": true,
+  "mechanismReproduced": true
+}
