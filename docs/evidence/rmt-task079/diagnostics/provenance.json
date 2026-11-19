@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "scope": "STANDALONE_LOCAL_TOOL_DIAGNOSTIC_NOT_APPLICATION_ACCEPTANCE",
+  "source": {
+    "originalFile": "original-probe.mjs.gz",
+    "uncompressedBytes": 3299,
+    "uncompressedSha256": "100aa6004c478443ce5a9f66a52c1e88976965b9e10b9c125a97ffd40a05fb24",
+    "gzipSha256": "a4c9a2dc9dc3e97e1673c59f3ca122948ce4bb7859c0905a3b18ccd2c172e8e1"
+  },
+  "originalResult": {
+    "path": "original-windows-result.json",
+    "bytes": 1175,
+    "sha256": "a9528b09619ad89e912a353beffdbb12a353055960f7645841b6cceb780d7193",
+    "platform": "win32",
+    "playwright": "1.55.1",
+    "controlValid": true,
+    "mechanismReproduced": true
+  },
+  "interpretation": "A caught same-origin fetch during held document replacement reproduced the exact access-control pageerror signature. The full Linux application failure did not record overlap timing; its exact cause remains unproven.",
+  "relatedUpstream": "https://github.com/microsoft/playwright/issues/43120",
+  "applicationSourceChanged": false,
+  "assertionsSuppressed": false
+}

@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-reclaim-v2-permanent-review",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "coreModified": false,
+  "compilerVersion": "0.8.26+commit.8a97fa7a",
+  "executablePlatform": "win32-x64",
+  "executableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "compilerSettings": {
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "metadata": {
+      "bytecodeHash": "ipfs",
+      "appendCBOR": true,
+      "useLiteralContent": false
+    },
+    "remappings": [
+      "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+      "@uniswap/v4-core/=lib/v4-core/",
+      "@uniswap/v4-periphery/=lib/v4-periphery/"
+    ]
+  },
+  "roots": [
+    "reclaim-v2/src/RMTReclaimCampaignDeployerV2.sol",
+    "reclaim-v2/src/RMTReclaimCampaignV2.sol",
+    "reclaim-v2/src/RMTReclaimCodePartV2.sol",
+    "reclaim-v2/src/RMTReclaimFactoryV2.sol",
+    "reclaim-v2/src/RMTReclaimSinkV2.sol",
+    "reclaim-v2/src/ReclaimV2Interfaces.sol"
+  ],
+  "sourceCount": 6,
+  "sourceSha256": [
+    [
+      "reclaim-v2/src/ReclaimV2Interfaces.sol",
+      "d99cb236da8b4c1d98242a61cb11aa2217dae6ac32cadabd9d1d645b7b5283f8"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimCampaignDeployerV2.sol",
+      "f429b384d99050260c52642a4a16b9e12ffdc533d6fb48c59365b8d5f34904a1"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimCampaignV2.sol",
+      "53f9300f0556bef5584cb5cca4e8dfefb19ae7f6c0fbb02d354c1c011333beb1"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimCodePartV2.sol",
+      "a45c4460e0b2b2d5ca7c7c51a8ffecd0782758fb0febd8a4b3cb4f0229e7b96f"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimFactoryV2.sol",
+      "f33c6c69ba40b85056ad9b5b99786a06dfc3076c7974e17cb417f0f5af12d854"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimSinkV2.sol",
+      "c2000425b62be0f0ccecc3b0c711bb84c02f73e746729eb5d7d08580565f6a34"
+    ]
+  ],
+  "inputSha256": "fece6e205ff52f8369c732cbddaa663a0d19530062b7539dc4b4467099a08cdc",
+  "scope": "All new production module sources plus every reachable import; tests excluded unless imported by production source",
+  "transformations": [],
+  "dependencyPinManifest": "docs/evidence/rmt-task043/4663-rotation-profile.json",
+  "templates": {
+    "RMTReclaimCampaignDeployerV2": {
+      "file": "reclaim-v2/src/RMTReclaimCampaignDeployerV2.sol",
+      "creationBytes": 2900,
+      "runtimeBytes": 2201,
+      "creationSha256": "f3b50cd264140a07ba528bab736e8bf7e9f489747524f996ff8000f244071097",
+      "runtimeSha256": "516f04c7df944ec7eb1fc1f2cd6bf9d20dbb58c8c55a698954d96f71779eb588"
+    },
+    "RMTReclaimCampaignV2": {
+      "file": "reclaim-v2/src/RMTReclaimCampaignV2.sol",
+      "creationBytes": 23676,
+      "runtimeBytes": 22077,
+      "creationSha256": "ef0b1d2b388d1f31d635eb6e17e322b28161dcc6ea92f66d662edc714c59aae0",
+      "runtimeSha256": "1d64361f363acbadf37d55e3e251f93ec8d78f3ba2f8753abecc0f0064aa54d1"
+    },
+    "RMTReclaimCodePartV2": {
+      "file": "reclaim-v2/src/RMTReclaimCodePartV2.sol",
+      "creationBytes": 301,
+      "runtimeBytes": 57,
+      "creationSha256": "f9d4a5c5ad990eb0bc31e8f349f4c4354670ae0eec43a5b23abbf0fd91edd60e",
+      "runtimeSha256": "c80e25be674c9854c3e9b2a5f0c806cad8a5067ecf3192fb3d2e7a62395d3a51"
+    },
+    "RMTReclaimFactoryV2": {
+      "file": "reclaim-v2/src/RMTReclaimFactoryV2.sol",
+      "creationBytes": 31898,
+      "runtimeBytes": 2132,
+      "creationSha256": "e01e61c4c2bf984f729bef047827d3954e4da81f6f50ca628580148f527c1c68",
+      "runtimeSha256": "7f857f65023dc2b72a9086c59d1d9de4c38fd5ef4fbdee272d597b5013545061"
+    },
+    "RMTReclaimSinkV2": {
+      "file": "reclaim-v2/src/RMTReclaimSinkV2.sol",
+      "creationBytes": 731,
+      "runtimeBytes": 705,
+      "creationSha256": "ea9476f27c89c1f40441b6e4494716c9ddb8673c998443e86425740820efb4a2",
+      "runtimeSha256": "7d454f3e1055e98d332eefe308db8ae8ab4b7b7ae03b0e39af96b65d665a6d24"
+    },
+    "ReclaimV2Eligibility": {
+      "file": "reclaim-v2/src/ReclaimV2Interfaces.sol",
+      "creationBytes": 85,
+      "runtimeBytes": 57,
+      "creationSha256": "a06e34011e5bfa67da7e1d2822a71cdf1a1d8f9758ec406e8ca15c97cb1718de",
+      "runtimeSha256": "a5b183c1c3a4fbe2108d686034f5b7e168ef34629c3874806707379eb3bbfb71"
+    }
+  }
+}

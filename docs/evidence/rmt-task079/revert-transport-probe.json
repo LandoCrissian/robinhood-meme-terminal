@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "status": "PASSED",
+  "scope": "LOCAL_ANVIL_31337_NO_UPSTREAM_NO_MAINNET",
+  "chainId": 31337,
+  "anvilRuntime": "anvil Version: 1.7.1\nCommit SHA: 4072e48705af9d93e3c0f6e29e93b5e9a40caed8\nBuild Timestamp: 2026-05-08T07:54:39.315067700Z (1778226879)\nBuild Profile: dist",
+  "source": "ReclaimBurn721Fixture",
+  "runtimeHash": "0x413c81fbbe6882d5abfe0d4067346b51d812eb38914598984abe227730eede09",
+  "creationTransaction": "0x54ed2eaeef38b35385a71c93f30c6e7ee9ab07c74431c101fe3de13d69fb0c4b",
+  "condition": "ownerOf for unminted synthetic ID999; this is transport proof, not a burn claim",
+  "actualUpstreamCode": 3,
+  "canonicalRevertDataHash": "0xfa4d687173e13616875da5c48a1e9c9fb344b043f10685e6f0a65e42656919b2",
+  "preservedRevertRecognized": true,
+  "genericFailureRecognizedAsAbsence": false,
+  "transactionSubmissions": 1,
+  "replacementTransactions": 0,
+  "contractReadRetryCount": 0,
+  "productionChanges": false
+}

@@ -23,10 +23,12 @@ import { compileProjectTreasury } from "../treasury/compiler.mjs";
 import { deployProjectTreasuryFixture } from "../treasury/deploy-fixture.mjs";
 import { testProjectTreasuryJourney } from "../treasury/local-integration.mjs";
 import { compileTreasuryPurchaseV2 } from "../treasury-v2/compiler.mjs";
-import { compileReclaim } from "../reclaim/compiler.mjs";
-import { compileReclaimFixtureAssets } from "../reclaim/fixture-assets.mjs";
-import { deployReclaimFixture } from "../reclaim/deploy-fixture.mjs";
-import { testReclaimJourney } from "../reclaim/local-integration.mjs";
+import { compileReclaimV2 as compileReclaim } from "../reclaim-v2/compiler.mjs";
+import { compileReclaimFixtureAssets } from "../reclaim-v2/fixture-assets.mjs";
+import { deployReclaimFixture } from "../reclaim-v2/deploy-fixture.mjs";
+import { testReclaimJourney } from "../reclaim-v2/local-integration.mjs";
+import { fixtureCallRevert } from "../reclaim-v2/read-proxy-errors.mjs";
+import { postgresRuntimeEnvironment } from "../reclaim-v2/postgres-runtime-env.mjs";
 import { observeOriginalReceipt } from "./receipt-observation.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
@@ -159,6 +161,7 @@ const processes = [];
 const childBase = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
   /^(?:path|pathext|systemroot|systemdrive|windir|temp|tmp|localappdata|appdata|userprofile|username|homedrive|homepath|comspec|programfiles(?:\(x86\))?|programdata|number_of_processors|os|home|lang)$/i.test(key)));
 childBase.NEXT_TELEMETRY_DISABLED = "1";
+const postgresChildEnv=postgresRuntimeEnvironment(childBase,pgBin,process.env);
 function start(executable, params, name, { cwd = repository, env = childBase, discard = false } = {}) {
   const child = spawn(executable, params, { cwd, env, windowsHide: true, stdio: ["ignore", discard ? "ignore" : "pipe", discard ? "ignore" : "pipe"] });
   let stdout = "", stderr = "";
@@ -177,7 +180,8 @@ function start(executable, params, name, { cwd = repository, env = childBase, di
   return job;
 }
 async function successful(job) {
-  const { code, stdout } = await job.done;
+  const { code, stdout, stderr } = await job.done;
+  if(code!==0&&job.name.startsWith("postgres"))console.error((stdout+stderr).replaceAll(pgPass,"[redacted]").replaceAll(indexReadKey,"[redacted]").slice(-8192));
   assert.equal(code, 0, `${job.name} failed. See fixture output for diagnostics.`);
   return stdout;
 }
@@ -201,7 +205,11 @@ async function rpc(method, params = []) {
   const response = await fetch(rpcUrl, { method: "POST", headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }), signal: AbortSignal.timeout(12_000) });
   const body = await response.json();
-  assert.ok(response.ok && !body.error, `${method} failed on the isolated chain`);
+  if(!response.ok||body.error){
+    const error=new Error(`${method} failed on the isolated chain`),revert=response.ok&&fixtureCallRevert(method,body);
+    if(revert)Object.defineProperty(error,"fixtureCallRevert",{value:revert});
+    throw error;
+  }
   return body.result;
 }
 const fetchAt = (base, path, options) => fetch(new URL(path, base), { signal: AbortSignal.timeout(10_000), ...options });
@@ -258,7 +266,8 @@ const proxyHandler = (claimReader = false) => async (request, response) => {
         return { id, jsonrpc: "2.0", result: { ...await rpc(method, params), authorizationList: [] } };
       }
       try { return { id, jsonrpc: "2.0", result: await rpc(method, params) }; }
-      catch { return { id, jsonrpc: "2.0", error: { code: -32000, message: "Isolated upstream read failed" } }; }
+      catch(error) { return { id, jsonrpc: "2.0", error: error instanceof Error&&error.fixtureCallRevert
+        ? error.fixtureCallRevert : { code: -32000, message: "Isolated upstream read failed" } }; }
     };
     write(Array.isArray(incoming) ? await Promise.all(incoming.map(route)) : await route(incoming));
   } catch { write({ error: "Invalid fixture RPC request" }, 400); }
@@ -342,11 +351,11 @@ try {
 
   const pgPasswordFile = join(out, "postgres-password");
   await writeFile(pgPasswordFile, pgPass, { mode: 0o600 });
-  try { await successful(start(pgExecutable("initdb"), ["-D", cluster, "-U", pgUser, "-A", "scram-sha-256", "--pwfile", pgPasswordFile, "--no-locale"], "postgres-init")); }
+  try { await successful(start(pgExecutable("initdb"), ["-D", cluster, "-U", pgUser, "-A", "scram-sha-256", "--pwfile", pgPasswordFile, "--no-locale", "--encoding=UTF8"], "postgres-init",{env:postgresChildEnv})); }
   finally { await unlink(pgPasswordFile); }
   await appendFile(join(cluster, "postgresql.conf"), "\nunix_socket_directories = ''\n");
   await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-l", join(out, "postgres.log"), "-o",
-    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start", { discard: process.platform === "win32" }));
+    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start", { env:postgresChildEnv,discard: process.platform === "win32" }));
   pgStarted = true;
   const maintenanceUrl = new URL(databaseUrl);
   maintenanceUrl.pathname = "/postgres";
@@ -365,7 +374,7 @@ try {
     ...(args["profiles-only"] && { RMT_CLAIM_PROFILES_FIXTURE: "local-reviewed-claims-31337-v1" }),
     ...(args["treasury-only"] && { RMT_PROJECT_TREASURY_FIXTURE: "local-reviewed-project-treasury-v1",
       RMT_PROJECT_TREASURY_DEPLOYMENT: join(out, "project-treasury-deployment.json") }),
-    ...(args["reclaim-only"]&&{RMT_RECLAIM_FIXTURE:"local-reviewed-reclaim-v1",RMT_RECLAIM_DEPLOYMENT:join(out,"reclaim-deployment.json")}),
+    ...(args["reclaim-only"]&&{RMT_RECLAIM_FIXTURE:"local-reviewed-reclaim-v2-permanent",RMT_RECLAIM_DEPLOYMENT:join(out,"reclaim-deployment.json")}),
     ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
       RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_TEST_DELEGATION: "synthetic-7702-v1",
       RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
@@ -425,7 +434,7 @@ try {
       site,workerOrigin,indexReadKey,out,pg,waitFor,mine:()=>rpc("anvil_mine",["0x3"]),ready:()=>workerReady(worker),restart:async()=>{
         await stop(web);await stop(worker);web=startWeb("website-reclaim-restart");worker=startWorker("worker-reclaim-restart");await webReady(web);await workerReady(worker);
       },hideReceipt:hash=>{hideReceipt=hash??undefined;}});
-    console.log("Same-app manually funded Reclaim escrow, exact reward settlement and durable recovery passed on synthetic 31337. No production execution occurred.");
+    console.log("Same-app permanent Reclaim V2 retirement, funded rewards, Safe outer execution and canonical recovery passed on synthetic 31337. No production execution occurred.");
   }else if (args["treasury-only"]) {
     assert.ok(treasuryDeployment && treasuryCompilation);
     let worker = startWorker("worker-project-treasury");
@@ -1415,7 +1424,7 @@ try {
   for (const job of processes.toReversed()) await stop(job);
   await pg.end();
   if (pgStarted) {
-    await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-w", "-m", "fast", "stop"], "postgres-stop"));
+    await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-w", "-m", "fast", "stop"], "postgres-stop",{env:postgresChildEnv}));
   }
   await new Promise((done) => proxy.close(done));
   if (claimProofProxy) await new Promise((done) => claimProofProxy.close(done));

@@ -6,6 +6,7 @@ import { tmpdir } from "node:os";
 import { resolve, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { chromium, webkit, devices } from "playwright";
+import { installProfileResponseObserver } from "../../../scripts/profiles/browser-response-observer.mjs";
 
 const require = createRequire(new URL("../package.json", import.meta.url));
 const { privateKeyToAccount } = require("viem/accounts"), { hexToString } = require("viem"), sharp = require("sharp");
@@ -44,6 +45,16 @@ try {
       const page = await context.newPage(); page.setDefaultTimeout(15_000);
       const walletCalls = [], errors = [], outside = []; let reject = true, rejectSwitch = true;
       const mutations = []; mutationDiagnostics.push({ engine: name, entries: mutations });
+      let pendingMutation;
+      await context.exposeBinding("retainProfileMutationResponse", (_source, observation) => {
+        const url = new URL(observation.url);
+        assert.equal(url.origin, site.origin); assert.ok(pendingMutation, "Unexpected profile mutation outside an explicit UI action");
+        assert.equal(observation.method, pendingMutation.method); assert.equal(url.pathname, pendingMutation.path);
+        const diagnostic = { ...observation, observedAt: new Date().toISOString() }; delete diagnostic.body; mutations.push(diagnostic);
+        if (!observation.bodyCaptured) pendingMutation.reject(Error(observation.bodyError ?? "Actual profile response could not be captured"));
+        else pendingMutation.resolve(observation);
+      });
+      await context.addInitScript(installProfileResponseObserver, { origin: site.origin, binding: "retainProfileMutationResponse", maximumBytes: 65536 });
       page.on("pageerror", (error) => errors.push(error.message));
       page.on("request", (request) => { if (new URL(request.url()).origin !== site.origin) outside.push(request.url()); });
       await page.exposeFunction("syntheticProfileWallet", async ({ name: walletName, address, chain, method, params = [] }) => {
@@ -94,22 +105,22 @@ try {
       });
       const profileMutation = async (method, path, act) => {
         await profileIdle();
-        const [{ status: responseStatus, body }] = await Promise.all([
-          page.waitForResponse((response) => new URL(response.url()).pathname === path && response.request().method() === method)
-            .then(async (response) => {
-              const observation = { method, path, status: response.status(), observedAt: new Date().toISOString(), bodyCaptured: false };
-              mutations.push(observation);
-              try {
-                // Consume the real response as soon as it arrives. Do not wait
-                // for the input/click action to finish before retaining its body.
-                const body = await response.json(); observation.bodyCaptured = true;
-                return { status: response.status(), body };
-              } catch (error) {
-                observation.bodyError = String(error?.message ?? error).slice(0, 1000); throw error;
-              }
-            }),
-          act(),
-        ]);
+        assert.equal(pendingMutation, undefined);
+        let timer;
+        const captured = new Promise((resolve, reject) => {
+          pendingMutation = { method, path, resolve, reject };
+          timer = setTimeout(() => reject(Error("Actual browser mutation response was not retained")), 15000);
+        });
+        let responseStatus, body;
+        try {
+          const [network, observation] = await Promise.all([
+            page.waitForResponse(response => new URL(response.url()).pathname === path && response.request().method() === method)
+              .then(response => ({ method: response.request().method(), url: response.url(), status: response.status() })),
+            captured, act(),
+          ]);
+          assert.equal(network.method, method); assert.equal(network.url, observation.url); assert.equal(network.status, observation.status);
+          responseStatus = observation.status; body = observation.body;
+        } finally { clearTimeout(timer); pendingMutation = undefined; }
         assert.equal(responseStatus, 200, `${method} ${path}: ${typeof body.code === "string" ? body.code : "unexpected response"}`);
         assert.equal(body.profile?.walletAddress.toLowerCase(), accounts[0].address.toLowerCase());
         await profileIdle();

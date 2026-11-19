@@ -1,0 +1,39 @@
+{
+  "status": "passed",
+  "version": "pg_dump (PostgreSQL) 18.6",
+  "startedAt": "2026-11-19T02:01:52.919Z",
+  "completedAt": "2026-11-19T02:02:11.717Z",
+  "scope": "New isolated loopback-only PostgreSQL cluster and distinct empty Task079 smoke databases; no production connectivity.",
+  "checks": [
+    "Project treasury canonical-shaped PostgreSQL: shared transaction interruption rollback, writer lease, duplicate/conflict and checkpoint reorg cascade passed.",
+    "Reclaim PostgreSQL shared checkpoint atomic rollback, lease, duplicate/conflict and reorg cascade passed.",
+    "Synthetic fixture earnings PostgreSQL: 53 projects, independent beneficiary paging, exact-token recovery, receipt activity, duplicate/conflict handling, restart reader, one writer and reorg rollback passed."
+  ],
+  "additionalSuites": [
+    {
+      "label": "schema",
+      "status": "passed",
+      "output": [
+        "Indexer schema smoke test passed."
+      ]
+    },
+    {
+      "label": "worker-http",
+      "status": "passed",
+      "output": [
+        "Worker readiness, authorization, single writer, and durable restart smoke passed."
+      ]
+    },
+    {
+      "label": "production-adapter",
+      "status": "passed",
+      "output": [
+        "Creator earnings PostgreSQL: 53 registrations, recipient roles, stable pagination, exact token, duplicate replay, read-only restart and reorg invalidation passed.",
+        "Production-shaped claim evidence PostgreSQL scope, actor/payer, duplicate/conflict, atomic interruption, lease restart and reorg smoke passed; no chain execution or production DDL claim.",
+        "Production adapter PostgreSQL atomic rollback, duplicate replay, lease, restart and reorg smoke passed."
+      ]
+    }
+  ],
+  "evidence": "Persistence-shaped synthetic data and provider-double HTTP worker; separate real receipt/browser lifecycle evidence required.",
+  "logSha256": "6da83658cafc8e603c71c83bc39d2e03b64155d5a6b4688203afb91dcbd446e2"
+}

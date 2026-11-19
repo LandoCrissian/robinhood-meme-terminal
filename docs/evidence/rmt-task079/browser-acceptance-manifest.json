@@ -1,0 +1,172 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-reclaim-v2-permanent",
+  "status": "LOCAL_ACCEPTANCE_PASSED_SECURITY_GATE_FAILED",
+  "productionAuthorization": false,
+  "physicalIPhoneAcceptance": false,
+  "chainId": 31337,
+  "reviewedSourceCommit": "14440d3bb06fe309e4d281f83c34308ac09c834a",
+  "githubActionsCheckoutCommit": "f93a037a66c8bb2f9ba469dac9ccb028acec199f",
+  "identicalSourceTree": "2e461a2bf224376e5e20e8f5a3381e330fa27504",
+  "compiledInputSha256": "fece6e205ff52f8369c732cbddaa663a0d19530062b7539dc4b4467099a08cdc",
+  "githubActionsRun": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612234",
+  "recordedAt": "2026-11-19T03:41:05.587591+00:00",
+  "browsers": [
+    {
+      "engine": "chromium",
+      "artifactId": "14495564842",
+      "sourceCheckoutCommit": "f93a037a66c8bb2f9ba469dac9ccb028acec199f",
+      "postgresql": {
+        "serverVersion": "18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+        "encoding": "UTF8",
+        "isolatedTestDatabase": true
+      },
+      "observedRetirements": 9,
+      "canonicalRetirements": 8,
+      "canonicalNftUnits": 16,
+      "canonicalRewardWei": "86000000000000000000",
+      "observedSafeOuterExecutions": 11,
+      "canonicalSafeOuterExecutions": 10,
+      "canonicalSqlEvents": 45,
+      "manualHashRecoveryCases": 2,
+      "restart": {
+        "before": 22,
+        "after": 22,
+        "unchanged": true
+      },
+      "reorg": {
+        "orphanHash": "0xb9c2c6be475647bbf1825d6213555e72d0bd4e1eebcabfa00263a0b6c39f5470",
+        "canonicalRowsRemoved": true,
+        "allAssetAndReserveStateRolledBack": true,
+        "originalHashRetained": true,
+        "recoveryStatus": "unavailable",
+        "noAutomaticRetry": true
+      }
+    },
+    {
+      "engine": "webkit",
+      "artifactId": "14495789531",
+      "sourceCheckoutCommit": "f93a037a66c8bb2f9ba469dac9ccb028acec199f",
+      "postgresql": {
+        "serverVersion": "18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+        "encoding": "UTF8",
+        "isolatedTestDatabase": true
+      },
+      "observedRetirements": 9,
+      "canonicalRetirements": 8,
+      "canonicalNftUnits": 16,
+      "canonicalRewardWei": "86000000000000000000",
+      "observedSafeOuterExecutions": 11,
+      "canonicalSafeOuterExecutions": 10,
+      "canonicalSqlEvents": 45,
+      "manualHashRecoveryCases": 2,
+      "restart": {
+        "before": 22,
+        "after": 22,
+        "unchanged": true
+      },
+      "reorg": {
+        "orphanHash": "0x569932bd9cef68b2bf9bc2f306e4dcf57b93999b4dc7447b6e3fdbb54a9949c7",
+        "canonicalRowsRemoved": true,
+        "allAssetAndReserveStateRolledBack": true,
+        "originalHashRetained": true,
+        "recoveryStatus": "unavailable",
+        "noAutomaticRetry": true
+      }
+    }
+  ],
+  "ciChecks": [
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612276/job/135316677735",
+      "name": "contracts",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612210/job/135316677343",
+      "name": "fixed-supply-4663",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612378/job/135316677428",
+      "name": "gitleaks",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612276/job/135316677870",
+      "name": "indexer",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612318/job/135316677395",
+      "name": "isolated-firebase",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612234/job/135316677405",
+      "name": "isolated-lifecycle (chromium)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612234/job/135316677521",
+      "name": "isolated-lifecycle (webkit)",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612068/job/135316676639",
+      "name": "linux-netlify-artifact",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612276/job/135316677698",
+      "name": "operations-safe",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612210/job/135316677664",
+      "name": "project-treasury-v1",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612420/job/135316677662",
+      "name": "railway-container",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612076/job/135316676722",
+      "name": "reclaim-permanent-v2",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612210/job/135316677567",
+      "name": "reclaim-v1",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612276/job/135316677451",
+      "name": "repository",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612210/job/135316677633",
+      "name": "slither",
+      "state": "FAILURE"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612210/job/135316677556",
+      "name": "treasury-purchase-v2-prototype",
+      "state": "SUCCESS"
+    },
+    {
+      "link": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44451612234/job/135316677173",
+      "name": "web",
+      "state": "SUCCESS"
+    }
+  ],
+  "notes": [
+    "Raw Actions checkout is a synthetic merge commit; GitHub tree hashes prove byte-identical source to the recorded PR head.",
+    "Nine retirement observations include one deliberately orphaned Safe transaction; canonical SQL retains eight, covering16NFTunits and86synthetic tokens.",
+    "Eleven observed Safe outer executions include the same orphan; ten remain canonical.",
+    "Receipt and balance attribution is limited to the fixture single-transaction-per-block profile; no mainnet trace/L1-finality clearance.",
+    "Final evidence-only commit will be verified separately; archived raw source identity is not rewritten."
+  ]
+}

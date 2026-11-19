@@ -1,5 +1,7 @@
 # RMT Reclaim acceptance
 
+> **HISTORICAL / REJECTED PRODUCT SEMANTICS.** The [owner correction](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/672#issuecomment-6996801185) rejects reversible escrow and repayment-to-return. Those were assistant-introduced deviations, not approved intent. This document preserves the Task078 implementation/test record; it is not the active product policy or a deployment authorization. The [original unmodified document](https://github.com/LandoCrissian/robinhood-meme-terminal/blob/da5ba64636c4da67a6a2b0447d1c2849bf01fa97/docs/RMT_RECLAIM_ACCEPTANCE.md), V1 source and raw evidence remain available. Current behavior is governed by the [permanent-surrender V2 policy](RMT_RECLAIM_CAMPAIGN_POLICY.md).
+
 [Task 078](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/671#issuecomment-6994244524), stacked on #671 at `8d1876daed6449e40388166255f52f13f3c488dd`. **LOCAL DEVELOPMENT ONLY / BLOCKED_NO_BROADCAST.** The same-website Reclaim journey completed in clean Chromium and WebKit runs on isolated Anvil chain 31337 with persistent test PostgreSQL. Contract regressions, public negative tests and bounded read-only 4663 observations are recorded below. This is not a production deployment, physical-iPhone acceptance or independent audit. Exact-head CI is not claimed clear; the retained and new strict security gates still fail.
 
 ## Product and custody decision

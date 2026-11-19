@@ -3,13 +3,23 @@
   "workspaces": {
     ".": {
       "entry": [
+        "scripts/reclaim-v2/probe-revert-transport.mjs",
         "scripts/treasury-v2/routes.mjs",
         "scripts/claims/probe-read-only-4663.mjs",
         "scripts/claims/fork-read-only-4663.mjs",
         "packages/launchpad-common/native-proof.d.mts",
         "packages/launchpad-common/project-treasury-runtime.d.mts",
         "packages/launchpad-common/reclaim-runtime.d.mts",
+        "packages/launchpad-common/reclaim-runtime.mjs",
+        "packages/launchpad-common/reclaim-v2-runtime.d.mts",
+        "scripts/reclaim/browser-integration.mjs",
+        "scripts/reclaim/browser-public.mjs",
+        "scripts/reclaim/deploy-fixture.mjs",
+        "scripts/reclaim/fixture-assets.mjs",
+        "scripts/reclaim/local-integration.mjs",
+        "scripts/reclaim/safe-integration.mjs",
         "docs/evidence/rmt-task076/capture-emulation-probe.mjs",
+        "docs/evidence/rmt-task079/diagnostics/webkit-document-replacement-probe.mjs",
         "docs/evidence/rmt-task039/probe-robinhood-4663.mjs",
         "docs/evidence/rmt-task039/verify-4663-bytecode.mjs",
         "docs/evidence/rmt-task040/curve-store-reorg.mjs",

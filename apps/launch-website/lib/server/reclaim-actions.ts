@@ -1,4 +1,4 @@
-import {encodeFunctionData,erc20Abi,keccak256,parseEventLogs,toHex,type Address,type Hex} from "viem";
+import {encodeFunctionData,erc20Abi,keccak256,parseEventLogs,toHex,zeroAddress,type Address,type Hex} from "viem";
 import {reclaimOperations,reclaimProfile,reclaimAddress,reclaimHash,reclaimUint,validReclaimFields,isReclaimReview,reclaimReviewHash,
   type ReclaimFields,type ReclaimOperation,type ReclaimReview,type ReclaimVerification} from "../reclaim";
 import {claimProfileDigest,claimDelegatePin} from "../claim-profiles";
@@ -7,6 +7,8 @@ import {readTreasuryBody} from "./project-treasury-actions";
 import {configuredReclaimFixture,reclaimFactoryAbi,reclaimCampaignAbi,reclaim721Abi,reclaim1155Abi,reclaimEligibility,readReclaimProof,readReclaimSnapshot,
   verifyReclaimContext,reclaimRead,reclaimPoint,requireReclaim,sameReclaim as same,normalizedReclaim as normalized,
   type ReclaimFixture,type ReclaimRpc,type ReclaimHead} from "./reclaim-fixture";
+import type {ReclaimAsset} from "./reclaim-fixture";
+import {reclaimRetirementEvidenceMatches,type ReclaimAcceptedEvidenceV2,type ReclaimRetiredIdentityV2,type ReclaimStoredTradeInV2} from "./reclaim-retirement-evidence";
 
 const responseHeaders={"Cache-Control":"private, no-store","Netlify-CDN-Cache-Control":"no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"};
 const reply=(body:object,status=200)=>Response.json(body,{status,headers:responseHeaders});
@@ -16,16 +18,16 @@ const keys=(body:Record<string,unknown>,required:string[],optional:string[]=[])=
 const callData=(abi:readonly unknown[],functionName:string,args:readonly unknown[]=[])=>encodeFunctionData({abi,functionName,args}as never);
 const permissionless=new Set<ReclaimOperation>(["execute-collection","execute-rate","execute-close","execute-recovery","cancel-collection","cancel-rate","cancel-close","cancel-recovery","cancel-controller"]);
 
-async function operationTerms(config:ReclaimFixture,rpc:ReclaimRpc,head:ReclaimHead,actor:Address,campaign:Address,operation:ReclaimOperation,fields:ReclaimFields,prior?:ReclaimReview){
+export async function operationTerms(config:ReclaimFixture,rpc:ReclaimRpc,head:ReclaimHead,actor:Address,campaign:Address,operation:ReclaimOperation,fields:ReclaimFields,prior?:ReclaimReview){
   const m=config.module;let target=campaign,targetRuntimeHash:Hex,rewardWei="0",controllerEpoch="0",policyEpoch="0",data:Hex,nft:ReclaimReview["nft"],transfer:ReclaimReview["transfer"];
   if(operation==="create-campaign"){
     requireReclaim(syntheticReclaimActor(fields.controller));
     requireReclaim(await projectTreasuryControllerKind(rpc,normalized(fields.controller!),head.number)!=="unsupported");
     const predicted=await reclaimRead<Address>(rpc,m.reclaimFactory,reclaimFactoryAbi,"predict",[actor,fields.intentId,normalized(fields.controller!),BigInt(fields.rewardPerUnit!),Number(fields.walletCap!)],head.number);
     requireReclaim(same(predicted,campaign));const existing=await rpc.getCode({address:campaign,blockNumber:head.number});requireReclaim(!existing||existing==="0x");
-    const {materializeReclaimRuntime}=await import("../../../../packages/launchpad-common/reclaim-runtime.mjs");
+    const {materializeReclaimRuntime}=await import("../../../../packages/launchpad-common/reclaim-v2-runtime.mjs");
     const expected=materializeReclaimRuntime(m.campaignRuntimeTemplate,m.campaignImmutableReferences,m.campaignImmutableNames,
-      {creator:actor,deploymentFactory:m.reclaimFactory,rewardToken:m.rewardToken,rewardRuntimeHash:m.rewardTokenRuntimeHash,deploymentChainId:31337});
+      {creator:actor,deploymentFactory:m.reclaimFactory,rewardToken:m.rewardToken,rewardRuntimeHash:m.rewardTokenRuntimeHash,deploymentChainId:31337,permanentSink:m.permanentSink,sinkRuntimeHash:m.sinkRuntimeHash});
     target=m.reclaimFactory;targetRuntimeHash=m.factoryRuntimeHash;
     data=callData(reclaimFactoryAbi,"create",[fields.intentId,normalized(fields.controller!),BigInt(fields.rewardPerUnit!),Number(fields.walletCap!)]);
     return{target,targetRuntimeHash,data,rewardWei,controllerEpoch,policyEpoch,campaignRuntimeHash:keccak256(expected),controller:normalized(fields.controller!),nft,transfer};
@@ -33,7 +35,7 @@ async function operationTerms(config:ReclaimFixture,rpc:ReclaimRpc,head:ReclaimH
   const proof=await readReclaimProof(config,rpc,campaign,head);targetRuntimeHash=proof.runtimeHash;
   const[controller,ce,pe]=await Promise.all([reclaimRead<Address>(rpc,campaign,reclaimCampaignAbi,"controller",[],head.number),reclaimRead<bigint>(rpc,campaign,reclaimCampaignAbi,"controllerEpoch",[],head.number),reclaimRead<bigint>(rpc,campaign,reclaimCampaignAbi,"policyEpoch",[],head.number)]);
   controllerEpoch=ce.toString();policyEpoch=pe.toString();
-  const publicAction=permissionless.has(operation)||["redeem","return","approve-return","approve-721","approve-1155","revoke-1155","accept-controller"].includes(operation);
+  const publicAction=permissionless.has(operation)||["redeem","approve-721","approve-1155","revoke-1155","accept-controller"].includes(operation);
   requireReclaim(publicAction||same(controller,actor),"This operation requires the campaign controller");
   const deadline=prior?BigInt(prior.expiresAt):head.timestamp+180n;
   if(["approve-funding","fund"].includes(operation)){
@@ -51,25 +53,19 @@ async function operationTerms(config:ReclaimFixture,rpc:ReclaimRpc,head:ReclaimH
     }else if(operation==="approve-1155"||operation==="revoke-1155"){
       requireReclaim(asset.standard===2);target=collection;targetRuntimeHash=asset.runtimeHash;data=callData(reclaim1155Abi,"setApprovalForAll",[campaign,operation==="approve-1155"]);
     }else if(operation==="propose-collection"){
-      requireReclaim(same(controller,actor));data=callData(reclaimCampaignAbi,"proposeCollection",[collection,asset.standard,asset.runtimeHash,eligibility.root,Number(fields.collectionCap!),Number(fields.collectionWalletCap!),BigInt(fields.expiresAt!)]);
+      requireReclaim(same(controller,actor));data=callData(reclaimCampaignAbi,"proposeCollection",[collection,asset.standard,asset.runtimeHash,eligibility.root,Number(fields.collectionCap!),Number(fields.collectionWalletCap!),asset.retirementMode,asset.policyHash,BigInt(fields.expiresAt!)]);
     }else if(operation==="disable-collection"){requireReclaim(same(controller,actor));data=callData(reclaimCampaignAbi,"disableCollection",[collection]);}
     else{
       const selected=fields.tokenIds!.map(id=>{const item=eligibility.items.find(i=>i.tokenId===id);requireReclaim(item,"NFT ID is not in this campaign's finite fixture policy");return item;});
       const ids=selected.map(i=>BigInt(i.tokenId)),quantities=fields.quantities!.map(BigInt),maximums=selected.map(i=>BigInt(i.maxQuantity)),proofs=selected.map(i=>i.proof);
-      nft={collection,tokenIds:ids.map(String),quantities:quantities.map(String)};
+      requireReclaim(fields.permanentConsent===true,"Permanent NFT loss must be explicitly acknowledged in the reviewed request");
+      nft={collection,tokenIds:ids.map(String),quantities:quantities.map(String),retirementMode:asset.retirementMode,destination:asset.retirementMode===1?zeroAddress:m.permanentSink,policyHash:asset.policyHash};
       const quoted=await reclaimRead<readonly[bigint,number]>(rpc,campaign,reclaimCampaignAbi,"quote",[collection,ids,quantities,maximums,proofs,actor],head.number);
       requireReclaim(quoted[0]>0n);rewardWei=quoted[0].toString();
       transfer={asset:m.rewardToken,from:campaign,to:actor,amountWei:rewardWei};
       const nonce=await reclaimRead<bigint>(rpc,campaign,reclaimCampaignAbi,"claimantNonces",[actor],head.number);
       data=callData(reclaimCampaignAbi,"redeem",[collection,ids,quantities,maximums,proofs,pe,quoted[0],nonce,deadline]);
     }
-  }else if(operation==="approve-return"||operation==="return"){
-    const r=await reclaimRead<readonly[Address,Address,number,bigint,bigint,number,number]>(rpc,campaign,reclaimCampaignAbi,"tradeIns",[BigInt(fields.receiptId!)],head.number);
-    requireReclaim(r[6]===1&&same(r[0],actor));rewardWei=r[4].toString();
-    const items=await reclaimRead<readonly[readonly bigint[],readonly bigint[]]>(rpc,campaign,reclaimCampaignAbi,"receiptItems",[BigInt(fields.receiptId!)],head.number);
-    nft={collection:r[1],tokenIds:items[0].map(String),quantities:items[1].map(String),receiptId:fields.receiptId!};
-    if(operation==="approve-return"){target=m.rewardToken;targetRuntimeHash=m.rewardTokenRuntimeHash;data=callData(erc20Abi,"approve",[campaign,r[4]]);}
-    else{data=callData(reclaimCampaignAbi,"returnTradeIn",[BigInt(fields.receiptId!),deadline]);transfer={asset:m.rewardToken,from:actor,to:campaign,amountWei:rewardWei};}
   }else{
     const noArgs:Partial<Record<ReclaimOperation,string>>={pause:"pause",resume:"resume","execute-collection":"executeCollection","cancel-collection":"cancelCollection","execute-rate":"executeRate","cancel-rate":"cancelRate","propose-close":"proposeClose","execute-close":"executeClose","cancel-close":"cancelClose","execute-recovery":"executeRecovery","cancel-recovery":"cancelRecovery","accept-controller":"acceptController","cancel-controller":"cancelController"};
     if(operation==="propose-rate")data=callData(reclaimCampaignAbi,"proposeRate",[BigInt(fields.rewardPerUnit!),BigInt(fields.expiresAt!)]);
@@ -110,11 +106,11 @@ export async function prepareReclaim(config:ReclaimFixture,body:Record<string,un
     if(prior?.request){requireReclaim(BigInt(prior.request.nonce)===BigInt(nonce)&&estimate<=BigInt(prior.request.gas)&&(latest.baseFeePerGas??0n)+priority<=BigInt(prior.request.maxFeePerGas));request=prior.request;}
     maximumNetworkFeeWei=(BigInt(request.gas)*BigInt(request.maxFeePerGas)).toString();requireReclaim(await rpc.getBalance({address:actor,blockTag:"pending"})>=BigInt(maximumNetworkFeeWei));
   }
-  const partial:Omit<ReclaimReview,"reviewHash">={schemaVersion:1,profile:reclaimProfile,chainId:31337,scope:"isolated-local",executionEnabled:false,status:request?"prepared":"needs-safe-approvals",
+  const partial:Omit<ReclaimReview,"reviewHash">={schemaVersion:2,profile:reclaimProfile,chainId:31337,scope:"isolated-local",executionEnabled:false,status:request?"prepared":"needs-safe-approvals",
     operation,actor,controller:terms.controller,kind:kind==="safe-1.4.1"?"safe-inner":kind,campaign,factory:m.reclaimFactory,rewardToken:m.rewardToken,factoryRuntimeHash:m.factoryRuntimeHash,
     campaignRuntimeHash:terms.campaignRuntimeHash,rewardRuntimeHash:m.rewardTokenRuntimeHash,targetRuntimeHash:terms.targetRuntimeHash,actorCodeHash:keccak256(actorCode??"0x"),
-    controllerEpoch:terms.controllerEpoch,policyEpoch:terms.policyEpoch,fields,request,innerCall,observed,expiresAt,maximumNetworkFeeWei,rewardWei:terms.rewardWei,custody:"reversible-escrow",...(terms.nft&&{nft:terms.nft}),...(terms.transfer&&{transfer:terms.transfer}),
-    notices:["Synthetic chain31337 only. This is not a live RMT or USD-priced reward.","NFTs enter reversible escrow, not burn. Only the original claimant can return the exact original reward to recover the NFTs; eligibility stays consumed.",
+    controllerEpoch:terms.controllerEpoch,policyEpoch:terms.policyEpoch,fields,request,innerCall,observed,expiresAt,maximumNetworkFeeWei,rewardWei:terms.rewardWei,custody:"permanent-retirement",...(terms.nft&&{nft:terms.nft}),...(terms.transfer&&{transfer:terms.transfer}),
+    notices:["Synthetic chain31337 only. This is not a live RMT or USD-priced reward.","Surrender is irreversible: reviewed native burning or a verified immutable contract sink. No NFT return, withdrawal, repayment or buyback exists. Lifetime eligibility stays consumed.",
       "Every transaction requires its own explicit test-wallet confirmation. No campaign may use protocol or project treasury funds automatically.",
       ...(operation==="approve-1155"?["ERC-1155 exposes collection-wide operator approval. This approves only the reviewed campaign; explicitly revoke it after use."]:[]),
       ...(kind==="safe-1.4.1"?["Unsigned Safe inner CALL only; its owners must approve through the Safe. An EOA owner cannot impersonate Safe-owned NFTs."]:[])]};
@@ -129,16 +125,59 @@ async function verifyTokenDelta(config:ReclaimFixture,rpc:ReclaimRpc,receipt:Awa
   requireReclaim(fb>=fa&&fb-fa===amount&&ta>=tb&&ta-tb===amount);
 }
 
-export async function verifyReclaimTransaction(config:ReclaimFixture,review:ReclaimReview,hash?:Hex):Promise<ReclaimVerification>{
-  const base={schemaVersion:1,profile:reclaimProfile,chainId:31337,executionEnabled:false,reviewHash:review.reviewHash,finality:"synthetic-local-not-production"}as const;
+async function verifyPermanentRetirement(config:ReclaimFixture,rpc:ReclaimRpc,receipt:Awaited<ReturnType<ReclaimRpc["getTransactionReceipt"]>>,review:ReclaimReview,
+  asset:ReclaimAsset,id:bigint,items:readonly[readonly bigint[],readonly bigint[]],events:readonly{eventName:string;args:unknown}[]){
+  const selected=events.filter(e=>e.eventName==="NFTPermanentlyRetired");requireReclaim(selected.length===1&&review.nft);
+  const e=selected[0].args as{receiptId:bigint;collection:Address;standard:number;retirementMode:number;destination:Address;ids:readonly bigint[];quantities:readonly bigint[];supplyBefore:readonly bigint[];supplyAfter:readonly bigint[]};
+  const to=asset.retirementMode===1?zeroAddress:config.module.permanentSink,before=receipt.blockNumber-1n,after=receipt.blockNumber;
+  requireReclaim(e.receiptId===id&&same(e.collection,asset.address)&&e.standard===asset.standard&&e.retirementMode===asset.retirementMode&&same(e.destination,to)
+    &&review.nft.retirementMode===asset.retirementMode&&same(review.nft.destination,to)&&same(review.nft.policyHash,asset.policyHash)
+    &&JSON.stringify(e.ids.map(String))===JSON.stringify(items[0].map(String))&&JSON.stringify(e.quantities.map(String))===JSON.stringify(items[1].map(String))
+    &&e.supplyBefore.length===items[0].length&&e.supplyAfter.length===items[0].length);
+  if(asset.retirementMode===2){const sink=await rpc.getCode({address:to,blockNumber:after});requireReclaim(sink&&same(keccak256(sink),config.module.sinkRuntimeHash));}
+  if(asset.standard===1){
+    const transfers=parseEventLogs({abi:reclaim721Abi,eventName:"Transfer",logs:receipt.logs.filter(l=>same(l.address,asset.address)),strict:true});requireReclaim(transfers.length===items[0].length);
+    const balance=(account:Address,at:bigint)=>reclaimRead<bigint>(rpc,asset.address,reclaim721Abi,"balanceOf",[account],at);
+    const[sb,sa,ab,aa]=await Promise.all([reclaimRead<bigint>(rpc,asset.address,reclaim721Abi,"totalSupply",[],before),reclaimRead<bigint>(rpc,asset.address,reclaim721Abi,"totalSupply",[],after),balance(review.actor,before),balance(review.actor,after)]);
+    requireReclaim(ab>=aa&&ab-aa===BigInt(items[0].length)&&sb>=sa&&(asset.retirementMode===1?sb-sa===BigInt(items[0].length):sb===sa));
+    if(asset.retirementMode===2){const[tb,ta]=await Promise.all([balance(to,before),balance(to,after)]);requireReclaim(ta>=tb&&ta-tb===BigInt(items[0].length));}
+    for(let i=0;i<items[0].length;i++){
+      const tokenId=items[0][i];requireReclaim(items[1][i]===1n&&transfers.filter(l=>l.args.tokenId===tokenId&&same(l.args.from,review.actor)&&same(l.args.to,to)).length===1
+        &&same(await reclaimRead<Address>(rpc,asset.address,reclaim721Abi,"ownerOf",[tokenId],before),review.actor));
+      if(asset.retirementMode===1){requireReclaim(!await reclaimRead<boolean>(rpc,asset.address,reclaim721Abi,"exists",[tokenId],after)
+        &&e.supplyBefore[i]===sb-BigInt(i)&&e.supplyAfter[i]===sb-BigInt(i+1));}
+      else requireReclaim(same(await reclaimRead<Address>(rpc,asset.address,reclaim721Abi,"ownerOf",[tokenId],after),to)&&e.supplyBefore[i]===sb&&e.supplyAfter[i]===sa);
+    }
+  }else{
+    const logs=parseEventLogs({abi:reclaim1155Abi,logs:receipt.logs.filter(l=>same(l.address,asset.address)),strict:true}).filter(l=>l.eventName==="TransferSingle"||l.eventName==="TransferBatch");
+    const transfers: {id:bigint;quantity:bigint}[]=[];
+    for(const log of logs){const a=log.args as{from:Address;to:Address;operator:Address;id?:bigint;value?:bigint;ids?:readonly bigint[];values?:readonly bigint[]};
+      requireReclaim(same(a.from,review.actor)&&same(a.to,to)&&same(a.operator,review.campaign));
+      if(log.eventName==="TransferSingle"){requireReclaim(a.id!==undefined&&a.value!==undefined);transfers.push({id:a.id,quantity:a.value});}
+      else{requireReclaim(a.ids&&a.values&&a.ids.length===a.values.length);a.ids.forEach((n,i)=>transfers.push({id:n,quantity:a.values![i]}));}
+    }
+    requireReclaim(transfers.length===items[0].length);
+    for(let i=0;i<items[0].length;i++){
+      const tokenId=items[0][i],quantity=items[1][i],balance=(account:Address,at:bigint)=>reclaimRead<bigint>(rpc,asset.address,reclaim1155Abi,"balanceOf",[account,tokenId],at);
+      requireReclaim(transfers.filter(t=>t.id===tokenId&&t.quantity===quantity).length===1);
+      const[ab,aa,sb,sa]=await Promise.all([balance(review.actor,before),balance(review.actor,after),reclaimRead<bigint>(rpc,asset.address,reclaim1155Abi,"totalSupply",[tokenId],before),reclaimRead<bigint>(rpc,asset.address,reclaim1155Abi,"totalSupply",[tokenId],after)]);
+      requireReclaim(ab>=aa&&ab-aa===quantity&&e.supplyBefore[i]===sb&&e.supplyAfter[i]===sa&&(asset.retirementMode===1?sb>=sa&&sb-sa===quantity:sb===sa));
+      if(asset.retirementMode===2){const[tb,ta]=await Promise.all([balance(to,before),balance(to,after)]);requireReclaim(ta>=tb&&ta-tb===quantity);}
+    }
+  }
+}
+
+export type ReclaimExecution={request:NonNullable<ReclaimReview["request"]>;verifyOrigin:(rpc:ReclaimRpc,receipt:Awaited<ReturnType<ReclaimRpc["getTransactionReceipt"]>>)=>Promise<void>};
+export async function verifyReclaimTransaction(config:ReclaimFixture,review:ReclaimReview,hash?:Hex,execution?:ReclaimExecution):Promise<ReclaimVerification>{
+  const base={schemaVersion:2,profile:reclaimProfile,chainId:31337,executionEnabled:false,reviewHash:review.reviewHash,finality:"synthetic-local-not-production"}as const;
   try{
-    requireReclaim(isReclaimReview(review)&&review.request&&same(review.factory,config.module.reclaimFactory)&&same(review.rewardToken,config.module.rewardToken)
+    requireReclaim(isReclaimReview(review)&&(review.request||execution?.request)&&((review.kind==="safe-inner")===Boolean(execution))&&same(review.factory,config.module.reclaimFactory)&&same(review.rewardToken,config.module.rewardToken)
       &&same(review.factoryRuntimeHash,config.module.factoryRuntimeHash)&&same(review.rewardRuntimeHash,config.module.rewardTokenRuntimeHash));
-    const{rpc,head}=await verifyReclaimContext(config),q=review.request;
+    const{rpc,head}=await verifyReclaimContext(config),q=execution?.request??review.request!;
     if(!same((await rpc.getBlock({blockNumber:BigInt(review.observed.blockNumber)})).hash!,review.observed.blockHash))return{...base,status:"reorged",...(hash&&{transactionHash:hash}),reason:"Original review anchor invalidated by a reorg; retain the request and hash"};
     const anchor={...await rpc.getBlock({blockNumber:BigInt(review.observed.blockNumber)}),number:BigInt(review.observed.blockNumber),hash:review.observed.blockHash}as ReclaimHead;
     const original=await operationTerms(config,rpc,anchor,review.actor,review.campaign,review.operation,review.fields,review);
-    requireReclaim(same(original.data,q.data)&&same(original.target,q.to)&&same(original.targetRuntimeHash,review.targetRuntimeHash)&&original.rewardWei===review.rewardWei
+    requireReclaim(same(original.data,review.innerCall.data)&&same(original.target,review.innerCall.to)&&same(original.targetRuntimeHash,review.targetRuntimeHash)&&original.rewardWei===review.rewardWei
       &&original.policyEpoch===review.policyEpoch&&original.controllerEpoch===review.controllerEpoch&&same(original.controller,review.controller)
       &&claimProfileDigest(original.transfer??null)===claimProfileDigest(review.transfer??null)&&claimProfileDigest(original.nft??null)===claimProfileDigest(review.nft??null));
     let found=hash;
@@ -163,6 +202,7 @@ export async function verifyReclaimTransaction(config:ReclaimFixture,review:Recl
     const proof=await readReclaimProof(config,rpc,review.campaign,head);requireReclaim(same(proof.runtimeHash,review.campaignRuntimeHash));
     const actorCode=await rpc.getCode({address:review.actor,blockNumber:receipt.blockNumber});requireReclaim(same(keccak256(actorCode??"0x"),review.actorCodeHash));
     if(review.kind==="metamask-7702"){const delegate=await rpc.getCode({address:claimDelegatePin.address,blockNumber:receipt.blockNumber});requireReclaim(same(actorCode!,claimDelegatePin.designator)&&delegate&&same(keccak256(delegate),claimDelegatePin.runtimeHash));}
+    if(execution)await execution.verifyOrigin(rpc,receipt);
     let settlement:ReclaimVerification["settlement"];
     const events=parseEventLogs({abi:reclaimCampaignAbi,logs:receipt.logs.filter(l=>same(l.address,review.campaign)),strict:true});
     if(review.operation==="create-campaign")requireReclaim(same(proof.deployment.transactionHash,found)&&same(proof.creator,review.actor)&&same(proof.initialController,review.fields.controller!)&&proof.initialRewardPerUnit===review.fields.rewardPerUnit&&proof.walletCap===review.fields.walletCap);
@@ -170,28 +210,29 @@ export async function verifyReclaimTransaction(config:ReclaimFixture,review:Recl
       const expected=review.operation==="fund"?"Funded":"ReserveRecovered",event=events.filter(e=>e.eventName===expected);requireReclaim(event.length===1);
       const args=event[0].args as{controller:Address;amount:bigint};requireReclaim(args.amount===BigInt(review.rewardWei));
       await verifyTokenDelta(config,rpc,receipt,review.operation==="fund"?review.actor:review.campaign,review.operation==="fund"?review.campaign:args.controller,args.amount);
-    }else if(review.operation==="redeem"||review.operation==="return"){
-      const event=events.filter(e=>e.eventName===(review.operation==="redeem"?"TradeInAccepted":"TradeInReturned"));requireReclaim(event.length===1);
-      const args=event[0].args as{receiptId:bigint;claimant:Address;collection?:Address;reward?:bigint;rewardRepaid?:bigint;ids?:readonly bigint[];quantities?:readonly bigint[]};
-      const id=args.receiptId,r=await reclaimRead<readonly[Address,Address,number,bigint,bigint,number,number]>(rpc,review.campaign,reclaimCampaignAbi,"tradeIns",[id],receipt.blockNumber);
+    }else if(review.operation==="redeem"){
+      const event=events.filter(e=>e.eventName==="TradeInAccepted");requireReclaim(event.length===1);
+      const args=event[0].args as ReclaimAcceptedEvidenceV2;
+      const id=args.receiptId,r=await reclaimRead<ReclaimStoredTradeInV2>(rpc,review.campaign,reclaimCampaignAbi,"tradeIns",[id],receipt.blockNumber);
       const items=await reclaimRead<readonly[readonly bigint[],readonly bigint[]]>(rpc,review.campaign,reclaimCampaignAbi,"receiptItems",[id],receipt.blockNumber);
-      requireReclaim(same(args.claimant,review.actor)&&same(r[0],review.actor)&&r[4]===BigInt(review.rewardWei)&&r[6]===(review.operation==="redeem"?1:2));
-      if(review.operation==="redeem")requireReclaim(same(r[1],review.fields.collection!)&&JSON.stringify(items[0].map(String))===JSON.stringify(review.fields.tokenIds)&&JSON.stringify(items[1].map(String))===JSON.stringify(review.fields.quantities)&&args.reward===r[4]);
-      else requireReclaim(id===BigInt(review.fields.receiptId!)&&args.rewardRepaid===r[4]);
-      await verifyTokenDelta(config,rpc,receipt,review.operation==="redeem"?review.campaign:review.actor,review.operation==="redeem"?review.actor:review.campaign,r[4]);
+      requireReclaim(same(args.claimant,review.actor)&&same(r[0],review.actor)&&r[4]===BigInt(review.rewardWei)&&r[6]===1&&r[3]===BigInt(review.policyEpoch));
+      requireReclaim(review.nft&&review.fields.permanentConsent===true&&same(r[1],review.fields.collection!)&&JSON.stringify(items[0].map(String))===JSON.stringify(review.fields.tokenIds)&&JSON.stringify(items[1].map(String))===JSON.stringify(review.fields.quantities)&&args.reward===r[4]);
+      await verifyTokenDelta(config,rpc,receipt,review.campaign,review.actor,r[4]);
       const asset=config.module.collections.find(a=>same(a.address,r[1]));requireReclaim(asset&&asset.standard===r[2]);
+      const retired=events.filter(e=>e.eventName==="NFTPermanentlyRetired");requireReclaim(retired.length===1);
+      const[claimantNonceBefore,claimantNonceAfter,tradeInNonceBefore,tradeInNonceAfter]=await Promise.all([
+        reclaimRead<bigint>(rpc,review.campaign,reclaimCampaignAbi,"claimantNonces",[review.actor],receipt.blockNumber-1n),
+        reclaimRead<bigint>(rpc,review.campaign,reclaimCampaignAbi,"claimantNonces",[review.actor],receipt.blockNumber),
+        reclaimRead<bigint>(rpc,review.campaign,reclaimCampaignAbi,"tradeInNonce",[],receipt.blockNumber-1n),
+        reclaimRead<bigint>(rpc,review.campaign,reclaimCampaignAbi,"tradeInNonce",[],receipt.blockNumber),
+      ]);
+      requireReclaim(reclaimRetirementEvidenceMatches(review,{accepted:args,retired:retired[0].args as ReclaimRetiredIdentityV2,stored:r,items,
+        standard:asset.standard,retirementMode:asset.retirementMode,destination:asset.retirementMode===1?zeroAddress:config.module.permanentSink,
+        claimantNonceBefore,claimantNonceAfter,tradeInNonceBefore,tradeInNonceAfter}));
       const code=await rpc.getCode({address:asset.address,blockNumber:receipt.blockNumber});requireReclaim(code&&same(keccak256(code),asset.runtimeHash));
-      const from=review.operation==="redeem"?review.actor:review.campaign,to=review.operation==="redeem"?review.campaign:review.actor;
-      if(asset.standard===1){const transfers=parseEventLogs({abi:reclaim721Abi,eventName:"Transfer",logs:receipt.logs.filter(l=>same(l.address,asset.address)),strict:true});requireReclaim(transfers.length===items[0].length);
-        for(const nftId of items[0]){const selected=transfers.filter(l=>l.args.tokenId===nftId&&same(l.args.from,from)&&same(l.args.to,to));requireReclaim(selected.length===1);
-          const[before,after]=await Promise.all([reclaimRead<Address>(rpc,asset.address,reclaim721Abi,"ownerOf",[nftId],receipt.blockNumber-1n),reclaimRead<Address>(rpc,asset.address,reclaim721Abi,"ownerOf",[nftId],receipt.blockNumber)]);requireReclaim(same(before,from)&&same(after,to));}
-      }else{const transfers=parseEventLogs({abi:reclaim1155Abi,eventName:"TransferBatch",logs:receipt.logs.filter(l=>same(l.address,asset.address)),strict:true});requireReclaim(transfers.length===1&&same(transfers[0].args.from,from)&&same(transfers[0].args.to,to));
-        requireReclaim(JSON.stringify(transfers[0].args.ids.map(String))===JSON.stringify(items[0].map(String))&&JSON.stringify(transfers[0].args.values.map(String))===JSON.stringify(items[1].map(String)));
-        for(let i=0;i<items[0].length;i++){const get=(account:Address,at:bigint)=>reclaimRead<bigint>(rpc,asset.address,reclaim1155Abi,"balanceOf",[account,items[0][i]],at);
-          const[fb,fa,tb,ta]=await Promise.all([get(from,receipt.blockNumber-1n),get(from,receipt.blockNumber),get(to,receipt.blockNumber-1n),get(to,receipt.blockNumber)]);requireReclaim(fb>=fa&&fb-fa===items[1][i]&&ta>=tb&&ta-tb===items[1][i]);}
-      }
-      settlement={kind:review.operation==="redeem"?"trade-in":"return",receiptId:id.toString(),claimant:review.actor,collection:asset.address,tokenIds:items[0].map(String),quantities:items[1].map(String),rewardToken:config.module.rewardToken,rewardWei:r[4].toString(),custody:review.operation==="redeem"?"escrow":"returned",transactionHash:found,canonical};
-    }else if(review.operation==="approve-funding"||review.operation==="approve-return"){
+      await verifyPermanentRetirement(config,rpc,receipt,review,asset,id,items,events);
+      settlement={kind:"permanent-surrender",receiptId:id.toString(),claimant:review.actor,collection:asset.address,tokenIds:items[0].map(String),quantities:items[1].map(String),rewardToken:config.module.rewardToken,rewardWei:r[4].toString(),custody:"permanent-retirement",retirementMode:asset.retirementMode,destination:review.nft.destination,policyHash:asset.policyHash,transactionHash:found,canonical};
+    }else if(review.operation==="approve-funding"){
       const approvals=parseEventLogs({abi:erc20Abi,eventName:"Approval",logs:receipt.logs.filter(l=>same(l.address,config.module.rewardToken)),strict:true});requireReclaim(approvals.length===1&&same(approvals[0].args.owner,review.actor)&&same(approvals[0].args.spender,review.campaign)&&approvals[0].args.value===BigInt(review.rewardWei));
     }else if(review.operation==="approve-721"){
       const events=parseEventLogs({abi:reclaim721Abi,eventName:"Approval",logs:receipt.logs.filter(l=>same(l.address,review.fields.collection!)),strict:true});requireReclaim(events.length===1&&same(events[0].args.owner,review.actor)&&same(events[0].args.approved,review.campaign)&&events[0].args.tokenId===BigInt(review.fields.tokenId!));
@@ -220,6 +261,19 @@ export async function handleReclaimTest(request:Request){
   const release=acquire();if(!release)return reply({status:"unavailable",executionEnabled:false},429);
   let review:ReclaimReview|undefined;
   try{requireReclaim(request.body);const body=await readTreasuryBody(request.body,65536);
+    if(String(body.action).startsWith("safe-")){
+      const safe=await import("./reclaim-safe-actions"),types=await import("../reclaim-safe");
+      if(body.action==="safe-propose"&&keys(body,["action","review","gasPayer"])&&isReclaimReview(body.review))return reply(await safe.proposeReclaimSafe(config,body.review,body.gasPayer));
+      if(body.action==="safe-approve"&&keys(body,["action","proposal","approval"])&&types.isReclaimSafeProposal(body.proposal))return reply(await safe.validateReclaimSafeApproval(config,body.proposal,body.approval as never));
+      if(body.action==="safe-prepare"&&keys(body,["action","proposal","approvals"])&&types.isReclaimSafeProposal(body.proposal)&&Array.isArray(body.approvals))return reply(await safe.prepareReclaimSafeOuter(config,body.proposal,body.approvals as never));
+      if(body.action==="safe-revalidate"&&keys(body,["action","review"])&&types.isReclaimSafeOuterReview(body.review)){
+        const r=body.review,next=await safe.prepareReclaimSafeOuter(config,r.proposal,r.approvals,r);return reply({status:next.reviewHash===r.reviewHash?"unchanged":"unavailable",reviewHash:r.reviewHash,executionEnabled:false});
+      }
+      if(body.action==="safe-verify"&&keys(body,["action","review"],["transactionHash"])&&types.isReclaimSafeOuterReview(body.review)){
+        requireReclaim(body.transactionHash===undefined||reclaimHash(body.transactionHash));return reply(await safe.verifyReclaimSafeOuter(config,body.review,body.transactionHash as Hex|undefined));
+      }
+      return reply({status:"invalid",executionEnabled:false},400);
+    }
     if(body.action==="prepare"&&keys(body,["action","operation","account","fields"],["campaign"]))return reply(await prepareReclaim(config,body));
     if(body.action==="state"&&keys(body,["action","campaign"],["account"])&&reclaimAddress(body.campaign))return reply(await readReclaimSnapshot(config,normalized(body.campaign)));
     if(["verify","revalidate"].includes(String(body.action))&&keys(body,["action","review"],["transactionHash"])&&isReclaimReview(body.review)){
@@ -227,6 +281,6 @@ export async function handleReclaimTest(request:Request){
       requireReclaim(body.transactionHash===undefined);const next=await prepareReclaim(config,{operation:review.operation,account:review.actor,campaign:review.campaign,fields:review.fields},review);
       return reply({status:next.reviewHash===review.reviewHash?"unchanged":"unavailable",reviewHash:review.reviewHash,executionEnabled:false});
     }return reply({status:"invalid",executionEnabled:false},400);
-  }catch{return reply(review?{schemaVersion:1,profile:reclaimProfile,chainId:31337,executionEnabled:false,reviewHash:review.reviewHash,status:"unavailable",finality:"synthetic-local-not-production",reason:"Reclaim review or canonical settlement unavailable"}:{status:"unavailable",executionEnabled:false,reason:"Reclaim identity, ownership, eligibility, reserve or simulation is unavailable"});}
+  }catch{return reply(review?{schemaVersion:2,profile:reclaimProfile,chainId:31337,executionEnabled:false,reviewHash:review.reviewHash,status:"unavailable",finality:"synthetic-local-not-production",reason:"Reclaim review or canonical settlement unavailable"}:{status:"unavailable",executionEnabled:false,reason:"Reclaim identity, ownership, eligibility, reserve or simulation is unavailable"});}
   finally{release();}
 }

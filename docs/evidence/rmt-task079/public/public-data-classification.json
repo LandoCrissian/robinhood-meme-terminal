@@ -1,0 +1,50 @@
+{
+  "schemaVersion": 1,
+  "artifactId": "14496286439",
+  "scope": "Fresh14440 public read-only website/Reclaim/creator-polish artifact; five selected JSON records only",
+  "status": "ZERO_REPORTED_FINDINGS",
+  "sourceIdentity": {
+    "artifactCheckoutCommit": "f93a037a66c8bb2f9ba469dac9ccb028acec199f"
+  },
+  "scan": {
+    "scannerVersion": "8.30.1",
+    "configuration": ".gitleaks.toml",
+    "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+    "report": "artifact-14496286439-public-gitleaks.json",
+    "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "redaction": "100percent",
+    "exitCode": 0,
+    "findings": 0,
+    "configurationModified": false,
+    "suppressionsAdded": false
+  },
+  "rawFiles": [
+    {
+      "file": "chromium--reclaim--reclaim-public.json",
+      "bytes": 3580,
+      "sha256": "dfe93401496f0f52b98d5ed5e0a11982b4a97ef61bbe049f46218acd2084c0de"
+    },
+    {
+      "file": "chromium--website-preview-checks.json",
+      "bytes": 5302,
+      "sha256": "f8bd55f6b7d35ca9a785d5af6ce5d906892a6a96554baa89ccc7cca00403f4ae"
+    },
+    {
+      "file": "polish--after-report.json",
+      "bytes": 423537,
+      "sha256": "262d9ef67227e79ae31491e4935b04a467c87b0a4c7669cc3a227bc1b89f3615"
+    },
+    {
+      "file": "webkit--reclaim--reclaim-public.json",
+      "bytes": 3551,
+      "sha256": "45b28a8d7128e510ddb7ffc50d7bad8caec980b364343e3fab3e886971ddf195"
+    },
+    {
+      "file": "webkit--website-preview-checks.json",
+      "bytes": 5300,
+      "sha256": "f9f169f49ff25d060ec5d9040c002d426fda92f9cd107b0ff9f3ddbfa8c999f7"
+    }
+  ],
+  "rawRecordsModified": false,
+  "broadcastAuthorized": false
+}

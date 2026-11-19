@@ -65,3 +65,4 @@
   .lpTreasuryDashboard .lpFacts, .lpProjectTreasurySetup .lpFacts { grid-template-columns: minmax(0, 1fr); gap: 4px; }
   .lpTreasuryDashboard .lpFacts dd, .lpProjectTreasurySetup .lpFacts dd { margin-bottom: 7px; }
 }
+.lpReclaimConsent{display:grid!important;grid-template-columns:44px minmax(0,1fr);gap:12px;align-items:center;min-height:44px;margin:16px 0;font-weight:600;line-height:1.5}.lpReclaimConsent input[type=checkbox]{width:44px;height:44px;min-height:44px;padding:0;accent-color:var(--lp-accent,#20dc4c)}.lpReclaimSafe{margin-top:20px}.lpReclaimSafe pre{max-width:100%;overflow-wrap:anywhere;white-space:pre-wrap}.lpReclaimSafe .lpFacts dd{overflow-wrap:anywhere}

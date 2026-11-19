@@ -5,7 +5,7 @@ import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, hashTypedDa
   type Address, type Hash, type Hex, type PublicClient } from "viem";
 import { privateKeyToAccount } from "viem/accounts";
 import { reclaimCallerPins, verifyReclaimOrigin } from "./reclaim-fixture-origin.js";
-import { reclaimCampaignSignatures } from "../../../packages/launchpad-common/reclaim-runtime.mjs";
+import { reclaimCampaignSignatures } from "../../../packages/launchpad-common/reclaim-v2-runtime.mjs";
 
 /** Actual ECDSA test-key signatures against canonical-shaped provider doubles;
  * real Safe execution is separate synthetic-chain integration evidence. */
