@@ -1,6 +1,6 @@
 # RMT Reclaim acceptance
 
-[Task 078](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/671#issuecomment-6994244524), stacked on #671 at `8d1876daed6449e40388166255f52f13f3c488dd`. **LOCAL DEVELOPMENT ONLY / BLOCKED_NO_BROADCAST.** This document currently records completed contract checks and the integration boundary. Full browser/PostgreSQL/website/CI results are **pending** and must be added from actual runs before final handoff. Workflow wiring is not test execution.
+[Task 078](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/671#issuecomment-6994244524), stacked on #671 at `8d1876daed6449e40388166255f52f13f3c488dd`. **LOCAL DEVELOPMENT ONLY / BLOCKED_NO_BROADCAST.** Contract regressions, source boundaries, the isolated PostgreSQL smoke, public read-only browser checks and a bounded read-only 4663 observation have completed below. The connected Reclaim execution journey and exact-head CI remain **pending** and must be added from actual runs before final handoff. Workflow wiring is not test execution.
 
 ## Product and custody decision
 
@@ -37,11 +37,44 @@ Fresh complete-closure Slither 0.11.5/Crytic Compile 0.3.11 runs **all 101 detec
 
 The earlier **22 core/dependency highs plus six treasury V1 highs** and their failed gates remain visible. The nonspending treasury purchase prototype remains NO-GO. New Reclaim findings do not clear old findings, and no detector or assertion was suppressed.
 
-## Integration acceptance — pending actual execution
+## Retained regressions and dependency audit
+
+The unchanged suites ran locally with Forge **1.7.1**, pinned native solc **0.8.26+commit.8a97fa7a** and their existing Foundry settings. Source snapshot: `306f8f1b3d7ebd60db1906d92a283d43849bfd86`. [Results, tool bindings and log hashes](evidence/rmt-task078/regressions/summary.json); raw test output is retained in the same directory. Text evidence is normalized from CRLF to LF only; no database cluster or credentials are included.
+
+| Suite | Passed / failed / skipped | Fuzz and invariant evidence |
+| --- | --- | --- |
+| Retained core | **112 / 0 / 0**, fourteen suites | Five × 512 fuzz cases; 64 × 32 / 2,048 accounting-handler calls. |
+| Treasury V1 | **23 / 0 / 0** | Three × 512 fuzz cases; 128 × 32 / 4,096 accounting-handler calls. |
+| Purchasing V2 prototype | **30 / 0 / 0** | Three × 512 fuzz cases; 128 × 32 / 4,096 handler calls. This does not enable purchases. |
+| Reclaim source/security evidence | **9 / 0 / 0** | All 47 prior Solidity files and the separate compiler/static-analysis boundaries match. |
+
+Core compilation took 259.05 seconds and tests 1.54 seconds on this Windows run. Existing test-only `selfdestruct`/mutability warnings and Forge optional invariant-target introspection warnings remain in the logs. They were not suppressed. This run does not replace earlier platform-specific or opt-in evidence, a fresh 4663 fork lifecycle, or an independent review.
+
+No-change pnpm **10.12.1** audits: [`pnpm audit --prod --json`](evidence/rmt-task078/regressions/pnpm-audit-production.json) returned **zero advisories across 226 dependencies**, exit 0. [`pnpm audit --json`](evidence/rmt-task078/regressions/pnpm-audit-full.json) returned **four moderate advisories across 843 dependencies**, exit 1: `uuid`, `@opentelemetry/core`, `glob` and `minimatch`, each reachable through the root development dependency `firebase-tools`. No high/critical dependency advisory was reported in these runs. No auto-fix, lockfile change or contract-static-analysis clearance is implied.
+
+## Isolated PostgreSQL and public browser checks
+
+The [PostgreSQL smoke](evidence/rmt-task078/postgres-smoke.json) passed on **PostgreSQL 18.6**, using a separate loopback-only synthetic database, with exit 0. Its scope explicitly excludes production and a deployed worker. This short smoke report does not by itself prove the complete connected Reclaim receipt/restart/reorg journey.
+
+The actual loopback read-only website passed [Chromium](evidence/rmt-task078/public-chromium/reclaim-public.json) and [WebKit](evidence/rmt-task078/public-webkit/reclaim-public.json) checks in desktop, phone portrait and landscape layouts: no horizontal overflow, keyboard reachability, editable phone text at 16px, no browser errors and **zero wallet, external or financial requests**. All tested execution boundaries (`prepare/redeem`, `prepare/fund`, `revalidate`, `verify`) returned **404**. Live token, campaign, USD reference and reserve remain unassigned. These are browser-emulation results, not physical-iPhone acceptance or a hosted deployment.
+
+| Layout | Chromium screenshot | WebKit screenshot |
+| --- | --- | --- |
+| Desktop | [View](evidence/rmt-task078/public-chromium/chromium-desktop-reclaim-read-only.png) | [View](evidence/rmt-task078/public-webkit/webkit-desktop-reclaim-read-only.png) |
+| Portrait | [View](evidence/rmt-task078/public-chromium/chromium-portrait-reclaim-read-only.png) | [View](evidence/rmt-task078/public-webkit/webkit-portrait-reclaim-read-only.png) |
+| Landscape | [View](evidence/rmt-task078/public-chromium/chromium-landscape-reclaim-read-only.png) | [View](evidence/rmt-task078/public-webkit/webkit-landscape-reclaim-read-only.png) |
+
+## Read-only 4663 observations
+
+The [bounded 4663 probe](evidence/rmt-task078/read-only-4663.json), completed **2026-11-19 00:27:05.695 UTC**, corroborated official Robinhood and Pocket RPC observations at L2 block **117812614**, hash `0x8777cb46f1ccc4b211858718775734aed336483ef1fce93d06b66c4945cd621d`. Both providers rechecked the same anchor. SafeL2 1.4.1, proxy factory and fallback-handler runtime pins matched; existing Operations and Reserve Safes matched their pinned proxy runtime and SafeL2 master copy, the three approved owners, threshold 2 and nonce 0. Both reported the expected ERC-721/1155 receiver interfaces. All three governance owner addresses had empty code at this anchor. Pocket returned some **429** responses; the bounded second attempts recovered, and the original failures remain in the report.
+
+This is **corroborated L2 state**, not Ethereum L1 finality, independent market pricing, phone key control, universal NFT compatibility, Reclaim deployment or authorization to spend either Safe's funds. No campaign, token, USD reference, NFT policy or reserve is admitted by this observation. No signature, broadcast or production change occurred.
+
+## Connected integration acceptance — pending actual execution
 
 The intended entrypoint is the existing isolated harness with `--reclaim-only`; previous default lifecycle, Task 075 profile and Task 076/077 treasury steps remain separate. No production database schema or authoritative writer is rolled out. The existing fixture writer/checkpoint should be exercised against the isolated PostgreSQL schema, with authenticated bounded reads and exact receipt/log/state evidence.
 
-Required before final handoff: actual form→campaign→manual funding→noticed eligibility→ERC-721/1155 surrender→canonical reward/custody→pause/rate/close/recovery; interrupted hash recovery without resubmission; application/indexer restart and reorg rollback; EOA, admitted delegation and genuine 2-of-3 Safe evidence; desktop/portrait/landscape screenshots; public zero-wallet/financial-404 tests. Missing receipt/settlement evidence must remain pending, not synthetic success. **These results are not yet claimed here.**
+Required before final handoff: actual form→campaign→manual funding→noticed eligibility→ERC-721/1155 surrender→canonical reward/custody→pause/rate/close/recovery; interrupted hash recovery without resubmission; application/indexer restart and reorg rollback; EOA, admitted delegation and genuine 2-of-3 Safe evidence; and execution-mode desktop/portrait/landscape screenshots. Public zero-wallet/financial-404 checks are already recorded above. Missing connected receipt/settlement evidence must remain pending, not synthetic success. **The connected-journey results are not yet claimed here.**
 
 The new strict security job analyzes every Reclaim production root/reachable import. Local YAML parsing verified the four existing security job objects are unchanged; an additional Reclaim browser step runs for each Chromium/WebKit engine without deleting previous regression stages. Exact-head CI results remain pending.
 

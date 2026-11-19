@@ -1,0 +1,140 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-reclaim-public-acceptance-v1",
+  "status": "PASS",
+  "engine": "webkit",
+  "scope": "actual-loopback-read-only-build",
+  "physicalIPhoneAcceptance": false,
+  "productionFinancialExecution": false,
+  "liveCampaignAssigned": false,
+  "liveTokenAssigned": false,
+  "liveUsdReferenceAssigned": false,
+  "fabricatedReserve": false,
+  "denied": [
+    {
+      "action": "prepare",
+      "operation": "redeem",
+      "status": 404
+    },
+    {
+      "action": "revalidate",
+      "status": 404
+    },
+    {
+      "action": "verify",
+      "status": 404
+    },
+    {
+      "action": "prepare",
+      "operation": "fund",
+      "status": 404
+    }
+  ],
+  "layouts": [
+    {
+      "name": "desktop",
+      "screenshot": "webkit-desktop-reclaim-read-only.png",
+      "noOverflow": true,
+      "keyboardAccessible": true,
+      "capturePreservesEmulation": true,
+      "fields": [
+        {
+          "id": "SUMMARY",
+          "height": 44,
+          "font": 14,
+          "editable": false
+        },
+        {
+          "id": "reclaim-campaign",
+          "height": 44,
+          "font": 13,
+          "editable": true
+        },
+        {
+          "id": "BUTTON",
+          "height": 44,
+          "font": 14,
+          "editable": false
+        }
+      ],
+      "media": {
+        "touch": 0,
+        "coarse": false
+      },
+      "walletRequests": 0,
+      "externalRequests": 0,
+      "financialRequests": 0,
+      "errors": []
+    },
+    {
+      "name": "portrait",
+      "screenshot": "webkit-portrait-reclaim-read-only.png",
+      "noOverflow": true,
+      "keyboardAccessible": true,
+      "capturePreservesEmulation": true,
+      "fields": [
+        {
+          "id": "SUMMARY",
+          "height": 44,
+          "font": 14,
+          "editable": false
+        },
+        {
+          "id": "reclaim-campaign",
+          "height": 44,
+          "font": 16,
+          "editable": true
+        },
+        {
+          "id": "BUTTON",
+          "height": 44,
+          "font": 14,
+          "editable": false
+        }
+      ],
+      "media": {
+        "touch": 0,
+        "coarse": true
+      },
+      "walletRequests": 0,
+      "externalRequests": 0,
+      "financialRequests": 0,
+      "errors": []
+    },
+    {
+      "name": "landscape",
+      "screenshot": "webkit-landscape-reclaim-read-only.png",
+      "noOverflow": true,
+      "keyboardAccessible": true,
+      "capturePreservesEmulation": true,
+      "fields": [
+        {
+          "id": "SUMMARY",
+          "height": 44,
+          "font": 14,
+          "editable": false
+        },
+        {
+          "id": "reclaim-campaign",
+          "height": 44,
+          "font": 16,
+          "editable": true
+        },
+        {
+          "id": "BUTTON",
+          "height": 44,
+          "font": 14,
+          "editable": false
+        }
+      ],
+      "media": {
+        "touch": 0,
+        "coarse": true
+      },
+      "walletRequests": 0,
+      "externalRequests": 0,
+      "financialRequests": 0,
+      "errors": []
+    }
+  ]
+}
