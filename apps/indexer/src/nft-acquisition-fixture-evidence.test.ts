@@ -3,7 +3,7 @@ import {mkdtempSync,writeFileSync,unlinkSync,rmdirSync} from "node:fs";
 import {tmpdir} from "node:os";
 import {join} from "node:path";
 import test from "node:test";
-import {encodeAbiParameters,encodeEventTopics,encodeFunctionData,keccak256,parseAbi,zeroAddress,type Address,type Hash,type Hex,type PublicClient} from "viem";
+import {encodeAbiParameters,encodeEventTopics,encodeFunctionData,erc20Abi,keccak256,parseAbi,zeroAddress,type Address,type Hash,type Hex,type PublicClient} from "viem";
 import {nftAcquisitionFactorySignatures,nftAcquisitionVaultSignatures} from "../../../packages/launchpad-common/nft-acquisition-runtime.mjs";
 import {configuredNftAcquisitionModule,verifyNftAcquisitionModule,readNftAcquisitionRange} from "./nft-acquisition-fixture-evidence.js";
 import type {NftAcquisitionModule} from "./nft-acquisition-fixture-types.js";
@@ -48,4 +48,44 @@ test("module verification uses runtime and immutable bindings, complete creation
 test("funding range proof rejects absent/malformed receipt, canonical disagreement and missing or corrupted native traces",async()=>{
  const{rpc,module,mode,point}=provider(),result=await readNftAcquisitionRange(rpc,module,[point]);assert.equal(result.events.length,1);assert.equal(result.events[0]?.settlement?.kind,"funding");assert.equal(result.events[0]?.settlement?.totalCost,"100");assert.equal(result.states[0]?.nativeBalance,"100");
  for(const name of["header","receipt-block","missing-receipt","missing-log","runtime","removed-log","missing-trace","malformed-trace","trace-recipient","trace-value","reverted-trace","membership"]){mode.name=name;await assert.rejects(readNftAcquisitionRange(rpc,module,[point]),/evidence|provider|trace|settlement/i,name);}
+});
+
+test("funding log alone cannot replace exact chain, type, origin, amount and source calldata binding",async()=>{
+ for(const mutation of[{chainId:4663},{type:"eip7702"},{authorizationList:[]},{accessList:"malformed"},{accessList:[{address:a(999),storageKeys:[]}]},{hash:h(999)},{blockNumber:12n},{transactionIndex:1},{from:a(999)},{to:a(999)},{nonce:1},{input:encodeFunctionData({abi:vaultAbi,functionName:"fundNative",args:[h(999)]})}]){
+  const{rpc,module,point}=provider(),read=rpc.getTransaction.bind(rpc);rpc.getTransaction=(async args=>({...await read(args),...mutation}))as PublicClient["getTransaction"];
+  await assert.rejects(readNftAcquisitionRange(rpc,module,[point]),/evidence|caller|trace|settlement/i);
+ }
+});
+
+function withdrawal(kind:0|1|2,currencyToken=false){
+ const{rpc,module,point}=provider(),caller=a(50),recipient=a(51),asset=kind===0?(currencyToken?module.paymentToken:zeroAddress):module.collections[0]!.address,tokenId=kind===0?0n:42n,quantity=kind===1?1n:10n;
+ if(kind===2)module.collections[0]!.standard=1155;
+ const input=encodeFunctionData({abi:vaultAbi,functionName:"executeWithdrawal",args:[1n]}),knobs={name:""};
+ const transferAbi=parseAbi(["event Transfer(address indexed from,address indexed to,uint256 indexed tokenId)","event TransferSingle(address indexed operator,address indexed from,address indexed to,uint256 id,uint256 value)","function safeTransferFrom(address,address,uint256)","function safeTransferFrom(address,address,uint256,uint256,bytes)"]);
+ const metadata=(logIndex:number)=>({blockNumber:11n,blockHash:h(11),transactionHash:h(110),transactionIndex:0,logIndex,removed:false});
+ const event={address:module.vault,topics:encodeEventTopics({abi:vaultAbi,eventName:"WithdrawalExecuted",args:{id:1n,asset,recipient}}),data:encodeAbiParameters([{type:"uint8"},{type:"uint256"},{type:"uint256"}],[kind,tokenId,quantity]),...metadata(0)};
+ const assetLog=()=>kind===0?{address:asset,topics:encodeEventTopics({abi:erc20Abi,eventName:"Transfer",args:{from:module.vault,to:recipient}}),data:encodeAbiParameters([{type:"uint256"}],[quantity]),...metadata(1)}:kind===1?{address:asset,topics:encodeEventTopics({abi:transferAbi,eventName:"Transfer",args:{from:module.vault,to:recipient,tokenId}}),data:"0x",...metadata(1)}:{address:asset,topics:encodeEventTopics({abi:transferAbi,eventName:"TransferSingle",args:{operator:module.vault,from:module.vault,to:recipient}}),data:encodeAbiParameters([{type:"uint256"},{type:"uint256"}],[tokenId,quantity]),...metadata(1)};
+ const receipt=()=>({status:"success",transactionHash:h(110),blockNumber:11n,blockHash:h(11),transactionIndex:0,from:caller,to:module.vault,logs:[event,...(kind===0&&!currencyToken?[]:[assetLog()])]});
+ rpc.getLogs=(async()=>[event])as PublicClient["getLogs"];rpc.getTransactionReceipt=(async()=>receipt())as unknown as PublicClient["getTransactionReceipt"];
+ rpc.getTransaction=(async()=>({type:"eip1559",chainId:31337,hash:h(110),from:caller,to:module.vault,input:knobs.name==="wrong-id"?encodeFunctionData({abi:vaultAbi,functionName:"executeWithdrawal",args:[2n]}):input,value:0n,nonce:0,blockNumber:11n,blockHash:h(11),transactionIndex:0}))as unknown as PublicClient["getTransaction"];
+ const originalCode=rpc.getCode.bind(rpc);rpc.getCode=(async args=>args.address===caller?undefined:originalCode(args))as PublicClient["getCode"];
+ const read=rpc.readContract.bind(rpc);rpc.readContract=(async args=>{
+  if(args.functionName==="withdrawals")return[kind,asset,tokenId,quantity,knobs.name==="recipient-state"&&args.blockNumber===11n?a(99):recipient,knobs.name==="early"?1_800_000_012:1_800_000_010,knobs.name==="expired"?1_800_000_010:1_800_000_100,1n,args.blockNumber===11n?knobs.name==="not-consumed"?1:2:1];
+  if(args.functionName==="controllerEpoch"&&knobs.name==="stale-epoch")return 2n;return read(args);
+ })as PublicClient["readContract"];
+ rpc.request=(async()=>{
+  if(knobs.name==="missing-trace")throw Error("trace unavailable");
+  const target=knobs.name==="trace-recipient"?a(99):recipient;
+  const data=kind===0?encodeFunctionData({abi:erc20Abi,functionName:"transfer",args:[target,quantity]}):kind===1?encodeFunctionData({abi:transferAbi,functionName:"safeTransferFrom",args:[module.vault,target,tokenId]}):encodeFunctionData({abi:transferAbi,functionName:"safeTransferFrom",args:[module.vault,target,tokenId,quantity,"0x"]});
+  const leaf=kind===0&&!currencyToken?{type:"CALL",from:module.vault,to:target,input:"0x",value:"0x"+quantity.toString(16)}:{type:"CALL",from:module.vault,to:asset,input:data,value:"0x0",output:kind===0?"0x"+"0".repeat(63)+"1":"0x"};
+  return{type:"CALL",from:caller,to:module.vault,input,value:"0x0",calls:[leaf]};
+ })as PublicClient["request"];
+ return{rpc,module,point,knobs,caller,recipient};
+}
+test("noticed native, ERC20, ERC721 and ERC1155 withdrawals require exact delivery while permitting a non-controller caller",async()=>{
+ for(const[kind,token]of[[0,false],[0,true],[1,false],[2,false]]as const){
+  const{rpc,module,point,knobs,caller,recipient}=withdrawal(kind,token),range=await readNftAcquisitionRange(rpc,module,[point]),settlement=range.events[0]!.settlement!;
+  assert.equal(settlement.kind,"withdrawal");assert.equal(settlement.recipient,recipient);assert.equal(settlement.origin?.actor,caller);assert.notEqual(caller,module.creator);assert.equal(settlement.withdrawalId,"1");
+  for(const name of["early","expired","stale-epoch","not-consumed","recipient-state","wrong-id","missing-trace","trace-recipient"]){knobs.name=name;await assert.rejects(readNftAcquisitionRange(rpc,module,[point]),/evidence|trace|settlement/i,name);}
+ }
 });
