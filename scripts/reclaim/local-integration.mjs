@@ -151,6 +151,7 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
       evidence.delegatedWallet.nftReceiverAcceptance="unsupported-by-exact-return-simulation-no-submission";
     }
     await rpc("anvil_setCode",[creator,"0x"]);await mine();await ready();
+    await restart();await session.lookup(campaign);
     const {testReclaimSafe}=await import("./safe-integration.mjs");
     evidence.safe=await testReclaimSafe({client,rpc,send,creatorAccount,campaign,module:m,compilation:reclaimCompilation,assets:reclaimDeployment.assetArtifacts,
       mine,ready,workerOrigin,indexReadKey,out,waitFor});
@@ -159,11 +160,14 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
     // block later submissions, so perform this final state transition only
     // after the normal wallet/Safe journeys and their screenshots are complete.
     const orphanSnapshot=await rpc("evm_snapshot"),beforeReorg=(await pg.query("SELECT count(*)::int AS count FROM rmt_reclaim_fixture_events")).rows[0].count;
+    const reserveBeforeReorg=await read(campaign,campaignAbi,"reserve"),tokenBeforeReorg=await read(m.rewardToken,erc20Abi,"balanceOf",[creator]);
     const orphan=await complete("redeem",{collection:nft721.address,tokenIds:["2"],quantities:["1"]});
     const orphanHash=orphan.submission.receipt.transactionHash;
     assert.equal(await rpc("evm_revert",[orphanSnapshot]),true);await mine();await ready();
     await waitFor("Reclaim canonical rollback",async()=>{const r=await pg.query("SELECT count(*)::int AS count FROM rmt_reclaim_fixture_events WHERE transaction_hash=$1",[orphanHash.toLowerCase()]);return r.rows[0].count===0;});
     assert.equal((await pg.query("SELECT count(*)::int AS count FROM rmt_reclaim_fixture_events")).rows[0].count,beforeReorg);
+    assert.equal(await read(campaign,campaignAbi,"reserve"),reserveBeforeReorg);assert.equal(await read(m.rewardToken,erc20Abi,"balanceOf",[creator]),tokenBeforeReorg);
+    assert.ok(same(await read(nft721.address,reclaimDeployment.assetArtifacts.Reclaim721Fixture.abi,"ownerOf",[2n]),creator));
     const invalidated=await session.verify({review:orphan.review,hash:orphanHash,status:"unavailable"});
     evidence.reorg={orphanHash,removed:true,recoveryStatus:invalidated.status,originalJournalRetained:true,noAutomaticSubmission:true,
       limitation:"A disappeared transaction alone cannot independently prove a reorg; the journal stays unavailable while the canonical index rolls back"};
