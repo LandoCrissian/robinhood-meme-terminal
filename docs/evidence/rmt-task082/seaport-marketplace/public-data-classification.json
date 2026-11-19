@@ -1,0 +1,152 @@
+{
+  "schemaVersion": 1,
+  "tool": "Gitleaks",
+  "version": "8.30.1",
+  "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+  "scope": "RAW_SOURCE_INPUTS_SOURCIFY_RESPONSES_AND_RPC_PROOF_BEFORE_COMPRESSION",
+  "exitCode": 1,
+  "findingCount": 9,
+  "classifications": [
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "independent-source-4663.json",
+      "line": 112,
+      "field": "conduitKey",
+      "lineSha256": "c1014dd4ad746891f4ee113b8be7a7b4267366a0d72a4ad69947d0e09d71bd0c",
+      "publicValueSha256": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a",
+      "disposition": "PUBLIC_OPENSEA_CONDUIT_IDENTIFIER"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "independent-source-4663.json",
+      "line": 239,
+      "field": "token",
+      "lineSha256": "6561cd6e034b6774bba8d80a6738e1677b40291ea5e113863d6e6ba25791d9c3",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "independent-source-4663.json",
+      "line": 247,
+      "field": "token",
+      "lineSha256": "fd534b0cb45f5e1dfed53f64607f00e097d43a3a3b8c05e5e462a233782b6026",
+      "publicValueSha256": "c11038569cfd3be3374d77b4ecea5fcd54a628b7847507685cfe51172ad3a736",
+      "disposition": "PUBLIC_HISTORICAL_NFT_CONTRACT"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "independent-source-4663.json",
+      "line": 254,
+      "field": "token",
+      "lineSha256": "6561cd6e034b6774bba8d80a6738e1677b40291ea5e113863d6e6ba25791d9c3",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "independent-source-4663.json",
+      "line": 261,
+      "field": "token",
+      "lineSha256": "6561cd6e034b6774bba8d80a6738e1677b40291ea5e113863d6e6ba25791d9c3",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "independent-source-4663.json",
+      "line": 405,
+      "field": "token",
+      "lineSha256": "6561cd6e034b6774bba8d80a6738e1677b40291ea5e113863d6e6ba25791d9c3",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "independent-source-4663.json",
+      "line": 413,
+      "field": "token",
+      "lineSha256": "fd534b0cb45f5e1dfed53f64607f00e097d43a3a3b8c05e5e462a233782b6026",
+      "publicValueSha256": "c11038569cfd3be3374d77b4ecea5fcd54a628b7847507685cfe51172ad3a736",
+      "disposition": "PUBLIC_HISTORICAL_NFT_CONTRACT"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "independent-source-4663.json",
+      "line": 420,
+      "field": "token",
+      "lineSha256": "6561cd6e034b6774bba8d80a6738e1677b40291ea5e113863d6e6ba25791d9c3",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "independent-source-4663.json",
+      "line": 427,
+      "field": "token",
+      "lineSha256": "6561cd6e034b6774bba8d80a6738e1677b40291ea5e113863d6e6ba25791d9c3",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    }
+  ],
+  "unclassifiedCount": 0,
+  "findingsSuppressed": false,
+  "financialGateCleared": false,
+  "rawFiles": [
+    {
+      "file": "controller-input.json",
+      "bytes": 95004,
+      "sha256": "b8ec32eccfabfa9dc77889f68eb933bd6ab727ff54701174b6f532dcb666f730"
+    },
+    {
+      "file": "controller-mainnet.json",
+      "bytes": 403757,
+      "sha256": "34b19b88980f7f3d125ae2fbb695842242264ffdd8c7610b4a2e090f225e96f3"
+    },
+    {
+      "file": "independent-source-4663.json",
+      "bytes": 26364,
+      "sha256": "8c18edf225a308a4851a8c50253f28222740fd745b35c506d976b1da0a8883d1"
+    },
+    {
+      "file": "seaport-input.json",
+      "bytes": 1078594,
+      "sha256": "700287b2fa852e65e8fc92c842257af24dd60a0052c6dd2b068106b748145250"
+    },
+    {
+      "file": "sourcify-seaport-4663.json",
+      "bytes": 2956678,
+      "sha256": "de24d38618d36b27f65cf79e28b9cd487a3780999bb3fe01eb881ef6ccb409f8"
+    },
+    {
+      "file": "sourcify-weth-4663.json",
+      "bytes": 208115,
+      "sha256": "9591aff863e9c0e0768f29755d2786d93eb7a2fdeac62a4d117bbd04f7af32c4"
+    },
+    {
+      "file": "wrapped-native-proxy-current-4663.json",
+      "bytes": 3449,
+      "sha256": "57045eaa07386860c800926ea1139c9a7ad2d16e5e9a2aaba922014acf96e6cd"
+    }
+  ],
+  "archivedObservationFiles": [
+    {
+      "file": "independent-source-4663.json.gz",
+      "rawSha256": "8c18edf225a308a4851a8c50253f28222740fd745b35c506d976b1da0a8883d1",
+      "rawBytes": 26364,
+      "sha256": "15197eae275d9c0b214c79da2341a36f9fc5d61799f96aa6be67408c1db6aef4"
+    },
+    {
+      "file": "sourcify-weth-4663.json.gz",
+      "rawSha256": "9591aff863e9c0e0768f29755d2786d93eb7a2fdeac62a4d117bbd04f7af32c4",
+      "rawBytes": 208115,
+      "sha256": "41ce9f2bd98072a7be13624f504b23877a10c5fc785df05c439b9965fa9ef7ca"
+    },
+    {
+      "file": "wrapped-native-proxy-current-4663.json.gz",
+      "rawBytes": 3449,
+      "rawSha256": "57045eaa07386860c800926ea1139c9a7ad2d16e5e9a2aaba922014acf96e6cd",
+      "sha256": "ef3df53dd4d78ea1954fb46efb73db67ba942bc75bd5a7ee1c2044c81be7e88f"
+    }
+  ]
+}

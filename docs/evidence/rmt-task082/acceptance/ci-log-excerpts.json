@@ -1,0 +1,93 @@
+{
+  "schemaVersion": 1,
+  "validatedSourceCommit": "597f708cf6b3c7f729e8c786418ea05e89153b05",
+  "jobs": [
+    {
+      "jobId": 135676371735,
+      "evidenceKind": "SELECTED_ORIGINAL_LOG_LINES_NOT_FULL_LOG_OR_SEVERITY_AGGREGATE",
+      "lines": [
+        "2026-11-19T15:47:59.2890523Z Same-app permanent Reclaim V2 retirement, funded rewards, Safe outer execution and canonical recovery passed on synthetic 31337. No production execution occurred.",
+        "2026-11-19T15:47:59.5915450Z # tests 5",
+        "2026-11-19T15:47:59.5915981Z # pass 5",
+        "2026-11-19T15:47:59.5921228Z # fail 0",
+        "2026-11-19T15:47:59.5921750Z # skipped 0",
+        "2026-11-19T15:51:13.7311261Z Focused isolated claim wallet profiles passed. No production signature or broadcast occurred.",
+        "2026-11-19T15:52:16.1084953Z Same-app optional treasury creation, contract claims and custody acceptance passed on synthetic31337. No production execution occurred."
+      ]
+    },
+    {
+      "jobId": 135676371374,
+      "evidenceKind": "SELECTED_ORIGINAL_LOG_LINES_NOT_FULL_LOG_OR_SEVERITY_AGGREGATE",
+      "lines": [
+        "2026-11-19T15:46:44.6024549Z Same-app permanent Reclaim V2 retirement, funded rewards, Safe outer execution and canonical recovery passed on synthetic 31337. No production execution occurred.",
+        "2026-11-19T15:46:45.0086936Z # tests 5",
+        "2026-11-19T15:46:45.0087365Z # pass 5",
+        "2026-11-19T15:46:45.0087732Z # fail 0",
+        "2026-11-19T15:46:45.0089475Z # skipped 0",
+        "2026-11-19T15:50:01.1072453Z Focused isolated claim wallet profiles passed. No production signature or broadcast occurred.",
+        "2026-11-19T15:51:35.0210855Z Same-app optional treasury creation, contract claims and custody acceptance passed on synthetic31337. No production execution occurred."
+      ]
+    },
+    {
+      "jobId": 135676371006,
+      "evidenceKind": "SELECTED_ORIGINAL_LOG_LINES_NOT_FULL_LOG_OR_SEVERITY_AGGREGATE",
+      "lines": [
+        "2026-11-19T15:43:35.9996384Z Suite result: ok. 13 passed; 0 failed; 0 skipped; finished in 37.46ms (35.90ms CPU time)",
+        "2026-11-19T15:43:36.0418400Z Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 104.52ms (104.18ms CPU time)",
+        "2026-11-19T15:43:36.0446812Z Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 12.58ms (8.63ms CPU time)",
+        "2026-11-19T15:43:36.0774167Z Suite result: ok. 15 passed; 0 failed; 0 skipped; finished in 80.66ms (74.61ms CPU time)",
+        "2026-11-19T15:43:36.0898184Z Suite result: ok. 4 passed; 0 failed; 0 skipped; finished in 21.25ms (18.79ms CPU time)",
+        "2026-11-19T15:43:36.1318288Z Suite result: ok. 8 passed; 0 failed; 0 skipped; finished in 50.07ms (44.13ms CPU time)",
+        "2026-11-19T15:43:36.1321848Z Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 12.44ms (11.34ms CPU time)",
+        "2026-11-19T15:43:36.4284208Z Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 260.99ms (48.32ms CPU time)",
+        "2026-11-19T15:43:36.5118337Z Suite result: ok. 21 passed; 0 failed; 0 skipped; finished in 434.29ms (431.78ms CPU time)",
+        "2026-11-19T15:43:36.5157355Z Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 12.61ms (11.66ms CPU time)",
+        "2026-11-19T15:43:36.6304060Z Suite result: ok. 3 passed; 0 failed; 0 skipped; finished in 224.57ms (21.14ms CPU time)",
+        "2026-11-19T15:43:36.6594193Z Suite result: ok. 14 passed; 0 failed; 0 skipped; finished in 721.77ms (724.21ms CPU time)",
+        "2026-11-19T15:43:39.0546860Z Suite result: ok. 1 passed; 0 failed; 0 skipped; finished in 2.47s (2.46s CPU time)",
+        "2026-11-19T15:43:39.0594316Z Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 3.13s (3.13s CPU time)",
+        "2026-11-19T15:43:39.0622020Z Ran 14 test suites in 3.14s (7.57s CPU time): 112 tests passed, 0 failed, 0 skipped (112 total tests)"
+      ]
+    },
+    {
+      "jobId": 135676371959,
+      "evidenceKind": "SELECTED_ORIGINAL_LOG_LINES_NOT_FULL_LOG_OR_SEVERITY_AGGREGATE",
+      "lines": [
+        "2026-11-19T15:43:14.3852494Z 101 detectors, 233 findings, 22 high",
+        "2026-11-19T15:43:15.0158912Z ##[error]Process completed with exit code 1."
+      ]
+    },
+    {
+      "jobId": 135676372063,
+      "evidenceKind": "SELECTED_ORIGINAL_LOG_LINES_NOT_FULL_LOG_OR_SEVERITY_AGGREGATE",
+      "lines": [
+        "2026-11-19T15:44:51.2721561Z INFO:Slither:. analyzed (85 contracts with 101 detectors), 95 result(s) found",
+        "2026-11-19T15:44:52.2590164Z ##[error]Process completed with exit code 255."
+      ]
+    },
+    {
+      "jobId": 135676370796,
+      "evidenceKind": "SELECTED_ORIGINAL_LOG_LINES_NOT_FULL_LOG_OR_SEVERITY_AGGREGATE",
+      "lines": [
+        "2026-11-19T15:40:03.6509856Z # Subtest: production, hosted origins, unavailable fees and expired reviews issue zero wallet calls",
+        "2026-11-19T15:40:03.6510683Z ok 32 - production, hosted origins, unavailable fees and expired reviews issue zero wallet calls",
+        "2026-11-19T15:40:16.4491977Z # tests 284",
+        "2026-11-19T15:40:16.4492658Z # pass 284",
+        "2026-11-19T15:40:16.4492892Z # fail 0",
+        "2026-11-19T15:40:16.4493388Z # skipped 0",
+        "2026-11-19T15:42:00.2198355Z RMT-OPERATIONS transaction-specific mocked-wallet checks passed on chromium. No chain transactions were sent.",
+        "2026-11-19T15:42:02.3607147Z RMT-OPERATIONS transaction-specific mocked-wallet checks passed on webkit. No chain transactions were sent.",
+        "2026-11-19T15:42:04.0863586Z RMT-RESERVE transaction-specific mocked-wallet checks passed on chromium. No chain transactions were sent.",
+        "2026-11-19T15:42:06.1609906Z RMT-RESERVE transaction-specific mocked-wallet checks passed on webkit. No chain transactions were sent.",
+        "2026-11-19T15:42:08.1551324Z Directory CREATE mocked-wallet checks passed on chromium. No chain transactions were sent.",
+        "2026-11-19T15:42:09.9994017Z Directory CREATE mocked-wallet checks passed on webkit. No chain transactions were sent.",
+        "2026-11-19T15:42:12.5730244Z Registry CREATE mocked-wallet checks passed on chromium. No chain transactions were sent.",
+        "2026-11-19T15:42:14.8900823Z Registry CREATE mocked-wallet checks passed on webkit. No chain transactions were sent.",
+        "2026-11-19T15:42:22.6010935Z Synthetic schedule governance wallet/recovery checks passed on chromium; zero chain transactions.",
+        "2026-11-19T15:42:24.4963842Z Synthetic schedule governance wallet/recovery checks passed on webkit; zero chain transactions.",
+        "2026-11-19T15:42:26.0025080Z Synthetic execute governance wallet/recovery checks passed on chromium; zero chain transactions.",
+        "2026-11-19T15:42:27.9091909Z Synthetic execute governance wallet/recovery checks passed on webkit; zero chain transactions."
+      ]
+    }
+  ]
+}

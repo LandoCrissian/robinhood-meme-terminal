@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL_UNCHANGED_GITLEAKS_RAW_SCAN_PLUS_EXACT_PUBLIC_DATA_ADJUDICATION",
+  "scannerVersion": "8.30.1",
+  "rawExitCode": 1,
+  "rawFindingCount": 3,
+  "classifiedPublicIdentities": 3,
+  "unclassifiedFindings": 0,
+  "unitTests": {
+    "passed": 4,
+    "failed": 0
+  },
+  "runtimeCanary": "DETECTED_BY_PINNED_SCANNER_AND_REJECTED_BY_GATE",
+  "scannerConfigChanged": false,
+  "ignoreFileChanged": false,
+  "detectorSuppression": false,
+  "historyRewritten": false,
+  "financialSecurityClearance": false,
+  "productionAuthorization": false,
+  "files": [
+    {
+      "archive": "history-raw-redacted.json.gz",
+      "bytes": 2950,
+      "sha256": "2b3629851a9b26bbbca236c282563d0634ed80fe6c50f48a06e567e10fc23764"
+    },
+    {
+      "archive": "history-public-classification.json.gz",
+      "bytes": 1974,
+      "sha256": "987ac811c1aca5a48eb65e80acdfd79b0ef86047b2829bb57a490668242803b4"
+    },
+    {
+      "archive": "canary-redacted.json.gz",
+      "bytes": 725,
+      "sha256": "8ebe543e7d4727660eac7a03aa9541c00cfd9bf0d9c5542fad2f6e362176563c"
+    },
+    {
+      "archive": "canary-rejection.json.gz",
+      "bytes": 255,
+      "sha256": "dbb0ce1f21bc3bb4f4be95daf65e16c2835f969dcff9fbb07ed07774325b8ff2"
+    }
+  ],
+  "limitations": [
+    "Local reproduction is not final Linux CI evidence.",
+    "Raw scan remains exit1; only three exact immutable public identities are adjudicated.",
+    "Historical source reports remain unchanged."
+  ]
+}

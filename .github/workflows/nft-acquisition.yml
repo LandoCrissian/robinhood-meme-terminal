@@ -7,9 +7,15 @@ on:
       - "packages/contracts/lib/**"
       - "packages/launchpad-common/nft-*.mjs"
       - "packages/launchpad-common/nft-*.mts"
+      - "packages/launchpad-common/seaport-*.mjs"
+      - "packages/launchpad-common/seaport-*.mts"
+      - "packages/contracts/seaport-verification/**"
       - "packages/launchpad-common/native-proof.mjs"
       - "scripts/nft-acquisition/**"
       - "scripts/nft-marketplace/**"
+      - "scripts/seaport-verification/**"
+      - "docs/evidence/rmt-task082/seaport-marketplace/**"
+      - "docs/evidence/rmt-task082/seaport-adapter/**"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
       - "apps/indexer/src/nft-acquisition*.ts"
       - "apps/indexer/src/curve-fixture-worker.ts"
@@ -45,11 +51,65 @@ jobs:
           node-version: 22
       - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
       - name: Verify collection identity and bounded settlement traces without live orders
-        run: node --test packages/launchpad-common/nft-collection-resolver.test.mjs scripts/nft-marketplace/*.test.mjs scripts/nft-acquisition/*.test.mjs
+        run: node --test packages/launchpad-common/nft-collection-resolver.test.mjs packages/launchpad-common/seaport-*.test.mjs scripts/nft-marketplace/*.test.mjs scripts/nft-acquisition/*.test.mjs scripts/seaport-verification/*.test.mjs
       - name: Verify indexer configuration, canonical receipt and provider failure boundaries
         run: |
           pnpm --filter indexer typecheck
           pnpm --filter indexer exec tsx --test src/nft-acquisition-fixture-evidence.test.ts
+
+  seaport-source-and-fixtures:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
+      - name: Verify exact official Seaport and Conduit compiler inputs offline
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 \
+            'https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/linux-amd64/solc-linux-amd64-v0.8.24+commit.e11b9ed9' --output "$RUNNER_TEMP/solc0.8.24"
+          curl --fail --silent --show-error --retry 2 \
+            'https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/linux-amd64/solc-linux-amd64-v0.8.14+commit.80d49f37' --output "$RUNNER_TEMP/solc0.8.14"
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' --output "$RUNNER_TEMP/solc0.8.26"
+          printf '%s  %s\n' fb03a29a517452b9f12bcf459ef37d0a543765bb3bbc911e70a87d6a37c30d5f "$RUNNER_TEMP/solc0.8.24" | sha256sum --check --strict
+          printf '%s  %s\n' d5b027c86c0f8fecc024d5d4f95d8ea48d8a942d79970310e342370532b502f0 "$RUNNER_TEMP/solc0.8.14" | sha256sum --check --strict
+          printf '%s  %s\n' d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef "$RUNNER_TEMP/solc0.8.26" | sha256sum --check --strict
+          chmod 700 "$RUNNER_TEMP/solc0.8.24" "$RUNNER_TEMP/solc0.8.14" "$RUNNER_TEMP/solc0.8.26"
+          node scripts/seaport-verification/provenance-rebuild.mjs \
+            --solc-seaport "$RUNNER_TEMP/solc0.8.24" --solc-controller "$RUNNER_TEMP/solc0.8.14" \
+            --offline --output "$RUNNER_TEMP/seaport-source.json"
+      - name: Exercise genuine Seaport fulfillment and cancellation with synthetic assets
+        run: |
+          set -euo pipefail
+          node scripts/seaport-verification/fixture-compile.mjs --solc "$RUNNER_TEMP/solc0.8.26" \
+            --output packages/contracts/seaport-verification/official-artifacts.json
+          forge test --root packages/contracts/seaport-verification --use "$RUNNER_TEMP/solc0.8.26" -vvv
+      - name: Verify the read-only adapter against genuine local Seaport receipts
+        run: |
+          node scripts/seaport-verification/fixture-run.mjs --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc0.8.26" --output "$RUNNER_TEMP/rmt-seaport-fixture"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: seaport-source-and-synthetic-fixtures-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/seaport-source.json
+            packages/contracts/seaport-verification/official-artifacts.json
+            ${{ runner.temp }}/rmt-seaport-fixture/seaport-fixture-evidence.json
+            ${{ runner.temp }}/rmt-seaport-fixture/official-artifacts.json
+          retention-days: 7
 
   nft-acquisition-strict-security:
     runs-on: ubuntu-24.04

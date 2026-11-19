@@ -1,0 +1,211 @@
+{
+  "schemaVersion": 1,
+  "validatedSourceCommit": "597f708cf6b3c7f729e8c786418ea05e89153b05",
+  "observedAt": "2026-11-19 15:53:36 UTC",
+  "total": 22,
+  "passed": 16,
+  "failed": 6,
+  "pending": 0,
+  "jobs": [
+    {
+      "name": "slither",
+      "id": 135676372063,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T15:41:08Z",
+      "completedAt": "2026-11-19T15:44:55Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203485/job/135676372063"
+    },
+    {
+      "name": "fixed-supply-4663",
+      "id": 135676371959,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T15:41:27Z",
+      "completedAt": "2026-11-19T15:44:02Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203485/job/135676371959"
+    },
+    {
+      "name": "treasury-purchase-v2-prototype",
+      "id": 135676371926,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:41:07Z",
+      "completedAt": "2026-11-19T15:42:16Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203485/job/135676371926"
+    },
+    {
+      "name": "reclaim-v1",
+      "id": 135676371834,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T15:40:53Z",
+      "completedAt": "2026-11-19T15:42:12Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203485/job/135676371834"
+    },
+    {
+      "name": "isolated-lifecycle (chromium)",
+      "id": 135676371735,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:40:52Z",
+      "completedAt": "2026-11-19T15:52:23Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203459/job/135676371735"
+    },
+    {
+      "name": "project-treasury-v1",
+      "id": 135676371424,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T15:39:51Z",
+      "completedAt": "2026-11-19T15:40:47Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203485/job/135676371424"
+    },
+    {
+      "name": "isolated-lifecycle (webkit)",
+      "id": 135676371374,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:40:30Z",
+      "completedAt": "2026-11-19T15:51:43Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203459/job/135676371374"
+    },
+    {
+      "name": "indexer",
+      "id": 135676371045,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:40:43Z",
+      "completedAt": "2026-11-19T15:41:41Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203271/job/135676371045"
+    },
+    {
+      "name": "contracts",
+      "id": 135676371006,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:39:17Z",
+      "completedAt": "2026-11-19T15:43:43Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203271/job/135676371006"
+    },
+    {
+      "name": "repository",
+      "id": 135676370921,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:40:06Z",
+      "completedAt": "2026-11-19T15:41:26Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203271/job/135676370921"
+    },
+    {
+      "name": "gitleaks",
+      "id": 135676370853,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:39:33Z",
+      "completedAt": "2026-11-19T15:39:50Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203295/job/135676370853"
+    },
+    {
+      "name": "web",
+      "id": 135676370796,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:39:42Z",
+      "completedAt": "2026-11-19T15:44:29Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203459/job/135676370796"
+    },
+    {
+      "name": "nft-acquisition-browser (webkit)",
+      "id": 135676370662,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:39:16Z",
+      "completedAt": "2026-11-19T15:44:28Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203180/job/135676370662"
+    },
+    {
+      "name": "nft-acquisition-strict-security",
+      "id": 135676370562,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T15:40:49Z",
+      "completedAt": "2026-11-19T15:42:12Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203180/job/135676370562"
+    },
+    {
+      "name": "nft-acquisition-browser (chromium)",
+      "id": 135676370533,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:40:37Z",
+      "completedAt": "2026-11-19T15:45:42Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203180/job/135676370533"
+    },
+    {
+      "name": "seaport-source-and-fixtures",
+      "id": 135676370389,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:40:36Z",
+      "completedAt": "2026-11-19T15:41:38Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203180/job/135676370389"
+    },
+    {
+      "name": "operations-safe",
+      "id": 135676370305,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:39:11Z",
+      "completedAt": "2026-11-19T15:39:30Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203271/job/135676370305"
+    },
+    {
+      "name": "isolated-firebase",
+      "id": 135676369954,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:39:11Z",
+      "completedAt": "2026-11-19T15:42:30Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203339/job/135676369954"
+    },
+    {
+      "name": "nft-acquisition-units",
+      "id": 135676369925,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:39:10Z",
+      "completedAt": "2026-11-19T15:39:40Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203180/job/135676369925"
+    },
+    {
+      "name": "linux-netlify-artifact",
+      "id": 135676369494,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:39:11Z",
+      "completedAt": "2026-11-19T15:41:07Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203182/job/135676369494"
+    },
+    {
+      "name": "railway-container",
+      "id": 135676369266,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T15:39:10Z",
+      "completedAt": "2026-11-19T15:40:35Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203196/job/135676369266"
+    },
+    {
+      "name": "reclaim-permanent-v2",
+      "id": 135676369152,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T15:39:10Z",
+      "completedAt": "2026-11-19T15:40:50Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203227/job/135676369152"
+    }
+  ],
+  "financialReleaseCleared": false,
+  "productionChanged": false
+}

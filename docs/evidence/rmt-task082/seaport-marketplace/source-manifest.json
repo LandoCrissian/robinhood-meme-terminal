@@ -1,0 +1,485 @@
+{
+  "schemaVersion": 1,
+  "scope": "INDEPENDENT_COMPILER_INPUTS_NOT_DEPLOYMENT_OR_AUDIT",
+  "status": "BLOCKED_NO_BROADCAST",
+  "inputs": {
+    "seaport": {
+      "sourceApi": "https://sourcify.dev/server/v2/contract/4663/0x0000000000000068F116a894984e2DB1123eB395?fields=all",
+      "sourceApiRawSha256": "de24d38618d36b27f65cf79e28b9cd487a3780999bb3fe01eb881ef6ccb409f8",
+      "inputSha256": "700287b2fa852e65e8fc92c842257af24dd60a0052c6dd2b068106b748145250",
+      "compiledSha256": "fd5410b449d7e45c07b217ccfb0eaeda9c1ae2bf0e8076a27cb035eacefb3d0b",
+      "fullyQualifiedName": "src/Seaport.sol:Seaport",
+      "compilerVersion": "0.8.24+commit.e11b9ed9",
+      "settings": {
+        "viaIR": true,
+        "metadata": {
+          "bytecodeHash": "none"
+        },
+        "libraries": {},
+        "optimizer": {
+          "runs": 9999999,
+          "enabled": true
+        },
+        "evmVersion": "cancun",
+        "remappings": [
+          ":seaport-types/=lib/seaport-types/"
+        ],
+        "outputSelection": {
+          "*": {
+            "*": [
+              "abi",
+              "evm.bytecode",
+              "evm.deployedBytecode"
+            ],
+            "": [
+              "ast"
+            ]
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "src/Seaport.sol",
+          "sha256": "08a4b4bf68bca66b4814dc092edeb98832fde2c82ee7e35483fd5a170791f170",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/Executor.sol",
+          "sha256": "1c3fe8fba930bf2a6646893dcc297f4b6006da4ee3c24fe9482a91d07b2fda62",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/Verifiers.sol",
+          "sha256": "ee79a1bf0f4ae50ce4aa645584e5a2e364a2427300f87bd6aadc9d5140ee922b",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/Assertions.sol",
+          "sha256": "bba44d8b97a6c5cb2a955b87300823b84c2a1abe7776c1c587ae8ffb4d7f7c79",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/AmountDeriver.sol",
+          "sha256": "d19ffc1cae08891763d66da54abb7587d8037fda6db35e7e00d0e517e503116e",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/Consideration.sol",
+          "sha256": "ae3fc8e496434856131cc502121da35d4db32f08027de414ee345fa8caec27f9",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/OrderCombiner.sol",
+          "sha256": "ef2d835c99dcfbe3af7b27672e3ba52e329b4efb4ef5e84a323635abc8ca0f44",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/CounterManager.sol",
+          "sha256": "b7456a9a0c63b9e021aed9cb8c038e7e985ee10784881b4d27606c8fb07c5ac0",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/OrderFulfiller.sol",
+          "sha256": "3b0732d453bc14e0e0b53ccb5a79a40446f3a6a8f9ca6b4dc5b0a7630dbcc9a2",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/OrderValidator.sol",
+          "sha256": "3b69a0d367464fe4a54dd657bd60294ce43c7ec0cb01695dae8317340b22044a",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/LowLevelHelpers.sol",
+          "sha256": "19e38ab57634c20d7b9bee654b70ec85f4978bdf2e23db65bcfb6ed8da54fa3f",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/ReentrancyGuard.sol",
+          "sha256": "54637034714033f58569c42718b513c2b236690a5d322d23b70fdd4683caaff7",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/ZoneInteraction.sol",
+          "sha256": "298dd9fa2ffc3a280ddf40e2bbd9a9bf581663600e510a9fd74bfcb2ebbe924d",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/TokenTransferrer.sol",
+          "sha256": "076abb2ce690f7d8ad84c2b0832b20655266e5eb58a29e41fee8ea0e500f2aab",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/ConsiderationBase.sol",
+          "sha256": "f8518e862327333ca8b472f1f236f95efa8c64b23ed96dbd18eaeebb695e78fa",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/CriteriaResolution.sol",
+          "sha256": "45d4df2e596f11f00226db81b0f1fa8c7fc9b95b39514dfdc2c6f72495013787",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/FulfillmentApplier.sol",
+          "sha256": "efe12080cdb9b1cec29d8e63e4b1a173362583500655c086a1a0e7f4954a2b28",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/GettersAndDerivers.sol",
+          "sha256": "ceea474d92c2a20d366e51339db69ef6262978d9611a99c41f43d3f2d4c5fb5a",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/BasicOrderFulfiller.sol",
+          "sha256": "54693111b1d0b1106f825bd0feca64c30deffab9259fffa4d0e77216ff01c527",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/ConsiderationDecoder.sol",
+          "sha256": "63a71349680b2261aea9fb590d4eab6e69cc9f758d610852d1e5ad54a3a6f834",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/ConsiderationEncoder.sol",
+          "sha256": "438a5a4f25fe7415ee3828f52e268fe49a22cbe5e71cd4b5fe7251e36b3f3dcd",
+          "license": "MIT"
+        },
+        {
+          "path": "src/lib/SignatureVerification.sol",
+          "sha256": "25b70216028e832c672bdb5454a06d4fdd6ccb108e50fc5bf1de583e248d2e54",
+          "license": "MIT"
+        },
+        {
+          "path": "seaport-types/src/lib/ConsiderationEnums.sol",
+          "sha256": "cf40250ee78379d12230bcb0adba323febbf1c21e272cad0f6cc47a06ce30201",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/lib/ConsiderationErrors.sol",
+          "sha256": "ba87af86e689194ea00476d76240e9ecd92ef33837665ca26ca60fde8202dea9",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/conduit/lib/ConduitEnums.sol",
+          "sha256": "a4bd7b99dff7055c135c96b06d4aaf466bb4d46a36b6324d24b16abd33356c23",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/helpers/PointerLibraries.sol",
+          "sha256": "d0358f6e5005528563693e3af64af3831b50561e3a63d252ea7e4295d8b11ac3",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/lib/ConsiderationStructs.sol",
+          "sha256": "233e47acf521d4e216fba36557a26823faf799f32a1ae21893ce656b80809974",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "lib/seaport-types/src/lib/ConsiderationEnums.sol",
+          "sha256": "cf40250ee78379d12230bcb0adba323febbf1c21e272cad0f6cc47a06ce30201",
+          "license": "MIT"
+        },
+        {
+          "path": "seaport-types/src/conduit/lib/ConduitStructs.sol",
+          "sha256": "326858bdc55a747240a5a9f90b38eada9ea0f8d6a9558a099c378a44424a0ed3",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/lib/ConsiderationConstants.sol",
+          "sha256": "989d9664ff2414a5dadee20819ba7400ab610941f4895817e120328cfabdb955",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "lib/seaport-types/src/lib/ConsiderationErrors.sol",
+          "sha256": "ba87af86e689194ea00476d76240e9ecd92ef33837665ca26ca60fde8202dea9",
+          "license": "MIT"
+        },
+        {
+          "path": "seaport-types/src/interfaces/ConduitInterface.sol",
+          "sha256": "119f51c149fb117c55c2a812c104c55f809fed683296a3f5009e284b1b23752a",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/interfaces/ReentrancyErrors.sol",
+          "sha256": "4743e580441d005e81c36ab9e93281318df1eb4395b8632bc81c6361d37b680e",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "lib/seaport-types/src/conduit/lib/ConduitEnums.sol",
+          "sha256": "a4bd7b99dff7055c135c96b06d4aaf466bb4d46a36b6324d24b16abd33356c23",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/helpers/PointerLibraries.sol",
+          "sha256": "d0358f6e5005528563693e3af64af3831b50561e3a63d252ea7e4295d8b11ac3",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/lib/ConsiderationStructs.sol",
+          "sha256": "233e47acf521d4e216fba36557a26823faf799f32a1ae21893ce656b80809974",
+          "license": "MIT"
+        },
+        {
+          "path": "seaport-types/src/lib/TokenTransferrerConstants.sol",
+          "sha256": "f12cc0b168f18b0a87a8d6e221e7339cd03293cec30bbbef4afae705385b49ba",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "lib/seaport-types/src/conduit/lib/ConduitStructs.sol",
+          "sha256": "326858bdc55a747240a5a9f90b38eada9ea0f8d6a9558a099c378a44424a0ed3",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/lib/ConsiderationConstants.sol",
+          "sha256": "989d9664ff2414a5dadee20819ba7400ab610941f4895817e120328cfabdb955",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/ConduitInterface.sol",
+          "sha256": "119f51c149fb117c55c2a812c104c55f809fed683296a3f5009e284b1b23752a",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/ReentrancyErrors.sol",
+          "sha256": "4743e580441d005e81c36ab9e93281318df1eb4395b8632bc81c6361d37b680e",
+          "license": "MIT"
+        },
+        {
+          "path": "seaport-types/src/lib/ConsiderationErrorConstants.sol",
+          "sha256": "d304534e623ccc85073615bc2a5e86859ea80d882a9a3ae6b7504da631c0c2fc",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/interfaces/ZoneInteractionErrors.sol",
+          "sha256": "41353885cbce99c7cfd622a77cb7a1cb58b47172d81337dfb14b9ebc563701e1",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "lib/seaport-types/src/lib/TokenTransferrerConstants.sol",
+          "sha256": "f12cc0b168f18b0a87a8d6e221e7339cd03293cec30bbbef4afae705385b49ba",
+          "license": "MIT"
+        },
+        {
+          "path": "seaport-types/src/interfaces/AmountDerivationErrors.sol",
+          "sha256": "7a9992a84b44306fd446d80beccc2d229acbe65c004aa43ff88ce4d2f89f4803",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/interfaces/ConsiderationInterface.sol",
+          "sha256": "a91763804783d33f3a3cfd38337ae000ffda684f6dfdf674589b02ed1be2b612",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/interfaces/TokenTransferrerErrors.sol",
+          "sha256": "88e43f9bb01734507f03f21856aa886f7943792024abd0a01435bb3d2ecfe549",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "lib/seaport-types/src/lib/ConsiderationErrorConstants.sol",
+          "sha256": "d304534e623ccc85073615bc2a5e86859ea80d882a9a3ae6b7504da631c0c2fc",
+          "license": "MIT"
+        },
+        {
+          "path": "seaport-types/src/interfaces/CriteriaResolutionErrors.sol",
+          "sha256": "73f7e3698c324bdabecc8de8834381797387ccf54b51a76c0280015d8e5c4207",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/ZoneInteractionErrors.sol",
+          "sha256": "41353885cbce99c7cfd622a77cb7a1cb58b47172d81337dfb14b9ebc563701e1",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/AmountDerivationErrors.sol",
+          "sha256": "7a9992a84b44306fd446d80beccc2d229acbe65c004aa43ff88ce4d2f89f4803",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/ConsiderationInterface.sol",
+          "sha256": "a91763804783d33f3a3cfd38337ae000ffda684f6dfdf674589b02ed1be2b612",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/TokenTransferrerErrors.sol",
+          "sha256": "88e43f9bb01734507f03f21856aa886f7943792024abd0a01435bb3d2ecfe549",
+          "license": "MIT"
+        },
+        {
+          "path": "seaport-types/src/interfaces/ConduitControllerInterface.sol",
+          "sha256": "eeafa5abeeded55731f354bf191a96e706540039fcb55ff73ade5a3d4dc40ac4",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/interfaces/SignatureVerificationErrors.sol",
+          "sha256": "e483b247a68db9c063b41002920ac12e6b56a06562b54240e2ddc16e7db15e81",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/CriteriaResolutionErrors.sol",
+          "sha256": "73f7e3698c324bdabecc8de8834381797387ccf54b51a76c0280015d8e5c4207",
+          "license": "MIT"
+        },
+        {
+          "path": "seaport-types/src/interfaces/ConsiderationEventsAndErrors.sol",
+          "sha256": "fee87449f873b1d829f3e5589e96a2dacccb757320c5dec9ae2ae05575368ec2",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "seaport-types/src/interfaces/FulfillmentApplicationErrors.sol",
+          "sha256": "ce9057c30cd8191fb0d44dfd2d7c9683d1de3f644b37567671dbf5fd1753c152",
+          "license": "MIT (source SPDX)"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/ConduitControllerInterface.sol",
+          "sha256": "eeafa5abeeded55731f354bf191a96e706540039fcb55ff73ade5a3d4dc40ac4",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/SignatureVerificationErrors.sol",
+          "sha256": "e483b247a68db9c063b41002920ac12e6b56a06562b54240e2ddc16e7db15e81",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/ConsiderationEventsAndErrors.sol",
+          "sha256": "fee87449f873b1d829f3e5589e96a2dacccb757320c5dec9ae2ae05575368ec2",
+          "license": "MIT"
+        },
+        {
+          "path": "lib/seaport-types/src/interfaces/FulfillmentApplicationErrors.sol",
+          "sha256": "ce9057c30cd8191fb0d44dfd2d7c9683d1de3f644b37567671dbf5fd1753c152",
+          "license": "MIT"
+        }
+      ],
+      "compilerPins": {
+        "windows-amd64": {
+          "listUrl": "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/windows-amd64/list.json",
+          "path": "solc-windows-amd64-v0.8.24+commit.e11b9ed9.exe",
+          "version": "0.8.24",
+          "build": "commit.e11b9ed9",
+          "longVersion": "0.8.24+commit.e11b9ed9",
+          "keccak256": "0xbbcdab9cc802a20bb07c207bcb1f16f712b9dc3ad1e0cb79a2e7355b73870ee6",
+          "sha256": "0x580ee56b61bbcaad953117e1e4a0874d90e6af5cb4ce4359571d7da25f6620e9",
+          "urls": [
+            "dweb:/ipfs/QmNnYYCBrwmwd78YWeVoyyPhSaXaD7rmGn88UFi9HcrPdd"
+          ]
+        },
+        "linux-amd64": {
+          "listUrl": "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/linux-amd64/list.json",
+          "path": "solc-linux-amd64-v0.8.24+commit.e11b9ed9",
+          "version": "0.8.24",
+          "build": "commit.e11b9ed9",
+          "longVersion": "0.8.24+commit.e11b9ed9",
+          "keccak256": "0x5a127e73ef8c90f2df60ff2fe9dd79709da9e90d2d075cf05784c9a3efee2528",
+          "sha256": "0xfb03a29a517452b9f12bcf459ef37d0a543765bb3bbc911e70a87d6a37c30d5f",
+          "urls": [
+            "dweb:/ipfs/QmZ5YMZQfiLhjiXoPQBxJyY1KPVPzhUXDbD1B7bYQCVKjQ"
+          ]
+        }
+      }
+    },
+    "controller": {
+      "sourceApi": "https://sourcify.dev/server/v2/contract/1/0x00000000F9490004C11Cef243f5400493c00Ad63?fields=all",
+      "sourceApiRawSha256": "34b19b88980f7f3d125ae2fbb695842242264ffdd8c7610b4a2e090f225e96f3",
+      "inputSha256": "b8ec32eccfabfa9dc77889f68eb933bd6ab727ff54701174b6f532dcb666f730",
+      "compiledSha256": "aa2076af1209bd812d3a6efa8e82e02a843e9f699fa0c446cd4b7cb4daaa7392",
+      "fullyQualifiedName": "contracts/conduit/ConduitController.sol:ConduitController",
+      "compilerVersion": "0.8.14+commit.80d49f37",
+      "settings": {
+        "viaIR": true,
+        "optimizer": {
+          "runs": 1000000,
+          "enabled": true
+        },
+        "outputSelection": {
+          "*": {
+            "*": [
+              "abi",
+              "evm.bytecode",
+              "evm.deployedBytecode"
+            ],
+            "": [
+              "ast"
+            ]
+          }
+        }
+      },
+      "sources": [
+        {
+          "path": "contracts/conduit/Conduit.sol",
+          "sha256": "56efd56b157d7bc0b62ec80fcadd85aac442c1d9043a9d1efe230e586cb8b062",
+          "license": "MIT"
+        },
+        {
+          "path": "contracts/lib/TokenTransferrer.sol",
+          "sha256": "5144de6f8fe2e387c2b97ebb685ce608b0f796da7a7847bb3a724521dd95aa3f",
+          "license": "MIT"
+        },
+        {
+          "path": "contracts/conduit/lib/ConduitEnums.sol",
+          "sha256": "954c5e785e246cdd794df0ed4201fda63d1794230d8a6e3cdc431146adf3c614",
+          "license": "MIT"
+        },
+        {
+          "path": "contracts/conduit/ConduitController.sol",
+          "sha256": "4443e89a6db9eb8e0b3ebe365a2d3ccd5d928d102388a90e70184e020e9f87ca",
+          "license": "MIT"
+        },
+        {
+          "path": "contracts/conduit/lib/ConduitStructs.sol",
+          "sha256": "64ff43c012f0d07490c01246088d162e2579f1a3e44664a86ce18e02ea091675",
+          "license": "MIT"
+        },
+        {
+          "path": "contracts/interfaces/ConduitInterface.sol",
+          "sha256": "11e1443404e500edde5b32b507822ef463ad15548b73cc153b6d8085e887fed7",
+          "license": "MIT"
+        },
+        {
+          "path": "contracts/conduit/lib/ConduitConstants.sol",
+          "sha256": "15c93f58fb323b05708fd602ad21494a814a06a74b379a49a5453956d50de619",
+          "license": "MIT"
+        },
+        {
+          "path": "contracts/lib/TokenTransferrerConstants.sol",
+          "sha256": "d3d574a93aaa46c9b6bd1e2859cfb211281d4bdc2515331c6044be790a7d434a",
+          "license": "MIT"
+        },
+        {
+          "path": "contracts/interfaces/TokenTransferrerErrors.sol",
+          "sha256": "8106ddd64a50cef4f3b91fd4b127dbf5d99d213ee2ff477e03ed6b52caa1ddc2",
+          "license": "MIT"
+        },
+        {
+          "path": "contracts/interfaces/ConduitControllerInterface.sol",
+          "sha256": "333fc1aa75852c69dccb9526028832bbc611d125ea9484aadfddbcc4303ecafb",
+          "license": "MIT"
+        }
+      ],
+      "compilerPins": {
+        "windows-amd64": {
+          "listUrl": "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/windows-amd64/list.json",
+          "path": "solc-windows-amd64-v0.8.14+commit.80d49f37.exe",
+          "version": "0.8.14",
+          "build": "commit.80d49f37",
+          "longVersion": "0.8.14+commit.80d49f37",
+          "keccak256": "0x116d6f241058b4080b97efd7d32927744e8123d8d31214a75f4387d7191cae03",
+          "sha256": "0x70a5a7eaa9135d13bd036ca55735f489559368af819c5810cfaf0315df56ab53",
+          "urls": [
+            "dweb:/ipfs/QmQZf9YevKhiqk1oHa5NyM77ykYUXuaKmaVZrhdK9pejm4"
+          ]
+        },
+        "linux-amd64": {
+          "listUrl": "https://raw.githubusercontent.com/ethereum/solc-bin/gh-pages/linux-amd64/list.json",
+          "path": "solc-linux-amd64-v0.8.14+commit.80d49f37",
+          "version": "0.8.14",
+          "build": "commit.80d49f37",
+          "longVersion": "0.8.14+commit.80d49f37",
+          "keccak256": "0x73c9a363ad79aa396a706175521b9ccb41dce2a2eee9f04b58dbac87b1fc8614",
+          "sha256": "0xd5b027c86c0f8fecc024d5d4f95d8ea48d8a942d79970310e342370532b502f0",
+          "urls": [
+            "dweb:/ipfs/QmPpPcCq91ufSe3ZCNjWs26nuGEuuUNLcgX5Sa3y3wPiPk"
+          ]
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "scope": "UNCOMMITTED_INITIAL_ADAPTER_DEVELOPMENT_TEST",
+  "tests": 10,
+  "passed": 0,
+  "failed": 10,
+  "error": "Cannot read properties of undefined (reading 'EIP712Domain')",
+  "boundary": "viem hashDomain requires explicit EIP712Domain types; initial draft omitted them.",
+  "correction": "Provide the exact name/version/chainId/verifyingContract types when deriving the domain separator; preserve every assertion.",
+  "rawToolOutputAvailableInSession": true,
+  "archivedRawOutputAvailable": false,
+  "subsequentFocusedResult": "mocked-unit-tests.json"
+}

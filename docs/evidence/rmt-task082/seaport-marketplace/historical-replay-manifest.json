@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "scope": "PUBLIC_MINED_TRANSACTION_INPUT_RECEIPT_SIGNATURE_AND_BOUNDED_TRACE_NOT_CURRENT_ORDER",
+  "transactionHash": "0xbbd7ebdc2b3665ae7781afbf8854125ed430baaf2bb1fd4629612b6e269827fe",
+  "observedAt": "2026-11-19T15:32:25.159Z",
+  "rawBytes": 78496,
+  "rawSha256": "2c7b1d9bccbb89a6d3b9e715345ec367a812e44bc1eb9cf463a381106832ab28",
+  "rawScannerReportSha256": "284ae29c119c2c280db80a1181e1c9a37cbe37a3cf09a08bc01909af45e7c304",
+  "scanner": {
+    "name": "Gitleaks",
+    "version": "8.30.1",
+    "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+    "exitCode": 1,
+    "findings": 20,
+    "unclassified": 0,
+    "suppressionsAdded": false
+  },
+  "classifications": [
+    {
+      "ruleId": "generic-api-key",
+      "line": 188,
+      "field": "token",
+      "lineSha256": "bf08bf2399e500d2e9ae8613236030b09e5e22b252bf0885b128ce551f5bf96e",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 197,
+      "field": "token",
+      "lineSha256": "e04728c1bf0f64cd5624c9932bc2c015b288a6c2d0d479dbf57becff2c053be3",
+      "publicValueSha256": "c11038569cfd3be3374d77b4ecea5fcd54a628b7847507685cfe51172ad3a736",
+      "disposition": "PUBLIC_HISTORICAL_NFT_CONTRACT"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 205,
+      "field": "token",
+      "lineSha256": "bf08bf2399e500d2e9ae8613236030b09e5e22b252bf0885b128ce551f5bf96e",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 213,
+      "field": "token",
+      "lineSha256": "bf08bf2399e500d2e9ae8613236030b09e5e22b252bf0885b128ce551f5bf96e",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 225,
+      "field": "conduitKey",
+      "lineSha256": "d4c6f5fa9352008d09ea5f99276c187ee0ba663e9a3aece40aec94ddc515b75d",
+      "publicValueSha256": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a",
+      "disposition": "PUBLIC_OPENSEA_CONDUIT_IDENTIFIER"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 242,
+      "field": "fulfillerConduitKey",
+      "lineSha256": "70615d25a386686c738e0c903aa610254da780b49a85028544ef3afbd45c3755",
+      "publicValueSha256": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a",
+      "disposition": "PUBLIC_OPENSEA_CONDUIT_IDENTIFIER"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 255,
+      "field": "token",
+      "lineSha256": "f2c4d5bd8eccbb1328c3729a7ae1221ef7954b806ac262c96efdaead280b5a9f",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 263,
+      "field": "token",
+      "lineSha256": "8326c08c6675605b05843e700cf6ddeff7acd945ed51b3bc9aee4672e043af2e",
+      "publicValueSha256": "c11038569cfd3be3374d77b4ecea5fcd54a628b7847507685cfe51172ad3a736",
+      "disposition": "PUBLIC_HISTORICAL_NFT_CONTRACT"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 270,
+      "field": "token",
+      "lineSha256": "f2c4d5bd8eccbb1328c3729a7ae1221ef7954b806ac262c96efdaead280b5a9f",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 277,
+      "field": "token",
+      "lineSha256": "f2c4d5bd8eccbb1328c3729a7ae1221ef7954b806ac262c96efdaead280b5a9f",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 536,
+      "field": "token",
+      "lineSha256": "bf08bf2399e500d2e9ae8613236030b09e5e22b252bf0885b128ce551f5bf96e",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 545,
+      "field": "token",
+      "lineSha256": "e04728c1bf0f64cd5624c9932bc2c015b288a6c2d0d479dbf57becff2c053be3",
+      "publicValueSha256": "c11038569cfd3be3374d77b4ecea5fcd54a628b7847507685cfe51172ad3a736",
+      "disposition": "PUBLIC_HISTORICAL_NFT_CONTRACT"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 553,
+      "field": "token",
+      "lineSha256": "bf08bf2399e500d2e9ae8613236030b09e5e22b252bf0885b128ce551f5bf96e",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 561,
+      "field": "token",
+      "lineSha256": "bf08bf2399e500d2e9ae8613236030b09e5e22b252bf0885b128ce551f5bf96e",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 573,
+      "field": "conduitKey",
+      "lineSha256": "d4c6f5fa9352008d09ea5f99276c187ee0ba663e9a3aece40aec94ddc515b75d",
+      "publicValueSha256": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a",
+      "disposition": "PUBLIC_OPENSEA_CONDUIT_IDENTIFIER"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 590,
+      "field": "fulfillerConduitKey",
+      "lineSha256": "70615d25a386686c738e0c903aa610254da780b49a85028544ef3afbd45c3755",
+      "publicValueSha256": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a",
+      "disposition": "PUBLIC_OPENSEA_CONDUIT_IDENTIFIER"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 603,
+      "field": "token",
+      "lineSha256": "f2c4d5bd8eccbb1328c3729a7ae1221ef7954b806ac262c96efdaead280b5a9f",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 611,
+      "field": "token",
+      "lineSha256": "8326c08c6675605b05843e700cf6ddeff7acd945ed51b3bc9aee4672e043af2e",
+      "publicValueSha256": "c11038569cfd3be3374d77b4ecea5fcd54a628b7847507685cfe51172ad3a736",
+      "disposition": "PUBLIC_HISTORICAL_NFT_CONTRACT"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 618,
+      "field": "token",
+      "lineSha256": "f2c4d5bd8eccbb1328c3729a7ae1221ef7954b806ac262c96efdaead280b5a9f",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "line": 625,
+      "field": "token",
+      "lineSha256": "f2c4d5bd8eccbb1328c3729a7ae1221ef7954b806ac262c96efdaead280b5a9f",
+      "publicValueSha256": "66d04bc2eff47efbdeb8028435727c6c44ceaad5d0133e809276511881b765c1",
+      "disposition": "PUBLIC_4663_WETH_PROXY_ADDRESS"
+    }
+  ],
+  "currentListingVerified": false,
+  "executionApproved": false,
+  "ownerSignatureRequested": false,
+  "broadcast": false
+}
