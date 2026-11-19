@@ -28,6 +28,7 @@ import { compileReclaimFixtureAssets } from "../reclaim-v2/fixture-assets.mjs";
 import { deployReclaimFixture } from "../reclaim-v2/deploy-fixture.mjs";
 import { testReclaimJourney } from "../reclaim-v2/local-integration.mjs";
 import { fixtureCallRevert } from "../reclaim-v2/read-proxy-errors.mjs";
+import { postgresRuntimeEnvironment } from "../reclaim-v2/postgres-runtime-env.mjs";
 import { observeOriginalReceipt } from "./receipt-observation.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
@@ -160,6 +161,7 @@ const processes = [];
 const childBase = Object.fromEntries(Object.entries(process.env).filter(([key]) =>
   /^(?:path|pathext|systemroot|systemdrive|windir|temp|tmp|localappdata|appdata|userprofile|username|homedrive|homepath|comspec|programfiles(?:\(x86\))?|programdata|number_of_processors|os|home|lang)$/i.test(key)));
 childBase.NEXT_TELEMETRY_DISABLED = "1";
+const postgresChildEnv=postgresRuntimeEnvironment(childBase,pgBin,process.env);
 function start(executable, params, name, { cwd = repository, env = childBase, discard = false } = {}) {
   const child = spawn(executable, params, { cwd, env, windowsHide: true, stdio: ["ignore", discard ? "ignore" : "pipe", discard ? "ignore" : "pipe"] });
   let stdout = "", stderr = "";
@@ -178,7 +180,8 @@ function start(executable, params, name, { cwd = repository, env = childBase, di
   return job;
 }
 async function successful(job) {
-  const { code, stdout } = await job.done;
+  const { code, stdout, stderr } = await job.done;
+  if(code!==0&&job.name.startsWith("postgres"))console.error((stdout+stderr).replaceAll(pgPass,"[redacted]").replaceAll(indexReadKey,"[redacted]").slice(-8192));
   assert.equal(code, 0, `${job.name} failed. See fixture output for diagnostics.`);
   return stdout;
 }
@@ -348,11 +351,11 @@ try {
 
   const pgPasswordFile = join(out, "postgres-password");
   await writeFile(pgPasswordFile, pgPass, { mode: 0o600 });
-  try { await successful(start(pgExecutable("initdb"), ["-D", cluster, "-U", pgUser, "-A", "scram-sha-256", "--pwfile", pgPasswordFile, "--no-locale", "--encoding=UTF8"], "postgres-init")); }
+  try { await successful(start(pgExecutable("initdb"), ["-D", cluster, "-U", pgUser, "-A", "scram-sha-256", "--pwfile", pgPasswordFile, "--no-locale", "--encoding=UTF8"], "postgres-init",{env:postgresChildEnv})); }
   finally { await unlink(pgPasswordFile); }
   await appendFile(join(cluster, "postgresql.conf"), "\nunix_socket_directories = ''\n");
   await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-l", join(out, "postgres.log"), "-o",
-    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start", { discard: process.platform === "win32" }));
+    `-h 127.0.0.1 -p ${pgPort}`, "-w", "start"], "postgres-start", { env:postgresChildEnv,discard: process.platform === "win32" }));
   pgStarted = true;
   const maintenanceUrl = new URL(databaseUrl);
   maintenanceUrl.pathname = "/postgres";
@@ -1421,7 +1424,7 @@ try {
   for (const job of processes.toReversed()) await stop(job);
   await pg.end();
   if (pgStarted) {
-    await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-w", "-m", "fast", "stop"], "postgres-stop"));
+    await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-w", "-m", "fast", "stop"], "postgres-stop",{env:postgresChildEnv}));
   }
   await new Promise((done) => proxy.close(done));
   if (claimProofProxy) await new Promise((done) => claimProofProxy.close(done));
