@@ -1,3 +1,4 @@
+import {seaportFixturePreparationDiagnostic} from "./seaport-acquisition-diagnostics";
 import {proposeSeaportSafe,refreshSeaportSafeProposal,validateSeaportSafeOwner,prepareSeaportSafeOuter,verifySeaportSafeOuter,seaportSafeAdminSnapshot} from "./seaport-acquisition-safe";
 import {validSeaportSafeOuter,type SeaportSafeProposal,type SeaportSafeApproval} from "../seaport-acquisition-safe";
 import {NextResponse} from "next/server";
@@ -56,6 +57,7 @@ export async function handleSeaportAcquisitionRead(request:Request){
 export async function handleSeaportAcquisitionTest(request:Request){
   const c=configuredSeaportAcquisition(request.headers);if(!c)return json({status:"not-found"},404);
   if(request.headers.get("origin")!==c.site||!/^application\/json(?:;|$)/i.test(request.headers.get("content-type")??"")||Number(request.headers.get("content-length")??0)>65536)return json({status:"rejected"},400);
+  let preparationStage:string|undefined;
   try{const reader=request.body?.getReader();if(!reader)return json({status:"rejected"},400);let size=0;const chunks:Uint8Array[]=[];for(;;){const{value,done}=await reader.read();if(done)break;size+=value.length;if(size>65536){await reader.cancel();return json({status:"rejected"},413);}chunks.push(value);}const body=JSON.parse(Buffer.concat(chunks).toString("utf8"))as Record<string,unknown>;
     if(body.action==="safe-propose")return json(await proposeSeaportSafe(c,body));
     if(body.action==="safe-refresh")return json(await refreshSeaportSafeProposal(c,body.proposal as SeaportSafeProposal,body.approvals as SeaportSafeApproval[]));
@@ -68,7 +70,7 @@ export async function handleSeaportAcquisitionTest(request:Request){
       const hint=body.transactionHash;if(hint!==undefined&&(typeof hint!=="string"||!/^0x[a-f0-9]{64}$/i.test(hint)))return unavailable();
       return json(await verifySeaportSafeOuter(c,outer,hint as Hash|undefined));
     }
-    if(body.action==="prepare")return json(await prepareSeaportAcquisition(c,body));
+    if(body.action==="prepare")return json(await prepareSeaportAcquisition(c,body,undefined,stage=>{preparationStage=stage;}));
     if(!validSeaportReview(body.review))return unavailable();const r=body.review;
     if(body.action==="revalidate"){const rebuilt=await prepareSeaportAcquisition(c,{account:r.account,operation:r.operation,fields:r.fields},r);if(rebuilt.reviewHash!==r.reviewHash)return unavailable();return json({status:"prepared",reviewHash:r.reviewHash,request:rebuilt.request});}
     if(body.action!=="verify")return json({status:"rejected"},400);
@@ -86,5 +88,5 @@ export async function handleSeaportAcquisitionTest(request:Request){
     if(r.operation==="buy"&&(rows[0].blockNumber!==String(receipt.blockNumber)||!same(rows[0].blockHash,receipt.blockHash)))return unavailable();
     if(!same((await x.rpc.getBlock({blockNumber:receipt.blockNumber})).hash,receipt.blockHash))return json({status:"reorged",reviewHash:r.reviewHash});
     return json({status:"confirmed",reviewHash:r.reviewHash,transactionHash:original,indexed:r.operation==="buy",settlement:r.operation==="buy"?rows[0]:null,canonical:{blockNumber:String(receipt.blockNumber),blockHash:receipt.blockHash},finality:"synthetic-local-not-production"});
-  }catch{return json({status:"pending",reason:"Evidence or simulation unavailable; no submission attempted"});}
+  }catch(error){return json({status:"pending",reason:"Evidence or simulation unavailable; no submission attempted",...(preparationStage&&{diagnostic:seaportFixturePreparationDiagnostic(preparationStage,error)})});}
 }
