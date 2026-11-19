@@ -1,0 +1,280 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "sourceCommit": "908f2a3a0359cafc13e5746ec1c80f838fb5fe0b",
+  "runId": 44614908977,
+  "jobId": 135880860812,
+  "jobConclusion": "failure",
+  "artifactId": 14574367563,
+  "artifactZipSha256": "8ec89ecc261bd0b4b55440758637c06d5aa6089ddb7347f752aadf580b48dc0a",
+  "capturedAtUtc": "2026-11-19T21:15:30.461930+00:00",
+  "productionInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+  "productionSolidityChanged": false,
+  "tools": {
+    "foundry": "1.7.1",
+    "solc": "0.8.26+commit.8a97fa7a",
+    "slither": "0.11.5",
+    "cryticCompile": "0.3.11"
+  },
+  "observedResults": {
+    "foundryPassed": 54,
+    "foundryFailed": 0,
+    "foundrySkipped": 0,
+    "reviewTestsPassed": 6,
+    "reviewTestsFailed": 0,
+    "detectors": 101,
+    "observations": 48,
+    "highFindings": 23,
+    "strictExit": 1,
+    "highsCleared": 0,
+    "independentClearance": false
+  },
+  "steps": [
+    {
+      "number": 1,
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:03:36Z",
+      "completed_at": "2026-11-19T21:03:37Z"
+    },
+    {
+      "number": 2,
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:03:37Z",
+      "completed_at": "2026-11-19T21:03:41Z"
+    },
+    {
+      "number": 3,
+      "name": "Run pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:03:41Z",
+      "completed_at": "2026-11-19T21:03:42Z"
+    },
+    {
+      "number": 4,
+      "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:03:42Z",
+      "completed_at": "2026-11-19T21:03:43Z"
+    },
+    {
+      "number": 5,
+      "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:03:43Z",
+      "completed_at": "2026-11-19T21:03:48Z"
+    },
+    {
+      "number": 6,
+      "name": "Run foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:03:48Z",
+      "completed_at": "2026-11-19T21:03:51Z"
+    },
+    {
+      "number": 7,
+      "name": "Run pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:03:51Z",
+      "completed_at": "2026-11-19T21:04:00Z"
+    },
+    {
+      "number": 8,
+      "name": "Prepare exact compiler and genuine upstream fixture artifacts",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:04:00Z",
+      "completed_at": "2026-11-19T21:04:08Z"
+    },
+    {
+      "number": 9,
+      "name": "Verify genuine Seaport custody, authorization, callbacks and accounting invariants",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:04:08Z",
+      "completed_at": "2026-11-19T21:05:06Z"
+    },
+    {
+      "number": 10,
+      "name": "Run python -m pip install --disable-pip-version-check slither-analyzer==0.11.5 crytic-compile==0.3.11",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:05:06Z",
+      "completed_at": "2026-11-19T21:05:14Z"
+    },
+    {
+      "number": 11,
+      "name": "Analyze every new production root and reachable dependency with all 101 detectors",
+      "status": "completed",
+      "conclusion": "failure",
+      "started_at": "2026-11-19T21:05:14Z",
+      "completed_at": "2026-11-19T21:05:22Z"
+    },
+    {
+      "number": 12,
+      "name": "Bind all 23 Task084 observations to exact source and raw AST evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:05:22Z",
+      "completed_at": "2026-11-19T21:05:22Z"
+    },
+    {
+      "number": 13,
+      "name": "Run actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:05:22Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "number": 22,
+      "name": "Post Run foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "number": 23,
+      "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "number": 24,
+      "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "number": 25,
+      "name": "Post Run pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "number": 26,
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "number": 27,
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    }
+  ],
+  "plaintextSecretScan": {
+    "tool": "gitleaks",
+    "version": "8.30.1",
+    "arguments": [
+      "stdin",
+      "--config",
+      ".gitleaks.toml",
+      "--redact",
+      "--report-format",
+      "json",
+      "--report-path",
+      "-",
+      "--no-banner"
+    ],
+    "unchangedConfigPath": ".gitleaks.toml",
+    "configSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+    "policy": "Every original plaintext payload scanned before compression/upload; no filters, redactions or allowlist changes",
+    "exit": 0,
+    "findings": 0
+  },
+  "files": [
+    {
+      "originalArtifactPath": "seaport-acquisition-manifest.json",
+      "retainedPath": "compiler-manifest.json",
+      "compression": "none",
+      "originalBytes": 3353,
+      "originalSha256": "b8c63063319fcc0519b49418fd9a8b7f00f68cae79a0df29cf927ec5a92824de",
+      "retainedBytes": 3353,
+      "retainedSha256": "b8c63063319fcc0519b49418fd9a8b7f00f68cae79a0df29cf927ec5a92824de",
+      "plaintextGitleaksExit": 0,
+      "plaintextFindings": 0
+    },
+    {
+      "originalArtifactPath": "seaport-acquisition.json",
+      "retainedPath": "compiler-input.json",
+      "compression": "none",
+      "originalBytes": 38851,
+      "originalSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+      "retainedBytes": 38851,
+      "retainedSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+      "plaintextGitleaksExit": 0,
+      "plaintextFindings": 0
+    },
+    {
+      "originalArtifactPath": "seaport-acquisition-slither.json",
+      "retainedPath": "slither-all101.json.gz",
+      "compression": "gzip-mtime-0",
+      "originalBytes": 1956487,
+      "originalSha256": "42b68c7caceaaa7ff65fda391691f8c8c43c6612da87e50bbd9c8cdd4979fc4b",
+      "retainedBytes": 64598,
+      "retainedSha256": "7e964e21f1be126f3a682b73e0c5d0d8f2f02b8aa9137760847a2c6d6e9d2474",
+      "plaintextGitleaksExit": 0,
+      "plaintextFindings": 0
+    },
+    {
+      "originalArtifactPath": "task084-security-dispositions/dispositions.json",
+      "retainedPath": "dispositions.json",
+      "compression": "none",
+      "originalBytes": 316760,
+      "originalSha256": "986276d870903e098d22165b905b732354025bbea28d08b33424f07477da8e0a",
+      "retainedBytes": 316760,
+      "retainedSha256": "986276d870903e098d22165b905b732354025bbea28d08b33424f07477da8e0a",
+      "plaintextGitleaksExit": 0,
+      "plaintextFindings": 0
+    },
+    {
+      "originalArtifactPath": "strict-job.log",
+      "retainedPath": "strict-job.log.gz",
+      "compression": "gzip-mtime-0",
+      "originalBytes": 77781,
+      "originalSha256": "1af5c8d11670daae5bb56550108210ba69e73a99fe347ee8385bf865642a86db",
+      "retainedBytes": 18074,
+      "retainedSha256": "eb977d02b1f33fe1d396c884e4fe976130dc1648a58c5f7fc98f4d2a9f1a1aff",
+      "plaintextGitleaksExit": 0,
+      "plaintextFindings": 0
+    },
+    {
+      "originalArtifactPath": "strict-job.json",
+      "retainedPath": "strict-job.json",
+      "compression": "none",
+      "originalBytes": 6204,
+      "originalSha256": "04f5e6e880a9c49a380d057f59d25106c086142646a5f805b784f7709767e13b",
+      "retainedBytes": 6204,
+      "retainedSha256": "04f5e6e880a9c49a380d057f59d25106c086142646a5f805b784f7709767e13b",
+      "plaintextGitleaksExit": 0,
+      "plaintextFindings": 0
+    }
+  ],
+  "limits": [
+    "Original generated matrix retains null executionEvidence; manifest and original job log provide actual run provenance separately.",
+    "The strict gate is failed, not waived.",
+    "No production deployment, owner signing, funded transaction, source verification or independent audit occurred.",
+    "Relative source-display warnings remain in the original job log."
+  ]
+}
