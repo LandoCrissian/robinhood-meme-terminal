@@ -48,6 +48,17 @@ export function storeReclaimSafeJournal(storage: StoragePort, entry: ReclaimSafe
   storage.setItem(keyFor(entry), body); storage.setItem(indexKey, JSON.stringify(prior ? all.map(keyFor) : [...all.map(keyFor), keyFor(entry)]));
   if (storage.getItem(keyFor(entry)) !== body || !listReclaimSafeJournals(storage).some(e => e.proposal.proposalHash === entry.proposal.proposalHash)) throw Error("Safe proposal could not be saved before the wallet request.");
 }
+/** Never turn an unavailable manual hash into the immutable Safe journal hash. */
+export function reconcileReclaimSafeRecovery(original: ReclaimSafeJournal, result: ReclaimSafeVerification, now: number, candidateHash?: string): ReclaimSafeJournal {
+  if (!validReclaimSafeJournal(original) || !original.outerReview || candidateHash !== undefined && (!reclaimHash(candidateHash)
+    || original.transactionHash !== null && !sameReclaimHex(candidateHash, original.transactionHash))
+    || !reclaimSafeVerificationMatches(original.outerReview, result, original.transactionHash ?? candidateHash)) throw Error("Recovery does not match the original Safe transaction.");
+  const canonical = result.status === "confirmed" || result.status === "reverted";
+  const transactionHash = original.transactionHash ?? (canonical ? result.transactionHash! : null);
+  const retained = { ...result }; if (transactionHash === null) delete retained.transactionHash;
+  const next: ReclaimSafeJournal = { ...original, transactionHash, result: retained, stage: retained.status, updatedAt: now };
+  if (!validReclaimSafeJournal(next)) throw Error("Recovery cannot replace the original Safe identity."); return next;
+}
 export function assertNoPendingReclaimSafe(storage: StoragePort, account: string): void {
   if (listReclaimSafeJournals(storage).some(e => ["awaiting-wallet", "hash-missing", "pending", "unavailable", "reorged"].includes(e.stage)
     && (sameReclaimHex(e.proposal.safe, account) || sameReclaimHex(e.proposal.gasPayer, account)))) throw Error("Recover the original Safe transaction before requesting another wallet submission.");

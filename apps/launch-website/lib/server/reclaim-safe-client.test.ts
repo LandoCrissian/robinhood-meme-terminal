@@ -6,8 +6,8 @@ import { isReclaimReview, reclaimProfile, reclaimReviewHash, type ReclaimReview 
 import { assertNoPendingReclaim } from "../reclaim-recovery";
 import { canonicalSafeApprovals, canonicalSafeTypedData, isReclaimSafeOuterReview, isReclaimSafeProposal, reclaimSafeExecutionAbi, reclaimSafeOuterReviewHash,
   reclaimSafeProposalHash, reclaimSafeVerificationMatches, verifyReclaimSafeApproval, verifyReclaimSafeApprovals,
-  type ReclaimSafeApproval, type ReclaimSafeOuterReview, type ReclaimSafeProposal } from "../reclaim-safe";
-import { listReclaimSafeJournals, reclaimSafeJournalNamespace, storeReclaimSafeJournal, type ReclaimSafeJournal } from "../reclaim-safe-recovery";
+  type ReclaimSafeApproval, type ReclaimSafeOuterReview, type ReclaimSafeProposal, type ReclaimSafeVerification } from "../reclaim-safe";
+import { listReclaimSafeJournals, reclaimSafeJournalNamespace, storeReclaimSafeJournal, reconcileReclaimSafeRecovery, type ReclaimSafeJournal } from "../reclaim-safe-recovery";
 
 const address = (n: number) => ("0x" + n.toString(16).padStart(40, "0")) as Address;
 const hash = (n: number) => ("0x" + n.toString(16).padStart(64, "0")) as Hex;
@@ -79,4 +79,29 @@ test("Safe original journal preserves outer hash, blocks both Safe and gas payer
   assert.ok(reclaimSafeVerificationMatches(r, unavailable)); storeReclaimSafeJournal(storage, { ...pending, transactionHash: hash(90), stage: "unavailable", result: unavailable, updatedAt: 3 });
   assert.throws(() => storeReclaimSafeJournal(storage, { ...pending, transactionHash: hash(91), updatedAt: 4 }), /cannot be replaced/);
   const raw = storage.getItem(reclaimSafeJournalNamespace + ":" + r.proposal.proposalHash); assert.ok(raw?.includes(hash(90)));
+});
+test("wrong manual Safe hashes remain hints until canonical exact settlement and cannot poison later recovery", async () => {
+  const r = await outer(), point = { blockNumber: "101", blockHash: hash(101), timestamp: "2026-11-19T01:00:01.000Z" };
+  for (const status of ["pending", "unavailable", "reorged"] as const) {
+    const storage = memory(), original: ReclaimSafeJournal = { schemaVersion: 1, proposal: r.proposal, approvals: r.approvals, outerReview: r,
+      stage: "hash-missing", transactionHash: null, result: null, createdAt: 1, updatedAt: 1 };
+    storeReclaimSafeJournal(storage, original);
+    const hint: ReclaimSafeVerification = { schemaVersion: 2, profile: reclaimProfile, chainId: 31337, executionEnabled: false, reviewHash: r.reviewHash,
+      proposalHash: r.proposal.proposalHash, safe, gasPayer: payer, safeNonce: "7", operation: "redeem", status, transactionHash: hash(98), finality: "synthetic-local-not-production" };
+    const unresolved = reconcileReclaimSafeRecovery(original, hint, 2, hash(98)); storeReclaimSafeJournal(storage, unresolved);
+    assert.equal(unresolved.transactionHash, null); assert.equal(unresolved.result?.transactionHash, undefined);
+    assert.throws(() => assertNoPendingReclaim(storage, safe)); assert.throws(() => assertNoPendingReclaim(storage, payer));
+    for (const terminal of ["confirmed", "reverted"] as const) {
+      const correct: ReclaimSafeVerification = { ...hint, status: terminal, transactionHash: hash(99), canonical: point,
+        ...(terminal === "confirmed" && { settlement: { ...r.proposal.innerReview.nft!, kind: "permanent-surrender", receiptId: "1", claimant: safe,
+          rewardToken: reward, rewardWei: "5", custody: "permanent-retirement", transactionHash: hash(99), canonical: point } }) };
+      const completed = reconcileReclaimSafeRecovery(unresolved, correct, 3, hash(99));
+      assert.equal(completed.transactionHash, hash(99)); assert.ok(reclaimSafeVerificationMatches(r, completed.result));
+      assert.throws(() => reconcileReclaimSafeRecovery(completed, hint, 4, hash(98)), /original Safe/);
+      assert.throws(() => reconcileReclaimSafeRecovery(unresolved, { ...correct, canonical: undefined }, 4, hash(99)), /original Safe/);
+    }
+    const correct = { ...hint, status: "reverted" as const, transactionHash: hash(99), canonical: point };
+    storeReclaimSafeJournal(storage, reconcileReclaimSafeRecovery(unresolved, correct, 3, hash(99)));
+    assert.equal(listReclaimSafeJournals(storage).length, 1); assert.equal(listReclaimSafeJournals(storage)[0].transactionHash, hash(99));
+  }
 });

@@ -51,6 +51,19 @@ export function storeReclaimJournal(storage: StoragePort, entry: ReclaimJournal)
   storage.setItem(indexKey, JSON.stringify(prior ? all.map(item => keyFor(item.review)) : [...all.map(item => keyFor(item.review)), keyFor(entry.review)]));
   if (storage.getItem(keyFor(entry.review)) !== body || !listReclaimJournals(storage).some(item => item.review.reviewHash === entry.review.reviewHash)) throw Error("The original Reclaim request could not be saved before wallet confirmation.");
 }
+/** A manually entered hash is an untrusted recovery hint. Only a canonical
+ * terminal result may establish an absent original hash. Wallet-returned and
+ * previously established hashes remain immutable even during provider failure. */
+export function reconcileReclaimRecovery(original: ReclaimJournal, result: ReclaimVerification, now: number, candidateHash?: string): ReclaimJournal {
+  if (!validReclaimJournal(original) || candidateHash !== undefined && (!reclaimHash(candidateHash)
+    || original.transactionHash !== null && !sameReclaimHex(candidateHash, original.transactionHash))
+    || !reclaimVerificationMatches(original.review, result, original.transactionHash ?? candidateHash)) throw Error("Recovery does not match the original Reclaim transaction.");
+  const canonical = result.status === "confirmed" || result.status === "reverted";
+  const transactionHash = original.transactionHash ?? (canonical ? result.transactionHash! : null);
+  const retained = { ...result }; if (transactionHash === null) delete retained.transactionHash;
+  const next: ReclaimJournal = { ...original, transactionHash, result: retained, stage: retained.status, updatedAt: now };
+  if (!validReclaimJournal(next)) throw Error("Recovery cannot replace the original Reclaim identity."); return next;
+}
 export function assertNoPendingReclaim(storage: StoragePort, account: string): void {
   assertNoPendingHistoricalReclaim(storage, account);
   assertNoPendingReclaimSafe(storage, account);

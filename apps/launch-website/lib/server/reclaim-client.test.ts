@@ -6,7 +6,7 @@ import { reclaimCampaignSignatures, reclaimFactorySignatures } from "../../../..
 import { isReclaimReview, isReclaimSnapshot, reclaimFieldsDigest, reclaimOperations, reclaimProfile, reclaimReviewHash, reclaimVerificationMatches, validReclaimFields,
   type ReclaimFields, type ReclaimOperation, type ReclaimReview, type ReclaimSnapshot, type ReclaimVerification } from "../reclaim";
 import { assertNoPendingHistoricalReclaim, assertNoPendingLifecycleForReclaim, assertNoPendingReclaim, canStartAnotherReclaimCampaign, listReclaimJournals, reclaimCampaignIntentKey, reclaimJournalNamespace,
-  startAnotherReclaimCampaign, storeReclaimJournal, validReclaimJournal, type ReclaimJournal } from "../reclaim-recovery";
+  startAnotherReclaimCampaign, storeReclaimJournal, validReclaimJournal, reconcileReclaimRecovery, type ReclaimJournal } from "../reclaim-recovery";
 import { curveBuySignature, isTestLifecycleRequest, type TestLifecycleRequest } from "../test-lifecycle";
 
 const address = (n: number) => ("0x" + BigInt(n).toString(16).padStart(40, "0")) as `0x${string}`;
@@ -154,6 +154,26 @@ test("wallet rejection is distinct from ambiguous hash loss and malformed storag
   storeReclaimJournal(storage, { ...entry, stage: "hash-missing", updatedAt: 2 }); assert.throws(() => assertNoPendingReclaim(storage, actor));
   const key = reclaimJournalNamespace + ":" + entry.review.reviewHash; storage.setItem(key, "corrupted-original"); assert.throws(() => listReclaimJournals(storage), /malformed/);
   assert.equal(validReclaimJournal({ ...entry, stage: "confirmed" }), false);
+});
+test("an unverified manual recovery hash cannot strand the original request and a canonical hash remains immutable", () => {
+  for (const status of ["pending", "unavailable", "reorged"] as const) {
+    const storage = memory(), original = { ...journal(), stage: "hash-missing" as const };
+    storeReclaimJournal(storage, original);
+    const hint: ReclaimVerification = { schemaVersion: 2, profile: reclaimProfile, chainId: 31337, executionEnabled: false,
+      reviewHash: original.review.reviewHash, status, transactionHash: hash(98), finality: "synthetic-local-not-production" };
+    const unresolved = reconcileReclaimRecovery(original, hint, 2, hash(98)); storeReclaimJournal(storage, unresolved);
+    assert.equal(unresolved.transactionHash, null); assert.equal(unresolved.result?.transactionHash, undefined);
+    assert.equal(listReclaimJournals(storage).length, 1); assert.throws(() => assertNoPendingReclaim(storage, actor));
+    const correct = verification(original.review), completed = reconcileReclaimRecovery(unresolved, correct, 3, hash(99));
+    storeReclaimJournal(storage, completed); assert.equal(completed.transactionHash, hash(99));
+    assert.throws(() => reconcileReclaimRecovery(completed, hint, 4, hash(98)), /original Reclaim/);
+    assert.throws(() => storeReclaimJournal(storage, { ...completed, transactionHash: hash(98), updatedAt: 4 }));
+    assert.equal(listReclaimJournals(storage)[0].transactionHash, hash(99));
+    assert.throws(() => reconcileReclaimRecovery(unresolved, { ...correct, canonical: undefined }, 4, hash(99)), /original Reclaim/);
+  }
+  const original = { ...journal(), stage: "pending" as const, transactionHash: hash(99) };
+  const unavailable = { ...verification(original.review), status: "unavailable" as const };
+  assert.equal(reconcileReclaimRecovery(original, unavailable, 2).transactionHash, hash(99), "Wallet-returned hash survives an outage");
 });
 test("a separate campaign requires explicit intent release after canonical indexed creation and retains every original journal", () => {
   const r = review(); r.operation = "create-campaign"; r.fields = { intentId: hash(77), controller: actor, rewardPerUnit: r.rewardWei, walletCap: "4" };

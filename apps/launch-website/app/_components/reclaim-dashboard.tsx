@@ -10,11 +10,11 @@ import { assertNoUnresolvedFinancialRequests } from "./treasury-wallet-controls"
 import { isReclaimReview, isReclaimSnapshot, reclaimAddress, reclaimHash, reclaimReadPath, reclaimTestPath, reclaimVerificationMatches,
   reclaimFieldsDigest, sameReclaimHex, type ReclaimFields, type ReclaimOperation, type ReclaimReview, type ReclaimSnapshot, type ReclaimVerification } from "../../lib/reclaim";
 import { assertNoPendingLifecycleForReclaim, canStartAnotherReclaimCampaign, listReclaimJournals, reclaimCampaignIntentKey, reclaimJournalTerminal,
-  startAnotherReclaimCampaign, storeReclaimJournal, type ReclaimJournal } from "../../lib/reclaim-recovery";
+  startAnotherReclaimCampaign, storeReclaimJournal, reconcileReclaimRecovery, type ReclaimJournal } from "../../lib/reclaim-recovery";
 import { canonicalSafeApprovals, canonicalSafeTypedData, isReclaimSafeOuterReview, isReclaimSafeProposal,
   reclaimSafeVerificationMatches, verifyReclaimSafeApproval, verifyReclaimSafeApprovals,
   type ReclaimSafeApproval, type ReclaimSafeOuterReview, type ReclaimSafeProposal } from "../../lib/reclaim-safe";
-import { listReclaimSafeJournals, storeReclaimSafeJournal, type ReclaimSafeJournal } from "../../lib/reclaim-safe-recovery";
+import { listReclaimSafeJournals, storeReclaimSafeJournal, reconcileReclaimSafeRecovery, type ReclaimSafeJournal } from "../../lib/reclaim-safe-recovery";
 import { MyLaunchesNav } from "./my-launches-nav";
 
 const amount = (value: string) => {
@@ -49,13 +49,17 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
   const [campaignInput, setCampaignInput] = useState(initialCampaign), [snapshot, setSnapshot] = useState<ReclaimSnapshot | null>(null);
   const [selectedCampaign, setSelectedCampaign] = useState(""), [stale, setStale] = useState(false), [message, setMessage] = useState("");
   const [ready, setReady] = useState(false), [busy, setBusy] = useState(false), [wallet, setWallet] = useState<TestWallet | null>(null);
-  const [review, setReview] = useState<ReclaimReview | null>(null), [journals, setJournals] = useState<ReclaimJournal[]>([]), [journalKey, setJournalKey] = useState(""), [manualHash, setManualHash] = useState("");
+  const [review, setReview] = useState<ReclaimReview | null>(null), [journals, setJournals] = useState<ReclaimJournal[]>([]), [journalKey, setJournalKey] = useState("");
+  const [manualHashInput, setManualHashInput] = useState({ identity: "", value: "" });
   const [safeActor, setSafeActor] = useState(""), [collection, setCollection] = useState(""), [tokenIds, setTokenIds] = useState(""), [quantities, setQuantities] = useState("1");
   const [controller, setController] = useState(""), [rewardUnits, setRewardUnits] = useState("5"), [walletCap, setWalletCap] = useState("4"), [fundUnits, setFundUnits] = useState("2000");
   const [collectionCap, setCollectionCap] = useState("32"), [collectionWalletCap, setCollectionWalletCap] = useState("4"), [nextController, setNextController] = useState("");
   const [creationIntent, setCreationIntent] = useState<string | null>(null);
   const [permanentConsent, setPermanentConsent] = useState(false), [safeConsentHash, setSafeConsentHash] = useState<string | null>(null), [gasPayer, setGasPayer] = useState("");
-  const [safeJournals, setSafeJournals] = useState<ReclaimSafeJournal[]>([]), [safeKey, setSafeKey] = useState(""), [safeManualHash, setSafeManualHash] = useState("");
+  const [safeJournals, setSafeJournals] = useState<ReclaimSafeJournal[]>([]), [safeKey, setSafeKey] = useState("");
+  const [safeManualHashInput, setSafeManualHashInput] = useState({ identity: "", value: "" });
+  const manualHash = manualHashInput.identity === journalKey ? manualHashInput.value : "";
+  const safeManualHash = safeManualHashInput.identity === safeKey ? safeManualHashInput.value : "";
   const generation = useRef(0), revision = useRef(0), lock = useRef(false), active = useRef<AbortController | null>(null);
   const selected = useRef("");
   const actor = safeActor || wallet?.account || "";
@@ -63,6 +67,8 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
   const refreshJournals = () => { if (fixture) { setJournals(listReclaimJournals(localStorage)); const saved = listReclaimSafeJournals(localStorage); setSafeJournals(saved); setSafeKey(current => current || saved[0]?.proposal.proposalHash || ""); setCreationIntent(reclaimAddress(actor) ? localStorage.getItem(reclaimCampaignIntentKey(actor)) : null); } };
   useEffect(() => { setReady(true); if (fixture) { try { refreshJournals(); } catch (error) { setMessage(error instanceof Error ? error.message : "Recovery unavailable."); } } }, []);
   useEffect(() => () => { generation.current++; revision.current++; active.current?.abort(); }, []);
+  useEffect(() => { setManualHashInput({ identity: journalKey, value: "" }); }, [journalKey]);
+  useEffect(() => { setSafeManualHashInput({ identity: safeKey, value: "" }); setSafeConsentHash(null); }, [safeKey]);
   useEffect(() => { if (reclaimAddress(initialCampaign)) void load(initialCampaign); }, []);
   useEffect(() => { if (fixture) { try { refreshJournals(); } catch (error) { setMessage(error instanceof Error ? error.message : "Recovery unavailable."); } } }, [actor]);
   useEffect(() => {
@@ -179,7 +185,7 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
       if (original.transactionHash && hash && !sameReclaimHex(original.transactionHash, hash)) throw Error("The original transaction hash cannot be replaced.");
       const payload = await post({ action: "verify", review: original.review, ...(hash && { transactionHash: hash }) });
       if (!reclaimVerificationMatches(original.review, payload, hash ?? undefined)) throw Error("Recovery evidence does not match the original reviewed transaction.");
-      const entry: ReclaimJournal = { ...original, transactionHash: payload.transactionHash ?? original.transactionHash, stage: payload.status, result: payload, updatedAt: Date.now() };
+      const entry = reconcileReclaimRecovery(original, payload, Date.now(), hash ?? undefined);
       storeReclaimJournal(localStorage, entry); refreshJournals();
       if (payload.snapshot && selected.current && sameReclaimHex(selected.current, payload.snapshot.campaign)) { setSnapshot(payload.snapshot); setStale(false); }
       if (original.review.operation === "create-campaign" && payload.status === "confirmed") {
@@ -283,7 +289,7 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
       if (hash && !reclaimHash(hash) || hash && entry.transactionHash && !sameReclaimHex(hash, entry.transactionHash)) throw Error("Preserve the exact original Safe transaction hash.");
       const payload = await post({ action: "safe-verify", review: entry.outerReview, ...(hash && { transactionHash: hash }) });
       if (!reclaimSafeVerificationMatches(entry.outerReview, payload, hash ?? undefined)) throw Error("Safe receipt or permanent surrender evidence does not match the original proposal.");
-      saveSafe({ ...entry, result: payload, transactionHash: payload.transactionHash ?? entry.transactionHash, stage: payload.status, updatedAt: Date.now() });
+      saveSafe(reconcileReclaimSafeRecovery(entry, payload, Date.now(), hash ?? undefined));
       if (payload.snapshot && selected.current && sameReclaimHex(payload.snapshot.campaign, selected.current)) { setSnapshot(payload.snapshot); setStale(false); }
       setMessage(verificationLabel(payload));
     });
@@ -389,7 +395,7 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
       </section>}
       <details className="lpReclaimRecovery lpReclaimSafe"><summary>Safe approvals and recovery</summary>
         <p>Each current owner explicitly signs the exact Safe EIP-712 action. The gas payer separately reviews and confirms its outer transaction. Owner signatures never authorize an EOA to act as the Safe.</p>
-        <label htmlFor="reclaim-safe-original">Original Safe proposal<select id="reclaim-safe-original" aria-label="Original Safe proposal" value={safeKey} disabled={localDisabled} onChange={event => { setSafeKey(event.target.value); setSafeManualHash(""); setSafeConsentHash(null); }}><option value="">Choose a preserved proposal</option>{safeJournals.map(entry => <option key={entry.proposal.proposalHash} value={entry.proposal.proposalHash}>{label(entry.proposal.innerReview.operation)} · Safe nonce {entry.proposal.safeNonce} · {entry.stage}</option>)}</select></label>
+        <label htmlFor="reclaim-safe-original">Original Safe proposal<select id="reclaim-safe-original" aria-label="Original Safe proposal" value={safeKey} disabled={localDisabled} onChange={event => setSafeKey(event.target.value)}><option value="">Choose a preserved proposal</option>{safeJournals.map(entry => <option key={entry.proposal.proposalHash} value={entry.proposal.proposalHash}>{label(entry.proposal.innerReview.operation)} · Safe nonce {entry.proposal.safeNonce} · {entry.stage}</option>)}</select></label>
         {safeEntry && <>
           <dl className="lpFacts"><dt>Safe</dt><dd>{safeEntry.proposal.safe}</dd><dt>Safe nonce</dt><dd>{safeEntry.proposal.safeNonce}</dd><dt>Gas payer</dt><dd>{safeEntry.proposal.gasPayer}</dd><dt>Gas-payer nonce</dt><dd>{safeEntry.proposal.gasPayerNonce}</dd><dt>Exact action</dt><dd>{label(safeEntry.proposal.innerReview.operation)} · {safeEntry.proposal.innerReview.innerCall.to}</dd><dt>Safe typed-data digest</dt><dd>{safeEntry.proposal.digest}</dd><dt>Approvals</dt><dd>{safeEntry.approvals.length} / 2 current owners · 3-owner SafeL2 1.4.1</dd><dt>Application review expires</dt><dd>{when(String(safeEntry.proposal.expiresAt))}</dd>
           {safeEntry.proposal.innerReview.nft && <><dt>Permanent NFT retirement</dt><dd>{retirement(safeEntry.proposal.innerReview.nft.retirementMode)} · {safeEntry.proposal.innerReview.nft.collection} · IDs {safeEntry.proposal.innerReview.nft.tokenIds.join(", ")} · quantities {safeEntry.proposal.innerReview.nft.quantities.join(", ")}</dd><dt>Retirement destination</dt><dd>{safeEntry.proposal.innerReview.nft.retirementMode === 1 ? "None — actual native burn" : safeEntry.proposal.innerReview.nft.destination}</dd><dt>Exact funded reward</dt><dd>{amount(safeEntry.proposal.innerReview.rewardWei)} synthetic RMT token units; no USD guarantee</dd></>}
@@ -401,14 +407,14 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
           {safeEntry.outerReview && <section className="lpRecovery" aria-label="Reviewed Safe outer transaction"><h3>Review exact Safe execution</h3><p>{safeEntry.proposal.innerReview.operation === "redeem" ? "This transaction permanently retires the listed NFTs and pays only the exact funded reward. It cannot be reversed." : "Only the original approved action may execute."} Native call value is 0 ETH; the gas payer pays network costs.</p><dl className="lpFacts"><dt>From</dt><dd>{safeEntry.outerReview.request.from}</dd><dt>To</dt><dd>{safeEntry.outerReview.request.to}</dd><dt>Gas limit</dt><dd>{BigInt(safeEntry.outerReview.request.gas).toString()}</dd><dt>Maximum network fee</dt><dd>{amount(safeEntry.outerReview.maximumNetworkFeeWei)} synthetic ETH</dd><dt>Review hash</dt><dd>{safeEntry.outerReview.reviewHash}</dd></dl><details><summary>Exact Safe outer transaction data</summary><pre>{JSON.stringify(safeEntry.outerReview.request, null, 2)}</pre></details><button className="lpButton" disabled={localDisabled || !wallet || !["approvals-ready", "wallet-rejected"].includes(safeEntry.stage) || !sameReclaimHex(wallet.account, safeEntry.proposal.gasPayer) || safeEntry.proposal.innerReview.operation === "redeem" && safeConsentHash !== safeEntry.proposal.proposalHash} onClick={() => void confirmSafeOuter()}>Confirm Safe execution transaction</button></section>}
           <p>{safeEntry.transactionHash ?? "Original outer hash not returned or not submitted. No automatic retry is allowed."}</p>
           <p>{safeEntry.result ? verificationLabel(safeEntry.result) : `Preserved Safe status: ${safeEntry.stage}`}</p>
-          <label htmlFor="reclaim-safe-hash">Original Safe transaction hash (if available)<input id="reclaim-safe-hash" value={safeManualHash} onChange={event => setSafeManualHash(event.target.value)} disabled={localDisabled} maxLength={66} placeholder="0x…" /></label>
+          <label htmlFor="reclaim-safe-hash">Original Safe transaction hash (if available)<input id="reclaim-safe-hash" value={safeManualHash} onChange={event => setSafeManualHashInput({ identity: safeKey, value: event.target.value })} disabled={localDisabled} maxLength={66} placeholder="0x…" /></label>
           <button className="lpButton lpButtonSecondary" disabled={localDisabled || !safeEntry.outerReview} onClick={() => void recoverSafe()}>Verify original Safe execution</button>
         </>}
       </details>
       <details className="lpReclaimRecovery"><summary>Recover original Reclaim transaction</summary><p>Recovery only reads the original transaction. It never requests another signature or broadcasts a duplicate.</p>
-        <label htmlFor="reclaim-original">Original Reclaim request<select id="reclaim-original" aria-label="Original Reclaim request" value={journalKey} onChange={event => { setJournalKey(event.target.value); setManualHash(""); }} disabled={localDisabled}><option value="">Choose a preserved request</option>{journals.map(entry => <option key={entry.review.reviewHash} value={entry.review.reviewHash}>{label(entry.review.operation)} · {entry.stage} · {entry.review.actor.slice(0, 10)}…</option>)}</select></label>
+        <label htmlFor="reclaim-original">Original Reclaim request<select id="reclaim-original" aria-label="Original Reclaim request" value={journalKey} onChange={event => setJournalKey(event.target.value)} disabled={localDisabled}><option value="">Choose a preserved request</option>{journals.map(entry => <option key={entry.review.reviewHash} value={entry.review.reviewHash}>{label(entry.review.operation)} · {entry.stage} · {entry.review.actor.slice(0, 10)}…</option>)}</select></label>
         {selectedJournal && <><p>{selectedJournal.transactionHash ?? "Transaction hash not returned; original actor and nonce remain preserved."}</p><p>{selectedJournal.result ? verificationLabel(selectedJournal.result) : reclaimJournalTerminal(selectedJournal) ? "This original outcome remains in history." : "Original outcome unresolved. Do not submit it again."}</p></>}
-        <label htmlFor="reclaim-original-hash">Original transaction hash (if available)<input id="reclaim-original-hash" value={manualHash} onChange={event => setManualHash(event.target.value)} disabled={localDisabled} maxLength={66} placeholder="0x…" /></label>
+        <label htmlFor="reclaim-original-hash">Original transaction hash (if available)<input id="reclaim-original-hash" value={manualHash} onChange={event => setManualHashInput({ identity: journalKey, value: event.target.value })} disabled={localDisabled} maxLength={66} placeholder="0x…" /></label>
         <button className="lpButton lpButtonSecondary" disabled={localDisabled || !selectedJournal} onClick={() => void recover()}>Verify original Reclaim transaction</button>
       </details>
     </section>}
