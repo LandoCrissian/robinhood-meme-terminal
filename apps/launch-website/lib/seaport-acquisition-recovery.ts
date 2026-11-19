@@ -2,6 +2,12 @@ import {validSeaportReview,type SeaportAcquisitionReview} from "./seaport-acquis
 export type SeaportJournal={review:SeaportAcquisitionReview;stage:"awaiting-wallet"|"pending"|"hash-missing"|"confirmed"|"reverted"|"wallet-rejected";hash?:string;updatedAt:number};
 const prefix="rmt.seaport-acquisition.pending.v2:31337:";
 const scope=(vault:string)=>prefix+vault.toLowerCase()+":";
+export function pendingSeaportRecovery(journal:SeaportJournal,result:{status?:unknown;reviewHash?:unknown;transactionHash?:unknown}):Omit<SeaportJournal,"updatedAt">|undefined{
+  if(result.status!=="pending"&&result.status!=="reorged")return;
+  if(result.reviewHash!==undefined&&result.reviewHash!==journal.review.reviewHash)throw Error("Recovery identity mismatch");
+  const discovered=result.reviewHash===journal.review.reviewHash&&typeof result.transactionHash==="string"&&/^0x[0-9a-f]{64}$/i.test(result.transactionHash)?result.transactionHash:undefined;
+  return{...journal,stage:"pending",...(journal.hash?{hash:journal.hash}:discovered?{hash:discovered}:{})};
+}
 export function loadSeaportJournal(storage:Storage,vault:string):SeaportJournal|undefined{
   const entries:SeaportJournal[]=[];let count=0;for(let i=0;i<storage.length;i++){const key=storage.key(i);if(!key?.startsWith(scope(vault)))continue;if(++count>32)throw Error("Recovery journal bound exceeded");try{const raw=storage.getItem(key)??"null";if(raw.length>65536)continue;const value=JSON.parse(raw)as SeaportJournal;if(validSeaportReview(value.review)&&value.review.vault.toLowerCase()===vault.toLowerCase()&&Number.isSafeInteger(value.updatedAt)&&["awaiting-wallet","pending","hash-missing","confirmed","reverted","wallet-rejected"].includes(value.stage))entries.push(value);}catch{}}
   return entries.sort((a,b)=>b.updatedAt-a.updatedAt)[0];

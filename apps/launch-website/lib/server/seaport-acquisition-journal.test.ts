@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import {toFunctionSelector} from "viem";
-import {saveSeaportJournal,loadSeaportJournal} from "../seaport-acquisition-recovery";
+import {saveSeaportJournal,loadSeaportJournal,pendingSeaportRecovery} from "../seaport-acquisition-recovery";
 import {seaportAcquisitionReviewHash,type SeaportAcquisitionReview} from "../seaport-acquisition";
 
 test("A canonically reverted original request remains recoverable after reload without losing its identity",()=>{
@@ -11,4 +11,7 @@ test("A canonically reverted original request remains recoverable after reload w
  const review={...body,reviewHash:seaportAcquisitionReviewHash(body)};
  saveSeaportJournal(storage,{review,stage:"pending",hash});const reverted=saveSeaportJournal(storage,{review,stage:"reverted",hash});
  assert.equal(values.size,1);assert.deepEqual(loadSeaportJournal(storage,vault),reverted);assert.deepEqual(loadSeaportJournal(storage,vault)?.review.request,body.request);assert.equal(loadSeaportJournal(storage,vault)?.stage,"reverted");
+ const confirmed=saveSeaportJournal(storage,{review,stage:"confirmed",hash});
+ for(const result of[{status:"pending"},{status:"reorged",reviewHash:review.reviewHash}]){const downgraded=pendingSeaportRecovery(confirmed,result);assert.ok(downgraded);assert.equal(downgraded.stage,"pending");assert.deepEqual(downgraded.review,confirmed.review);assert.equal(downgraded.hash,hash);saveSeaportJournal(storage,downgraded);assert.equal(loadSeaportJournal(storage,vault)?.stage,"pending");assert.deepEqual(loadSeaportJournal(storage,vault)?.review.request,body.request);}
+ assert.throws(()=>pendingSeaportRecovery(confirmed,{status:"pending",reviewHash:"0x"+"b".repeat(64)}),/identity mismatch/);
 });
