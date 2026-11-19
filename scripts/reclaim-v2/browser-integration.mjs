@@ -112,6 +112,7 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
   }
   async function reviewRejected(name, expectedHttp, expectedStatus, scope = page) {
     currentReview = undefined; const before = evidence.sends.length;
+    if (name === "Review permanent NFT surrender") await page.getByLabel("I understand these NFTs will be permanently removed from circulation and can never be returned.", { exact: true }).check();
     const payload = await response("prepare", () => button(name, scope).click(), expectedHttp);
     assert.equal(payload.status, expectedStatus); assert.equal(evidence.sends.length, before);
     evidence.rejectedReviews ??= []; evidence.rejectedReviews.push({ name, httpStatus: expectedHttp, status: payload.status, noSubmission: true }); save(); return payload;
