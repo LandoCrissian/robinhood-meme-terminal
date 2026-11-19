@@ -21,7 +21,7 @@ contract Acquisition721Fixture {
     function mint(address to,uint256 id)external{require(to!=address(0)&&!everMinted[id]);everMinted[id]=true;owners[id]=to;balanceOf[to]++;emit Transfer(address(0),to,id);}
     function approve(address to,uint256 id)external{address owner=ownerOf(id);require(msg.sender==owner||isApprovedForAll[owner][msg.sender]);getApproved[id]=to;emit Approval(owner,to,id);}
     function setApprovalForAll(address to,bool allowed)external{require(to!=msg.sender);isApprovedForAll[msg.sender][to]=allowed;emit ApprovalForAll(msg.sender,to,allowed);}
-    function transferFrom(address from,address to,uint256 id)public{require(ownerOf(id)==from&&to!=address(0)&&(msg.sender==from||getApproved[id]==msg.sender||isApprovedForAll[from][msg.sender]));delete getApproved[id];owners[id]=to;balanceOf[from]--;balanceOf[to]++;emit Transfer(from,to,id);}
+    function transferFrom(address from,address to,uint256 id)public{require(ownerOf(id)==from&&to!=address(0)&&(msg.sender==from||getApproved[id]==msg.sender||isApprovedForAll[from][msg.sender]));delete getApproved[id];owners[id]=to;if(fault!=5)balanceOf[from]--;if(fault!=6)balanceOf[to]++;emit Transfer(from,to,id);}
     function safeTransferFrom(address from,address to,uint256 id)external{safeTransferFrom(from,to,id,"");}
     function safeTransferFrom(address from,address to,uint256 id,bytes memory data)public{
         address actual=fault==1?callbackTarget:to;transferFrom(from,actual,id);

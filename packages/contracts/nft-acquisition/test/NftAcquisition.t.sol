@@ -112,6 +112,10 @@ contract NftAcquisitionTest is AcquisitionTestBase {
         nft.configureFault(1,OTHER);_reject(o,_sign(o));require(nft.ownerOf(1)==seller&&seller.balance==before);
         nft.configureFault(3,address(0));_reject(o,_sign(o));require(nft.ownerOf(1)==seller&&seller.balance==before);_conserved(address(0));
     }
+    function testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances()public{
+        T.Order memory o=_order(address(nft),1,1,1,address(0),.1 ether);uint256 before=seller.balance;
+        for(uint8 mode=5;mode<=6;mode++){nft.configureFault(mode,address(0));_reject(o,_sign(o));require(nft.ownerOf(1)==seller&&nft.balanceOf(seller)==4&&nft.balanceOf(address(vault))==0&&seller.balance==before);}_conserved(address(0));
+    }
     function testMaliciousNftCallbackCannotDisableControllerPolicyOrRedirectFunds()public{
         nft.configureFault(2,address(vault));_buy(_order(address(nft),1,1,1,address(0),.1 ether));
         require(!nft.callbackSucceeded()&&nft.callbackError()==RMTNftAcquisitionVaultV1.Unauthorized.selector&&vault.purchasesEnabled()&&nft.ownerOf(1)==address(vault));_conserved(address(0));
@@ -139,6 +143,11 @@ contract NftAcquisitionTest is AcquisitionTestBase {
     function testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout()public{
         vm.prank(CREATOR);uint64 id=vault.scheduleAssetWithdrawal(address(0),1 ether,OTHER,_now()+3 days);require(vault.available(address(0))==9 ether);vm.expectRevert();vault.executeWithdrawal(id);vm.warp(_now()+2 days);vault.executeWithdrawal(id);require(OTHER.balance==1 ether&&vault.pendingWithdrawals()==0);_conserved(address(0));
         AcquisitionRejectRecipient rejected=new AcquisitionRejectRecipient();vm.prank(CREATOR);id=vault.scheduleAssetWithdrawal(address(0),1 ether,address(rejected),_now()+3 days);vm.warp(_now()+2 days);vm.expectRevert();vault.executeWithdrawal(id);require(vault.reservedAsset(address(0))==1 ether);vm.warp(_now()+2 days);vault.cancelWithdrawal(id);require(vault.reservedAsset(address(0))==0);_conserved(address(0));
+    }
+    function testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior()public{
+        vm.startPrank(CREATOR);currency.approve(address(vault),1 ether);vault.fundToken(1 ether,keccak256("SETTLED_TOKEN"));uint64 id=vault.scheduleAssetWithdrawal(address(currency),.5 ether,OTHER,_now()+3 days);vm.stopPrank();vm.warp(_now()+2 days);
+        for(uint8 mode=1;mode<=3;mode++){currency.configureFault(mode);vm.expectRevert();vault.executeWithdrawal(id);require(vault.accountedHeld(address(currency))==1 ether&&vault.reservedAsset(address(currency))==.5 ether&&currency.balanceOf(OTHER)==0);}
+        currency.configureFault(0);vault.executeWithdrawal(id);require(currency.balanceOf(OTHER)==.5 ether&&vault.reservedAsset(address(currency))==0);_conserved(address(currency));
     }
     function testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept()public{
         _buy(_order(address(nft),1,1,1,address(0),.1 ether));vm.prank(CREATOR);uint64 id=vault.scheduleNftWithdrawal(address(nft),1,1,OTHER,_now()+3 days);vm.expectRevert();vault.executeWithdrawal(id);vm.warp(_now()+2 days);vault.executeWithdrawal(id);require(nft.ownerOf(1)==OTHER&&vault.nftHeld(address(nft),1)==0);
