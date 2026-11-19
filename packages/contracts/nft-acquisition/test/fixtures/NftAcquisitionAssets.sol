@@ -26,7 +26,7 @@ contract Acquisition721Fixture {
     function safeTransferFrom(address from,address to,uint256 id,bytes memory data)public{
         address actual=fault==1?callbackTarget:to;transferFrom(from,actual,id);
         if(actual.code.length!=0)require(IAcqReceiver721(actual).onERC721Received(msg.sender,from,id,data)==0x150b7a02);
-        if(fault==2){bytes memory reason;(callbackSucceeded,reason)=callbackTarget.call(abi.encodeWithSignature("disablePurchases()"));if(reason.length>=4){bytes4 e;assembly("memory-safe"){e:=mload(add(reason,32))}callbackError=e;}}
+        if(fault==2||fault==4){bytes memory reason;bytes memory data_=fault==2?abi.encodeWithSignature("disablePurchases()"):abi.encodeWithSignature("executeWithdrawal(uint64)",uint64(0));(callbackSucceeded,reason)=callbackTarget.call(data_);if(reason.length>=4){bytes4 e;assembly("memory-safe"){e:=mload(add(reason,32))}callbackError=e;}}
         if(fault==3)revert("INTERRUPTED_NFT");
     }
 }
