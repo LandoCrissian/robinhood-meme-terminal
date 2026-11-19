@@ -24,11 +24,11 @@ function assertSnapshot(s,b){
  need(s.gasPayer.latestNonce===s.gasPayer.pendingNonce,"GAS_PAYER_TRANSACTION_PENDING");
 }
 function fingerprint(s){
- return digest({chainId:s.chainId,vault:s.vault.toLowerCase(),runtime:s.vaultRuntimeHash,project:s.projectToken.toLowerCase(),controller:s.controller.toLowerCase(),authority:s.controllerAuthorityHash,controllerEpoch:s.controllerEpoch,policyEpoch:s.policyEpoch,enabled:s.purchasesEnabled,policy:s.policy,available:s.availableWei,totalSpent:s.totalSpentWei,periodSpent:s.periodSpentWei,lastPurchase:s.lastPurchaseAt,gasPayer:s.gasPayer});
+ return digest({chainId:s.chainId,vault:s.vault.toLowerCase(),runtime:s.vaultRuntimeHash,project:s.projectToken.toLowerCase(),controller:s.controller.toLowerCase(),authority:s.controllerAuthorityHash,controllerEpoch:s.controllerEpoch,policyEpoch:s.policyEpoch,enabled:s.purchasesEnabled,policy:s.policy,available:s.availableWei,totalSpent:s.totalSpentWei,periodSpent:s.periodSpentWei,lastPurchase:s.lastPurchaseAt,gasPayer:s.gasPayer,collection:s.collection??null,orderConsumed:s.orderConsumed??null});
 }
 function normalizeProof(p,s,b,nowMs){
  need(p&&["OWNER_SUPPLIED_CURRENT_ORDER_VERIFIED","CURRENT_ORDER_INDEPENDENTLY_VERIFIED"].includes(p.status)&&p.currentOrderIndependentlyVerified===true&&p.executionApproved===false&&p.executionEnabled===false,"CURRENT_ORDER_UNPROVEN");
- const o=p.order,v=p.verified,observed=p.observed??v?.observed,orderHash=p.orderHash??v?.orderHash;
+ const o=p.order,v=p.verified,rawObserved=p.observed??v?.observed,observed=rawObserved?{...rawObserved,chainId:rawObserved.chainId??v?.chainId}:null,orderHash=p.orderHash??v?.orderHash;
  need(o&&o.chainId===b.chainId&&same(o.seaport,b.seaport)&&hash.test(orderHash)&&v?.payment&&v?.nft&&observed?.chainId===b.chainId,"CURRENT_ORDER_IDENTITY");
  need(observed.blockNumber===s.canonical.number&&same(observed.blockHash,s.canonical.hash)&&Date.parse(observed.timestamp)===Number(uint(s.canonical.timestamp))*1000&&Math.abs(nowMs-Date.parse(observed.timestamp))<=30000,"CURRENT_ORDER_STALE");
  const params=o.parameters,n=params?.offer?.[0];need(params?.orderType===0&&same(params.zone,zero)&&params.zoneHash==="0x"+"00".repeat(32)&&params.conduitKey==="0x"+"00".repeat(32)&&params.offer.length===1&&[2,3].includes(n.itemType),"ORDER_SUBSET_UNSUPPORTED");
@@ -36,7 +36,7 @@ function normalizeProof(p,s,b,nowMs){
  need(Array.isArray(params.consideration)&&params.consideration.length>0&&params.consideration.length<=8,"CONSIDERATION_UNAVAILABLE");
  const currency=params.consideration[0].token,total=params.consideration.reduce((sum,c)=>{need([0,1].includes(c.itemType)&&same(c.token,currency)&&String(c.startAmount)===String(c.endAmount)&&uint(String(c.startAmount))>0n&&address.test(c.recipient),"CONSIDERATION_UNAVAILABLE");return sum+uint(String(c.startAmount));},0n);
  need(same(currency,s.policy.currency)&&same(v.payment.currency,currency)&&v.payment.totalWei===String(total)&&same(v.nft.collection,n.token)&&v.nft.tokenId===String(n.identifierOrCriteria)&&v.nft.quantity===String(n.startAmount),"CONSIDERATION_IDENTITY");
- need(v.payment.consideration?.length===params.consideration.length&&params.consideration.every((c,i)=>same(c.recipient,v.payment.consideration[i].recipient)&&String(c.startAmount)===v.payment.consideration[i].amount),"CONSIDERATION_IDENTITY");
+ need(v.payment.consideration?.length===params.consideration.length&&params.consideration.every((c,i)=>same(c.recipient,v.payment.consideration[i].recipient)&&String(c.startAmount)===v.payment.consideration[i].amountWei),"CONSIDERATION_IDENTITY");
  need(s.collection&&same(s.collection.address,n.token)&&s.collection.enabled===true&&s.collection.tokenIdAllowed===true&&s.collection.standard===(n.itemType===2?721:1155)&&hash.test(s.collection.runtimeHash)&&s.orderConsumed===false,"COLLECTION_OR_ORDER_UNAVAILABLE");
  need(total<=uint(s.policy.perNftCap)*uint(String(n.startAmount))&&total+uint(s.totalSpentWei)<=uint(s.policy.totalBudget)&&total+uint(s.periodSpentWei)<=uint(s.policy.periodBudget)&&total<=uint(s.availableWei),"CAP_OR_RESERVE_EXCEEDED");
  const timestamp=uint(s.canonical.timestamp);need(uint(s.lastPurchaseAt)===0n||timestamp>=uint(s.lastPurchaseAt)+uint(s.policy.cooldownSeconds),"COOLDOWN_ACTIVE");
@@ -63,13 +63,29 @@ export function createReadOnlySeaportWatcher({configuration,store,readState,disc
    const next={...previous,revision:previous.revision+1,lastPollAtMs:started,records:previous.records.map(x=>({...x}))};
    const commit=async()=>{need(Buffer.byteLength(JSON.stringify(next))<=watcherLimits.maxStateBytes,"WATCH_STORE_CAPACITY");need(await read(()=>store.commit(previous.revision,next))===true,"WATCH_STORE_CONFLICT");};
    const initial=await read(signal=>readState({binding,signal}));assertSnapshot(initial,binding);
-   if(initial.purchasesEnabled!==true){for(const r of next.records)if(r.status==="PREPARED")r.status="INVALIDATED";await commit();return outcome("OFF","MINED_POLICY_OFF",{bindingHash});}
-   const open=next.records.find(r=>r.status==="PREPARED");
+   if(initial.purchasesEnabled!==true){for(const r of next.records)if(["PREPARED","PENDING_EVIDENCE"].includes(r.status))r.status="INVALIDATED";await commit();return outcome("OFF","MINED_POLICY_OFF",{bindingHash});}
+   const open=next.records.find(r=>["PREPARED","PENDING_EVIDENCE"].includes(r.status));
    if(open){
-    const canonical=await read(signal=>isCanonical(open.observed,signal));
-    const current=await read(signal=>readState({binding,orderHash:open.orderHash,order:open.order,signal}));assertSnapshot(current,binding);
-    if(!canonical||!current.purchasesEnabled||open.stateFingerprint!==fingerprint(current)||uint(open.deadline)<=uint(current.canonical.timestamp)){open.status="INVALIDATED";await commit();return outcome("REVIEW_REQUIRED","ORIGINAL_PROPOSAL_INVALIDATED",{bindingHash,orderHash:open.orderHash});}
-    await commit();return outcome("IDLE","ORDER_ALREADY_PREPARED",{bindingHash,orderHash:open.orderHash});
+    let response;
+    try{
+     const canonical=await read(signal=>isCanonical(open.observed,signal));
+     const current=await read(signal=>readState({binding,orderHash:open.orderHash,order:open.order,signal}));assertSnapshot(current,binding);
+     if(!canonical||!current.purchasesEnabled||open.stateFingerprint!==fingerprint(current)||uint(open.deadline)<=uint(current.canonical.timestamp)){
+      open.status="INVALIDATED";open.invalidReason="CANONICAL_OR_AUTHORITY_STATE_CHANGED";response=outcome("REVIEW_REQUIRED","ORIGINAL_PROPOSAL_INVALIDATED",{bindingHash,orderHash:open.orderHash});
+     }else{
+      need(open.sourceEntry&&["OWNER_SUPPLIED","PUBLIC"].includes(open.sourceEntry.sourceKind),"ORIGINAL_SOURCE_UNAVAILABLE");
+      const rechecked=await read(signal=>verifyEntry(open.sourceEntry,{binding,state:current,signal})),p=normalizeProof(rechecked,current,binding,now());
+      need(same(p.orderHash,open.orderHash)&&await read(signal=>isCanonical(p.observed,signal))===true,"CURRENT_ORDER_REORG");
+      const after=await read(signal=>readState({binding,orderHash:open.orderHash,order:open.order,signal}));assertSnapshot(after,binding);
+      need(after.purchasesEnabled&&fingerprint(after)===fingerprint(current)&&same(after.canonical.hash,current.canonical.hash),"STATE_CHANGED_DURING_REVALIDATION");
+      open.status="PREPARED";open.lastChecked=p.observed;delete open.invalidReason;
+      response=outcome("IDLE","ORDER_ALREADY_PREPARED",{bindingHash,orderHash:open.orderHash});
+     }
+    }catch(error){
+     open.status="PENDING_EVIDENCE";open.invalidReason=safeCode(error);
+     response=outcome("UNAVAILABLE","ORIGINAL_PROPOSAL_EVIDENCE_PENDING",{bindingHash,orderHash:open.orderHash,cause:safeCode(error)});
+    }
+    await commit();return response;
    }
    const feed=await read(signal=>discover({binding,signal}));if(feed?.status!=="AVAILABLE"){await commit();return outcome("UNAVAILABLE","LISTING_FEED_UNAVAILABLE",{bindingHash});}
    need(Array.isArray(feed.entries)&&feed.entries.length<=watcherLimits.maxEntries,"LISTING_FEED_BOUND");
@@ -95,7 +111,7 @@ export function createReadOnlySeaportWatcher({configuration,store,readState,disc
     need(BigInt(q.gas)<=watcherLimits.maxGas&&BigInt(q.maxPriorityFeePerGas)<=BigInt(q.maxFeePerGas)&&BigInt(q.gas)*BigInt(q.maxFeePerGas)<=uint(state.gasPayer.balanceWei)&&prepared.simulationSucceeded===true,"SIMULATION_OR_GAS_UNAVAILABLE");
     const final=await read(signal=>readState({binding,orderHash:p.orderHash,order:p.order,signal}));assertSnapshot(final,binding);
     need(final.purchasesEnabled&&fingerprint(final)===fingerprint(state)&&final.canonical.number===state.canonical.number&&same(final.canonical.hash,state.canonical.hash)&&await read(signal=>isCanonical(p.observed,signal))===true,"STATE_CHANGED_BEFORE_PREPARATION");
-    const candidate={orderHash:p.orderHash,status:"PREPARED",order:p.order,sourceKind:p.sourceKind,publicListingVerified:p.publicListingVerified,observed:p.observed,stateFingerprint:fingerprint(state),deadline:p.deadline,request:q,maximumNetworkFeeWei:String(BigInt(q.gas)*BigInt(q.maxFeePerGas)),createdAtMs:started,walletConfirmationRequired:true,executionApproved:false,executionEnabled:false,simulated:true};
+    const candidate={orderHash:p.orderHash,status:"PREPARED",order:p.order,sourceEntry:JSON.parse(JSON.stringify(entry)),sourceKind:p.sourceKind,publicListingVerified:p.publicListingVerified,observed:p.observed,stateFingerprint:fingerprint(state),deadline:p.deadline,request:q,maximumNetworkFeeWei:String(BigInt(q.gas)*BigInt(q.maxFeePerGas)),createdAtMs:started,walletConfirmationRequired:true,executionApproved:false,executionEnabled:false,simulated:true};
     next.records.push(candidate);await commit();return outcome("PREPARED","EXPLICIT_WALLET_REVIEW_REQUIRED",{bindingHash,candidate});
    }
    await commit();return outcome("IDLE","NO_ADMITTED_NEW_ORDER",{bindingHash});

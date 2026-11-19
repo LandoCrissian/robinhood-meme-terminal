@@ -61,31 +61,34 @@ export async function verifySeaportSafeApprovals(safe,safeTx,owners,approvals,co
   return true;
  }catch{return false;}
 }
-export function assertSeaportSafeAdminTrace(raw,origin,inner){
+function safeAdminTrace(raw,origin,inner,reverted){
  need(address(origin.from)&&address(origin.to)&&bytes(origin.input)&&origin.value===0n&&address(inner.safe)&&address(inner.target)&&bytes(inner.data)&&typeof inner.value==="bigint");
  let count=0;const flat=[];
  function visit(n,parent,depth){
   need(++count<=2048&&depth<=48&&n&&typeof n==="object"&&!Array.isArray(n)&&["CALL","STATICCALL","DELEGATECALL"].includes(n.type)
-   &&n.error===undefined&&typeof n.from==="string"&&/^0x[0-9a-f]{40}$/i.test(n.from)&&typeof n.to==="string"&&/^0x[0-9a-f]{40}$/i.test(n.to)&&bytes(n.input??"0x")
+   &&(n.error===undefined||reverted)&&typeof n.from==="string"&&/^0x[0-9a-f]{40}$/i.test(n.from)&&typeof n.to==="string"&&/^0x[0-9a-f]{40}$/i.test(n.to)&&bytes(n.input??"0x")
    &&(n.calls===undefined||Array.isArray(n.calls)));
   const rawValue=n.value??(n.type==="DELEGATECALL"?"0x"+(parent?.amount??0n).toString(16):n.type==="STATICCALL"?"0x0":null);
   need(typeof rawValue==="string"&&/^0x[0-9a-f]{1,64}$/i.test(rawValue));const item={...n,input:n.input??"0x",amount:BigInt(rawValue)};
   need(!parent||same(n.from,parent.type==="DELEGATECALL"?parent.from:parent.to));
-  if(n.type==="DELEGATECALL")need(parent&&same(n.from,inner.safe)&&same(n.to,seaportSafePins.singleton)&&item.amount===parent.amount);
+  if(n.type==="DELEGATECALL")need(parent&&[inner.safe,...(inner.admittedSafes??[])].some(safe=>same(n.from,safe))&&same(n.to,seaportSafePins.singleton)&&item.amount===parent.amount);
   if(n.type==="STATICCALL")need(item.amount===0n);flat.push(item);for(const child of n.calls??[])visit(child,item,depth+1);return item;
  }
  const root=visit(raw,null,0);need(root.type==="CALL"&&same(root.from,origin.from)&&same(root.to,inner.safe)&&same(root.input,origin.input)&&root.amount===0n);
  const calls=flat.filter(n=>n.type==="CALL"&&same(n.from,inner.safe)&&same(n.to,inner.target));
  need(calls.length===1&&same(calls[0].input,inner.data)&&calls[0].amount===inner.value);
+ need(reverted?typeof root.error==="string"&&typeof calls[0].error==="string":root.error===undefined);
  const paid=flat.filter(n=>n.type==="CALL"&&n.amount>0n);
  need(inner.value>0n?paid.length===1&&paid[0]===calls[0]:paid.length===0);
- return{evidence:"canonical-receipt-and-exact-local-call-trace",frames:count,nativeTransfers:paid.length};
+ return{evidence:"canonical-receipt-and-exact-local-call-trace",frames:count,nativeTransfers:reverted?0:paid.length};
 }
 
+export const assertSeaportSafeAdminTrace=(raw,origin,inner)=>safeAdminTrace(raw,origin,inner,false);
+export const assertSeaportSafeAdminRevertTrace=(raw,origin,inner)=>safeAdminTrace(raw,origin,inner,true);
 export const seaportSafeVaultSignatures=[
  ...seaportVaultSignatures,
  "function configureCollection(address asset,uint8 standard,bytes32 hash,bool enabled,bool any,uint256[] selected)",
- "function configureFeeRecipient(address recipient,uint16 maxBps)","function fundToken(uint256 amount,bytes32 source)",
+ "function configureFeeRecipient(address recipient,uint16 maxBps)","function feeRecipientMaxBps(address) view returns(uint16)","function collectionIds(address) view returns(uint256[])","function fundToken(uint256 amount,bytes32 source)",
  "function proposeController(address next,uint48 expiry)","function cancelController()","function acceptController()",
  "function pendingController() view returns(address next,uint48 validAfter,uint48 expiresAt,uint64 epoch)",
  "function NOTICE() view returns(uint48)","function WINDOW() view returns(uint48)","function accountedHeld(address) view returns(uint256)","function funded(address) view returns(uint256)",
