@@ -5,11 +5,20 @@ import {join} from "node:path";
 import {tmpdir} from "node:os";
 import {configuredSeaportAcquisition} from "./seaport-acquisition";
 import {handleSeaportAcquisitionRead,handleSeaportAcquisitionTest} from "./seaport-acquisition-actions";
+import {saveSeaportJournal,loadSeaportJournal} from "../seaport-acquisition-recovery";
+import {seaportAcquisitionReviewHash,type SeaportAcquisitionReview} from "../seaport-acquisition";
 const a=(n:number)=>"0x"+n.toString(16).padStart(40,"1"),h=(n:number)=>"0x"+n.toString(16).padStart(64,"1");
 test("Seaport V2 public route denies all reads and financial requests before RPC or wallet capability",async()=>{
   const saved=process.env.RMT_SEAPORT_ACQUISITION_FIXTURE;delete process.env.RMT_SEAPORT_ACQUISITION_FIXTURE;
   try{for(const method of["GET","HEAD","POST"]){const request=new Request("https://rmt.example/api/seaport-acquisition",{method,headers:{host:"rmt.example",origin:"https://rmt.example","content-type":"application/json"},...(method==="POST"&&{body:JSON.stringify({action:"prepare",operation:"buy"})})});const response=await(method==="POST"?handleSeaportAcquisitionTest:handleSeaportAcquisitionRead)(request);assert.equal(response.status,404);assert.equal(response.headers.get("cache-control"),"no-store");}}
   finally{if(saved!==undefined)process.env.RMT_SEAPORT_ACQUISITION_FIXTURE=saved;}
+});
+test("V2 recovery retains the original account and vault across context changes and rejects tampering",()=>{
+ const map=new Map<string,string>(),storage={get length(){return map.size;},getItem:(k:string)=>map.get(k)??null,setItem:(k:string,v:string)=>{map.set(k,v);},key:(i:number)=>[...map.keys()][i]??null,removeItem:(k:string)=>{map.delete(k);},clear:()=>map.clear()}as Storage;
+ const actor=a(1)as `0x${string}`,vault=a(2)as `0x${string}`,body={schemaVersion:1,profile:"rmt-seaport-acquisition-local-v2",chainId:31337,scope:"synthetic-local",productionExecution:false,operation:"disable",account:actor,vault,runtimeHash:h(1),controllerEpoch:"1",policyEpoch:"1",expiresAt:1_900_000_000,fields:{},request:{type:"0x2",chainId:"0x7a69",from:actor,to:vault,data:"0x01020304",value:"0x0",nonce:"0x1",gas:"0x5208",maxFeePerGas:"0x1",maxPriorityFeePerGas:"0x0"},maximumNetworkFeeWei:"21000",listing:null}as Omit<SeaportAcquisitionReview,"reviewHash">;
+ const review={...body,reviewHash:seaportAcquisitionReviewHash(body)},saved=saveSeaportJournal(storage,{review,stage:"hash-missing"});
+ assert.equal(loadSeaportJournal(storage,vault)?.review.account,actor);assert.equal(loadSeaportJournal(storage,a(3)),undefined);assert.equal(map.size,1);
+ const key=[...map.keys()][0]!;assert.ok(key.includes(vault.toLowerCase())&&key.includes(actor.toLowerCase()));storage.setItem(key,JSON.stringify({...saved,review:{...review,request:{...review.request,nonce:"0x2"}}}));assert.equal(loadSeaportJournal(storage,vault),undefined);assert.equal(map.size,1,"Malformed original bytes remain preserved");
 });
 test("Seaport V2 admission binds exact local manifest, three distinct loopback origins and nonhosted process",()=>{
  const dir=mkdtempSync(join(tmpdir(),"rmt-seaport-gate-")),path=join(dir,"manifest.json"),original={...process.env};
