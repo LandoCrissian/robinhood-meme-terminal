@@ -26,6 +26,9 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
  const evidence={schemaVersion:2,profile:"rmt-reclaim-permanent-integrated-v2",scope:"LOCAL_SYNTHETIC_31337_NOT_PRODUCTION_OR_PHYSICAL_PHONE",status:"incomplete",
   chainId:31337,sourceIdentity,compiler:reclaimCompilation.manifest,deployment:m,checks:{},canonicalReceipts:[],retirements:[],safeExecutions:[],
   economics:{rewardUnits:"5 synthetic RMT per unit",reserve:"2000 synthetic RMT",liveUsdReference:false,approvedLiveCollections:0,syntheticProfileOnly:true}};
+ const version=await pg.query("SHOW server_version"),encoding=await pg.query("SHOW server_encoding");
+ evidence.postgresql={serverVersion:version.rows[0].server_version,encoding:encoding.rows[0].server_encoding,isolatedTestDatabase:true};
+ assert.equal(evidence.postgresql.encoding,"UTF8");
  const save=()=>writeFileSync(join(out,"reclaim-acceptance.json"),json(evidence));
  const post=async body=>{const r=await fetch(site+"/api/launchpad/test-reclaim",{method:"POST",headers:{Origin:site,"Content-Type":"application/json"},body:json(body),signal:AbortSignal.timeout(30_000)});return{status:r.status,body:await r.json()};};
  const worker=async()=>{const r=await fetch(workerOrigin+"/reclaim-campaigns?campaign="+campaign,{headers:{"X-RMT-Fixture-Key":indexReadKey},signal:AbortSignal.timeout(10_000)});return{status:r.status,body:await r.json()};};
@@ -45,9 +48,12 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
  async function safeComplete(operation,fields={},decision="normal"){
   await session.configureSafe(reclaimDeployment.safe,creator);const inner=await session.action(operation,fields);assert.equal(inner.review.status,"needs-safe-approvals");assert.equal(inner.review.request,null);
   const proposal=await session.safePropose(),owners=proposal.owners;
+  if(!evidence.checks.safeOwnerWalletRejectionNoSubmission){await session.safeApprove(owners[0],"reject");evidence.checks.safeOwnerWalletRejectionNoSubmission=true;save();}
   await session.safeApprove(owners[0]);
   assert.equal(await session.page.getByRole("button",{name:"Review Safe execution costs",exact:true}).isEnabled(),false,"One owner cannot execute");
-  await session.safeApprove(owners[1]);const outer=await session.safePrepare(),submission=await session.safeConfirm(decision);
+  await session.safeApprove(owners[1]);const outer=await session.safePrepare();
+  if(!evidence.checks.safeOuterWalletRejectionNoSubmission){await session.safeConfirm("reject");evidence.checks.safeOuterWalletRejectionNoSubmission=true;save();}
+  const submission=await session.safeConfirm(decision);
   if(decision==="reject")return{review:outer,submission};
   await mine();
   if(decision==="lose"){

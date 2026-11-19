@@ -348,7 +348,7 @@ try {
 
   const pgPasswordFile = join(out, "postgres-password");
   await writeFile(pgPasswordFile, pgPass, { mode: 0o600 });
-  try { await successful(start(pgExecutable("initdb"), ["-D", cluster, "-U", pgUser, "-A", "scram-sha-256", "--pwfile", pgPasswordFile, "--no-locale"], "postgres-init")); }
+  try { await successful(start(pgExecutable("initdb"), ["-D", cluster, "-U", pgUser, "-A", "scram-sha-256", "--pwfile", pgPasswordFile, "--no-locale", "--encoding=UTF8"], "postgres-init")); }
   finally { await unlink(pgPasswordFile); }
   await appendFile(join(cluster, "postgresql.conf"), "\nunix_socket_directories = ''\n");
   await successful(start(pgExecutable("pg_ctl"), ["-D", cluster, "-l", join(out, "postgres.log"), "-o",
