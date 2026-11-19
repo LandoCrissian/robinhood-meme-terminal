@@ -1,0 +1,14 @@
+{
+  "status": "passed",
+  "version": "pg_dump (PostgreSQL) 18.6",
+  "startedAt": "2026-11-19T01:59:27.604Z",
+  "completedAt": "2026-11-19T01:59:35.682Z",
+  "scope": "New isolated loopback-only PostgreSQL cluster and empty Task079 smoke database; no production connectivity.",
+  "checks": [
+    "Project treasury canonical-shaped PostgreSQL: shared transaction interruption rollback, writer lease, duplicate/conflict and checkpoint reorg cascade passed.",
+    "Reclaim PostgreSQL shared checkpoint atomic rollback, lease, duplicate/conflict and reorg cascade passed.",
+    "Synthetic fixture earnings PostgreSQL: 53 projects, independent beneficiary paging, exact-token recovery, receipt activity, duplicate/conflict handling, restart reader, one writer and reorg rollback passed."
+  ],
+  "evidence": "Persistence-shaped synthetic data; separate real receipt/browser lifecycle evidence required.",
+  "logSha256": "bac93bafba6ee20934377fdc827e844448d672db0c5aafdcbc37c2d92cabb8b7"
+}
