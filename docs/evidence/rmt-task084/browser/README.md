@@ -1,3 +1,13 @@
+# Current Task084 acceptance: source73
+
+The corrected acceptance is source 73fc6d03d3160e19ac3d19af38138da3461bdb3f: [fresh evidence and scope](source-73fc6d0/README.md), [source/job/member manifest](source-73fc6d0/manifest.json). All four current Chromium/WebKit default/Robinhood-fork journeys passed. All29 source CI checks completed:22 success and7 unwaived strict-security failures; production release remains held.
+
+Fresh raw scanning reported448 findings;448 were individually classified and0 remain unknown. It is not a zero-finding raw scan. Offline replay passed60 receipt/trace proofs,120 signature uses and120 tamper rejections across1996 trace frames. The new archive contains unchanged raw JSON bytes as deterministic gzip and20 unchanged screenshots. It includes strict raw account-code admission and the explicitly synthetic known7702 incoming-controller state fixture.
+
+The [original d9 RH Chromium old-EOA pending observation](failures/d9-rh-chromium/README.md) is preserved and its cause remains unknown. Current success and added diagnostics are not claimed as its causal fix. The earlier98eb acceptance below remains historical; its original artifacts and bindings are unchanged.
+
+---
+
 # Task084 connected Safe administration evidence
 
 These are successful isolated tests of source 98eb1be7d0a02e77e1a37f6109410f3e79f36ded, from [run 44618301617](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44618301617). They implement the bounded [Task084 owner instruction](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/677#issuecomment-7019806025). This evidence grants no production release or wallet authority.
