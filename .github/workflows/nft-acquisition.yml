@@ -1,0 +1,173 @@
+name: Isolated NFT acquisition acceptance
+
+on:
+  pull_request:
+    paths:
+      - "packages/contracts/nft-acquisition/**"
+      - "packages/contracts/lib/**"
+      - "packages/launchpad-common/nft-*.mjs"
+      - "packages/launchpad-common/nft-*.mts"
+      - "packages/launchpad-common/native-proof.mjs"
+      - "scripts/nft-acquisition/**"
+      - "scripts/nft-marketplace/**"
+      - "scripts/visual-qa/rmt-creator-integration.mjs"
+      - "apps/indexer/src/nft-acquisition*.ts"
+      - "apps/indexer/src/curve-fixture-worker.ts"
+      - "apps/indexer/src/reclaim-fixture-origin.ts"
+      - "apps/indexer/src/project-treasury-fixture-store.ts"
+      - "config/nft-acquisition*"
+      - "apps/launch-website/**"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "docs/evidence/rmt-task043/analyze-rotation.py"
+      - "docs/evidence/rmt-task043/4663-rotation-profile.json"
+      - ".github/scripts/prepare-browser-apt.sh"
+      - ".github/scripts/prepare-postgres-18.sh"
+      - ".github/scripts/postgres-18-packages.mjs"
+      - ".github/workflows/nft-acquisition.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  nft-acquisition-units:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
+      - name: Verify collection identity and bounded settlement traces without live orders
+        run: node --test packages/launchpad-common/nft-collection-resolver.test.mjs scripts/nft-marketplace/*.test.mjs scripts/nft-acquisition/*.test.mjs
+      - name: Verify indexer configuration, canonical receipt and provider failure boundaries
+        run: |
+          pnpm --filter indexer typecheck
+          pnpm --filter indexer exec tsx --test src/nft-acquisition-fixture-evidence.test.ts
+
+  nft-acquisition-strict-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.10"
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - name: Compile every new production root and reachable dependency with the pinned compiler
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc"
+          printf '%s  %s\n' d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef "$RUNNER_TEMP/solc" | sha256sum --check --strict
+          chmod 700 "$RUNNER_TEMP/solc"
+          node scripts/nft-acquisition/compiler.mjs --solc "$RUNNER_TEMP/solc" \
+            --standard-json "$RUNNER_TEMP/nft-acquisition.json" --manifest "$RUNNER_TEMP/nft-acquisition-manifest.json"
+      - name: Verify synthetic custody, authorization, spending caps and failed-fill rollback
+        run: forge test --root packages/contracts/nft-acquisition --use "$RUNNER_TEMP/solc" -vvv
+      - run: python -m pip install --disable-pip-version-check slither-analyzer==0.11.5 crytic-compile==0.3.11
+      - name: Run all 101 detectors and fail on any new production-scope high
+        # No detector, source, dependency or severity filters. A pass here
+        # cannot clear any preexisting core, treasury or Reclaim strict gate.
+        run: |
+          python docs/evidence/rmt-task043/analyze-rotation.py "$RUNNER_TEMP/nft-acquisition.json" \
+            "$RUNNER_TEMP/solc" "$RUNNER_TEMP/nft-acquisition-source" "$RUNNER_TEMP/nft-acquisition-slither.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: nft-acquisition-strict-analysis-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/nft-acquisition.json
+            ${{ runner.temp }}/nft-acquisition-manifest.json
+            ${{ runner.temp }}/nft-acquisition-slither.json
+          retention-days: 7
+
+  nft-acquisition-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      HISTORICAL_ANCHOR_SHA: 8dca5773cbd4dc98f52a45616f420bce96b000f0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - name: Build the existing website and isolated worker
+        run: |
+          set -euo pipefail
+          bash .github/scripts/prepare-browser-apt.sh
+          pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
+          pnpm --filter @rmt/launch-website build
+          pnpm --filter indexer build
+          pnpm exec playwright install --with-deps chromium webkit
+      - name: Prepare the existing fixed-supply candidate and exact local tools
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$HISTORICAL_ANCHOR_SHA"
+          (cd packages/contracts && bash scripts/install-v4-deps.sh)
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc-0.8.26"
+          printf '%s  %s\n' d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef "$RUNNER_TEMP/solc-0.8.26" | sha256sum --check --strict
+          chmod 700 "$RUNNER_TEMP/solc-0.8.26"
+          node packages/contracts/scripts/mobile-review-plan.mjs --solc "$RUNNER_TEMP/solc-0.8.26" \
+            --fixture-lifecycle --verify docs/evidence/mobile-signing/review-plan-4663.json
+      - name: Prepare exact PostgreSQL 18.6 isolated fixture binaries
+        run: bash .github/scripts/prepare-postgres-18.sh
+      - name: Verify same-website NFT acquisition with synthetic chain31337 assets only
+        run: |
+          node scripts/visual-qa/rmt-creator-integration.mjs --nft-acquisition-only \
+            --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$RMT_PG18_BIN" \
+            --browser "${{ matrix.browser }}" \
+            --output "$RUNNER_TEMP/rmt-nft-acquisition"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: nft-acquisition-browser-${{ matrix.browser }}-${{ github.event.pull_request.head.sha }}
+          # Public synthetic evidence only. Never archive the PG cluster,
+          # password files, Anvil state or any in-memory test signing keys.
+          path: |
+            ${{ env.RMT_PG18_EVIDENCE }}/provenance.json
+            ${{ env.RMT_PG18_EVIDENCE }}/versions-and-runtime.txt
+            ${{ env.RMT_PG18_EVIDENCE }}/InRelease
+            ${{ env.RMT_PG18_EVIDENCE }}/Release
+            ${{ env.RMT_PG18_EVIDENCE }}/Packages.gz
+            ${{ env.RMT_PG18_EVIDENCE }}/ubuntu-*
+            ${{ env.RMT_PG18_EVIDENCE }}/*.ldd
+            ${{ runner.temp }}/rmt-nft-acquisition/*.png
+            ${{ runner.temp }}/rmt-nft-acquisition/*.json
+            ${{ runner.temp }}/rmt-nft-acquisition/website*.log
+            ${{ runner.temp }}/rmt-nft-acquisition/worker*.log
+            !${{ runner.temp }}/rmt-nft-acquisition/**/*password*
+            !${{ runner.temp }}/rmt-nft-acquisition/**/*private*
+            !${{ runner.temp }}/rmt-nft-acquisition/**/postgres-data/**
+            !${{ runner.temp }}/rmt-nft-acquisition/**/anvil-state*
+          retention-days: 7
