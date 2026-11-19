@@ -50,7 +50,7 @@ export async function testReclaimFixtureProofs(){
   };
   const rpc={
     getChainId:async()=>knobs.mode==="wrong-chain"?4663:31337,
-    getCode:async({address}:{address:Address})=>[creator,claimant].includes(address)?undefined:address===factory?factoryCode:address===reward?rewardCode:address===core?coreCode:address===collection?nftCode:knobs.mode==="runtime"?"0x6004":campaignCode,
+    getCode:async({address,blockNumber}:{address:Address;blockNumber:bigint})=>[creator,claimant].includes(address)?undefined:address===factory?factoryCode:address===reward?rewardCode:address===core?coreCode:address===collection?blockNumber<3n?undefined:nftCode:knobs.mode==="runtime"?"0x6004":campaignCode,
     getTransactionCount:async()=>0,
     getTransaction:async({hash}:{hash:Hash})=>{const height=Number(BigInt(hash)/10n),input=height===4?encodeFunctionData({abi,functionName:"fund",args:[1000n]}):height===6?encodeFunctionData({abi,functionName:"returnTradeIn",args:[1n,1_800_000_100n]}):encodeFunctionData({abi,functionName:"redeem",args:[collection,[42n],[1n],[1n],[[]],3n,5n,0n,1_800_000_100n]});
       return{chainId:31337,hash,blockNumber:BigInt(height),blockHash:h(height),transactionIndex:0,to:campaign,from:height===4?creator:claimant,value:0n,nonce:0,input};},
