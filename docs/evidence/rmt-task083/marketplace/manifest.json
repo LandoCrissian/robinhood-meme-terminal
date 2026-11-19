@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "observedAt": "2026-11-19T17:12:54.543Z",
+  "freshVenueObservedAt": "2026-11-19T17:14:25.259Z",
+  "anchorBlock": "118385295",
+  "rawScanner": {
+    "name": "Gitleaks",
+    "version": "8.30.1",
+    "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+    "reportSha256": "647a28da85900468c6e7e31d5df0a70d24dcfaaa7d49ce2cceb1cf43273c4a5f",
+    "exitCode": 1,
+    "findings": 2,
+    "unclassified": 0,
+    "suppressionsAdded": false,
+    "historyRewritten": false
+  },
+  "archives": {
+    "marketplace-qualification.json": {
+      "bytes": 30590,
+      "sha256": "55a6c88e874a69907af0c2e1393a408eb984042bba48637688ff444313e7a177"
+    },
+    "weth-implementation-source.json": {
+      "bytes": 366679,
+      "sha256": "9ec65a0c34ada6e375e8a3e31aac2c6d01735ab1d3607899b011e9365f092058"
+    },
+    "weth-admin-source.json": {
+      "bytes": 145316,
+      "sha256": "b89a14731dd75c602d39305425170299c38e6a7d24ddea58ee688d6e407b7947"
+    }
+  },
+  "classifications": [
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "marketplace-qualification.json",
+      "line": 336,
+      "lineSha256": "684d9ca01e32eb35ae8aedf0fc08f42c8e51d3f41aae82db483476650cb50f06",
+      "publicValueSha256": "1b2869105a116702fbb9df240757bcf76706e84c112792db09b77fb96664d612",
+      "publicValue": "0xbe1295f37be34ffe03ad779bda0ef278907e1856b51a3be2f35ee541d75d4650",
+      "sourceResponse": "weth-implementation-source.json",
+      "sourceResponseSha256": "9ec65a0c34ada6e375e8a3e31aac2c6d01735ab1d3607899b011e9365f092058",
+      "disposition": "PUBLIC_4663_WETH_IMPLEMENTATION_RUNTIME_HASH_INDEPENDENTLY_COMPILED_AND_BOTH_RPC_CORROBORATED"
+    },
+    {
+      "ruleId": "generic-api-key",
+      "sourceFile": "marketplace-qualification.json",
+      "line": 420,
+      "lineSha256": "406e0331db6770968780829c74a1cda3afb4fa869dac89024979b2bdb1868e8a",
+      "publicValueSha256": "2a81a3453c31bb30eea9b03dc838c4dd53afa482d9bf599b3318e3b0f249f791",
+      "publicValue": "0xa4b2186ab82fa36fb4ae158582e5615ea519e757c26c13ba4a33daaaed8902a7",
+      "sourceResponse": "weth-admin-source.json",
+      "sourceResponseSha256": "b89a14731dd75c602d39305425170299c38e6a7d24ddea58ee688d6e407b7947",
+      "disposition": "PUBLIC_4663_WETH_ADMIN_RUNTIME_HASH_INDEPENDENTLY_COMPILED_AND_BOTH_RPC_CORROBORATED"
+    }
+  ],
+  "currentOrderIndependentlyVerified": false,
+  "productionPaymentAdmitted": false,
+  "executionApproved": false,
+  "broadcast": false
+}
