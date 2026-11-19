@@ -24,6 +24,8 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit:production
       - run: pnpm check:repo
+      - name: Fetch exact Task080 envelope-evidence baseline
+        run: git fetch --no-tags --depth=1 origin 526cf004d267596f6203f977be40439825f1204b
       - run: pnpm test:release-evidence
       - run: node scripts/security/findings-register.mjs --check
       - run: node --test scripts/security/findings-register.test.mjs
