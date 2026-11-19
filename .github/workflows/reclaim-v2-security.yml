@@ -1,0 +1,59 @@
+name: Permanent Reclaim V2 strict security
+
+on:
+  pull_request:
+    paths:
+      - "packages/contracts/reclaim-v2/**"
+      - "packages/contracts/lib/**"
+      - "scripts/reclaim-v2/**"
+      - "docs/evidence/rmt-task043/analyze-rotation.py"
+      - "docs/evidence/rmt-task043/4663-rotation-profile.json"
+      - ".github/workflows/reclaim-v2-security.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  reclaim-permanent-v2:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.10"
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - name: Compile every permanent V2 production root and reachable dependency
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc"
+          chmod 700 "$RUNNER_TEMP/solc"
+          node scripts/reclaim-v2/compiler.mjs --solc "$RUNNER_TEMP/solc" \
+            --standard-json "$RUNNER_TEMP/reclaim-v2.json" --manifest "$RUNNER_TEMP/reclaim-v2-manifest.json"
+      - name: Verify permanent retirement, atomic rewards, hostile callbacks and accounting invariants
+        run: forge test --root packages/contracts/reclaim-v2 --use "$RUNNER_TEMP/solc" -vvv
+      - run: python -m pip install --disable-pip-version-check slither-analyzer==0.11.5 crytic-compile==0.3.11
+      - name: Run all 101 detectors and fail on any V2 high
+        # All production roots and imports; no detector/source/dependency filters.
+        # Historical V1 and every preexisting strict gate remain unchanged.
+        run: |
+          python docs/evidence/rmt-task043/analyze-rotation.py "$RUNNER_TEMP/reclaim-v2.json" \
+            "$RUNNER_TEMP/solc" "$RUNNER_TEMP/reclaim-v2-source" "$RUNNER_TEMP/reclaim-v2-slither.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: reclaim-permanent-v2-analysis
+          path: |
+            ${{ runner.temp }}/reclaim-v2.json
+            ${{ runner.temp }}/reclaim-v2-manifest.json
+            ${{ runner.temp }}/reclaim-v2-slither.json
+          retention-days: 7

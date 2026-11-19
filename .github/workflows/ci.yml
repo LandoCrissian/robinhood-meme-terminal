@@ -27,6 +27,7 @@ jobs:
       - run: pnpm test:release-evidence
       - run: node --test scripts/treasury-v2/*.test.mjs
       - run: node --test scripts/reclaim/*.test.mjs
+      - run: node --test scripts/reclaim-v2/*.test.mjs
       - run: pnpm test:production-readiness
       - run: pnpm test:protocol-continuation
       - run: pnpm test:constructor-readiness

@@ -12,7 +12,11 @@ assert.equal(site.username, ""); assert.equal(site.password, ""); assert.ok(["ch
 await mkdir(output, { recursive: false });
 const denied = [];
 for (const body of [{ action: "prepare", operation: "redeem", account: "0x1000000000000000000000000000000000000780", fields: {} },
-  { action: "revalidate", review: {} }, { action: "verify", review: {} }, { action: "prepare", operation: "fund", fields: { amountWei: "1" } }]) {
+  { action: "revalidate", review: {} }, { action: "verify", review: {} }, { action: "prepare", operation: "fund", fields: { amountWei: "1" } },
+  { action: "safe-propose", review: {}, gasPayer: "0x1000000000000000000000000000000000000780" },
+  { action: "safe-approve", proposal: {}, approval: {} }, { action: "safe-prepare", proposal: {}, approvals: [] },
+  { action: "safe-revalidate", review: {} }, { action: "safe-verify", review: {} },
+  { action: "prepare", operation: "return", fields: {} }, { action: "prepare", operation: "approve-return", fields: {} }]) {
   const result = await fetch(new URL("/api/launchpad/test-reclaim", site), { method: "POST", headers: { Origin: site.origin, "Content-Type": "application/json" },
     body: JSON.stringify(body), redirect: "error", signal: AbortSignal.timeout(15_000) });
   assert.equal(result.status, 404); assert.equal(result.headers.get("set-cookie"), null); denied.push({ action: body.action, operation: body.operation, status: result.status });
@@ -46,7 +50,10 @@ try {
       const main = page.getByRole("main"); await main.getByRole("heading", { name: "RMT Reclaim", exact: true }).waitFor(); await page.locator('[data-reclaim-ready="true"]').waitFor();
       await page.waitForLoadState("networkidle");
       assert.match(await main.innerText(), /No verified live campaign, new RMT token, price reference or funded reward reserve/);
-      assert.match(await main.innerText(), /Escrow, not burn/); assert.match(await main.innerText(), /Only the original claimant/);
+      const content = await main.innerText();
+      assert.match(content, /Permanent means permanent/); assert.match(content, /verified native burn/);
+      assert.match(content, /A sink transfer is not a burn/); assert.match(content, /no NFT withdrawal, repayment, buyback or return path/);
+      assert.doesNotMatch(content, /Escrow, not burn|Only the original claimant|Return NFTs|Repay reward/);
       assert.equal(await main.getByRole("button", { name: /Connect test|Confirm test|trade-in|funding|reward|claim|approve|surrender/i }).count(), 0);
       const details = main.getByRole("region", { name: "Reclaim custody and funding" }).locator("details");
       const summary = details.locator(":scope > summary"); await summary.focus(); await page.keyboard.press("Enter"); assert.equal(await details.getAttribute("open"), "");
@@ -63,7 +70,7 @@ try {
     } finally { await context.close(); }
   }
 } finally { await browser.close(); }
-const report = { schemaVersion: 1, profile: "rmt-reclaim-public-acceptance-v1", status: "PASS", engine, scope: "actual-loopback-read-only-build", physicalIPhoneAcceptance: false,
+const report = { schemaVersion: 2, profile: "rmt-reclaim-public-acceptance-v2-permanent", status: "PASS", engine, scope: "actual-loopback-read-only-build", physicalIPhoneAcceptance: false,
   productionFinancialExecution: false, liveCampaignAssigned: false, liveTokenAssigned: false, liveUsdReferenceAssigned: false, fabricatedReserve: false, denied, layouts };
 await writeFile(join(output, "reclaim-public.json"), JSON.stringify(report, null, 2) + "\n", { flag: "wx" });
 console.log(JSON.stringify(report));

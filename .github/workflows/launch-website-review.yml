@@ -46,6 +46,7 @@ on:
       - "scripts/treasury/**"
       - "scripts/treasury-v2/**"
       - "scripts/reclaim/**"
+      - "scripts/reclaim-v2/**"
       - "scripts/visual-qa/rmt-polish.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
@@ -81,6 +82,8 @@ jobs:
       - name: Use the signed Ubuntu archive over HTTPS for browser dependencies
         run: bash .github/scripts/prepare-browser-apt.sh
       - run: pnpm exec playwright install --with-deps chromium webkit
+      - name: Syntax-check retained historical V1 browser evidence (not active acceptance)
+        run: node --check scripts/reclaim/browser-public.mjs
       - name: Verify website navigation and read-only HTTP boundary
         run: |
           set -euo pipefail
@@ -113,7 +116,7 @@ jobs:
               node scripts/visual-qa/rmt-earnings-public.mjs
             node scripts/treasury-v2/browser-capability.mjs --url http://127.0.0.1:3205/ \
               --browser "$engine" --output "$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/purchase-capability"
-            node scripts/reclaim/browser-public.mjs --url http://127.0.0.1:3205/ \
+            node scripts/reclaim-v2/browser-public.mjs --url http://127.0.0.1:3205/ \
               --browser "$engine" --output "$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/reclaim"
           done
           RMT_POLISH_URL=http://127.0.0.1:3205/ \
@@ -126,7 +129,9 @@ jobs:
 
   isolated-lifecycle:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    # The existing lifecycle suites plus genuine two-owner Safe approval,
+    # outer-wallet review and recovery run sequentially in each browser.
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       matrix:
@@ -189,7 +194,7 @@ jobs:
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-project-treasury"
-      - name: Verify separate Reclaim custody and reward lifecycle on synthetic chain 31337
+      - name: Verify permanent Reclaim and two-owner Safe execution on synthetic chain 31337
         run: |
           node scripts/visual-qa/rmt-creator-integration.mjs --reclaim-only \
             --anvil "$(command -v anvil)" \
@@ -234,6 +239,10 @@ jobs:
             ${{ runner.temp }}/rmt-reclaim/reclaim-compiler-manifest.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-deployment.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-safe-acceptance.json
+            ${{ runner.temp }}/rmt-reclaim/reclaim-safe-browser-evidence.json
+            ${{ runner.temp }}/rmt-reclaim/reclaim-safe-browser-failure.txt
+            ${{ runner.temp }}/rmt-reclaim/safe-browser/*.png
+            ${{ runner.temp }}/rmt-reclaim/safe-browser/reclaim-browser-evidence.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-setup.json
             ${{ runner.temp }}/rmt-reclaim/budget-browser/*.png
             ${{ runner.temp }}/rmt-reclaim/budget-browser/reclaim-browser-evidence.json
