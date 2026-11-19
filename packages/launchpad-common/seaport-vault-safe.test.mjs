@@ -37,10 +37,11 @@ test("GS013 trace requires actual outer and inner errors, and success trace reje
 });
 test("Safe state rejects unknown runtime, owner delegation, threshold, modules, guard or handler",async()=>{
  const code="0x1234",ownerAddresses=owners.map(o=>o.address),state={VERSION:"1.4.1",masterCopy:seaportSafePins.singleton,getOwners:ownerAddresses,getThreshold:2n,nonce:7n,getModulesPaginated:[[],"0x0000000000000000000000000000000000000001"]},codec={...v,keccak256:x=>x===code?seaportSafePins.proxyHash:x==="0x5678"?seaportSafePins.singletonHash:seaportSafePins.handlerHash};
- const rpc={getChainId:async()=>31337,getCode:async({address})=>address===safe?code:address===seaportSafePins.singleton?"0x5678":address===seaportSafePins.handler?"0xabcd":"0x",readContract:async({functionName})=>state[functionName],getStorageAt:async({slot})=>slot===seaportSafePins.guardSlot?v.zeroHash:"0x"+"0".repeat(24)+seaportSafePins.handler.slice(2).toLowerCase()};
+ const rpc={getChainId:async()=>31337,getCode:async({address})=>address===safe?code:address===seaportSafePins.singleton?"0x5678":address===seaportSafePins.handler?"0xabcd":undefined,request:async({method,params})=>{assert.equal(method,"eth_getCode");assert.ok(ownerAddresses.includes(params[0]));assert.ok(["0x1","pending"].includes(params[1]));return"0x";},readContract:async({functionName})=>state[functionName],getStorageAt:async({slot})=>slot===seaportSafePins.guardSlot?v.zeroHash:"0x"+"0".repeat(24)+seaportSafePins.handler.slice(2).toLowerCase()};
  assert.equal((await readSeaportSafeState(rpc,safe,1n,codec)).nonce,"7");
  for(const mutation of[{getThreshold:1n},{getOwners:[...ownerAddresses.slice(0,2),ownerAddresses[0]]},{getModulesPaginated:[[payer],"0x0000000000000000000000000000000000000001"]}])await assert.rejects(readSeaportSafeState({...rpc,readContract:async({functionName})=>({...state,...mutation})[functionName]},safe,1n,codec));
- await assert.rejects(readSeaportSafeState({...rpc,getCode:async({address})=>ownerAddresses.includes(address)?"0xef0100"+payer.slice(2):rpc.getCode({address})},safe,1n,codec));
+ for(const raw of[undefined,null,"0x0","0xef0100"+payer.slice(2)])await assert.rejects(readSeaportSafeState({...rpc,request:async()=>raw},safe,1n,codec));
+ assert.equal((await readSeaportSafeState(rpc,safe,"pending",codec)).nonce,"7");
  await assert.rejects(readSeaportSafeState({...rpc,getStorageAt:async()=>v.zeroHash},safe,1n,codec));
  await assert.rejects(readSeaportSafeState(rpc,safe,1n,{...codec,keccak256:()=>v.zeroHash}));
 });

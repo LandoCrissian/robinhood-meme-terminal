@@ -1,7 +1,8 @@
 import * as viem from "viem";
 import {compileSeaportSafeCall,readSeaportSafeState,safeAuthorityIdentity,seaportSafeVaultSignatures} from "../../../../packages/launchpad-common/seaport-vault-safe.mjs";
 import {seaportLocalContext,readSeaportIndex,type SeaportLocalConfig} from "./seaport-acquisition";
-import {projectTreasuryControllerKind} from "./project-treasury-fixture";
+import {readSeaportSafeAccount} from "./seaport-acquisition-safe-account";
+import {readSeaportRawAccountCode} from "../../../../packages/launchpad-common/seaport-vault-account-code.mjs";
 import {claimProfileDigest} from "../claim-profiles";
 import {seaportSafeProfile,seaportSafeOperations,seaportSafeAbi,seaportSafeTyped,seaportSafeProposalHash,seaportSafeOuterHash,validSeaportSafeProposal,validSeaportSafeOuter,seaportSafeObservationMatches,verifySafeOwnerApproval,verifySafeOwnerApprovals,canonicalSeaportSafeApprovals,safeExecutionData,type SeaportSafeProposal,type SeaportSafeApproval,type SeaportSafeOuterReview,type SeaportSafeOperation,type SeaportSafeFields,type SeaportSafeVerification} from "../seaport-acquisition-safe";
 type Address=viem.Address;type Hex=viem.Hex;
@@ -14,9 +15,9 @@ type Context=Awaited<ReturnType<typeof seaportLocalContext>>;
 type Rpc=Context["rpc"];
 const at=(x:Context)=>({address:x.m.vault,abi:vaultAbi,blockNumber:x.head.number}as const);
 async function payerState(x:Context,payer:Address){
- const kind=await projectTreasuryControllerKind(x.rpc,payer,x.head.number);need(kind==="eoa"||kind==="metamask-7702");
- const code=await x.rpc.getCode({address:payer,blockNumber:x.head.number}),pending=await x.rpc.getCode({address:payer,blockTag:"pending"});need(same(code??"0x",pending??"0x"));
- return{kind,codeHash:viem.keccak256(code??"0x"),nonce:await x.rpc.getTransactionCount({address:payer,blockTag:"pending"})};
+ const[mined,pending]=await Promise.all([readSeaportSafeAccount(x.rpc,payer,x.head.number),readSeaportSafeAccount(x.rpc,payer,"pending")]);
+ need((mined.kind==="eoa"||mined.kind==="metamask-7702")&&mined.kind===pending.kind&&same(mined.code,pending.code));
+ return{kind:mined.kind,codeHash:viem.keccak256(mined.code),nonce:await x.rpc.getTransactionCount({address:payer,blockTag:"pending"})};
 }
 const safeHashArgs=(p:SeaportSafeProposal)=>[p.safeTx.to,BigInt(p.safeTx.value),p.safeTx.data,0,0n,0n,0n,viem.zeroAddress,viem.zeroAddress,BigInt(p.safeNonce)]as const;
 async function safeState(x:Context,safe:Address){
@@ -31,7 +32,9 @@ async function terms(x:Context,safe:Address,operation:SeaportSafeOperation,field
  if(operation==="configure-collection"||operation==="configure-fee-recipient")need(!x.enabled);
  if(operation==="propose-controller"){
   need(!same(fields.incoming,safe)&&!same(fields.incoming,x.m.vault)&&!same(fields.incoming,x.m.seaport)&&same(notice[0],viem.zeroAddress));
-  const kind=await projectTreasuryControllerKind(x.rpc,viem.getAddress(String(fields.incoming)),x.head.number);need(["eoa","metamask-7702","safe-1.4.1"].includes(kind));
+  const incoming=viem.getAddress(String(fields.incoming)),[mined,pending]=await Promise.all([readSeaportSafeAccount(x.rpc,incoming,x.head.number),readSeaportSafeAccount(x.rpc,incoming,"pending")]);
+  need(mined.kind===pending.kind&&same(mined.code,pending.code));
+  if(mined.kind==="safe-1.4.1")need(pending.kind==="safe-1.4.1"&&safeAuthorityIdentity(mined.state)===safeAuthorityIdentity(pending.state)&&mined.state.nonce===pending.state.nonce);
   const n=BigInt(await read<bigint|number>("NOTICE")),window=BigInt(await read<bigint|number>("WINDOW")),expiry=BigInt(String(fields.expiresAt));need(expiry>x.head.timestamp+n&&expiry<=x.head.timestamp+n+window);
  }
  if(operation==="fund-native")need(await x.rpc.getBalance({address:safe,blockTag:"pending"})>=BigInt(call.value));
@@ -40,7 +43,7 @@ async function terms(x:Context,safe:Address,operation:SeaportSafeOperation,field
   if(operation==="approve-funding")need(allowance===0n);
   else need(allowance===BigInt(String(fields.amountWei))&&await x.rpc.readContract({address:x.m.paymentToken,abi:viem.erc20Abi,functionName:"balanceOf",args:[safe],blockTag:"pending"})>=BigInt(String(fields.amountWei)));
  }
- const code=await x.rpc.getCode({address:call.to,blockNumber:x.head.number}),pendingCode=await x.rpc.getCode({address:call.to,blockTag:"pending"});
+ const[code,pendingCode]=await Promise.all([readSeaportRawAccountCode(x.rpc,call.to,x.head.number),readSeaportRawAccountCode(x.rpc,call.to,"pending")]);
  need(code&&pendingCode&&same(viem.keccak256(code),call.runtimeHash)&&same(code,pendingCode));
  await x.rpc.call({account:safe,to:call.to,data:call.data,value:BigInt(call.value),blockTag:"pending"});return call;
 }
@@ -103,12 +106,13 @@ export async function verifySeaportSafeOuter(c:SeaportLocalConfig,r:SeaportSafeO
   const [tx,receipt]=await Promise.all([x.rpc.getTransaction({hash}),x.rpc.getTransactionReceipt({hash})]),header=await x.rpc.getBlock({blockNumber:receipt.blockNumber});
   need(exactOuter(tx as unknown as Record<string,unknown>,r)&&same(tx.hash,hash)&&same(receipt.transactionHash,hash)&&same(receipt.from,p.gasPayer)&&same(receipt.to,p.safe)&&tx.blockNumber===receipt.blockNumber&&tx.transactionIndex===receipt.transactionIndex&&same(header.transactions[receipt.transactionIndex],hash));
   if(!same(header.hash,receipt.blockHash)||!same(tx.blockHash,receipt.blockHash))return{...base,status:"reorged",transactionHash:hash};
+  const settledPayer=await readSeaportSafeAccount(x.rpc,p.gasPayer,receipt.blockNumber);need(settledPayer.kind==="eoa"||settledPayer.kind==="metamask-7702");
   let indexed;try{indexed=await readSeaportIndex(c,hash);}catch{return{...base,status:"pending",transactionHash:hash,reason:"Exact durable Safe authority, receipt and trace evidence pending"};}
   const rows=(indexed.adminEvents??[]).filter((row:Record<string,unknown>)=>same(row.transactionHash,hash));need(rows.length===1);const row=rows[0];
   need(same(row.safe,p.safe)&&same(row.gasPayer,p.gasPayer)&&row.safeNonce===p.safeNonce&&same(row.digest,p.digest)&&row.operation===p.operation
    &&same(row.target,p.call.to)&&same(row.input,p.call.data)&&row.value===p.call.value&&ownerSet(row.owners)===ownerSet(p.owners)
    &&ownerSet(row.signers)===ownerSet(r.approvals.map(a=>a.signer))&&row.blockNumber===String(receipt.blockNumber)&&same(row.blockHash,receipt.blockHash)
-   &&same(viem.keccak256((await x.rpc.getCode({address:p.gasPayer,blockNumber:receipt.blockNumber}))??"0x"),r.gasPayerCodeHash));
+   &&same(viem.keccak256(settledPayer.code),r.gasPayerCodeHash));
   need(row.status===receipt.status&&same((await x.rpc.getBlock({blockNumber:receipt.blockNumber})).hash,receipt.blockHash));
   return{...base,status:receipt.status==="success"?"confirmed":"reverted",transactionHash:hash,indexed:true,canonical:{blockNumber:String(receipt.blockNumber),blockHash:receipt.blockHash}};
  }catch{return{...base,status:"pending",...(hint&&{transactionHash:hint}),reason:"Original Safe authority, canonical receipt or trace is unavailable; no signing or resubmission"};}
@@ -116,7 +120,7 @@ export async function verifySeaportSafeOuter(c:SeaportLocalConfig,r:SeaportSafeO
 
 export async function seaportSafeAdminSnapshot(c:SeaportLocalConfig,x:Context){
  const pending=await x.rpc.readContract({...at(x),functionName:"pendingController"}as never)as readonly[Address,number,number,bigint];
- const candidate=!same(pending[0],viem.zeroAddress)?pending[0]:await projectTreasuryControllerKind(x.rpc,x.controller,x.head.number)==="safe-1.4.1"?x.controller:c.manifest.safeSeller?.address;
+ const candidate=!same(pending[0],viem.zeroAddress)?pending[0]:(await readSeaportSafeAccount(x.rpc,x.controller,x.head.number)).kind==="safe-1.4.1"?x.controller:c.manifest.safeSeller?.address;
  let state:Awaited<ReturnType<typeof readSeaportSafeState>>|null=null;if(candidate)try{state=await readSeaportSafeState(x.rpc,candidate,x.head.number,viem);}catch{}
  return{profile:seaportSafeProfile,creatorCreate:"UNAVAILABLE",candidateSafe:state?.safe??null,owners:state?.owners??[],threshold:state?.threshold??null,safeNonce:state?.nonce??null,
   pendingController:same(pending[0],viem.zeroAddress)?null:{next:pending[0],validAfter:String(pending[1]),expiresAt:String(pending[2]),epoch:String(pending[3])},

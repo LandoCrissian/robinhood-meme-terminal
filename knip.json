@@ -53,7 +53,8 @@
         "docs/evidence/rmt-task047/treasury-support-fork.mjs",
         "packages/launchpad-common/seaport-vault-safe.d.mts",
         "scripts/seaport-acquisition/owner-supplied-order.d.mts",
-        "scripts/seaport-acquisition/listing-watcher.d.mts"
+        "scripts/seaport-acquisition/listing-watcher.d.mts",
+        "packages/launchpad-common/seaport-vault-account-code.d.mts"
       ]
     },
     "apps/launch-website": {

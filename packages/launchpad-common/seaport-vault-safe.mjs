@@ -1,3 +1,4 @@
+import {readSeaportRawAccountCode} from "./seaport-vault-account-code.mjs";
 import {seaportVaultSignatures} from "./seaport-vault-runtime.mjs";
 // Task084: exact canonical Safe1.4.1 administration; no signing or broadcasting.
 export const seaportSafePins=Object.freeze({
@@ -45,7 +46,7 @@ export async function readSeaportSafeState(rpc,safe,block,codecs){
   &&Array.isArray(owners)&&owners.length===3&&owners.every(address)&&new Set(owners.map(a=>a.toLowerCase())).size===3&&threshold===2n&&typeof nonce==="bigint"
   &&Array.isArray(modules)&&Array.isArray(modules[0])&&modules[0].length===0&&same(modules[1],sentinel)
   &&typeof guard==="string"&&/^0x0{64}$/.test(guard)&&typeof handler==="string"&&/^0x0{24}[0-9a-f]{40}$/i.test(handler)&&same("0x"+handler.slice(-40),p.handler));
- for(const owner of owners)need((await rpc.getCode({address:owner,...at})??"0x")==="0x");
+ for(const owner of owners)need(await readSeaportRawAccountCode(rpc,owner,block)==="0x");
  return{safe,owners,threshold:2,nonce:String(nonce),runtimeHash:p.proxyHash,singleton:p.singleton,handler:p.handler};
 }
 export async function verifySeaportSafeApprovals(safe,safeTx,owners,approvals,codecs){

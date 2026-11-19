@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import {writeFileSync} from "node:fs";
+import {gunzipSync} from "node:zlib";
+import {readFileSync,writeFileSync} from "node:fs";
 import {join} from "node:path";
 import {createRequire} from "node:module";
 import {devices} from "playwright";
@@ -111,6 +112,18 @@ export async function testSeaportSafeAdministrationBrowser({browserEngine,site,f
   await prepare("fund-token",{amountWei:"1000000000000000",source});await approveBoth();await prepareOuter();const nonceBefore=await safeNonce(),failed=await confirm({revert:true});assert.equal(failed.status,"reverted");assert.equal(await safeNonce(),nonceBefore);await sync();await recover("reverted");assert.equal(await client.readContract({address:m.paymentToken,abi:v.erc20Abi,functionName:"balanceOf",args:[m.vault]}),tokenBefore);evidence.checks.gs013FailedInnerPreservesSafeNonce=true;
   await send(owner,tx(m.paymentToken,fixture.artifacts.AcquisitionCurrencyFixture.abi,"configureFault",[0]));await action("fund-token",{amountWei:"1000000000000000",source});assert.equal(await client.readContract({address:m.paymentToken,abi:v.erc20Abi,functionName:"allowance",args:[safe,m.vault]}),0n);evidence.checks.exactErc20FundingClearsAllowance=true;
   const noticeHead=await client.getBlock();await action("propose-controller",{incoming:owner.address,expiresAt:String(noticeHead.timestamp+3n*86400n)});assert.equal(same((await read("pendingController"))[0],owner.address),true);await action("cancel-controller");assert.equal((await read("pendingController"))[0],v.zeroAddress);evidence.checks.controllerNoticeProposeAndCancel=true;
+  // Reuse the preserved known delegate runtime as a local Anvil STATE fixture.
+  // These two genuine Safe UI notices are not EIP7702 authorization signatures.
+  const delegation=JSON.parse(gunzipSync(readFileSync(new URL("../../apps/launch-website/lib/server/claim-delegate-runtime.test.json.gz",import.meta.url)))).delegate,delegated=fixture.accounts.royalty.address;
+  assert.equal(v.keccak256(delegation.code),delegation.runtimeHash);assert.equal(delegation.runtimeHash,"0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0");
+  const originalDelegateCode=await rpc("eth_getCode",[delegation.address,"latest"]),originalActorCode=await rpc("eth_getCode",[delegated,"latest"]);assert.equal(originalActorCode,"0x");
+  try{
+   await rpc("anvil_setCode",[delegation.address,delegation.code]);await rpc("anvil_setCode",[delegated,"0xef0100"+delegation.address.slice(2).toLowerCase()]);await rpc("evm_mine");await sync();
+   const delegatedHead=await client.getBlock(),proposedDelegated=await action("propose-controller",{incoming:delegated,expiresAt:String(delegatedHead.timestamp+3n*86400n)});assert.equal(same((await read("pendingController"))[0],delegated),true);const cancelledDelegated=await action("cancel-controller");
+   evidence.incomingDelegationFixture={scope:"LOCAL_ANVIL_STATE_INSTALL_NOT_REAL_EIP7702_AUTHORIZATION_OR_PRODUCTION",actor:delegated,delegate:delegation.address,runtimeHash:delegation.runtimeHash,proposedTransactionHash:proposedDelegated.transactionHash,cancelledTransactionHash:cancelledDelegated.transactionHash,actualSafeOwnerSignatures:true};
+   evidence.checks.known7702IncomingNoticeStateFixture=true;
+  }finally{await rpc("anvil_setCode",[delegated,originalActorCode]);await rpc("anvil_setCode",[delegation.address,originalDelegateCode]);await rpc("evm_mine");await sync();}
+
   // Genuine owner rotation and module changes are performed by the same two test
   // owners, then restored. The original pre-signed admin request is never sent.
   await prepare("disable");await approveBoth();await prepareOuter();const stale=outer,rotated=privateKeyToAccount(generatePrivateKey()),actualOwners=await client.readContract({address:safe,abi:safeAbi,functionName:"getOwners"}),index=actualOwners.findIndex(a=>same(a,owners[2].address)),previous=index===0?"0x0000000000000000000000000000000000000001":actualOwners[index-1];
