@@ -23,6 +23,7 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
     screenshots: [], layouts: [], walletMethods: [], pageErrors: [], externalRequests: [], forbiddenRequests: [], checks: {} };
   const save = () => writeFileSync(join(out, "reclaim-browser-evidence.json"), json(evidence));
   let currentReview, currentSafeProposal, currentSafeOuter;
+  const capturedReviewModes = new Set();
   evidence.safeProposals = []; evidence.safeApprovals = []; evidence.safeOuterReviews = []; evidence.safeRecoveries = [];
   const button = (name, scope = page) => scope.getByRole("button", { name, exact: true });
   page.on("pageerror", error => { evidence.pageErrors.push(error.message); save(); });
@@ -108,7 +109,9 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
     assert.ok(["prepared", "needs-safe-approvals"].includes(result.status), json(result));
     if (expectedOperation) assert.equal(result.operation, expectedOperation);
     assert.equal(result.chainId, 31337); assert.equal(result.scope, "isolated-local"); assert.equal(result.executionEnabled, false);
-    assert.equal(result.custody, "permanent-retirement"); currentReview = result; evidence.reviews.push(result); save(); return result;
+    assert.equal(result.custody, "permanent-retirement"); currentReview = result; evidence.reviews.push(result); save();
+    if (result.operation === "redeem" && result.status === "prepared") await captureReviewedSurrender(result, false);
+    return result;
   }
   async function reviewRejected(name, expectedHttp, expectedStatus, scope = page) {
     currentReview = undefined; const before = evidence.sends.length;
@@ -121,6 +124,35 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
     const n = BigInt(value); const decimal = (n % 10n ** 18n).toString().padStart(18, "0").replace(/0+$/, "");
     return (n / 10n ** 18n).toString() + (decimal ? "." + decimal : "");
   };
+  async function captureReviewedSurrender(review, safe) {
+    const inner = safe ? review.proposal.innerReview : review;
+    assert.equal(inner.operation, "redeem"); assert.ok(inner.nft && [1, 2].includes(inner.nft.retirementMode));
+    const key = `${safe ? "safe" : "direct"}-${inner.nft.retirementMode}`;
+    if (capturedReviewModes.has(key)) return;
+    const label = safe ? "Reviewed Safe outer transaction" : "Reviewed Reclaim transaction";
+    const region = page.getByRole("region", { name: label, exact: true });
+    await region.waitFor();
+    if (safe) {
+      await region.getByText(review.reviewHash, { exact: true }).waitFor();
+      await region.getByText(/permanently retires the listed NFTs.*cannot be reversed/).waitFor();
+    } else {
+      await region.getByText(inner.nft.policyHash, { exact: true }).waitFor();
+      await region.getByText(inner.nft.retirementMode === 1 ? "Verified native burn" : "Permanent immutable-contract sink", { exact: true }).waitFor();
+      await region.getByText(inner.nft.retirementMode === 1 ? "None — actual native burn" : inner.nft.destination, { exact: true }).waitFor();
+      await region.getByText(/Permanent loss by verified native burn or validated immutable sink/).waitFor();
+    }
+    await region.getByText(`${humanUnits(review.maximumNetworkFeeWei)} synthetic ETH`, { exact: true }).waitFor();
+    const before = evidence.walletMethods.length;
+    const media = () => page.evaluate(() => ({ touch: navigator.maxTouchPoints, coarse: matchMedia("(pointer: coarse)").matches }));
+    const originalMedia = await media();
+    const screenshot = `reclaim-${safe ? "safe-outer" : "direct"}-review-${inner.nft.retirementMode === 1 ? "native-burn" : "permanent-sink"}.png`;
+    await region.screenshot({ path: join(out, screenshot) });
+    assert.deepEqual(await media(), originalMedia); assert.equal(evidence.walletMethods.length, before, "Capturing review evidence cannot request a wallet action");
+    capturedReviewModes.add(key); evidence.screenshots.push(screenshot); evidence.reviewScreenshots ??= [];
+    evidence.reviewScreenshots.push({ screenshot, region: label, reviewHash: review.reviewHash, retirementMode: inner.nft.retirementMode,
+      destination: inner.nft.destination, maximumSyntheticNetworkFeeWei: review.maximumNetworkFeeWei, irreversibleTermsVisible: true,
+      beforeWalletConfirmation: true, walletActionsDuringCapture: 0 }); save();
+  }
   async function action(operation, fields = {}, decision) {
     const participant = ["approve-721", "approve-1155", "revoke-1155", "redeem"].includes(operation);
     if (!participant) await ownerOpen();
@@ -221,7 +253,9 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
     assert.equal(result.status, "prepared", json(result)); assert.equal(result.proposal.proposalHash, currentSafeProposal.proposalHash);
     assert.ok(same(result.request.from, currentSafeProposal.gasPayer)); assert.ok(same(result.request.to, currentSafeProposal.safe));
     assert.equal(result.request.value, "0x0"); assert.equal(result.approvals.length, 2); currentSafeOuter = result;
-    evidence.safeOuterReviews.push(result); save(); return result;
+    evidence.safeOuterReviews.push(result); save();
+    if (result.proposal.innerReview.operation === "redeem") await captureReviewedSurrender(result, true);
+    return result;
   }
   async function safeConfirm(decision = "normal") {
     assert.ok(currentSafeOuter); const original = structuredClone(currentSafeOuter), before = evidence.sends.length;
