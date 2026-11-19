@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "status": "INITIAL_CI_FAILURE_NOT_PROTOCOL_OR_PROVIDER_CLEARANCE",
+  "sourceCommit": "ec66caca56ba28512684438c609ab0f48db27b5d",
+  "runId": "44575849482",
+  "jobId": "135743012999",
+  "artifactId": "14555698453",
+  "rawEvidenceSha256": "bcc77859a2a86c117588f55322735819aae9a231ba9999ada240a08645be2f44",
+  "actualSeaportPinned": true,
+  "firstNative721": {
+    "transactionHash": "0x1a326da33359f0a81202de9c61149401307e5ff3013070075d6555964d125bec",
+    "blockNumber": "118388668",
+    "blockHash": "0xe97834cdf39381b1ce60e3b7ce435d0cd142dca8ec0ed68d67a8b926fff76448",
+    "status": "success",
+    "timestamp": "1795108797",
+    "vaultCustodyAndAccountingVerified": true
+  },
+  "secondNative1155": {
+    "stage": "eth_estimateGas_NoTransactionSubmitted",
+    "errorSelector": "0xaf610693",
+    "error": "InvalidOrder()",
+    "tokenId": "2",
+    "quantity": "2",
+    "controllerEpoch": "1",
+    "policyEpoch": "6",
+    "latestMinedBlock": "118388672",
+    "latestMinedTimestamp": "1795108797",
+    "cooldownSeconds": 1
+  },
+  "diagnosis": {
+    "kind": "INFERENCE_FROM_EXACT_MINED_LOG_TIMESTAMPS_AND_CONFIGURED_POLICY",
+    "finding": "Distinct mined fixture blocks retained the first purchase timestamp. The second normal fill arrived before the unchanged one-second cooldown elapsed.",
+    "fix": "Advance only the isolated chain31337 acquisition fixture clock by the remaining cooldown plus one second before eligible normal fills; keep direct negative paths unchanged.",
+    "guardsRelaxed": false,
+    "mainnetOrGovernanceTimeChanged": false
+  },
+  "productionStatus": "NO_GO"
+}
