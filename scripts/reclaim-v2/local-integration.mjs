@@ -50,7 +50,7 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   if(decision==="reject")return{review:outer,submission};
   await mine();
   if(decision==="lose"){
-   const pending=await session.safeVerify({review:outer,status:"pending"});assert.equal(pending.indexed,false);
+   const pending=await session.safeVerify({review:outer,status:"pending"});assert.equal(pending.status,"pending");assert.notEqual(pending.indexed,true);
    hideReceipt(undefined);await ready();
   }else await ready();
   const verified=await session.safeVerify({review:outer,...(decision!=="lose"&&{hash:submission.receipt.transactionHash}),indexed:true});
@@ -85,7 +85,9 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   evidence.checks.native721And1155BurnAndSink721And1155AllAtomic=true;
   await session.layouts("reclaim-permanent-active");await session.desktopRead(campaign);
   // Legacy return operations and unreviewed collections are never admitted.
-  for(const operation of["return","approve-return"]){const denied=await post({action:"prepare",operation,account:creator,campaign,fields:{receiptId:"1"}});assert.equal(denied.status,400);}
+  const submissionsBeforeLegacy=session.evidence.sends.length;
+  for(const operation of["return","approve-return"]){const denied=await post({action:"prepare",operation,account:creator,campaign,fields:{receiptId:"1"}});assert.equal(denied.status,200);assert.equal(denied.body.status,"unavailable");assert.equal(denied.body.executionEnabled,false);}
+  assert.equal(session.evidence.sends.length,submissionsBeforeLegacy);
   const denied=await post({action:"prepare",operation:"propose-collection",account:creator,campaign,fields:{collection:reclaimDeployment.negative[0].address,collectionCap:"1",collectionWalletCap:"1",expiresAt:((await client.getBlock()).timestamp+3n*86400n).toString()}});assert.equal(denied.body.status,"unavailable");
   evidence.checks.unsupportedCollectionsAndAllOldReturnOperationsRejected=true;
   // Keep the original receipt and reward immutable through a future rate notice.
