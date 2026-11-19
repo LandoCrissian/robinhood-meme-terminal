@@ -1,0 +1,73 @@
+import { isReclaimReview, reclaimHash, reclaimVerificationMatches, sameReclaimHex, type ReclaimReview, type ReclaimVerification } from "./reclaim";
+import { isTestLifecycleRequest } from "./test-lifecycle";
+
+export const reclaimJournalNamespace = "rmt.reclaim.pending.v1";
+const indexKey = reclaimJournalNamespace + ":index";
+type StoragePort = Pick<Storage, "getItem" | "setItem">;
+export type ReclaimJournal = { schemaVersion: 1; review: ReclaimReview; stage: "awaiting-wallet" | "wallet-rejected" | "hash-missing" | ReclaimVerification["status"];
+  transactionHash: string | null; result: ReclaimVerification | null; createdAt: number; updatedAt: number };
+const keyFor = (review: ReclaimReview) => `${reclaimJournalNamespace}:${review.reviewHash}`;
+const byteLength = (value: string) => new TextEncoder().encode(value).byteLength;
+export const reclaimJournalTerminal = (entry: ReclaimJournal) => ["confirmed", "reverted", "wallet-rejected"].includes(entry.stage);
+export function validReclaimJournal(value: unknown): value is ReclaimJournal {
+  try {
+    const entry = value as ReclaimJournal;
+    return !!entry && Object.keys(entry).length === 7 && entry.schemaVersion === 1 && isReclaimReview(entry.review) && entry.review.status === "prepared"
+      && ["awaiting-wallet", "wallet-rejected", "hash-missing", "pending", "confirmed", "reverted", "unavailable", "reorged"].includes(entry.stage)
+      && (entry.transactionHash === null || reclaimHash(entry.transactionHash)) && Number.isSafeInteger(entry.createdAt) && entry.createdAt > 0
+      && Number.isSafeInteger(entry.updatedAt) && entry.updatedAt >= entry.createdAt
+      && (entry.result === null ? !["confirmed", "reverted"].includes(entry.stage) : entry.result.status === entry.stage
+        && reclaimVerificationMatches(entry.review, entry.result, entry.transactionHash ?? undefined)
+        && (!["confirmed", "reverted"].includes(entry.stage) || entry.transactionHash !== null && sameReclaimHex(entry.transactionHash, entry.result.transactionHash ?? "")));
+  } catch { return false; }
+}
+export function listReclaimJournals(storage: StoragePort): ReclaimJournal[] {
+  const raw = storage.getItem(indexKey); if (raw === null) return [];
+  if (byteLength(raw) > 8192) throw Error("Reclaim recovery index exceeds its bound. Preserve the original requests.");
+  let keys: unknown; try { keys = JSON.parse(raw); } catch { throw Error("Reclaim recovery index is invalid. Preserve the original requests."); }
+  if (!Array.isArray(keys) || keys.length > 32 || new Set(keys).size !== keys.length
+    || keys.some(key => typeof key !== "string" || !/^rmt\.reclaim\.pending\.v1:0x[0-9a-f]{64}$/i.test(key))) throw Error("Reclaim recovery index is invalid.");
+  return keys.map(key => {
+    const body = storage.getItem(key); if (!body || byteLength(body) > 65536) throw Error("An original Reclaim request is missing or exceeds its bound.");
+    let entry: unknown; try { entry = JSON.parse(body); } catch { throw Error("An original Reclaim request is malformed."); }
+    if (!validReclaimJournal(entry) || keyFor(entry.review) !== key) throw Error("An original Reclaim request has an invalid identity.");
+    return entry;
+  }).sort((a, b) => b.createdAt - a.createdAt);
+}
+export function storeReclaimJournal(storage: StoragePort, entry: ReclaimJournal): void {
+  if (!validReclaimJournal(entry)) throw Error("Invalid Reclaim recovery record.");
+  const all = listReclaimJournals(storage), prior = all.find(item => item.review.reviewHash === entry.review.reviewHash);
+  if (prior && (prior.createdAt !== entry.createdAt || prior.review.reviewHash !== entry.review.reviewHash || entry.updatedAt < prior.updatedAt
+    || prior.transactionHash !== null && (!entry.transactionHash || !sameReclaimHex(prior.transactionHash, entry.transactionHash)))) throw Error("The original Reclaim transaction identity cannot be replaced.");
+  if (!prior && all.length >= 32) throw Error("Reclaim recovery is full. No original request will be evicted.");
+  const body = JSON.stringify(entry); if (byteLength(body) > 65536) throw Error("Reclaim recovery record exceeds its 64 KiB bound.");
+  storage.setItem(keyFor(entry.review), body);
+  storage.setItem(indexKey, JSON.stringify(prior ? all.map(item => keyFor(item.review)) : [...all.map(item => keyFor(item.review)), keyFor(entry.review)]));
+  if (storage.getItem(keyFor(entry.review)) !== body || !listReclaimJournals(storage).some(item => item.review.reviewHash === entry.review.reviewHash)) throw Error("The original Reclaim request could not be saved before wallet confirmation.");
+}
+export function assertNoPendingReclaim(storage: StoragePort, account: string): void {
+  if (listReclaimJournals(storage).some(entry => sameReclaimHex(entry.review.actor, account) && !reclaimJournalTerminal(entry))) {
+    throw Error("Recover the earlier Reclaim transaction before requesting another wallet submission.");
+  }
+}
+
+/** The older lifecycle journal has no shared index. Enumerate only this known
+ * local prefix, with hard limits, and preserve malformed original records. */
+export function assertNoPendingLifecycleForReclaim(storage: Pick<Storage, "length" | "key" | "getItem">, account: string): void {
+  if (!Number.isSafeInteger(storage.length) || storage.length < 0 || storage.length > 256) throw Error("Browser recovery storage exceeds its inspection bound. Preserve the original requests.");
+  let count = 0;
+  for (let i = 0; i < storage.length; i++) {
+    const key = storage.key(i); if (!key?.startsWith("rmt:test-trades:31337:v1:")) continue;
+    if (++count > 32 || !/^rmt:test-trades:31337:v1:0x[0-9a-f]{64}$/i.test(key)) throw Error("An earlier lifecycle recovery identity is invalid.");
+    const body = storage.getItem(key); if (!body || byteLength(body) > 65536) throw Error("An earlier lifecycle request is missing or exceeds its bound.");
+    let value: unknown; try { value = JSON.parse(body); } catch { throw Error("An earlier lifecycle request is malformed. Preserve its original identity."); }
+    const journal = value as { pending?: { request: unknown; transactionHash?: string }; history?: { request: unknown; transactionHash?: string }[] };
+    const entry = (item: { request: unknown; transactionHash?: string }) => !!item && isTestLifecycleRequest(item.request)
+      && (item.transactionHash === undefined || reclaimHash(item.transactionHash));
+    if (!journal || !Array.isArray(journal.history) || journal.history.length > 12 || !journal.history.every(item => entry(item) && reclaimHash(item.transactionHash))
+      || journal.pending !== undefined && !entry(journal.pending)) throw Error("An earlier lifecycle recovery record is invalid. Preserve its original identity.");
+    if (journal.pending && isTestLifecycleRequest(journal.pending.request) && sameReclaimHex(journal.pending.request.from, account)) {
+      throw Error("Recover the earlier lifecycle transaction before requesting a Reclaim submission.");
+    }
+  }
+}

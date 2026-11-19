@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 const views = [["projects", "/my-launches", "Projects"], ["earnings", "/my-launches/earnings", "Earnings"],
-  ["treasury", "/my-launches/treasury", "Treasury"]] as const;
+  ["treasury", "/my-launches/treasury", "Treasury"], ["reclaim", "/reclaim", "Reclaim"]] as const;
 
 export function MyLaunchesNav({ active }: { active: typeof views[number][0] }) {
   return <nav className="lpEarningsTabs" aria-label="My Launches views">{views.map(([id, href, label]) =>
