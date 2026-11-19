@@ -8,6 +8,8 @@ The development [creator earnings dashboard](docs/CREATOR_EARNINGS.md) discovers
 
 The optional [project treasury candidate](docs/PROJECT_TREASURY_ACCEPTANCE.md) adds a separately deployed, creator-controlled contract for one project. The local creator form and Treasury dashboard support verified deposits, original-ledger claims, noticed withdrawals and controller changes. Purchase permission is OFF by default; this candidate cannot execute purchases without a separately reviewed independent price reference and route. It is not deployed or activated in production.
 
+The separate [Reclaim development candidate](docs/RMT_RECLAIM_ACCEPTANCE.md) exchanges explicitly eligible NFTs for manually funded fixed-token-unit rewards. NFTs enter reversible escrow; the original claimant can repay the original reward to recover them. It does not burn NFTs or spend project revenues. The `/reclaim` page is unavailable for live claims; there is no live RMT reward token, funded campaign or USD conversion. Local synthetic acceptance and its four unresolved high findings are separate from the existing core and treasury findings.
+
 The hosted site is read-only. Both treasury Safes and all five protocol infrastructure constructors have owner-submitted, verified Robinhood Chain receipts. Factory publication still requires governance authorization and its two-day notice. No new RMT token has been issued. Website creation and trading remain disabled; the strict security gate still fails with 22 high findings. The creator, trading, graduation and claim flows have separate synthetic-asset evidence. [Actual deployment status](docs/evidence/mobile-signing/protocol-mainnet.json)
 
 ## Fixed-supply candidate
