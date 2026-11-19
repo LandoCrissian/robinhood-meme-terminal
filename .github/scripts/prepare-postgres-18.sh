@@ -49,6 +49,31 @@ if ! exact_version "$pg_bin"; then
   done < "$pg_home/packages.tsv"
   pg_bin="$pg_home/root/usr/lib/postgresql/18/bin"
   export LD_LIBRARY_PATH="$pg_home/root/usr/lib/x86_64-linux-gnu${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}"
+  ldd "$pg_bin/postgres" > "$pg_home/postgres-before-runtime.ldd"
+  if grep -q 'liburing.so.2 => not found' "$pg_home/postgres-before-runtime.ldd"; then
+    # PG18 requires liburing2, absent from the current hosted runner. Use only
+    # the exact Ubuntu Noble runtime in this same temporary root, not apt install.
+    # Ubuntu archive key: https://wiki.ubuntu.com/SecurityTeam/FAQ
+    ubuntu=https://archive.ubuntu.com/ubuntu
+    download "$ubuntu/dists/noble/InRelease" "$pg_home/ubuntu-InRelease" 4194304
+    gpgv --homedir "$pg_home/gnupg" --keyring /usr/share/keyrings/ubuntu-archive-keyring.gpg \
+      --status-fd 3 --output "$pg_home/ubuntu-Release" "$pg_home/ubuntu-InRelease" 3> "$pg_home/ubuntu-signature.status"
+    grep -q '^\[GNUPG:\] VALIDSIG F6ECB3762474EDA9D21B7022871920D1991BC93C ' "$pg_home/ubuntu-signature.status"
+    download "$ubuntu/dists/noble/main/binary-amd64/Packages.gz" "$pg_home/ubuntu-Packages.gz" 16777216
+    node .github/scripts/postgres-18-packages.mjs "$pg_home/ubuntu-Release" "$pg_home/ubuntu-Packages.gz" "$pg_home/ubuntu-runtime.json" ubuntu-liburing > "$pg_home/ubuntu-runtime.tsv"
+    while IFS=$'\t' read -r name filename size checksum; do
+      archive="$pg_home/${filename##*/}"
+      download "$ubuntu/$filename" "$archive" "$size"
+      [[ "$(stat -c %s "$archive")" == "$size" ]]
+      printf '%s  %s\n' "$checksum" "$archive" | sha256sum --check --strict
+      [[ "$(dpkg-deb --field "$archive" Package)" == liburing2 ]]
+      [[ "$(dpkg-deb --field "$archive" Version)" == 2.5-1build1 ]]
+      [[ "$(dpkg-deb --field "$archive" Architecture)" == amd64 ]]
+      dpkg-deb --extract "$archive" "$pg_home/root"
+    done < "$pg_home/ubuntu-runtime.tsv"
+  fi
+  ldd "$pg_bin/postgres" > "$pg_home/postgres-after-runtime.ldd"
+  if grep -q 'not found' "$pg_home/postgres-after-runtime.ldd"; then cat "$pg_home/postgres-after-runtime.ldd" >&2; exit 1; fi
   mode=PGDG_SIGNED_INDEX_AND_PINNED_DEBS
   exact_version "$pg_bin"
   printf 'LD_LIBRARY_PATH=%s\n' "$LD_LIBRARY_PATH" >> "$GITHUB_ENV"

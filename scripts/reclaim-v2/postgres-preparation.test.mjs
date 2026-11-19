@@ -3,7 +3,7 @@ import {createHash} from "node:crypto";
 import {readFileSync} from "node:fs";
 import {gzipSync} from "node:zlib";
 import test from "node:test";
-import {pg18Packages,pg18Version,verifyPg18Index} from "../../.github/scripts/postgres-18-packages.mjs";
+import {pg18Packages,pg18Version,verifyPg18Index,ubuntuLiburing,verifyUbuntuLiburingIndex} from "../../.github/scripts/postgres-18-packages.mjs";
 
 // Parser tests use synthetic metadata. Actual package trust still requires the
 // shell's pinned PGDG key, gpgv verification and downloaded package SHA256 checks.
@@ -28,7 +28,17 @@ test("PostgreSQL binary preparation never installs packages or starts services a
   const script=read(".github/scripts/prepare-postgres-18.sh"),workflow=read(".github/workflows/launch-website-review.yml");
   assert.match(script,/gpgv .*--keyring .*--output/);assert.match(script,/B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8/);
   assert.match(script,/sha256sum --check --strict/);assert.match(script,/dpkg-deb --extract/);assert.match(script,/exact_version "\$pg_bin"/);
+  assert.match(script,/ubuntu-archive-keyring\.gpg/);assert.match(script,/VALIDSIG F6ECB3762474EDA9D21B7022871920D1991BC93C/);
   assert.doesNotMatch(script,/^\s*(?:sudo|apt(?:-get)?\s+install|systemctl|service|pg_ctl.*start)/m);
   assert.equal([...workflow.matchAll(/--pg-bin "\$RMT_PG18_BIN"/g)].length,4);assert.doesNotMatch(workflow,/--pg-bin "\$\(pg_config/);
   assert.match(workflow,/bash \.github\/scripts\/prepare-postgres-18\.sh/);assert.match(workflow,/RMT_PG18_EVIDENCE.*versions-and-runtime\.txt/);
+});
+test("missing liburing is admitted only as the exact signed Noble runtime and remains separate from PostgreSQL pins",()=>{
+  const pkg={Package:ubuntuLiburing.name,Version:"2.5-1build1",Architecture:"amd64",Filename:ubuntuLiburing.filename,Size:String(ubuntuLiburing.size),SHA256:ubuntuLiburing.sha256};
+  const fixture=record=>{const gz=gzipSync(Object.entries(record).map(([k,v])=>k+": "+v).join("\n")+"\n\n");return{gz,release:"Origin: Ubuntu\nSuite: noble\nSHA256:\n "+createHash("sha256").update(gz).digest("hex")+" "+gz.length+" main/binary-amd64/Packages.gz\n"};};
+  const actual=fixture(pkg);assert.deepEqual(verifyUbuntuLiburingIndex(actual.release,actual.gz).packages,[ubuntuLiburing]);
+  for(const change of[{Version:"2.6-1"},{SHA256:"f".repeat(64)},{Filename:"pool/other.deb"},{Architecture:"arm64"},{Size:"1"}]){
+    const wrong=fixture({...pkg,...change});assert.throws(()=>verifyUbuntuLiburingIndex(wrong.release,wrong.gz));
+  }
+  assert.throws(()=>verifyPg18Index(actual.release,actual.gz));
 });
