@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "status": "BLOCKED_NO_BROADCAST",
   "base": "50e278401ef6e0e66a5f38045295b97cf6b5d930",
-  "observedHead": "f9dc86e469caa51ba5dfea2c7014c694ef0e9a31",
+  "observedHead": "8ea1a33357e1dab96c8e3617365d3e52cb86aeaa",
   "gitBlobMeaning": "Exact repository source bytes, independent of checkout LF/CRLF conversion; working-tree old-source differences also rejected.",
   "preservation": {
     "oldSolidityFiles": 74,
@@ -494,12 +494,6 @@
   "retainedSecurityGates": {
     "files": [
       {
-        "path": ".github/workflows/ci.yml",
-        "baseBlob": "06b79825b1e44fca33fd424ab3d96368adc2e900",
-        "currentBlob": "06b79825b1e44fca33fd424ab3d96368adc2e900",
-        "unchanged": true
-      },
-      {
         "path": ".github/workflows/nft-acquisition.yml",
         "baseBlob": "16dcc8dfe53cff23e89877c87e44eb719c353dd1",
         "currentBlob": "16dcc8dfe53cff23e89877c87e44eb719c353dd1",
@@ -975,7 +969,7 @@
       }
     ],
     "changed": 0,
-    "changedCountScope": "Exact-byte retained inventory only; the two explicitly bounded additive workflow extensions are recorded separately.",
+    "changedCountScope": "Exact-byte retained inventory only; three explicitly bounded additive workflow extensions are recorded separately.",
     "existingWebsiteWorkflow": {
       "change": "Exactly one additional Seaport public negative check, no removed or modified baseline lines",
       "baselineBlob": "675dc341b1323b83a8a9d5f39edf3d9c083e1cf9",
@@ -986,6 +980,14 @@
       "change": "Exactly five added trigger paths and their explanatory comment; existing source/test/analyzer/strict commands unchanged",
       "baselineBlob": "4430933476570c5bb95f9bcfa804a45be848394b",
       "currentBlob": "844eb6d5d8eea8641450ce3f93340d47aa86faf0",
+      "strictCommandsUnchanged": true
+    },
+    "existingCiWorkflow": {
+      "path": ".github/workflows/ci.yml",
+      "change": "Only exact read-only Task082 base fetch may be added before release-evidence tests; every baseline command remains identical",
+      "baseFetchAdded": true,
+      "baselineBlob": "06b79825b1e44fca33fd424ab3d96368adc2e900",
+      "currentBlob": "52dfe6fd1c22bbd694a3c5ff5f672ac122dc478d",
       "strictCommandsUnchanged": true
     },
     "newStrictWorkflow": {

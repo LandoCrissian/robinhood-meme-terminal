@@ -11,8 +11,8 @@
     },
     {
       "path": "REVIEW.md",
-      "bytes": 18276,
-      "sha256": "34f8e6703f0404f7f6f2d6c18de4f30b273cc2d4a36f53b318eb3f1dcb65e374",
+      "bytes": 18412,
+      "sha256": "15ed26db04ba6c732e664d312b72ec54921f6adf22683fb4278a2ab6b40dcdc7",
       "textNormalization": "LF"
     },
     {
@@ -153,14 +153,14 @@
     },
     {
       "path": "source-preservation.json",
-      "bytes": 45882,
-      "sha256": "4012912a99225af64346c7839ca8870cc48e1fb2b81f04c52d728403dce35916",
+      "bytes": 46082,
+      "sha256": "c0abe8320433862bffb1b178f5b0b8938e9b8ec79753b22aaf0171ba0cf4ecb8",
       "textNormalization": "LF"
     },
     {
       "path": "verify-artifacts.mjs",
-      "bytes": 12086,
-      "sha256": "0c9a87fcc755be4121cde44460527df93b4667e216d7c6905433b971b5503354",
+      "bytes": 13092,
+      "sha256": "35064ce3faa423d29b2dd3baed1bfcd8fe20bd8660bc720cd644cf7a6c62516c",
       "textNormalization": "LF"
     },
     {
