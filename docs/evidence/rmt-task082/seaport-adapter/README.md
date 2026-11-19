@@ -85,3 +85,10 @@ Primary references: [Seaport orders and fulfillment](https://github.com/ProjectO
 
 **BLOCKED_NO_BROADCAST.** Existing economics, contracts, owner keys, production
 providers, Firebase and Railway remain unchanged by this read-only module.
+
+Integration limits: the 32 KiB structured-order check follows JSON serialization;
+any future HTTP caller must cap raw request bytes before parsing. The verifier's
+time budget stops waiting; injected transports must separately bound response
+bodies, retries and cancellation of underlying reads. Distinct witness objects
+do not establish operational independence: deployment configuration must supply
+genuinely distinct sources. No public verification endpoint is activated here.

@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "4892d2af5ac09ae00975c2b799b66bec0d172779",
+  "validatedSourceCommit": "597f708cf6b3c7f729e8c786418ea05e89153b05",
+  "originalTrackedSolidityCount": 71,
+  "originalSolidityByteIdentical": 70,
+  "changedOriginalSolidity": [
+    {
+      "path": "packages/contracts/nft-acquisition/src/SyntheticNftListingVenueV1.sol",
+      "beforeGitBlob": "99ac38cf44e15bc86e9be3e25fa60950c87df1e6",
+      "afterGitBlob": "b45ee2ce4c713cd8ce76237346f98cdaf1f2faf7"
+    }
+  ],
+  "newSolidityIsTestOnly": true,
+  "unchangedDependencyAndScannerFiles": [
+    ".gitleaks.toml",
+    ".gitleaksignore",
+    "pnpm-lock.yaml",
+    "package.json",
+    "apps/indexer/package.json",
+    "apps/launch-website/package.json"
+  ],
+  "sourceInputs": [
+    {
+      "path": "packages/launchpad-common/seaport-order-verifier.mjs",
+      "gitBlob": "a2abbbaf668f0ebcaaefff68bdd358a1450d0171",
+      "sha256": "3d3d2dd3cc87644c95a70e927cba76f55ff4da5eb90c18e7add4c3e6098305ca"
+    },
+    {
+      "path": "packages/launchpad-common/seaport-order-verifier.test.mjs",
+      "gitBlob": "0aa282ab4757cdac34e7f091df31c2adf43c5a44",
+      "sha256": "958f02227c8061725bfed5d822771cfbfcd428231a14422c04c43d3eb3980304"
+    },
+    {
+      "path": "scripts/seaport-verification/fixture-run.mjs",
+      "gitBlob": "c8a0335f9c5dc3bb0f2664201035818ab41a0aa8",
+      "sha256": "b5967a8c1e95407560cb342cf93c0d089c86c3af9dd6bfd6ee1148840907b305"
+    },
+    {
+      "path": "scripts/seaport-verification/provenance-rebuild.mjs",
+      "gitBlob": "4244d7c2ecee6badfc9bb9a1f229642d9539a7c4",
+      "sha256": "e28dc398a979ed9db19a51a3288169eed6fceb1539eedd1a5a7b8f5dbff51d11"
+    },
+    {
+      "path": "scripts/seaport-verification/replay-historical.mjs",
+      "gitBlob": "6e95ae88322ecfdb832c744c18c894a9fc8b1a6d",
+      "sha256": "0633b293ad2141acafce9c1224092064835ecb1ae609da171442f57859b87c8c"
+    },
+    {
+      "path": "packages/contracts/seaport-verification/test/OfficialSeaport.t.sol",
+      "gitBlob": "f1359e9df59860b2be55444d8c86403cbde0ba3e",
+      "sha256": "8fd6d22cb6c2e01135156256eb5e416351019dd3739a1527730a8fdcc7a7a777"
+    },
+    {
+      "path": "packages/contracts/seaport-verification/test/fixtures/SeaportFixtureReceiver.sol",
+      "gitBlob": "d7f847a2f3adbfa0f8194cc76a48d0b3f6486a37",
+      "sha256": "a28bc994365914e51f8d4d7820ecb9e1e73fd2c1bd893f5a90a811064b67c17e"
+    },
+    {
+      "path": "scripts/nft-acquisition/browser-integration.mjs",
+      "gitBlob": "715e6fbd10694b82b13cada67adb2ef4a9a6deb9",
+      "sha256": "e1909619aaedb0ddd2a7be9c4636dde030d59cd0f13f1fa98e3f79eb8ff60fb3"
+    },
+    {
+      "path": "apps/launch-website/app/_components/nft-acquisition-dashboard.tsx",
+      "gitBlob": "18e3189bf34feb21b299143f780aa2d04b4dc156",
+      "sha256": "6addbdc8507336ec02beb33477ef864d0dcc7486fdf620ede281a5c8058bdbda"
+    },
+    {
+      "path": ".github/workflows/nft-acquisition.yml",
+      "gitBlob": "16dcc8dfe53cff23e89877c87e44eb719c353dd1",
+      "sha256": "265e5c64693e136a0595b0c04b5828a94cf8177507b9e5aefff3912b5ddce686"
+    }
+  ],
+  "productionMutated": false,
+  "economicParametersChanged": false
+}

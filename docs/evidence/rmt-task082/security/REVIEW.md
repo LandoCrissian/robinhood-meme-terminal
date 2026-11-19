@@ -42,6 +42,8 @@ The new `NftAcquisitionSecurityReview.t.sol` adds 11 tests to the existing 30-te
 
 Pinned solc 0.8.26 ABI/AST typechecking passed for all nine source/test files, zero errors or warnings. That is **not EVM execution**. Linux Foundry/Anvil/browser results must be recorded separately; the local report does not predeclare the 41 tests passed.
 
+Subsequent actual Linux execution at `597f708cf6b3c7f729e8c786418ea05e89153b05` passed **41 tests, zero failures/skips**, including the existing 256-case fuzz tests and stateful invariant. The fresh Linux full-closure scan again reported **101 detectors / 47 observations / 22 High**, strict exit **1**, with the same high IDs as Windows. [Actual job](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203180/job/135676370562) · [Retained raw Linux report and integrity checks](../acceptance/). This later execution evidence does not rewrite the original local-only boundary or clear any remaining finding.
+
 ## Residual assumptions and release holds
 
 No reachable asset-loss path was confirmed in the reviewed baseline under its pinned local dependencies. This is an internal assessment with finite coverage, not a proof of absence. Runtime hashing establishes identity, not semantics. A deliberately malicious admitted venue can lie about consideration; a malicious NFT/token can lie about its own balances. A proxy runtime alone does not bind its implementation or admin policy. Actual source, implementation and supported behavior therefore remain independent admission requirements for any new route or collection.

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL_WINDOWS_TOOL_ENVIRONMENT_NOT_CONTRACT_FAILURE",
+  "command": "pnpm check:repo",
+  "exitCode": 1,
+  "node": "22.23.2",
+  "knip": "6.29.0",
+  "parser": "oxc-parser@0.140.0",
+  "error": "RangeError: Array buffer allocation failed",
+  "location": "oxc-parser/src-js/raw-transfer/common.js:294 createBuffer",
+  "linuxCheck": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44557203271/job/135676370921",
+  "linuxConclusion": "success",
+  "detectorsOrChecksWeakened": false,
+  "dependencyChanged": false,
+  "productionChanged": false
+}
