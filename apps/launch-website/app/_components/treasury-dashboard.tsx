@@ -51,6 +51,7 @@ export function TreasuryDashboard({ fixture = false, initialTreasury = "" }: { f
   return <>
     <header className="lpPageHeading"><div><h1>Project Treasury</h1><p>Your project&apos;s funds, permissions and verified fee receipts.</p></div></header>
     <MyLaunchesNav active="treasury" />
+    <p><Link className="lpBack" href="/my-launches/treasury/nft-purchases" prefetch={false}>Optional NFT collection acquisition →</Link></p>
     <form className="lpPanel lpForm lpEarningsLookup" aria-label="Find project treasury" data-treasury-ready={clientReady ? "true" : "false"} aria-busy={busy || !clientReady} onSubmit={lookup}>
       <label htmlFor="project-treasury-address">Project treasury address<input id="project-treasury-address" name="treasuryAddress" value={input} disabled={!clientReady || busy} maxLength={42} placeholder="0x…" spellCheck={false} autoComplete="off" onChange={e => setInput(e.target.value)} /></label>
       <button className="lpButton" type="submit" disabled={!clientReady || busy}>{busy ? "Checking evidence…" : "View treasury"}</button>

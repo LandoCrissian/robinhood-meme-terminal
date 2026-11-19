@@ -5,7 +5,7 @@ import { isProfileApiRoute } from "./lib/server/profiles/config";
 import { admitRailwayRequest, railwayHosting } from "./lib/server/railway-read-only";
 
 const publicRoutes = new Set([
-  "/", "/create-token", "/my-launches", "/my-launches/earnings", "/my-launches/treasury", "/wallet", "/reclaim",
+  "/", "/create-token", "/my-launches", "/my-launches/earnings", "/my-launches/treasury", "/my-launches/treasury/nft-purchases", "/wallet", "/reclaim",
   "/terms", "/risks", "/privacy", "/robots.txt", "/api/launchpad/config",
   "/api/launchpad/launches", "/api/launchpad/project-treasury", "/api/launchpad/reclaim",
 ]);
@@ -45,6 +45,9 @@ export function middleware(request: NextRequest) {
   // These handlers enforce their own backend availability, exact origin,
   // session, CSRF and request budgets. This is only a narrow routing allowlist.
   if (isProfileApiRoute(pathname, request.method)) return NextResponse.next();
+  // The handler repeats all local manifest/origin/runtime checks. Hosted GET
+  // and POST both return 404; this is never a production transaction route.
+  if (pathname === "/api/nft-acquisition" && ["GET", "HEAD", "POST"].includes(request.method)) return NextResponse.next();
   // These read-only handlers validate recipient/deployment/checkpoint context;
   // test claims repeat the explicit local fixture gate, production claims stay off.
   if ((["GET", "HEAD"].includes(request.method) && /^\/api\/launchpad\/earnings(?:\/(?:factory|history|0x[0-9a-fA-F]{40}))?$/.test(pathname))
