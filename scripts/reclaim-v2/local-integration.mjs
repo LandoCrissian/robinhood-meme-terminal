@@ -105,6 +105,8 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   await complete("approve-funding",{amountWei:units(6)});await complete("fund",{amountWei:units(6)});
   await complete("propose-collection",{collection:burn721.address,collectionCap:"40",collectionWalletCap:"30"});await advance();await complete("execute-collection");await complete("resume");
   await complete("approve-721",{collection:burn721.address,tokenId:"3"});await complete("redeem",{collection:burn721.address,tokenIds:["3"],quantities:["1"]});
+  await complete("approve-721",{collection:burn721.address,tokenId:"4"});
+  assert.ok(same(await read(burn721.address,nftAbi(burn721),"getApproved",[4n]),campaign));
   await session.fill("Exact token IDs","4");await session.reviewRejected("Review permanent NFT surrender",200,"unavailable");assert.ok(same(await read(burn721.address,nftAbi(burn721),"ownerOf",[4n]),creator));
   await session.capture("reclaim-insufficient-funded-reward");await complete("pause");await complete("propose-close");await advance();await complete("execute-close");
   await complete("propose-recovery",{amountWei:units(1)});await advance();const closed=await complete("execute-recovery");assert.equal(closed.verified.snapshot.reserve.availableWei,"0");assert.equal(closed.verified.snapshot.reserve.recoveredWei,units(1));

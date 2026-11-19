@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "status": "FAILED_BEFORE_RETAINED_NOT_SUCCESS",
+  "productionChanges": false,
+  "windows": {
+    "result": "PostgreSQL initdb ENOSPC after successful synthetic V2 fixture deployment",
+    "backupOrProductionDatabaseTouched": false,
+    "automaticCleanupReview": "stopped synthetic clusters and build cache removals both rejected with blocked by policy; no deletion executed"
+  },
+  "linux": {
+    "sourceCommit": "890c9a266399099f8ca8ce3b5aa1d81005738fad",
+    "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44442036384/job/135284964233",
+    "artifactId": 14492596078,
+    "result": "Onchain campaign creation succeeded, canonical indexer refused checkpoint: stale V1 nonce baseline1 vs V2 last-issued nonce0",
+    "contractSourceChanged": false,
+    "checksWeakened": false
+  },
+  "files": [
+    {
+      "file": "windows-postgres-init.log.gz",
+      "originalBytes": 1227,
+      "originalSha256": "0ad12be0d66d8f01ee9798f82e74699958237d0c1e53afe1391afed2796bec46",
+      "archiveBytes": 670,
+      "archiveSha256": "25115120fb8eb5ebf4c7a1c31b293ef411bd2cc12a69388d598c60fbb7e4a357"
+    },
+    {
+      "file": "linux-first-reclaim-acceptance.json.gz",
+      "originalBytes": 128012,
+      "originalSha256": "aa9cdfb94e2bbc1e4e6601dda46173e3c452991a212a67a6c74c746962a56074",
+      "archiveBytes": 35337,
+      "archiveSha256": "3ec608befba5f043b67f6305f7f958cf58343707f33d43798f0e729a88e60551"
+    },
+    {
+      "file": "linux-first-reclaim-browser.json.gz",
+      "originalBytes": 14207,
+      "originalSha256": "9a2c86c150b422c621dc2ac70580db01688ee27252ae2e3921177df8f65f08ba",
+      "archiveBytes": 2363,
+      "archiveSha256": "59914aa613142192080d9594dc540c31a4f2156fadbf8419a70f1bb6fd2ab8f6"
+    },
+    {
+      "file": "linux-first-worker.log.gz",
+      "originalBytes": 52,
+      "originalSha256": "86f0974d666cb67a606cbf6ba064ef6d1d44d099475f04a57c365ec3191fb87d",
+      "archiveBytes": 71,
+      "archiveSha256": "90bc830e2aac2d55d7dc2fa35de00e3eadb54f3375c3e7a737924214692aa2e9"
+    }
+  ]
+}
