@@ -46,3 +46,23 @@ node --test scripts/seaport-verification/provenance-rebuild.test.mjs
 Omit `--offline` only for fresh bounded, read-only provider observations. Original fixed-identifier endpoints are used; this CLI never accepts wallet keys, marketplace calldata or an arbitrary URL. All real signing and broadcasting remain absent.
 
 The unchanged Gitleaks 8.30.1 raw scan produced **nine** generic-key observations: the public OpenSea conduit identifier and the exact historical WETH/NFT contract references. [Original redacted scanner rows](raw-gitleaks-report.json.gz) and [individual public-data bindings](public-data-classification.json) preserve the failure before compression. No unclassified observation was archived. This is not a zero-finding raw scan or clearance of the separate history/security gates.
+
+## Actual historical protocol replay
+
+The bounded read-only [`replay-historical.mjs`](../../../../scripts/seaport-verification/replay-historical.mjs) retrieved actual public transaction `0xbbd7ebdc2b3665ae7781afbf8854125ed430baaf2bb1fd4629612b6e269827fe` from **both** Robinhood providers. It decoded the original `fulfillAdvancedOrder` calldata, bound the successful receipt and `OrderFulfilled` event to block **115258144**, hash `0x48497245bac8273975a0c362c351d38998d03a8ec0a7224e1da0aca281f6c886`, and repeated the canonical block check. This is historical decoding/cryptographic/trace replay, **not** resubmission of a mined transaction or present listing availability.
+
+Pocket supplied the offerer's actual counter **0** at the preceding block. From the original signed components, RMT independently reproduced order hash `0x43a7a74fc97f32219eb11fcf4f18f259403fd324a780462f8aee72fb5a55f386`, domain-bound digest `0xdcf46b4ae62b1f6cdd05b98cc7b73edb2bfadc2b948ddeb12ef2aa4e4cc96eef`, and recovered the actual bidder `0x8468bB401471B4ddFe9B4C5d6406145DBA141130`. The computed order hash also matched an actual historical `getOrderHash` call. Official RPC's unavailable historical counter remains **unavailable**, without guessing. Pocket returned the original 23,712-byte `callTracer` result, bound to exact from/to/input/value; official RPC did not support `debug_traceTransaction`.
+
+This order is **PARTIAL_RESTRICTED (3)**, fraction **1/2**, a WETH bid using a nonzero zone and ERC721 criteria. NFT ID **408** was resolved; the zero criteria root accepted any token in that collection. The actual half-fill paid **0.0009 WETH**, with **0.000009 WETH** marketplace and **0.00009 WETH** royalty consideration. These are this single order's terms, not universal fees or a new change to live royalties. Both providers observed `[validated=true, cancelled=false, totalFilled=1, totalSize=2]` at current observation block **118324433**. A partially remaining order is not proof of a current OpenSea listing, seller authorization to RMT, qualified payment asset or supported RMT custody.
+
+The strict adapter rejects the archived supported-counter order as `UNSUPPORTED_ORDER_TYPE_OR_ZONE`. An unavailable-counter input is separately rejected as `INVALID_ORDER_IDENTITY`. No present listing is invented from historic receipts. [Raw public evidence](historical-replay-4663.json.gz) is **78,496 bytes**, SHA-256 `2c7b1d9bccbb89a6d3b9e715345ec367a812e44bc1eb9cf463a381106832ab28`. The [manifest](historical-replay-manifest.json) records all public-data scanner classifications; unchanged Gitleaks 8.30.1 reported **20** raw generic-key observations, all exact public token addresses or conduit identifiers. The original redacted failure is retained in `historical-raw-gitleaks-report.json.gz`; no detector was suppressed and no unknown match was archived.
+
+```sh
+node scripts/seaport-verification/replay-historical.mjs /outside/repository/historical-replay.json
+node --test scripts/seaport-verification/replay-historical.test.mjs
+node scripts/seaport-verification/fixture-run.mjs \
+  --anvil /pinned/anvil --solc /pinned/solc-0.8.26 \
+  --output /outside/repository/fresh-seaport-fixture
+```
+
+The five retained replay tests pass offline: provenance bytes, canonical receipt/calldata/fraction, real archive-based signature, explicit unsupported/current-status boundaries, and all raw scanner observations. The four source reproduction tests also pass. Actual local Seaport fulfillment is separate loopback-31337 evidence, using newly generated synthetic test keys only; it does not turn this historical bid into an executable current listing.
