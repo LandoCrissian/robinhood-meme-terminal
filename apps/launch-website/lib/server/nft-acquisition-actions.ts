@@ -9,6 +9,24 @@ import {readTreasuryBody} from "./project-treasury-actions";
 import {nftAcquisitionOperationFields} from "../nft-acquisition-calldata";
 
 const liveAddresses=new Set(["0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca","0xc447a378cfd8460febc2eef67501d7a5473b9001","0xc3600f2df60929d2ab9ab294cff42eedcb984f51","0x2bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697","0xaf9f10258b091719618c19d057f9cdab72effd8b","0x8d44078642ce938fd799b23087bcdd6114a302e5"]);
+const preparationStages=["request-fields","runtime-and-project-context","operation-terms","wallet-profile","actor-code-and-pending-code","target-simulation","gas-estimation","fee-and-nonce","review-schema"]as const;
+type PreparationStage=typeof preparationStages[number];
+class NftPreparationFailure extends Error{constructor(readonly stage:PreparationStage,cause:unknown){super("Local NFT preparation failed",{cause});this.name="NftPreparationFailure";}}
+/** Diagnostic metadata is available only after the strict local fixture gate.
+ * Never serialize an error object, RPC request, URL, calldata or credentials. */
+export function nftAcquisitionFailureDiagnostic(stage:PreparationStage,error:unknown){
+  const result:{scope:"isolated-local-diagnostic";stage:PreparationStage;errorName?:string;shortMessage?:string;revertSelector?:Hex}={scope:"isolated-local-diagnostic",stage};
+  let current=error;for(let depth=0;depth<6&&current&&typeof current==="object";depth++){
+    const e=current as{name?:unknown;shortMessage?:unknown;data?:unknown;raw?:unknown;cause?:unknown};
+    if(!result.errorName&&typeof e.name==="string"&&/^[A-Za-z][A-Za-z0-9]{0,63}$/.test(e.name))result.errorName=e.name;
+    if(!result.shortMessage&&typeof e.shortMessage==="string"){
+      let short=e.shortMessage.replace(/https?:\/\/\S+/gi,"[endpoint]").replace(/0x[0-9a-f]{8,}/gi,"[hex]").replace(/[^\x20-\x7e]/g," ");
+      const key=process.env.RMT_CURVE_FIXTURE_READ_KEY;if(key)short=short.split(key).join("[credential]");result.shortMessage=short.slice(0,160);
+    }
+    if(typeof e.name==="string"&&/Revert|RawContract|RpcRequestError/i.test(e.name))for(const data of[e.raw,e.data])if(!result.revertSelector&&typeof data==="string"&&/^0x[0-9a-f]{8}(?:[0-9a-f]{2}){0,32764}$/i.test(data))result.revertSelector=data.slice(0,10)as Hex;
+    current=e.cause;
+  }return result;
+}
 export const syntheticNftActor=(v:unknown):v is Address=>nftAddress(v)&&!liveAddresses.has(v.toLowerCase());
 const call=(name:string,args:readonly unknown[]=[])=>encodeFunctionData({abi:nftVaultAbi,functionName:name,args}as never);
 const allowedFields=nftAcquisitionOperationFields;
@@ -61,25 +79,30 @@ export async function nftAcquisitionTerms(config:NftAcquisitionFixture,rpc:NftAc
   return{data,target,targetRuntimeHash,value,listing,controller,controllerEpoch:String(ce),policyEpoch:String(pe),expiresAt};
 }
 export async function prepareNftAcquisition(config:NftAcquisitionFixture,body:Record<string,unknown>,prior?:NftAcquisitionReview):Promise<NftAcquisitionReview>{
+  let stage:PreparationStage="request-fields";try{
   requireNft(syntheticNftActor(body.account)&&nftAcquisitionOperations.includes(body.operation as NftAcquisitionOperation)&&validNftFields(body.fields));
+  stage="runtime-and-project-context";
   const{rpc,head}=await verifyNftAcquisitionContext(config),actor=normalizeNft(body.account),operation=body.operation as NftAcquisitionOperation;
-  const terms=await nftAcquisitionTerms(config,rpc,head,actor,operation,body.fields,prior),kind=await projectTreasuryControllerKind(rpc,actor,head.number);requireNft(kind!=="unsupported");
+  stage="operation-terms";const terms=await nftAcquisitionTerms(config,rpc,head,actor,operation,body.fields,prior);stage="wallet-profile";const kind=await projectTreasuryControllerKind(rpc,actor,head.number);requireNft(kind!=="unsupported");
+  stage="actor-code-and-pending-code";
   const code=await rpc.getCode({address:actor,blockNumber:head.number}),pendingCode=await rpc.getCode({address:actor,blockTag:"pending"});requireNft(same(code??"0x",pendingCode??"0x"));
   let request:NftAcquisitionReview["request"]=null,maximum="0";
   const innerCall={from:actor,to:terms.target,data:terms.data,value:terms.value};
   // Read-only simulation from a Safe tests target terms, not ownership. Two
   // actual owner signatures and the full outer simulation remain mandatory.
-  await rpc.call({account:actor,to:terms.target,data:terms.data,value:BigInt(terms.value),blockNumber:head.number});
+  stage="target-simulation";await rpc.call({account:actor,to:terms.target,data:terms.data,value:BigInt(terms.value),blockNumber:head.number});
   if(kind!=="safe-1.4.1"){
+    stage="gas-estimation";
     const[estimate,priority,block,nonce]=await Promise.all([rpc.estimateGas({account:actor,to:terms.target,data:terms.data,value:BigInt(terms.value),blockNumber:head.number}),rpc.estimateMaxPriorityFeePerGas(),rpc.getBlock(),rpc.getTransactionCount({address:actor,blockTag:"pending"})]);
     const gas=estimate*125n/100n,fee=(block.baseFeePerGas??0n)*2n+priority;requireNft(gas>0n&&gas<=20_000_000n&&fee>0n);
     request={type:"0x2",chainId:"0x7a69",from:actor,to:terms.target,data:terms.data,value:terms.value,nonce:toHex(nonce),gas:toHex(gas),maxFeePerGas:toHex(fee),maxPriorityFeePerGas:toHex(priority)};
-    if(prior){requireNft(prior.request&&same(prior.request.data,terms.data)&&prior.request.value===terms.value&&BigInt(prior.request.nonce)===BigInt(nonce)&&estimate<=BigInt(prior.request.gas)&&(block.baseFeePerGas??0n)+priority<=BigInt(prior.request.maxFeePerGas));request=prior.request;}
+    stage="fee-and-nonce";if(prior){requireNft(prior.request&&same(prior.request.data,terms.data)&&prior.request.value===terms.value&&BigInt(prior.request.nonce)===BigInt(nonce)&&estimate<=BigInt(prior.request.gas)&&(block.baseFeePerGas??0n)+priority<=BigInt(prior.request.maxFeePerGas));request=prior.request;}
     maximum=String(BigInt(request.gas)*BigInt(request.maxFeePerGas));requireNft(await rpc.getBalance({address:actor,blockTag:"pending"})>=BigInt(maximum)+BigInt(terms.value));
   }else requireNft(terms.value==="0x0","Safe funding requires a separately reviewed value-bearing profile; no unsupported value call is prepared");
   const partial:Omit<NftAcquisitionReview,"reviewHash">={schemaVersion:1,profile:nftAcquisitionProfile,chainId:31337,scope:"isolated-local",executionEnabled:false,status:kind==="safe-1.4.1"?"needs-safe-approvals":"prepared",operation,actor,controller:terms.controller,controllerEpoch:terms.controllerEpoch,policyEpoch:terms.policyEpoch,kind:kind==="safe-1.4.1"?"safe-inner":kind,vault:config.module.vault,targetRuntimeHash:terms.targetRuntimeHash,actorCodeHash:keccak256(code??"0x"),fields:body.fields,innerCall,request,observed:prior?.observed??nftAcquisitionPoint(head),expiresAt:terms.expiresAt,maximumNetworkFeeWei:maximum,listing:terms.listing,
     notices:["Synthetic local transaction only. Production execution is blocked.","No automatic wallet prompts or resubmission. Manual settled funding does not redirect immutable fee credits.",...(kind==="safe-1.4.1"?["Safe signatures have nonce-only replay protection; an application expiry cannot revoke signed administrative calldata."]:[])]};
-  const review={...partial,reviewHash:nftAcquisitionReviewHash(partial)};requireNft(isNftAcquisitionReview(review));if(prior)requireNft(review.reviewHash===prior.reviewHash&&same((await rpc.getBlock({blockNumber:BigInt(prior.observed.blockNumber)})).hash!,prior.observed.blockHash));return review;
+  stage="review-schema";const review={...partial,reviewHash:nftAcquisitionReviewHash(partial)};requireNft(isNftAcquisitionReview(review));if(prior)requireNft(review.reviewHash===prior.reviewHash&&same((await rpc.getBlock({blockNumber:BigInt(prior.observed.blockNumber)})).hash!,prior.observed.blockHash));return review;
+  }catch(error){throw new NftPreparationFailure(stage,error);}
 }
 /** A receipt-shaped provider object is not enough: every envelope, membership
  * and log identity must bind the original sender/nonce and canonical block. */
@@ -183,4 +206,4 @@ export async function handleNftAcquisitionTest(request:Request){const config=con
       if(body.action==="safe-revalidate"&&exact(body,["action","review"])&&types.isNftAcquisitionSafeOuterReview(body.review)){const r=body.review,next=await safe.prepareNftAcquisitionSafeOuter(config,r.proposal,r.approvals,r);return reply({status:next.reviewHash===r.reviewHash?"unchanged":"unavailable",reviewHash:r.reviewHash,executionEnabled:false});}
       if(body.action==="safe-verify"&&exact(body,["action","review"],["transactionHash"])&&types.isNftAcquisitionSafeOuterReview(body.review)){requireNft(body.transactionHash===undefined||nftHash(body.transactionHash));return reply(await safe.verifyNftAcquisitionSafeOuter(config,body.review,body.transactionHash as Hex|undefined));}}
     return reply({status:"invalid",executionEnabled:false},400);
-  }catch{return reply({status:"unavailable",executionEnabled:false,reason:"NFT acquisition identity, authority, order, funding or simulation is unavailable"});}finally{release();}}
+  }catch(error){return reply({status:"unavailable",executionEnabled:false,reason:"NFT acquisition identity, authority, order, funding or simulation is unavailable",...(error instanceof NftPreparationFailure&&{diagnostic:nftAcquisitionFailureDiagnostic(error.stage,error.cause)})});}finally{release();}}
