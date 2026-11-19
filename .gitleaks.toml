@@ -2,6 +2,13 @@
 useDefault = true
 
 [[allowlists]]
+description = "Exact public 20-byte synthetic ERC20 address in the original Task078 CI graduation diagnostic; not an RPC token or signing key"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexes = ['''(?i)^0x40cb4dd41c8af32ecd5c8e0d19fb3f6d06b4c9ac$''']
+paths = ['''^docs/evidence/rmt-task078/regressions/ci-first-graduation-review\.json$''']
+
+[[allowlists]]
 description = "Four exact public synthetic ERC20 addresses proven by Task076 CurveCreated receipts; only the four raw browser/core reports, never credentials"
 condition = "AND"
 targetRules = ["generic-api-key"]
