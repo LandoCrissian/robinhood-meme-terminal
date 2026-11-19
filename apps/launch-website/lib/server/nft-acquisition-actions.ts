@@ -6,12 +6,13 @@ import {isNftAcquisitionReview,nftAcquisitionOperations,nftAcquisitionProfile,nf
 import {configuredNftAcquisitionFixture,verifyNftAcquisitionContext,nftAcquisitionPoint,readNftAcquisitionSnapshot,nftRead,nftVaultAbi,nftVenueAbi,nft721Abi,nft1155Abi,normalizeNft,requireNft,type NftAcquisitionFixture,type NftAcquisitionRpc,type NftAcquisitionHead} from "./nft-acquisition-fixture";
 import {projectTreasuryControllerKind} from "./project-treasury-fixture";
 import {readTreasuryBody} from "./project-treasury-actions";
+import {nftAcquisitionOperationFields} from "../nft-acquisition-calldata";
 
 const liveAddresses=new Set(["0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca","0xc447a378cfd8460febc2eef67501d7a5473b9001","0xc3600f2df60929d2ab9ab294cff42eedcb984f51","0x2bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697","0xaf9f10258b091719618c19d057f9cdab72effd8b","0x8d44078642ce938fd799b23087bcdd6114a302e5"]);
 export const syntheticNftActor=(v:unknown):v is Address=>nftAddress(v)&&!liveAddresses.has(v.toLowerCase());
 const call=(name:string,args:readonly unknown[]=[])=>encodeFunctionData({abi:nftVaultAbi,functionName:name,args}as never);
-const allowedFields:Record<NftAcquisitionOperation,string[]>={"fund-native":["amountWei","source"],"approve-funding":["amountWei"],"fund-token":["amountWei","source"],configure:["currency","perNftCap","totalBudget","periodBudget","cooldownSeconds","enabled"],"configure-collection":["collection","enabled","anyTokenId","ids","identityConfirmed"],disable:[],buy:["order","signature","identityConfirmed"],"schedule-controller":["incoming","expiresAt"],"cancel-controller":[],"accept-controller":[],"schedule-nft-withdrawal":["collection","tokenId","quantity","recipient","expiresAt"],"schedule-asset-withdrawal":["currency","amountWei","recipient","expiresAt"],"execute-withdrawal":["id"],"cancel-withdrawal":["id"]};
-const exact=(v:Record<string,unknown>,required:string[],optional:string[]=[])=>required.every(k=>Object.hasOwn(v,k))&&Object.keys(v).every(k=>required.includes(k)||optional.includes(k));
+const allowedFields=nftAcquisitionOperationFields;
+const exact=(v:Record<string,unknown>,required:readonly string[],optional:readonly string[]=[])=>required.every(k=>Object.hasOwn(v,k))&&Object.keys(v).every(k=>required.includes(k)||optional.includes(k));
 const numberField=(f:NftAcquisitionFields,name:string)=>{requireNft(nftUint(f[name]),`Invalid ${name}`);return BigInt(f[name]as string);};
 const addressField=(f:NftAcquisitionFields,name:string,zero=false)=>{requireNft(nftAddress(f[name])||zero&&f[name]===zeroAddress,`Invalid ${name}`);return normalizeNft(f[name]as string);};
 type Order={seller:Address;vault:Address;collection:Address;standard:number;tokenId:bigint;quantity:bigint;currency:Address;sellerAmount:bigint;feeRecipient:Address;feeAmount:bigint;royaltyRecipient:Address;royaltyAmount:bigint;startTime:number;endTime:number;sellerNonce:bigint;salt:Hex};
@@ -36,7 +37,7 @@ export async function nftAcquisitionTerms(config:NftAcquisitionFixture,rpc:NftAc
   else if(operation==="configure"){const currency=addressField(fields,"currency",true);requireNft(currency===zeroAddress||same(currency,m.paymentToken));const caps=["perNftCap","totalBudget","periodBudget"].map(k=>numberField(fields,k)),cooldown=numberField(fields,"cooldownSeconds");requireNft(caps.every(n=>n>0n&&n<2n**128n)&&cooldown<2n**32n&&typeof fields.enabled==="boolean");data=call("configurePolicy",[{currency,perNftCap:caps[0],totalBudget:caps[1],periodBudget:caps[2],cooldownSeconds:Number(cooldown)},fields.enabled]);}
   else if(operation==="configure-collection"){
     const collection=addressField(fields,"collection"),c=m.collections.find(v=>same(v.address,collection));requireNft(c&&fields.identityConfirmed===true&&typeof fields.enabled==="boolean"&&typeof fields.anyTokenId==="boolean"&&typeof fields.ids==="string");
-    const ids=fields.ids===""?[]:fields.ids.split(",");requireNft(ids.length<=64&&ids.every(nftUint)&&new Set(ids).size===ids.length&&(fields.anyTokenId===true?ids.length===0:ids.length>0));
+    const ids=fields.ids===""?[]:fields.ids.split(",");requireNft(ids.length<=32&&ids.every(nftUint)&&ids.every((id,i)=>i===0||BigInt(id)>BigInt(ids[i-1]))&&(fields.anyTokenId===true?ids.length===0:fields.enabled===false||ids.length>0));
     data=call("configureCollection",[collection,c.standard===721?1:2,c.runtimeHash,fields.enabled,fields.anyTokenId,ids.map(BigInt)]);
   }else if(operation==="disable")data=call("disablePurchases");
   else if(operation==="buy"){
@@ -66,8 +67,10 @@ export async function prepareNftAcquisition(config:NftAcquisitionFixture,body:Re
   const code=await rpc.getCode({address:actor,blockNumber:head.number}),pendingCode=await rpc.getCode({address:actor,blockTag:"pending"});requireNft(same(code??"0x",pendingCode??"0x"));
   let request:NftAcquisitionReview["request"]=null,maximum="0";
   const innerCall={from:actor,to:terms.target,data:terms.data,value:terms.value};
+  // Read-only simulation from a Safe tests target terms, not ownership. Two
+  // actual owner signatures and the full outer simulation remain mandatory.
+  await rpc.call({account:actor,to:terms.target,data:terms.data,value:BigInt(terms.value),blockNumber:head.number});
   if(kind!=="safe-1.4.1"){
-    await rpc.call({account:actor,to:terms.target,data:terms.data,value:BigInt(terms.value),blockNumber:head.number});
     const[estimate,priority,block,nonce]=await Promise.all([rpc.estimateGas({account:actor,to:terms.target,data:terms.data,value:BigInt(terms.value),blockNumber:head.number}),rpc.estimateMaxPriorityFeePerGas(),rpc.getBlock(),rpc.getTransactionCount({address:actor,blockTag:"pending"})]);
     const gas=estimate*125n/100n,fee=(block.baseFeePerGas??0n)*2n+priority;requireNft(gas>0n&&gas<=20_000_000n&&fee>0n);
     request={type:"0x2",chainId:"0x7a69",from:actor,to:terms.target,data:terms.data,value:terms.value,nonce:toHex(nonce),gas:toHex(gas),maxFeePerGas:toHex(fee),maxPriorityFeePerGas:toHex(priority)};
@@ -78,9 +81,23 @@ export async function prepareNftAcquisition(config:NftAcquisitionFixture,body:Re
     notices:["Synthetic local transaction only. Production execution is blocked.","No automatic wallet prompts or resubmission. Manual settled funding does not redirect immutable fee credits.",...(kind==="safe-1.4.1"?["Safe signatures have nonce-only replay protection; an application expiry cannot revoke signed administrative calldata."]:[])]};
   const review={...partial,reviewHash:nftAcquisitionReviewHash(partial)};requireNft(isNftAcquisitionReview(review));if(prior)requireNft(review.reviewHash===prior.reviewHash&&same((await rpc.getBlock({blockNumber:BigInt(prior.observed.blockNumber)})).hash!,prior.observed.blockHash));return review;
 }
+/** A receipt-shaped provider object is not enough: every envelope, membership
+ * and log identity must bind the original sender/nonce and canonical block. */
+export function assertNftAcquisitionEnvelope(q:NonNullable<NftAcquisitionReview["request"]>,tx:Awaited<ReturnType<NftAcquisitionRpc["getTransaction"]>>,receipt:Awaited<ReturnType<NftAcquisitionRpc["getTransactionReceipt"]>>,block:Awaited<ReturnType<NftAcquisitionRpc["getBlock"]>>,anchor:bigint,found:Hex):void{
+  requireNft(tx.type==="eip1559"&&!tx.authorizationList&&!tx.accessList?.length&&tx.chainId===31337&&same(tx.hash,found)&&same(tx.from,q.from)&&tx.to!==null&&same(tx.to,q.to)
+    &&tx.value===BigInt(q.value)&&same(tx.input,q.data)&&BigInt(tx.nonce)===BigInt(q.nonce)&&tx.gas===BigInt(q.gas)&&tx.maxFeePerGas===BigInt(q.maxFeePerGas)&&tx.maxPriorityFeePerGas===BigInt(q.maxPriorityFeePerGas)
+    &&["success","reverted"].includes(receipt.status)&&receipt.type==="eip1559"&&receipt.blockNumber>anchor&&receipt.blockNumber===tx.blockNumber&&block.number===receipt.blockNumber
+    &&Number.isSafeInteger(receipt.transactionIndex)&&receipt.transactionIndex>=0&&receipt.transactionIndex===tx.transactionIndex&&receipt.transactionIndex<block.transactions.length
+    &&same(block.hash!,receipt.blockHash)&&same(tx.blockHash!,receipt.blockHash)&&same(receipt.transactionHash,found)&&same(block.transactions[receipt.transactionIndex]as Hex,found)
+    &&same(receipt.from,q.from)&&receipt.to!==null&&same(receipt.to,q.to)&&receipt.gasUsed>0n&&receipt.gasUsed<=tx.gas&&receipt.effectiveGasPrice>=0n&&receipt.effectiveGasPrice<=BigInt(q.maxFeePerGas)
+    &&Array.isArray(receipt.logs)&&receipt.logs.length<=256&&new Set(receipt.logs.map(l=>l.logIndex)).size===receipt.logs.length
+    &&receipt.logs.every(l=>!l.removed&&Number.isSafeInteger(l.logIndex)&&l.logIndex>=0&&l.transactionIndex===receipt.transactionIndex&&nftAddress(l.address)
+      &&same(l.blockHash,receipt.blockHash)&&same(l.transactionHash,found)&&l.blockNumber===receipt.blockNumber&&/^0x(?:[0-9a-f]{2}){0,32768}$/i.test(l.data)
+      &&l.topics.length<=4&&l.topics.every(t=>/^0x[0-9a-f]{64}$/i.test(t))));
+}
 export async function verifyNftAcquisitionTransaction(config:NftAcquisitionFixture,review:NftAcquisitionReview,hash?:Hex,outer?:{request:NonNullable<NftAcquisitionReview["request"]>;verifyOrigin:(rpc:NftAcquisitionRpc,receipt:Awaited<ReturnType<NftAcquisitionRpc["getTransactionReceipt"]>>)=>Promise<void>}):Promise<NftAcquisitionVerification>{
   const base={schemaVersion:1,profile:nftAcquisitionProfile,chainId:31337,executionEnabled:false,reviewHash:review.reviewHash,finality:"synthetic-local-not-production"}as const;
-  try{requireNft(isNftAcquisitionReview(review));const{rpc,head}=await verifyNftAcquisitionContext(config),q=outer?.request??review.request;requireNft(q);
+  try{requireNft(isNftAcquisitionReview(review)&&same(review.vault,config.module.vault)&&syntheticNftActor(review.actor)&&(review.kind==="safe-inner")===Boolean(outer));const{rpc,head}=await verifyNftAcquisitionContext(config),q=outer?.request??review.request;requireNft(q);
     let found=hash;if(!found){const from=BigInt(review.observed.blockNumber);requireNft(head.number-from<=256n);const candidates:Hex[]=[];
       for(let n=from;n<=head.number;n++){const block=await rpc.getBlock({blockNumber:n,includeTransactions:true});for(const tx of block.transactions){requireNft(typeof tx!=="string");if(same(tx.from,q.from)&&BigInt(tx.nonce)===BigInt(q.nonce))candidates.push(tx.hash);}}requireNft(candidates.length<=1);found=candidates[0];}
     if(!found)return{...base,status:"pending",reason:"Original sender/nonce is not yet canonically observed. No resubmission."};
@@ -89,8 +106,7 @@ export async function verifyNftAcquisitionTransaction(config:NftAcquisitionFixtu
     requireNft(same(original.target,review.innerCall.to)&&same(original.data,review.innerCall.data)&&original.value===review.innerCall.value&&same(original.targetRuntimeHash,review.targetRuntimeHash)
       &&same(original.controller,review.controller)&&original.controllerEpoch===review.controllerEpoch&&original.policyEpoch===review.policyEpoch&&claimProfileDigest(original.listing)===claimProfileDigest(review.listing));
     const[tx,receipt]=await Promise.all([rpc.getTransaction({hash:found}),rpc.getTransactionReceipt({hash:found})]);
-    requireNft(tx.chainId===31337&&same(tx.hash,found)&&same(tx.from,q.from)&&same(tx.to!,q.to)&&tx.value===BigInt(q.value)&&same(tx.input,q.data)&&BigInt(tx.nonce)===BigInt(q.nonce)&&tx.gas===BigInt(q.gas)&&tx.maxFeePerGas===BigInt(q.maxFeePerGas)&&tx.maxPriorityFeePerGas===BigInt(q.maxPriorityFeePerGas));
-    const block=await rpc.getBlock({blockNumber:receipt.blockNumber});requireNft(same(block.hash!,receipt.blockHash)&&same(tx.blockHash!,receipt.blockHash)&&same(block.transactions[receipt.transactionIndex]as Hex,found)&&receipt.logs.length<=256&&receipt.logs.every(l=>!l.removed&&same(l.blockHash,receipt.blockHash)&&same(l.transactionHash,found!)&&l.blockNumber===receipt.blockNumber));
+    const block=await rpc.getBlock({blockNumber:receipt.blockNumber});assertNftAcquisitionEnvelope(q,tx,receipt,block,BigInt(review.observed.blockNumber),found);
     const canonical=nftAcquisitionPoint(block as NftAcquisitionHead);if(receipt.status==="reverted")return{...base,status:"reverted",transactionHash:found,canonical};
     if(outer)await outer.verifyOrigin(rpc,receipt);else{const code=await rpc.getCode({address:review.actor,blockNumber:receipt.blockNumber});requireNft(same(keccak256(code??"0x"),review.actorCodeHash)&&["eoa","metamask-7702"].includes(await projectTreasuryControllerKind(rpc,review.actor,receipt.blockNumber)));
       if(review.kind==="metamask-7702"){const pin=await rpc.getCode({address:claimDelegatePin.address,blockNumber:receipt.blockNumber});requireNft(pin&&same(keccak256(pin),claimDelegatePin.runtimeHash));}}

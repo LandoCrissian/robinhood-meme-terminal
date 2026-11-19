@@ -1,5 +1,6 @@
 import {keccak256,type Address,type Hex} from "viem";
 import {claimProfileDigest} from "./claim-profiles";
+import {nftAcquisitionCalldataMatchesReview} from "./nft-acquisition-calldata";
 
 export const nftAcquisitionProfile="rmt-nft-acquisition-local-v1";
 export const nftAcquisitionFixtureFlag="local-reviewed-nft-acquisition-v1";
@@ -44,7 +45,7 @@ export function isNftAcquisitionReview(v:unknown):v is NftAcquisitionReview{try{
   if(r.schemaVersion!==1||r.profile!==nftAcquisitionProfile||r.chainId!==31337||r.scope!=="isolated-local"||r.executionEnabled!==false||!nftAcquisitionOperations.includes(r.operation)
     ||![r.actor,r.controller,r.vault,r.innerCall.from,r.innerCall.to].every(nftAddress)||![r.targetRuntimeHash,r.actorCodeHash,r.reviewHash].every(nftHash)||![r.controllerEpoch,r.policyEpoch,r.maximumNetworkFeeWei].every(nftUint)
     ||!validNftFields(r.fields)||!nftPoint(r.observed)||!Number.isSafeInteger(r.expiresAt)||r.expiresAt<=Date.parse(r.observed.timestamp)/1000||r.expiresAt>Date.parse(r.observed.timestamp)/1000+600
-    ||!sameNftHex(r.innerCall.from,r.actor)||!/^0x(?:[0-9a-f]{2}){4,32768}$/i.test(r.innerCall.data)||!quantity(r.innerCall.value)||!Array.isArray(r.notices)||r.notices.length>16||nftAcquisitionReviewHash(r)!==r.reviewHash)return false;
+    ||!sameNftHex(r.innerCall.from,r.actor)||!/^0x(?:[0-9a-f]{2}){4,32768}$/i.test(r.innerCall.data)||!quantity(r.innerCall.value)||!Array.isArray(r.notices)||r.notices.length>16||nftAcquisitionReviewHash(r)!==r.reviewHash||!nftAcquisitionCalldataMatchesReview(r))return false;
   if(r.operation==="buy"&&(!r.listing||r.fields.identityConfirmed!==true||r.listing.route!=="synthetic-local-nondeployable"||r.listing.listingVerified!==true
     ||![r.listing.collection,r.listing.seller,r.listing.venue,r.listing.custody].every(nftAddress)||![r.listing.orderHash,r.listing.venueRuntimeHash].every(nftHash)
     ||![r.listing.tokenId,r.listing.quantity,r.listing.allInWei,r.listing.expiry].every(nftUint)||!sameNftHex(r.listing.custody,r.vault)))return false;

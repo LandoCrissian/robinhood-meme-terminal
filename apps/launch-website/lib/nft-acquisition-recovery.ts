@@ -1,4 +1,5 @@
 import { isNftAcquisitionReview, nftAddress, nftHash, nftAcquisitionVerificationMatches, sameNftHex, type NftAcquisitionReview, type NftAcquisitionVerification } from "./nft-acquisition";
+import {listNftAcquisitionSafeJournals} from "./nft-acquisition-safe-recovery";
 
 export const nftAcquisitionJournalNamespace = "rmt.nft-acquisition.pending.v1";
 const indexKey = nftAcquisitionJournalNamespace + ":index";
@@ -56,4 +57,10 @@ export function reconcileNftAcquisitionRecovery(original: NftAcquisitionJournal,
   const retained = { ...result }; if (transactionHash === null) delete retained.transactionHash;
   const next: NftAcquisitionJournal = { ...original, transactionHash, result: retained, stage: retained.status, updatedAt: now };
   if (!validNftAcquisitionJournal(next)) throw Error("Recovery cannot replace the original NftAcquisition identity."); return next;
+}
+/** A proposal alone is not a broadcast. An uncertain Safe outer wallet
+ * outcome blocks both its controller and its external gas payer. */
+export function assertNoPendingNftAcquisition(storage:StoragePort,account:string):void{
+  if(listNftAcquisitionJournals(storage).some(j=>sameNftHex(j.review.actor,account)&&!nftAcquisitionJournalTerminal(j)))throw Error("Recover the original NFT acquisition before another financial submission.");
+  if(listNftAcquisitionSafeJournals(storage).some(j=>["awaiting-wallet","hash-missing","pending","unavailable","reorged"].includes(j.stage)&&(sameNftHex(j.proposal.safe,account)||sameNftHex(j.proposal.gasPayer,account))))throw Error("Recover the original Safe NFT acquisition before another financial submission.");
 }
