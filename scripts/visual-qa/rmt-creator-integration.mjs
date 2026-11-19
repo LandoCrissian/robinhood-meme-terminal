@@ -296,7 +296,7 @@ const evidence = { candidateCommit, compilerProfile: manifest, browser: args.bro
   anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project, receiptWaits: [] };
 try {
   const chain = start(anvil, ["--host", "127.0.0.1", "--port", new URL(rpcUrl).port, "--chain-id", "31337",
-    ...(mobileCreator ? ["--hardfork", "prague"] : []),
+    ...(mobileCreator || args["nft-acquisition-only"] ? ["--hardfork", "prague"] : []),
     "--fork-url", anchor.rpcUrl, "--fork-block-number", String(anchor.block), "--accounts", "0", "--silent"], "anvil", { discard: true });
   await waitFor("Anvil chain 31337", async () => (await rpc("eth_chainId")) === "0x7a69", chain);
   assert.match(await rpc("web3_clientVersion"), /^anvil\//i);
@@ -451,7 +451,7 @@ try {
     browser=await({chromium,webkit})[args.browser].launch();
     await testNftAcquisitionJourney({browserEngine:browser,rpcUrl,rpc,compilation:nftCompilation,deployment:nftDeployment,creatorAccount:creator,
       sourceIdentity:{commit:candidateCommit,browser:args.browser,coreCompiler:manifest,anchor:{block:anchor.block,blockHash:anchor.blockHash},mode:"isolated-31337-nft-acquisition"},
-      site,workerOrigin,indexReadKey,out,pg,waitFor,mine:()=>rpc("anvil_mine",["0x3"]),ready:()=>workerReady(worker),restart:async()=>{
+      site,workerOrigin,indexReadKey,out,pg,waitFor,mine:()=>rpc("anvil_mine",["0x3","0x1"]),ready:()=>workerReady(worker),restart:async()=>{
         await stop(web);await stop(worker);web=startWeb("website-nft-acquisition-restart");worker=startWorker("worker-nft-acquisition-restart");await webReady(web);await workerReady(worker);
       },hideReceipt:hash=>{hideReceipt=hash??undefined;},hideNativeProof:hidden=>{hideClaimTrace=hidden;}});
     console.log("Same-app controlled NFT collection acquisition and canonical recovery passed on synthetic31337. No production execution occurred.");

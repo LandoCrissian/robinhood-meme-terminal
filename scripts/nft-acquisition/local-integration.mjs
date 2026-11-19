@@ -127,6 +127,7 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
     // The pinned designator changes only this local fixture account. No live delegation action.
     const delegate = JSON.parse(gunzipSync(readFileSync(new URL("../../apps/launch-website/lib/server/claim-delegate-runtime.test.json.gz", import.meta.url)))).delegate;
     assert.equal(keccak256(delegate.code), delegate.runtimeHash); await rpc("anvil_setCode", [delegate.address, delegate.code]); await rpc("anvil_setCode", [creator, "0xef0100" + delegate.address.slice(2).toLowerCase()]); await sync();
+    evidence.delegationContext={fixtureOnly:true,actor:creator,designator:await client.getCode({address:creator}),delegate:delegate.address,runtimeHash:keccak256(await client.getCode({address:delegate.address})),observedTimestamp:String((await client.getBlock()).timestamp),lastPurchaseAt:String(await read("lastPurchaseAt")),policy:await read("policy")};save();
     await session.reload(); await session.connect();
     const delegated = await order(m.collections[0], 3); evidence.purchases.push(await complete("buy", delegated.fields));
     const changeReview = await session.action("disable", {}); await rpc("anvil_setCode", [creator, "0x"]); await sync();
