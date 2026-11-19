@@ -1,0 +1,5 @@
+import type {Address,Hash} from "viem";
+export const seaportAcquisitionProfile="rmt-seaport-acquisition-local-v2" as const;
+export type SeaportVaultManifest={schemaVersion:1;profile:typeof seaportAcquisitionProfile;chainId:31337;vault:Address;vaultRuntimeHash:Hash;checks:Address;checksRuntimeHash:Hash;seaport:Address;seaportRuntimeHash:Hash;paymentToken:Address;paymentTokenRuntimeHash:Hash;projectToken:Address;creator:Address;coreFactory:Address;coreFactoryRuntimeHash:Hash;collections:Array<{address:Address;standard:721|1155;runtimeHash:Hash}>;deployment:{blockNumber:string;blockHash:Hash;transactionHash:Hash};compilerInputSha256:string};
+export type SeaportVaultPoint={blockNumber:string;blockHash:Hash;timestamp:string};
+export type SeaportVaultSettlement=SeaportVaultPoint&{transactionHash:Hash;transactionIndex:number;logIndex:number;account:Address;nonce:string;vault:Address;projectToken:Address;orderHash:Hash;collection:Address;tokenId:string;quantity:string;currency:Address;total:string;custody:Address;payments:Array<{recipient:Address;amount:string}>;proof:{evidence:string;frames:number;nativeTransfers:number};input:Hash};

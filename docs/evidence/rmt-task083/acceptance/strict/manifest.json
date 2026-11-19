@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "f5a9f40ce2ffb292c8cd12f985158d00416fd3fd",
+  "files": [
+    {
+      "name": "comparison.json",
+      "bytes": 3104,
+      "sha256": "fef1b140fb775b64ffd7e768c81489ab34bbdf39e0286ae821a5132fe81ef7a0"
+    },
+    {
+      "name": "steps.json",
+      "bytes": 3195,
+      "sha256": "b87be9a5d853d850687a07c2c7f2c37315c89aef643723268d67435aebcb1313"
+    },
+    {
+      "name": "job.log",
+      "bytes": 71447,
+      "sha256": "5dba01dad6188ad9e04defd85b9d384179902e647d73270600d9ead460fdd90b"
+    },
+    {
+      "name": "compiler-input.json",
+      "bytes": 38851,
+      "sha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5"
+    },
+    {
+      "name": "compiler-manifest.json",
+      "bytes": 3353,
+      "sha256": "b8c63063319fcc0519b49418fd9a8b7f00f68cae79a0df29cf927ec5a92824de"
+    },
+    {
+      "name": "slither.json",
+      "bytes": 1956487,
+      "sha256": "42b68c7caceaaa7ff65fda391691f8c8c43c6612da87e50bbd9c8cdd4979fc4b"
+    }
+  ],
+  "rawBeforeCompression": true,
+  "gitleaksVersion": "8.30.1",
+  "rawScanExit": 0,
+  "rawFindings": 0,
+  "unclassified": 0,
+  "highsCleared": 0,
+  "productionApproved": false
+}

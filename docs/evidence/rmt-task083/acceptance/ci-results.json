@@ -1,0 +1,316 @@
+{
+  "schemaVersion": 1,
+  "validatedSourceCommit": "f5a9f40ce2ffb292c8cd12f985158d00416fd3fd",
+  "observedAtUtc": "2026-11-19T18:34:28Z",
+  "scope": "COMPLETE_LINUX_PR_CI_WITH_UNWAIVED_SECURITY_FAILURES",
+  "total": 27,
+  "passed": 20,
+  "failed": 7,
+  "pending": 0,
+  "productionGate": "BLOCKED_NO_BROADCAST",
+  "jobs": [
+    {
+      "name": "seaport-source-and-fixtures",
+      "id": 135783342345,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:24:42Z",
+      "completedAt": "2026-11-19T18:25:47Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587227164/job/135783342345"
+    },
+    {
+      "name": "nft-acquisition-browser (webkit)",
+      "id": 135783342293,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:24:58Z",
+      "completedAt": "2026-11-19T18:30:02Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587227164/job/135783342293"
+    },
+    {
+      "name": "nft-acquisition-units",
+      "id": 135783342019,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:24:09Z",
+      "completedAt": "2026-11-19T18:24:40Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587227164/job/135783342019"
+    },
+    {
+      "name": "nft-acquisition-browser (chromium)",
+      "id": 135783342002,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:31Z",
+      "completedAt": "2026-11-19T18:29:02Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587227164/job/135783342002"
+    },
+    {
+      "name": "indexer",
+      "id": 135783341988,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:24:15Z",
+      "completedAt": "2026-11-19T18:25:15Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587227012/job/135783341988"
+    },
+    {
+      "name": "nft-acquisition-strict-security",
+      "id": 135783341753,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T18:24:37Z",
+      "completedAt": "2026-11-19T18:26:11Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587227164/job/135783341753"
+    },
+    {
+      "name": "contracts",
+      "id": 135783341471,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:24:36Z",
+      "completedAt": "2026-11-19T18:27:47Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587227012/job/135783341471"
+    },
+    {
+      "name": "operations-safe",
+      "id": 135783341373,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:57Z",
+      "completedAt": "2026-11-19T18:24:14Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587227012/job/135783341373"
+    },
+    {
+      "name": "repository",
+      "id": 135783341134,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:24:08Z",
+      "completedAt": "2026-11-19T18:25:28Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587227012/job/135783341134"
+    },
+    {
+      "name": "gitleaks",
+      "id": 135783340962,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:23:29Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226908/job/135783340962"
+    },
+    {
+      "name": "linux-netlify-artifact",
+      "id": 135783339888,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:13Z",
+      "completedAt": "2026-11-19T18:25:08Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226861/job/135783339888"
+    },
+    {
+      "name": "isolated-lifecycle (chromium)",
+      "id": 135783339728,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:13Z",
+      "completedAt": "2026-11-19T18:34:21Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226569/job/135783339728"
+    },
+    {
+      "name": "reclaim-v1",
+      "id": 135783339679,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:24:34Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226572/job/135783339679"
+    },
+    {
+      "name": "isolated-lifecycle (webkit)",
+      "id": 135783339607,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:34:11Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226569/job/135783339607"
+    },
+    {
+      "name": "fixed-supply-4663",
+      "id": 135783339481,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:26:04Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226572/job/135783339481"
+    },
+    {
+      "name": "railway-container",
+      "id": 135783339408,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:24:56Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226753/job/135783339408"
+    },
+    {
+      "name": "project-treasury-v1",
+      "id": 135783339385,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:24:07Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226572/job/135783339385"
+    },
+    {
+      "name": "slither",
+      "id": 135783339320,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:27:01Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226572/job/135783339320"
+    },
+    {
+      "name": "seaport-vault-units",
+      "id": 135783339310,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:23:55Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226489/job/135783339310"
+    },
+    {
+      "name": "web",
+      "id": 135783339218,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:13Z",
+      "completedAt": "2026-11-19T18:28:44Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226569/job/135783339218"
+    },
+    {
+      "name": "treasury-purchase-v2-prototype",
+      "id": 135783338821,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:24:06Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226572/job/135783338821"
+    },
+    {
+      "name": "isolated-firebase",
+      "id": 135783338790,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:26:26Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226599/job/135783338790"
+    },
+    {
+      "name": "seaport-vault-browser (webkit)",
+      "id": 135783338787,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:27:22Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226489/job/135783338787"
+    },
+    {
+      "name": "seaport-vault-browser (chromium)",
+      "id": 135783338439,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:26:50Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226489/job/135783338439"
+    },
+    {
+      "name": "seaport-vault-robinhood-fork",
+      "id": 135783338220,
+      "status": "completed",
+      "conclusion": "success",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:24:35Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226489/job/135783338220"
+    },
+    {
+      "name": "reclaim-permanent-v2",
+      "id": 135783338115,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:24:59Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226514/job/135783338115"
+    },
+    {
+      "name": "seaport-vault-strict-security",
+      "id": 135783337846,
+      "status": "completed",
+      "conclusion": "failure",
+      "startedAt": "2026-11-19T18:23:12Z",
+      "completedAt": "2026-11-19T18:24:56Z",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44587226489/job/135783337846"
+    }
+  ],
+  "securityGateEvidence": [
+    {
+      "jobId": 135783339320,
+      "failedStep": "Reject high-severity static-analysis findings",
+      "excerpts": [
+        "2026-11-19T18:26:57.6289911Z INFO:Slither:. analyzed (85 contracts with 101 detectors), 95 result(s) found"
+      ]
+    },
+    {
+      "jobId": 135783339481,
+      "failedStep": "Analyze the pinned compiler closure with every detector",
+      "excerpts": [
+        "2026-11-19T18:25:13.3852403Z 101 detectors, 233 findings, 22 high"
+      ]
+    },
+    {
+      "jobId": 135783339385,
+      "failedStep": "Analyze the complete new module with every detector and reject high findings",
+      "excerpts": [
+        "2026-11-19T18:23:49.3240669Z Ran 2 test suites in 488.81ms (669.21ms CPU time): 23 tests passed, 0 failed, 0 skipped (23 total tests)",
+        "2026-11-19T18:24:03.0499388Z 101 detectors, 25 findings, 6 high"
+      ]
+    },
+    {
+      "jobId": 135783339679,
+      "failedStep": "Run every detector and preserve strict failure on new Reclaim highs",
+      "excerpts": [
+        "2026-11-19T18:24:11.9428502Z Ran 3 test suites in 937.50ms (1.24s CPU time): 37 tests passed, 0 failed, 0 skipped (37 total tests)",
+        "2026-11-19T18:24:30.0831176Z 101 detectors, 28 findings, 4 high"
+      ]
+    },
+    {
+      "jobId": 135783341753,
+      "failedStep": "Run all 101 detectors and fail on any new production-scope high",
+      "excerpts": [
+        "2026-11-19T18:25:45.1782302Z Ran 3 test suites in 2.06s (2.71s CPU time): 41 tests passed, 0 failed, 0 skipped (41 total tests)",
+        "2026-11-19T18:26:08.1368520Z 101 detectors, 47 findings, 22 high"
+      ]
+    },
+    {
+      "jobId": 135783338115,
+      "failedStep": "Run all 101 detectors and fail on any V2 high",
+      "excerpts": [
+        "2026-11-19T18:24:38.8035620Z Ran 4 test suites in 1.56s (2.52s CPU time): 55 tests passed, 0 failed, 0 skipped (55 total tests)",
+        "2026-11-19T18:24:54.8636764Z 101 detectors, 45 findings, 7 high"
+      ]
+    },
+    {
+      "jobId": 135783337846,
+      "failedStep": "Analyze every new production root and reachable dependency with all 101 detectors",
+      "excerpts": [
+        "2026-11-19T18:24:36.3251322Z Ran 4 test suites in 1.51s (2.09s CPU time): 48 tests passed, 0 failed, 0 skipped (48 total tests)",
+        "2026-11-19T18:24:51.2771478Z 101 detectors, 48 findings, 23 high"
+      ]
+    }
+  ],
+  "priorHighsCleared": 0,
+  "newVaultHighs": 23,
+  "newVaultHighsCleared": 0,
+  "prodChangesAuthorized": false
+}

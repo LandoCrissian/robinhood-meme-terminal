@@ -1,0 +1,1127 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "base": "50e278401ef6e0e66a5f38045295b97cf6b5d930",
+  "observedHead": "8ea1a33357e1dab96c8e3617365d3e52cb86aeaa",
+  "gitBlobMeaning": "Exact repository source bytes, independent of checkout LF/CRLF conversion; working-tree old-source differences also rejected.",
+  "preservation": {
+    "oldSolidityFiles": 74,
+    "changed": 0,
+    "deleted": 0,
+    "rows": [
+      {
+        "path": "docs/evidence/rmt-task040/foundry/RMTLaunchTask040Review.t.sol",
+        "baseBlob": "00fd90476f6999ae7e8e3533690d5684e3baec01",
+        "currentBlob": "00fd90476f6999ae7e8e3533690d5684e3baec01",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task041/RejectingTreasury.sol",
+        "baseBlob": "0547a9888b3a7bab18d1daa1323bcba15b25060f",
+        "currentBlob": "0547a9888b3a7bab18d1daa1323bcba15b25060f",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task042/foundry/RMTLaunchTreasuryReview.t.sol",
+        "baseBlob": "c04e26e4f0f6a764e074c3f43fd671fd4d31f71f",
+        "currentBlob": "c04e26e4f0f6a764e074c3f43fd671fd4d31f71f",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/nft-acquisition/src/NftAcquisitionAccounts.sol",
+        "baseBlob": "1a6871fd299c8cd460641054ea657ff1a61312ca",
+        "currentBlob": "1a6871fd299c8cd460641054ea657ff1a61312ca",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/nft-acquisition/src/NftAcquisitionTypes.sol",
+        "baseBlob": "d5f5885846c74a626bbf35b0665fd10498f51a89",
+        "currentBlob": "d5f5885846c74a626bbf35b0665fd10498f51a89",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/nft-acquisition/src/RMTNftAcquisitionFactoryV1.sol",
+        "baseBlob": "b1077d39a10eef3713925aa8ca97a89d535215b7",
+        "currentBlob": "b1077d39a10eef3713925aa8ca97a89d535215b7",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/nft-acquisition/src/RMTNftAcquisitionVaultV1.sol",
+        "baseBlob": "e72476e8e366a6e36787a7ced83ea01e0d4abbc7",
+        "currentBlob": "e72476e8e366a6e36787a7ced83ea01e0d4abbc7",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/nft-acquisition/src/SyntheticNftListingVenueV1.sol",
+        "baseBlob": "b45ee2ce4c713cd8ce76237346f98cdaf1f2faf7",
+        "currentBlob": "b45ee2ce4c713cd8ce76237346f98cdaf1f2faf7",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/nft-acquisition/test/NftAcquisition.t.sol",
+        "baseBlob": "b9f3a2c20964f94bf60beb85551c3a6550c8ed11",
+        "currentBlob": "b9f3a2c20964f94bf60beb85551c3a6550c8ed11",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/nft-acquisition/test/NftAcquisitionInvariant.t.sol",
+        "baseBlob": "ae02a8ca4e9eec14b09be1f6b59c69e056e85cde",
+        "currentBlob": "ae02a8ca4e9eec14b09be1f6b59c69e056e85cde",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/nft-acquisition/test/NftAcquisitionSecurityReview.t.sol",
+        "baseBlob": "a58777193dfdfe74177358e1ac1ae7049ce00470",
+        "currentBlob": "a58777193dfdfe74177358e1ac1ae7049ce00470",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/nft-acquisition/test/fixtures/NftAcquisitionAssets.sol",
+        "baseBlob": "b75426b703f468991e177faa1235b541e63ed914",
+        "currentBlob": "b75426b703f468991e177faa1235b541e63ed914",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/project-treasury/src/RMTProjectTreasuryFactoryV1.sol",
+        "baseBlob": "05218400c436b8d8ac49a26e6600811c329f3bb0",
+        "currentBlob": "05218400c436b8d8ac49a26e6600811c329f3bb0",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+        "baseBlob": "46c33f1ae081c65fe8db92eaf0b33fa2a28b79ea",
+        "currentBlob": "46c33f1ae081c65fe8db92eaf0b33fa2a28b79ea",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/project-treasury/src/TreasuryInterfaces.sol",
+        "baseBlob": "bf014f775a5e88d2884bfabea6615ca5a99f35aa",
+        "currentBlob": "bf014f775a5e88d2884bfabea6615ca5a99f35aa",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/project-treasury/test/RMTProjectTreasuryInvariant.t.sol",
+        "baseBlob": "e1f5ec861b97c843d300f649ec900a73aeb4ef30",
+        "currentBlob": "e1f5ec861b97c843d300f649ec900a73aeb4ef30",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/project-treasury/test/RMTProjectTreasuryV1.t.sol",
+        "baseBlob": "9e9132cf3a29849a5784205a90e2546af91614b5",
+        "currentBlob": "9e9132cf3a29849a5784205a90e2546af91614b5",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/project-treasury/test/TreasuryMocks.sol",
+        "baseBlob": "b55a4ee778c59d0bee24b82b4c8fecc9f384a8c9",
+        "currentBlob": "b55a4ee778c59d0bee24b82b4c8fecc9f384a8c9",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/src/RMTReclaimCampaignDeployerV2.sol",
+        "baseBlob": "e05dd973483c06b09e13fc82960bf78cbdd45440",
+        "currentBlob": "e05dd973483c06b09e13fc82960bf78cbdd45440",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/src/RMTReclaimCampaignV2.sol",
+        "baseBlob": "0c66accbba79796941c3dda95dd4b01d4e5fbac7",
+        "currentBlob": "0c66accbba79796941c3dda95dd4b01d4e5fbac7",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/src/RMTReclaimCodePartV2.sol",
+        "baseBlob": "dce54bc3a9c35f54acd5c11625cab16d64714a7a",
+        "currentBlob": "dce54bc3a9c35f54acd5c11625cab16d64714a7a",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/src/RMTReclaimFactoryV2.sol",
+        "baseBlob": "2d30f8d9cb31f2a525842983c45d0a99b480fac8",
+        "currentBlob": "2d30f8d9cb31f2a525842983c45d0a99b480fac8",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/src/RMTReclaimSinkV2.sol",
+        "baseBlob": "16d478e6706623cac9a88167dce0accbcc5e2ef2",
+        "currentBlob": "16d478e6706623cac9a88167dce0accbcc5e2ef2",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/src/ReclaimV2Interfaces.sol",
+        "baseBlob": "ae3d3f091bbff4e25c6010b3bbfb8666bf52a301",
+        "currentBlob": "ae3d3f091bbff4e25c6010b3bbfb8666bf52a301",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/test/RMTReclaimV2.t.sol",
+        "baseBlob": "b4aaf2619c42a1ca9c438217799bf8f294334083",
+        "currentBlob": "b4aaf2619c42a1ca9c438217799bf8f294334083",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/test/RMTReclaimV2BoundarySecurity.t.sol",
+        "baseBlob": "79c7a11985ee1600fda4712b3075742d1edc964f",
+        "currentBlob": "79c7a11985ee1600fda4712b3075742d1edc964f",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/test/RMTReclaimV2Invariant.t.sol",
+        "baseBlob": "79d306abff2202d7c7a7df4fc4131a804b616ba6",
+        "currentBlob": "79d306abff2202d7c7a7df4fc4131a804b616ba6",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim-v2/test/ReclaimV2Assets.sol",
+        "baseBlob": "776a2ec54f94f62b72375d733b7c80351b8b6cba",
+        "currentBlob": "776a2ec54f94f62b72375d733b7c80351b8b6cba",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim/src/RMTReclaimCampaignV1.sol",
+        "baseBlob": "25566b7b5fd5060aa3b904fb86e10fee4fc69edb",
+        "currentBlob": "25566b7b5fd5060aa3b904fb86e10fee4fc69edb",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim/src/RMTReclaimFactoryV1.sol",
+        "baseBlob": "853b125cb91e6a5fd54ebb811c5bea9170dc22b8",
+        "currentBlob": "853b125cb91e6a5fd54ebb811c5bea9170dc22b8",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim/src/ReclaimInterfaces.sol",
+        "baseBlob": "3a818d88c5c203f8fb23e9d00912cbb7b4dce888",
+        "currentBlob": "3a818d88c5c203f8fb23e9d00912cbb7b4dce888",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim/test/RMTReclaimHostile.t.sol",
+        "baseBlob": "62fa4b4dc6a5e671d9611c9e88ae1a5e16628e68",
+        "currentBlob": "62fa4b4dc6a5e671d9611c9e88ae1a5e16628e68",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim/test/RMTReclaimV1.t.sol",
+        "baseBlob": "83bc2d991091743e5e40987b576a8d9e6a1b4c45",
+        "currentBlob": "83bc2d991091743e5e40987b576a8d9e6a1b4c45",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/reclaim/test/ReclaimAssets.sol",
+        "baseBlob": "6ff848e92f9b31e0b8a4018b0b7be8af6f7264f5",
+        "currentBlob": "6ff848e92f9b31e0b8a4018b0b7be8af6f7264f5",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/seaport-verification/test/OfficialSeaport.t.sol",
+        "baseBlob": "f1359e9df59860b2be55444d8c86403cbde0ba3e",
+        "currentBlob": "f1359e9df59860b2be55444d8c86403cbde0ba3e",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/seaport-verification/test/fixtures/SeaportFixtureReceiver.sol",
+        "baseBlob": "d7f847a2f3adbfa0f8194cc76a48d0b3f6486a37",
+        "currentBlob": "d7f847a2f3adbfa0f8194cc76a48d0b3f6486a37",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchBondingCurveV1.sol",
+        "baseBlob": "6dd4d524b7110d2b2e320868bf87b5ca37fa37d2",
+        "currentBlob": "6dd4d524b7110d2b2e320868bf87b5ca37fa37d2",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchBondingCurveV2.sol",
+        "baseBlob": "12c94e2ac10a3f18cd9f5c116aba91c58ee3eaaa",
+        "currentBlob": "12c94e2ac10a3f18cd9f5c116aba91c58ee3eaaa",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchBondingCurveV3.sol",
+        "baseBlob": "a3668cdb0a800f9ced44e00606fb7e09b9ef99a4",
+        "currentBlob": "a3668cdb0a800f9ced44e00606fb7e09b9ef99a4",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchCurveDeploymentV2.sol",
+        "baseBlob": "0d58dffd33d58cdd79961aa665d09d7905d5785d",
+        "currentBlob": "0d58dffd33d58cdd79961aa665d09d7905d5785d",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchCurveDirectoryV1.sol",
+        "baseBlob": "c0a21cfe57916a13b161c467d527bdc8df537f13",
+        "currentBlob": "c0a21cfe57916a13b161c467d527bdc8df537f13",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+        "baseBlob": "81fa6c65bbdffd8f53f086f1308df96e1dea7fc3",
+        "currentBlob": "81fa6c65bbdffd8f53f086f1308df96e1dea7fc3",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+        "baseBlob": "bd46461d307ebf18ea6ea286ebb87ab7dcf7db8c",
+        "currentBlob": "bd46461d307ebf18ea6ea286ebb87ab7dcf7db8c",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+        "baseBlob": "b8c1fa3c07ec21c444647940d40297405ff8e3c7",
+        "currentBlob": "b8c1fa3c07ec21c444647940d40297405ff8e3c7",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+        "baseBlob": "053e45510bfeb4f1451a67c16fed187dc703293e",
+        "currentBlob": "053e45510bfeb4f1451a67c16fed187dc703293e",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchCurveRevenueLedgerV1.sol",
+        "baseBlob": "a6e0b388e721be9ccc096fec14f9aa75eff89d78",
+        "currentBlob": "a6e0b388e721be9ccc096fec14f9aa75eff89d78",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+        "baseBlob": "a47038cd1b74dfcad764938f765e48852e4f6a7e",
+        "currentBlob": "a47038cd1b74dfcad764938f765e48852e4f6a7e",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchProjectRegistryV1.sol",
+        "baseBlob": "d4a34a9bdd9e73233fd2b1e3bb50b081aca0a366",
+        "currentBlob": "d4a34a9bdd9e73233fd2b1e3bb50b081aca0a366",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchProjectRegistryV2.sol",
+        "baseBlob": "490362499f6f442d94e4e99c6189a64f00ab3d17",
+        "currentBlob": "490362499f6f442d94e4e99c6189a64f00ab3d17",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+        "baseBlob": "4a58fbc0821aba7f8a554827cdbf6a97fa560ca2",
+        "currentBlob": "4a58fbc0821aba7f8a554827cdbf6a97fa560ca2",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+        "baseBlob": "1395f0038f78a7b1e6dcc30990e68b0e7556102e",
+        "currentBlob": "1395f0038f78a7b1e6dcc30990e68b0e7556102e",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/RMTV4CurveInitializationGuardV1.sol",
+        "baseBlob": "fe6bae1b5a8b1b83b30cd087115f06138d299ab1",
+        "currentBlob": "fe6bae1b5a8b1b83b30cd087115f06138d299ab1",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IRMTLaunchCurveExecution.sol",
+        "baseBlob": "d989d71548c47f9c41f7120fd45be207f9ed89da",
+        "currentBlob": "d989d71548c47f9c41f7120fd45be207f9ed89da",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/src/interfaces/IRMTV4CurveGraduationV1.sol",
+        "baseBlob": "3c37f85cd2c9bf68c8b9e442032ce93b184188d6",
+        "currentBlob": "3c37f85cd2c9bf68c8b9e442032ce93b184188d6",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTDependencyArithmeticReview.t.sol",
+        "baseBlob": "d131f4a7042b8f82432a4c159bf263366de329ef",
+        "currentBlob": "d131f4a7042b8f82432a4c159bf263366de329ef",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchAdjacentMigrationProof.t.sol",
+        "baseBlob": "83b4ad7bd9033d48f416aefe97912dcf63bd17d0",
+        "currentBlob": "83b4ad7bd9033d48f416aefe97912dcf63bd17d0",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchBondingCurveV1.t.sol",
+        "baseBlob": "621c25541c4119378fe9d0abc3806f0ae013d4a5",
+        "currentBlob": "621c25541c4119378fe9d0abc3806f0ae013d4a5",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchCreatorEarnings.t.sol",
+        "baseBlob": "0dc96418572894677df835150fc77e661b0f2d1d",
+        "currentBlob": "0dc96418572894677df835150fc77e661b0f2d1d",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchCurveAccountingInvariant.t.sol",
+        "baseBlob": "a0c74a06bd5dea8e0121f085c12d127a22190388",
+        "currentBlob": "a0c74a06bd5dea8e0121f085c12d127a22190388",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchCurveCreationFeeV1.t.sol",
+        "baseBlob": "f4b73a33bff2daf4ada2eb8a4672bd100d76efd0",
+        "currentBlob": "f4b73a33bff2daf4ada2eb8a4672bd100d76efd0",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchCurveDirectoryV1.t.sol",
+        "baseBlob": "b63cb4bc4346e4086dfccf328ca1166276933155",
+        "currentBlob": "b63cb4bc4346e4086dfccf328ca1166276933155",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchCurveDirectoryV2.t.sol",
+        "baseBlob": "1767337cd7b07f66eef26c52ca85665c312e5f17",
+        "currentBlob": "1767337cd7b07f66eef26c52ca85665c312e5f17",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchCurveSymbolic.t.sol",
+        "baseBlob": "051c1be153ba34f0815995a5cfd62c68bad336b2",
+        "currentBlob": "051c1be153ba34f0815995a5cfd62c68bad336b2",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchMigrationReadiness.t.sol",
+        "baseBlob": "4ab4a812b90b445363f2853118d3a07487f96ae3",
+        "currentBlob": "4ab4a812b90b445363f2853118d3a07487f96ae3",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchProjectRegistryV1.t.sol",
+        "baseBlob": "fe5b276c40f33926f0695dbe07ff8b6cb5da3e1c",
+        "currentBlob": "fe5b276c40f33926f0695dbe07ff8b6cb5da3e1c",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchProjectRegistryV2.t.sol",
+        "baseBlob": "47efdba80376648dcd6c09090dde5e7289dc2fdc",
+        "currentBlob": "47efdba80376648dcd6c09090dde5e7289dc2fdc",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTLaunchProjectRegistryV3.t.sol",
+        "baseBlob": "9a9702624e69993d9376f5aa005eef2a10ad30a8",
+        "currentBlob": "9a9702624e69993d9376f5aa005eef2a10ad30a8",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTV4CurveGraduationV1.t.sol",
+        "baseBlob": "0c889db98321244e72c89d2c6da9243f4e81ba56",
+        "currentBlob": "0c889db98321244e72c89d2c6da9243f4e81ba56",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/test/RMTV4SharedPoolSettlement.t.sol",
+        "baseBlob": "df16751b25ed6b60849f15473984449fa87424e9",
+        "currentBlob": "df16751b25ed6b60849f15473984449fa87424e9",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/treasury-purchase-v2/src/PurchaseEvidenceV2.sol",
+        "baseBlob": "e1304d4a7b9b3f7fb99bee5b830d5e6e85ee5fb8",
+        "currentBlob": "e1304d4a7b9b3f7fb99bee5b830d5e6e85ee5fb8",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol",
+        "baseBlob": "b678fe0fed14e21b88987d27ffa4b7dd3a27bea3",
+        "currentBlob": "b678fe0fed14e21b88987d27ffa4b7dd3a27bea3",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol",
+        "baseBlob": "a702fd9f39a2570cb2a2b6d60c0c2697609be30f",
+        "currentBlob": "a702fd9f39a2570cb2a2b6d60c0c2697609be30f",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/treasury-purchase-v2/test/PurchaseBoundaryV2.t.sol",
+        "baseBlob": "75374036e3970d137d4358da6b2dd08b59483f82",
+        "currentBlob": "75374036e3970d137d4358da6b2dd08b59483f82",
+        "unchanged": true
+      },
+      {
+        "path": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol",
+        "baseBlob": "4c945929a00bad0a3f571965a0da029a44a5d40e",
+        "currentBlob": "4c945929a00bad0a3f571965a0da029a44a5d40e",
+        "unchanged": true
+      }
+    ]
+  },
+  "dependencies": {
+    "files": [
+      {
+        "path": "apps/indexer/package.json",
+        "baseBlob": "4ac62f32602e1d8ec481ed993f11c43c5a04aafc",
+        "currentBlob": "4ac62f32602e1d8ec481ed993f11c43c5a04aafc",
+        "unchanged": true
+      },
+      {
+        "path": "apps/launch-website/package.json",
+        "baseBlob": "85ed5f48316a5e600209c050d6033ffe09621341",
+        "currentBlob": "85ed5f48316a5e600209c050d6033ffe09621341",
+        "unchanged": true
+      },
+      {
+        "path": "package.json",
+        "baseBlob": "0ad283f013d1f42840f3827e1b534a14b6edd79c",
+        "currentBlob": "0ad283f013d1f42840f3827e1b534a14b6edd79c",
+        "unchanged": true
+      },
+      {
+        "path": "pnpm-lock.yaml",
+        "baseBlob": "9c5f757054087af84fc2839d2ada2f443e2b2cf0",
+        "currentBlob": "9c5f757054087af84fc2839d2ada2f443e2b2cf0",
+        "unchanged": true
+      },
+      {
+        "path": "pnpm-workspace.yaml",
+        "baseBlob": "7bc1ccaa184c34b92270df9c913541cd7d437ffe",
+        "currentBlob": "7bc1ccaa184c34b92270df9c913541cd7d437ffe",
+        "unchanged": true
+      }
+    ],
+    "changed": 0,
+    "newPaidServicesAuthorized": false
+  },
+  "retainedSecurityGates": {
+    "files": [
+      {
+        "path": ".github/workflows/nft-acquisition.yml",
+        "baseBlob": "16dcc8dfe53cff23e89877c87e44eb719c353dd1",
+        "currentBlob": "16dcc8dfe53cff23e89877c87e44eb719c353dd1",
+        "unchanged": true
+      },
+      {
+        "path": ".github/workflows/production-readiness.yml",
+        "baseBlob": "71cdab452dbffe015b4ab5ecdca0c4986d4e19f9",
+        "currentBlob": "71cdab452dbffe015b4ab5ecdca0c4986d4e19f9",
+        "unchanged": true
+      },
+      {
+        "path": ".github/workflows/profiles.yml",
+        "baseBlob": "ca66bf230ccba35e2a2a8a5becc533fe6760c714",
+        "currentBlob": "ca66bf230ccba35e2a2a8a5becc533fe6760c714",
+        "unchanged": true
+      },
+      {
+        "path": ".github/workflows/railway-website.yml",
+        "baseBlob": "934002161ad62040160acf99f337651627d5b282",
+        "currentBlob": "934002161ad62040160acf99f337651627d5b282",
+        "unchanged": true
+      },
+      {
+        "path": ".github/workflows/secret-scan.yml",
+        "baseBlob": "81d904bb85e6337cab87cbc81c8aa9e742d2d9e9",
+        "currentBlob": "81d904bb85e6337cab87cbc81c8aa9e742d2d9e9",
+        "unchanged": true
+      },
+      {
+        "path": ".github/workflows/security-analysis.yml",
+        "baseBlob": "d0dd45accb872758f78a7bb06ef8b627505640ca",
+        "currentBlob": "d0dd45accb872758f78a7bb06ef8b627505640ca",
+        "unchanged": true
+      },
+      {
+        "path": ".github/workflows/website-release-linux.yml",
+        "baseBlob": "e687c3006e3e1d564acc723f1991b5ee9086b0d6",
+        "currentBlob": "e687c3006e3e1d564acc723f1991b5ee9086b0d6",
+        "unchanged": true
+      },
+      {
+        "path": ".gitleaks.toml",
+        "baseBlob": "5e8236fee23fa25a65b264903e4bf706c70ae512",
+        "currentBlob": "5e8236fee23fa25a65b264903e4bf706c70ae512",
+        "unchanged": true
+      },
+      {
+        "path": ".gitleaksignore",
+        "baseBlob": "36c8ab01c599f3d028d695dc475605d3b35f8777",
+        "currentBlob": "36c8ab01c599f3d028d695dc475605d3b35f8777",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/4663-profile.json",
+        "baseBlob": "df0b328bcca5c55402f8011a2109d6ae4f8f0338",
+        "currentBlob": "df0b328bcca5c55402f8011a2109d6ae4f8f0338",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/findings.md",
+        "baseBlob": "6117beafdd3e0563babf83f44209aa15c448ae69",
+        "currentBlob": "6117beafdd3e0563babf83f44209aa15c448ae69",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/first-project.json",
+        "baseBlob": "763957b636f7b0d51bc7920b364db1f89c8dda7b",
+        "currentBlob": "763957b636f7b0d51bc7920b364db1f89c8dda7b",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/fork-4663.json.gz",
+        "baseBlob": "6a41f9c45f524f18b7d36dc91a2bb6f7159d2113",
+        "currentBlob": "6a41f9c45f524f18b7d36dc91a2bb6f7159d2113",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/production.md",
+        "baseBlob": "13f3e0874d29a2108c43cec0efab4b562f959f35",
+        "currentBlob": "13f3e0874d29a2108c43cec0efab4b562f959f35",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/release-evidence.test.mjs",
+        "baseBlob": "adc58dd4f46e1f54ed815605b39a8ee761ff7745",
+        "currentBlob": "adc58dd4f46e1f54ed815605b39a8ee761ff7745",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/release-manifest.json",
+        "baseBlob": "3fb0c068d557c8fea782eff5ce639dece55ee2db",
+        "currentBlob": "3fb0c068d557c8fea782eff5ce639dece55ee2db",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/settlement-rollback-regressions.md",
+        "baseBlob": "58c71b2eee9d4ae37414585d60e2c50b1e764ff0",
+        "currentBlob": "58c71b2eee9d4ae37414585d60e2c50b1e764ff0",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/slither-4663.json.gz",
+        "baseBlob": "9750eb3d6be7a52a08f69294636e160aa7b9740a",
+        "currentBlob": "9750eb3d6be7a52a08f69294636e160aa7b9740a",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/task061-dependencies-governance.md",
+        "baseBlob": "b7565d576a1894e865155d591efc1e6d9a279113",
+        "currentBlob": "b7565d576a1894e865155d591efc1e6d9a279113",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/task061-engine-findings.md",
+        "baseBlob": "362ce35a4d4f1cdbcdfd194be6752c42e47f254f",
+        "currentBlob": "362ce35a4d4f1cdbcdfd194be6752c42e47f254f",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/task063-findings.json",
+        "baseBlob": "a169aaa49895be392e842e9f48edaf6ca38ad853",
+        "currentBlob": "a169aaa49895be392e842e9f48edaf6ca38ad853",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/fixed-supply-security/v4-settlement-reachability.md",
+        "baseBlob": "a3127beb5022e7103cf7c593ab6f1eeba44a556d",
+        "currentBlob": "a3127beb5022e7103cf7c593ab6f1eeba44a556d",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task043/analyze-rotation.py",
+        "baseBlob": "a078005d7ea7e038021024c3a9d3fe421acbca17",
+        "currentBlob": "a078005d7ea7e038021024c3a9d3fe421acbca17",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/compiler-input.json.gz",
+        "baseBlob": "9c61b3f1999b92a72b4033c0933c295fb7abcaf2",
+        "currentBlob": "9c61b3f1999b92a72b4033c0933c295fb7abcaf2",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/compiler-manifest-linux.json",
+        "baseBlob": "a152fe7f5b640f192c8f77d2e911c00a2ec592f8",
+        "currentBlob": "a152fe7f5b640f192c8f77d2e911c00a2ec592f8",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/compiler-manifest.json",
+        "baseBlob": "7472f24382c841ed9e6f6f736819a7aecbbd0414",
+        "currentBlob": "7472f24382c841ed9e6f6f736819a7aecbbd0414",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/foundry-linux-fragment.txt.gz",
+        "baseBlob": "2dcde3fd549bb9ef697c30bfaa4ce20c3a62a37b",
+        "currentBlob": "2dcde3fd549bb9ef697c30bfaa4ce20c3a62a37b",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/gitleaks-output.txt",
+        "baseBlob": "b02fb87290f520c94eb8ca7e7a042dcb571b9823",
+        "currentBlob": "b02fb87290f520c94eb8ca7e7a042dcb571b9823",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/gitleaks-report.json",
+        "baseBlob": "fe51488c7066f6687ef680d6bfaa4f7768ef205c",
+        "currentBlob": "fe51488c7066f6687ef680d6bfaa4f7768ef205c",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/linux-execution.json",
+        "baseBlob": "6625e429cba991096e513f951743ecf61d9a81d9",
+        "currentBlob": "6625e429cba991096e513f951743ecf61d9a81d9",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/reproduction.json",
+        "baseBlob": "89760bff0a4aef1b4fb13282d5e954144c545621",
+        "currentBlob": "89760bff0a4aef1b4fb13282d5e954144c545621",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/security-evidence.test.mjs",
+        "baseBlob": "686caf5e05d5034763c82c2728d54a7fd9ef05b6",
+        "currentBlob": "686caf5e05d5034763c82c2728d54a7fd9ef05b6",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/slither-full.json.gz",
+        "baseBlob": "227a5a9d544ea23cd8aea33bff958ebb00001e10",
+        "currentBlob": "227a5a9d544ea23cd8aea33bff958ebb00001e10",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/slither-linux.json.gz",
+        "baseBlob": "2f13e3969ae79102b73a48988a503e75e76d85ed",
+        "currentBlob": "2f13e3969ae79102b73a48988a503e75e76d85ed",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/slither-output.txt",
+        "baseBlob": "d532b2de5bf2dd9f6f062bd606fc4d0d611abd4a",
+        "currentBlob": "d532b2de5bf2dd9f6f062bd606fc4d0d611abd4a",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task080/security/source-preservation.json",
+        "baseBlob": "398ed8750528ca35ca0ee35861601a5ee41f8895",
+        "currentBlob": "398ed8750528ca35ca0ee35861601a5ee41f8895",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/archive.test.mjs",
+        "baseBlob": "d121039bc32e996a140566c562a8f1f5d9bb5e2a",
+        "currentBlob": "d121039bc32e996a140566c562a8f1f5d9bb5e2a",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/compiler-input.json.gz",
+        "baseBlob": "56ece3dab5435d22ead44e099fad3363ca2b3b6a",
+        "currentBlob": "56ece3dab5435d22ead44e099fad3363ca2b3b6a",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/compiler-manifest-linux.json.gz",
+        "baseBlob": "9fbce3e16982e1710f5d09fe93214b4dc16d7a3d",
+        "currentBlob": "9fbce3e16982e1710f5d09fe93214b4dc16d7a3d",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/foundry-linux-fragment.txt.gz",
+        "baseBlob": "9d6ddaf4781803429a714299ccd074086979e694",
+        "currentBlob": "9d6ddaf4781803429a714299ccd074086979e694",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/high-findings.json",
+        "baseBlob": "da6f5499b6c12b70960db6dc7e7befbbc9230f33",
+        "currentBlob": "da6f5499b6c12b70960db6dc7e7befbbc9230f33",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/linux-execution.json",
+        "baseBlob": "5160a4cf5fbef54b5c3bdbdbd525570e2e82dcb4",
+        "currentBlob": "5160a4cf5fbef54b5c3bdbdbd525570e2e82dcb4",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/portability-failure.json",
+        "baseBlob": "7bfd1fe94d6252e65826caec1d1efe85159aad4a",
+        "currentBlob": "7bfd1fe94d6252e65826caec1d1efe85159aad4a",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/slither-linux.json.gz",
+        "baseBlob": "4c61a55463f4211a58591ad8340422817354ac06",
+        "currentBlob": "4c61a55463f4211a58591ad8340422817354ac06",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/slither-windows.json.gz",
+        "baseBlob": "4ac5f811159d08b1ba6dfd9b5301fb4c34e40ec4",
+        "currentBlob": "4ac5f811159d08b1ba6dfd9b5301fb4c34e40ec4",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/source-preservation.json",
+        "baseBlob": "6c093c592cce87a65767a67b193af7147111cc77",
+        "currentBlob": "6c093c592cce87a65767a67b193af7147111cc77",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task081/security/windows-local-reproduction.json",
+        "baseBlob": "728841500fdc629af327ffd8d1c36a73ce040466",
+        "currentBlob": "728841500fdc629af327ffd8d1c36a73ce040466",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/history/README.md",
+        "baseBlob": "235b81e36f138d768fdcbd567fcf55ad94294774",
+        "currentBlob": "235b81e36f138d768fdcbd567fcf55ad94294774",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/history/baseline-history-redacted.json.gz",
+        "baseBlob": "12b4adccbf0b7e809761f62c38026abf0d317618",
+        "currentBlob": "12b4adccbf0b7e809761f62c38026abf0d317618",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/history/canary-redacted.json.gz",
+        "baseBlob": "5a17f7641583218a8dbbf0845af2ef815d936878",
+        "currentBlob": "5a17f7641583218a8dbbf0845af2ef815d936878",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/history/canary-rejection.json.gz",
+        "baseBlob": "505119102d7e163e6c45b55050dc1c1df9b13d38",
+        "currentBlob": "505119102d7e163e6c45b55050dc1c1df9b13d38",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/history/ci-history-68-raw-redacted.json.gz",
+        "baseBlob": "a476cdff0e1dca9bea235df2b3425a05ed9fe494",
+        "currentBlob": "a476cdff0e1dca9bea235df2b3425a05ed9fe494",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/history/exact-public-identities.json",
+        "baseBlob": "9822fd6d7d35c0adb5c33ca5851ee8e86514c9dc",
+        "currentBlob": "9822fd6d7d35c0adb5c33ca5851ee8e86514c9dc",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/history/history-public-classification.json.gz",
+        "baseBlob": "c9ff70b6630f0c25738d2b71d516113b40cc0535",
+        "currentBlob": "c9ff70b6630f0c25738d2b71d516113b40cc0535",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/history/history-raw-redacted.json.gz",
+        "baseBlob": "12b4adccbf0b7e809761f62c38026abf0d317618",
+        "currentBlob": "12b4adccbf0b7e809761f62c38026abf0d317618",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/history/local-reproduction.json",
+        "baseBlob": "8f33d0107dc553e2ffdbe30124b5428cf1b3642c",
+        "currentBlob": "8f33d0107dc553e2ffdbe30124b5428cf1b3642c",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/.gitattributes",
+        "baseBlob": "f0647140352749a6a25cc4d80e1a4c287b0d057f",
+        "currentBlob": "f0647140352749a6a25cc4d80e1a4c287b0d057f",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/FINDINGS.md",
+        "baseBlob": "4caa9c42b21ae199b0e48aa32bf4f8994d00c2db",
+        "currentBlob": "4caa9c42b21ae199b0e48aa32bf4f8994d00c2db",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/REVIEW.md",
+        "baseBlob": "77d73a2409ec7eeef7b26eafcd07f8beb62b785b",
+        "currentBlob": "77d73a2409ec7eeef7b26eafcd07f8beb62b785b",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/ast-boundaries.json.gz",
+        "baseBlob": "103adb5cb10fe194a91499f53f901ec1c93b1e2e",
+        "currentBlob": "103adb5cb10fe194a91499f53f901ec1c93b1e2e",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/build-review.py",
+        "baseBlob": "bb4c2e6acfa9c96d983908f0adae47a019b91d0b",
+        "currentBlob": "bb4c2e6acfa9c96d983908f0adae47a019b91d0b",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/compiler-input.json.gz",
+        "baseBlob": "2fbccf510a6b0eda5631eeac6209301db32aa2a0",
+        "currentBlob": "2fbccf510a6b0eda5631eeac6209301db32aa2a0",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/compiler-manifest-windows.json.gz",
+        "baseBlob": "5835ade151570647e3cc6fc3cc7de5a7099531f6",
+        "currentBlob": "5835ade151570647e3cc6fc3cc7de5a7099531f6",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/findings.json",
+        "baseBlob": "b8952e3a8b568b7f762af97abbee4bc2dfdb751e",
+        "currentBlob": "b8952e3a8b568b7f762af97abbee4bc2dfdb751e",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/local-analysis.json",
+        "baseBlob": "dca963ddc08bbaf28ea1b86e0a99e259689b5e19",
+        "currentBlob": "dca963ddc08bbaf28ea1b86e0a99e259689b5e19",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/raw-gitleaks-report.json",
+        "baseBlob": "fe51488c7066f6687ef680d6bfaa4f7768ef205c",
+        "currentBlob": "fe51488c7066f6687ef680d6bfaa4f7768ef205c",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/review.test.mjs",
+        "baseBlob": "54c64efa5de1a7be48428bae12156e255ac614b7",
+        "currentBlob": "54c64efa5de1a7be48428bae12156e255ac614b7",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/slither-windows-log.txt.gz",
+        "baseBlob": "d7b46285db25e44f70b79e09285db60a601f6dea",
+        "currentBlob": "d7b46285db25e44f70b79e09285db60a601f6dea",
+        "unchanged": true
+      },
+      {
+        "path": "docs/evidence/rmt-task082/security/slither-windows.json.gz",
+        "baseBlob": "f6fa91d4bea43069aadbd402b107626e3c92ed40",
+        "currentBlob": "f6fa91d4bea43069aadbd402b107626e3c92ed40",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/evaluate.mjs",
+        "baseBlob": "f6d39754bbe46687f084b75d0b0fee24db039505",
+        "currentBlob": "f6d39754bbe46687f084b75d0b0fee24db039505",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/evaluate.test.mjs",
+        "baseBlob": "8ddede6b1dd9781164ac322db18e071491b7db30",
+        "currentBlob": "8ddede6b1dd9781164ac322db18e071491b7db30",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/railway-standalone-smoke.mjs",
+        "baseBlob": "91302c08e011bc5c40529734e1ad640339552827",
+        "currentBlob": "91302c08e011bc5c40529734e1ad640339552827",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/railway-website.test.mjs",
+        "baseBlob": "3dfc252798ed222a2329f3abf986ad36ec7c393f",
+        "currentBlob": "3dfc252798ed222a2329f3abf986ad36ec7c393f",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/website-archive.py",
+        "baseBlob": "8dcd8491926f13c03454623eda17ede8c44b7129",
+        "currentBlob": "8dcd8491926f13c03454623eda17ede8c44b7129",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/website-archive.test.py",
+        "baseBlob": "0452e809a8b29b0558c5c8e1198b5ae7b06de977",
+        "currentBlob": "0452e809a8b29b0558c5c8e1198b5ae7b06de977",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/website-bundle.py",
+        "baseBlob": "03ca9b5d6f569986b9f2d0d02ed4bcf2a323223e",
+        "currentBlob": "03ca9b5d6f569986b9f2d0d02ed4bcf2a323223e",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/website-bundle.test.py",
+        "baseBlob": "de63e30e779901826724d23d1d2b52afcbb0d840",
+        "currentBlob": "de63e30e779901826724d23d1d2b52afcbb0d840",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/website-preflight.mjs",
+        "baseBlob": "edcd16189c413fd7f664b20c2268ff032e12b53b",
+        "currentBlob": "edcd16189c413fd7f664b20c2268ff032e12b53b",
+        "unchanged": true
+      },
+      {
+        "path": "scripts/release/website-preflight.test.mjs",
+        "baseBlob": "5971a42507042900c9345bab7b2d51db186435dd",
+        "currentBlob": "5971a42507042900c9345bab7b2d51db186435dd",
+        "unchanged": true
+      }
+    ],
+    "changed": 0,
+    "changedCountScope": "Exact-byte retained inventory only; three explicitly bounded additive workflow extensions are recorded separately.",
+    "existingWebsiteWorkflow": {
+      "change": "Exactly one additional Seaport public negative check, no removed or modified baseline lines",
+      "baselineBlob": "675dc341b1323b83a8a9d5f39edf3d9c083e1cf9",
+      "currentBlob": "9f43bd9fd5f691adb964ca14cfe4c598470597e7"
+    },
+    "existingReclaimWorkflow": {
+      "path": ".github/workflows/reclaim-v2-security.yml",
+      "change": "Exactly five added trigger paths and their explanatory comment; existing source/test/analyzer/strict commands unchanged",
+      "baselineBlob": "4430933476570c5bb95f9bcfa804a45be848394b",
+      "currentBlob": "844eb6d5d8eea8641450ce3f93340d47aa86faf0",
+      "strictCommandsUnchanged": true
+    },
+    "existingCiWorkflow": {
+      "path": ".github/workflows/ci.yml",
+      "change": "Only exact read-only Task082 base fetch may be added before release-evidence tests; every baseline command remains identical",
+      "baseFetchAdded": true,
+      "baselineBlob": "06b79825b1e44fca33fd424ab3d96368adc2e900",
+      "currentBlob": "52dfe6fd1c22bbd694a3c5ff5f672ac122dc478d",
+      "strictCommandsUnchanged": true
+    },
+    "newStrictWorkflow": {
+      "path": ".github/workflows/seaport-acquisition.yml",
+      "normalizedSha256": "71ee66598b3b311adb75f8b6181869374a7c3c25ff42be9a3f9c5718b02b6085",
+      "failuresSwallowed": false
+    },
+    "newHighs": 23,
+    "priorAcquisitionHighs": 22,
+    "otherRetainedHighs": {
+      "core": 22,
+      "treasuryV1": 6,
+      "activeReclaimV2": 7,
+      "rejectedHistoricalReclaimV1": 4
+    },
+    "allDetectors": 101,
+    "strictExit": 1,
+    "noWaivers": true
+  },
+  "candidate": {
+    "productionInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+    "roots": [
+      "seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+      "seaport-acquisition/src/SeaportAcquisitionChecksV2.sol",
+      "seaport-acquisition/src/SeaportAcquisitionTypes.sol"
+    ],
+    "sourceClosureCount": 4,
+    "sources": [
+      {
+        "path": "nft-acquisition/src/NftAcquisitionAccounts.sol",
+        "sourceSha256": "3aa7822061e9f6347dbba1db3625347270c1a905a43ccc5ac20acaa86a056e3f",
+        "isNewProductionRoot": false,
+        "preservedImport": true
+      },
+      {
+        "path": "seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "sourceSha256": "f48907ea5f030c02b6ae17488f8d23ac0bd919b6f870e382c62a2d15e651987b",
+        "isNewProductionRoot": true,
+        "preservedImport": false
+      },
+      {
+        "path": "seaport-acquisition/src/SeaportAcquisitionChecksV2.sol",
+        "sourceSha256": "164c110271d6d34ef08cac6c945e8de338139595cf151b1447799893a4e44461",
+        "isNewProductionRoot": true,
+        "preservedImport": false
+      },
+      {
+        "path": "seaport-acquisition/src/SeaportAcquisitionTypes.sol",
+        "sourceSha256": "f928c9a60af0ea630427ca229805f5a008a809cb60de88c06e971beb19bf55c0",
+        "isNewProductionRoot": true,
+        "preservedImport": false
+      }
+    ],
+    "compilerScript": {
+      "path": "scripts/seaport-acquisition/compiler.mjs",
+      "gitBlob": "3509f74b5bf4b8b3fbad643f32f3792c082808d5",
+      "normalizedSha256": "9734c60009ed95ecc73327412e37dc89d081d4056fdf92b18b14bd78022b22f5"
+    },
+    "settings": {
+      "evmVersion": "cancun",
+      "viaIR": true,
+      "optimizer": {
+        "enabled": true,
+        "runs": 200
+      },
+      "metadata": {
+        "bytecodeHash": "ipfs",
+        "appendCBOR": true,
+        "useLiteralContent": false
+      },
+      "remappings": [
+        "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+        "@uniswap/v4-core/=lib/v4-core/",
+        "@uniswap/v4-periphery/=lib/v4-periphery/"
+      ],
+      "outputSelection": {
+        "*": {
+          "": [
+            "ast"
+          ],
+          "*": [
+            "abi",
+            "evm.bytecode.object",
+            "evm.deployedBytecode"
+          ]
+        }
+      }
+    },
+    "templates": {
+      "NftAcquisitionAccounts": {
+        "file": "nft-acquisition/src/NftAcquisitionAccounts.sol",
+        "creationBytes": 85,
+        "runtimeBytes": 57,
+        "creationSha256": "9c18c6a8d41f581e4be561240bfe7f8fd10b624670eb6ddf8963432dec4aa4df",
+        "runtimeSha256": "e84913101e83e8d977f8177ce90e36e8e244b19a5ef0b95e39bd07df12236771"
+      },
+      "RMTSeaportAcquisitionVaultV2": {
+        "file": "seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "creationBytes": 38180,
+        "runtimeBytes": 24071,
+        "creationSha256": "957e0a11070999d97c81ecc7399b28182306cf3caf0e287ad5686de702e95844",
+        "runtimeSha256": "9c53d1bdd57535e10fcc2d8a5485eac68de5d56cd6ab7c63a565908d337d2a77"
+      },
+      "SeaportAcquisitionChecksV2": {
+        "file": "seaport-acquisition/src/SeaportAcquisitionChecksV2.sol",
+        "creationBytes": 9906,
+        "runtimeBytes": 9880,
+        "creationSha256": "57d7b9dcd55c9fbb2b09e672814643a2055bb0b6d381813c505a4d8cd6724cd7",
+        "runtimeSha256": "7a771d827100a291d2dd31e9e5d7411de530df57891f5f7560bfb6f7abf65986"
+      },
+      "SeaportAcquisitionTypes": {
+        "file": "seaport-acquisition/src/SeaportAcquisitionTypes.sol",
+        "creationBytes": 85,
+        "runtimeBytes": 57,
+        "creationSha256": "c4ab18fb6523ebedc9a3e24195ff305b572bebd5516fbc3c4c325983e2c4360e",
+        "runtimeSha256": "d75b008f69f0555b0d4f35248db72e681d797bdca74811d3f1b990eb5ea24cd3"
+      }
+    },
+    "recompiled": {
+      "performed": true,
+      "compilerExecutableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+      "productionInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+      "templatesExactlyMatched": true
+    }
+  },
+  "production": {
+    "liveStateObserved": false,
+    "scope": "Repository/source integrity only; no live production configuration, deployed state or balances are certified by this check.",
+    "deploymentAuthorized": false,
+    "fundingAuthorized": false,
+    "sourceCandidateProductionExecutionAvailable": false,
+    "preservedSourceEconomics": {
+      "feesChanged": false,
+      "tokenSupplyChanged": false
+    }
+  }
+}

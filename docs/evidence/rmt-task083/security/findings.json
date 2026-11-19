@@ -1,0 +1,1764 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "sourceCommit": "f66154eff50a0c7956452a22a8b3d4dc27c6f16d",
+  "productionInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+  "analysisInputSha256": "aac799ac7a70756b9d117194bf4b6eadc6139d3bad988d3bfff5b628ab819fde",
+  "tool": "Slither 0.11.5",
+  "cryticCompile": "0.3.11",
+  "detectorCount": 101,
+  "detectorFilters": [],
+  "sourceFilters": [],
+  "severityOverrides": [],
+  "strictExit": 1,
+  "counts": {
+    "High": 23,
+    "Medium": 6,
+    "Low": 13,
+    "Informational": 6
+  },
+  "highRows": 23,
+  "independentAudit": false,
+  "actualCiExecution": {
+    "schemaVersion": 1,
+    "status": "BLOCKED_NO_BROADCAST",
+    "candidateHead": "dbaccb83dcb5d1b96a5804b277de681792ecd6f4",
+    "testedMerge": "2086192353647172fff352f7bd8f04940a487d5a",
+    "runId": 44576823363,
+    "jobId": 135746427171,
+    "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44576823363/job/135746427171",
+    "jobConclusion": "failure",
+    "foundryStepConclusion": "success",
+    "strictAnalysisStepConclusion": "failure",
+    "tests": {
+      "passed": 48,
+      "failed": 0,
+      "skipped": 0,
+      "suites": {
+        "main": 32,
+        "hostile": 11,
+        "safe": 4,
+        "invariant": 1
+      },
+      "fuzzGroups": 2,
+      "fuzzRunsEach": 512,
+      "invariantRuns": 128,
+      "invariantCalls": 4096
+    },
+    "compiler": {
+      "filesCompiled": 9,
+      "compilerConclusion": "Compiler run successful!",
+      "productionClosureFiles": 4,
+      "settingsAndSourcesAndTemplatesMatchWindows": true
+    },
+    "auxiliarySourcePathDiagnostics": {
+      "count": 4,
+      "exactLines": [
+        "2026-11-19T17:25:50.9352775Z error: file ../../nft-acquisition/src/NftAcquisitionAccounts.sol not found",
+        "2026-11-19T17:25:50.9359362Z error: file ../../nft-acquisition/test/fixtures/NftAcquisitionAssets.sol not found",
+        "2026-11-19T17:25:50.9399755Z error: file ../../nft-acquisition/src/NftAcquisitionAccounts.sol not found",
+        "2026-11-19T17:25:50.9402638Z error: file ../../nft-acquisition/test/fixtures/NftAcquisitionAssets.sol not found"
+      ],
+      "locations": [
+        "src/SeaportAcquisitionChecksV2.sol:4:38",
+        "test/SeaportAcquisitionInvariant.t.sol:6:38",
+        "src/RMTSeaportAcquisitionVaultV2.sol:5:38",
+        "test/SeaportAcquisition.t.sol:5:107"
+      ],
+      "disposition": "RETAINED_POSTCOMPILE_SOURCE_PATH_DIAGNOSTICS_NOT_A_CLEAN_LOG",
+      "coverage": "Successful solc compilation includes nine source/test files. Independent exact analyzer includes all three new roots and unchanged Accounts import (four production files). No source or detector exclusion."
+    },
+    "scan": {
+      "detectors": 101,
+      "sources": 4,
+      "observations": 48,
+      "High": 23,
+      "Medium": 6,
+      "Low": 13,
+      "Informational": 6,
+      "strictExit": 1,
+      "allHighIdsMatchWindows": true,
+      "inputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5"
+    },
+    "artifact": {
+      "id": 14557323104,
+      "bytes": 83425,
+      "sha256": "9d5961c99a3bd288b36506080d479260204d539967c3d2e7a65eb5fff71e4833",
+      "uploadedDigestMatch": true,
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44576823363/artifacts/14557323104"
+    },
+    "rawBeforeCompressionScans": [
+      {
+        "scope": "Linux compiler/manifest/Slither raw artifact directory",
+        "tool": "Gitleaks 8.30.1",
+        "exit": 0,
+        "findings": 0,
+        "report": "security-linux-dbacc-gitleaks.json"
+      },
+      {
+        "scope": "Unedited Forge step log",
+        "sha256": "514392636e24432f69c69ffe2e41e26170cddfc5a046fe0f8b6fc9cb44540af5",
+        "tool": "Gitleaks 8.30.1",
+        "exit": 0,
+        "findings": 0,
+        "report": "forge-dbacc-gitleaks.json"
+      }
+    ],
+    "productionApproved": false,
+    "highsCleared": 0
+  },
+  "preliminary": {
+    "inputSha256": "af3ea1cc22b1ae81f4b84071694294f42379e9763bcd32d912823b4a426b4e08",
+    "highs": 23,
+    "exactIdsUnchanged": 11,
+    "relocatedTemporaryIds": 12,
+    "removed": 0,
+    "cleared": 0,
+    "mapping": [
+      {
+        "preliminaryId": "07edf44350c3a0a755311989d6727e216eebdcd21e0cc57c0c1ca6eb56c62c13",
+        "finalId": "07edf44350c3a0a755311989d6727e216eebdcd21e0cc57c0c1ca6eb56c62c13",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "4da0175cf026938da42e836818880c7b9e56248eebea0d91c45614e7d9716ec9",
+        "finalId": "0a8d5bd7b8b1179e8a5b55f7208076608f010a23869e57e098276ff773123f5a",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "8943dadb96304b87495f377beeeda47db5ff578b68483570b39d38fd831217d0",
+        "finalId": "0bb5cbecacf0c8cd75bb89b49c84ffe38d1a1cee034d3dd7b36d33dabf1a68e8",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "76965a7f5510c77526a18eeaa322646b5c8bea071dc0d6e80b1289a0ede92fb1",
+        "finalId": "2f19f97eed8645e44876353ac526fbb66051da3ecdff43669bab67678fdf7a72",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "7bb53fe086e7d981c88fcc98c0d856fc65e8fe90f5cc417e5bc283a83d29147a",
+        "finalId": "447916a95ca1582a4afbdcc69cf9ffe0f5c7f49ac5df8e26678a4b43d0fabf6b",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "529f3c73bab84c7bcad4348d925bb1a29f91c8ccba772f514bb9a03a216c6676",
+        "finalId": "529f3c73bab84c7bcad4348d925bb1a29f91c8ccba772f514bb9a03a216c6676",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "89524e744644e7f7b850a2f87de37cdfdaa95e5b224acbdb38f09bfc65b6c607",
+        "finalId": "567283d05be34a1eaf02dbf9bb9297e91ac7a3a6472db3cd7a18701cc20031c7",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "9d05ab0c6c047ac6cb91a80a3f2d0edde222f0c600f9d0aaac00f2bb5080f947",
+        "finalId": "65f195c414f077bd63b1b21ee0a04066c189418e6cee0adfe34e89c2ae2c2d74",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "671c9e8b540f0c16a4c2e8de7c1544160a2b849c600e1001a7c9529ecf365f5d",
+        "finalId": "671c9e8b540f0c16a4c2e8de7c1544160a2b849c600e1001a7c9529ecf365f5d",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "757ad417fbdec03c1e419667790676a75c22e940d85e039f05e79788681f5edf",
+        "finalId": "757ad417fbdec03c1e419667790676a75c22e940d85e039f05e79788681f5edf",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "eec2a2b796162d0321ccbcb167176d73fa39537ac74cd4092c4627b01ff58928",
+        "finalId": "7bcfc8baa28b11ff913b716fbced190220e44a8330f389db5dfcaae52f0c0769",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "7d8c21dc22137cca504fb5eb0bfa8fbd9cf5def18e39d075c876125f4a7a0045",
+        "finalId": "7d8c21dc22137cca504fb5eb0bfa8fbd9cf5def18e39d075c876125f4a7a0045",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "86d7656b4478624eec044185a3ff2e43ece547c0290cffe7ba899ded6e149d40",
+        "finalId": "86d7656b4478624eec044185a3ff2e43ece547c0290cffe7ba899ded6e149d40",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "9a342596553439e237a6c9706aa8241e472bb5e456c736f7636048cb5b37275a",
+        "finalId": "9a342596553439e237a6c9706aa8241e472bb5e456c736f7636048cb5b37275a",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "b515ec8226d3e35dfe3804eff46ac886aebc6a5bfd08dcba556751f201a09ed9",
+        "finalId": "b515ec8226d3e35dfe3804eff46ac886aebc6a5bfd08dcba556751f201a09ed9",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "a43f82eebd4a683050e0c2f3373bfe96478cda18abb1c1212badca6cd95df1ca",
+        "finalId": "bc6d9865997a46c59149abada13091be3040a22783758d76dbe3e99b6373e922",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "cb39a1da1ad0227dc00f783816a25128b87b07c3a7357fa3866dbdcc35512526",
+        "finalId": "cb39a1da1ad0227dc00f783816a25128b87b07c3a7357fa3866dbdcc35512526",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "b40a672c409e5c9b301903c699f50fd1c0129377fcebc52c221048143432b407",
+        "finalId": "d65a6b82d27ae20e38c3e892b8dfe4eb2b59f1f34fc7264f706534f6d3f5dcc4",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "de741e2523a760c9315914acd83c92b7c64f156c7fbb6418861b260060e54a80",
+        "finalId": "de741e2523a760c9315914acd83c92b7c64f156c7fbb6418861b260060e54a80",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      },
+      {
+        "preliminaryId": "82aaad22a090500f072498a1af02b63c4ebd7314cb7d3e26b86b983400d4eec1",
+        "finalId": "e249d693ca7023323b7289ab68422f6d58fbe28e88266aafd062be53977cb809",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "107163307c085fceb956293800db5324c3e2beaf170838bc91503f67bce86629",
+        "finalId": "e467b3a4d48d713a50cd4666703ec284e4512bc8d7eef3754bf821b8a3e78b6d",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "7c4d5346d4a198bdce6d32e0452008fbe5d639e962306cf954df9644a31864b1",
+        "finalId": "e84f44ab0fd51302a53370633ae6e01e0f8a283175d70fcd26b2381d587e1f31",
+        "identicalId": false,
+        "basis": "Same exact function/source/call/balance and postconditions; only Slither TMP/REF variable suffixes change after creator-only constructor AST insertion. Not eliminated or cleared."
+      },
+      {
+        "preliminaryId": "f24427c15372dd25ad827d1a832ab0630c893c42d5c9aa18cacce416c826ef43",
+        "finalId": "f24427c15372dd25ad827d1a832ab0630c893c42d5c9aa18cacce416c826ef43",
+        "identicalId": true,
+        "basis": "EXACT_ID_AND_DESCRIPTION"
+      }
+    ]
+  },
+  "distinctHistoricalScope": {
+    "task082InputSha256": "147be8aec26e3d2577b8b2812f2d779d3fc6b39024fd05b7c40397ffddefe6e1",
+    "task082CurrentHighs": 22,
+    "task081OriginalRows": 23,
+    "retainedOriginalIds": [
+      "251991d91fae87d18b92781ecf65e3422d77a1de7b0290b43a99558ea7133955",
+      "005d4c30eb2d9ff5462c64f3749d3f42c1eaf74d7dc5813888d5865eabc954d3",
+      "01b60e7aff0d81b4fb205dde011711e68da61267a9c87c2b7118a146a73df0fd",
+      "0548484ce7cb2230d5fc6c47b99f8e363499a919eb1b5a7a38350ab7e9553939",
+      "1a983b4dd4c771315f1db3b5072dec57ef1f380cc15e9bb75ee8dfbd107737ae",
+      "224f95ff11eccea0215b529762489a13e31f2685ae1d144591548aa0ea905e48",
+      "498a7978c40e87657b73e601e7efe79104c423cc11ae66c16a8065004d963d3d",
+      "4dffdea813a4c8d044bbc819696c3c1a93445cfd928e1e72f0ca0277f371ec65",
+      "6290ccfce758baa0db248fb642e2f6874109586cf53c583c3bed41b8ad9b4e31",
+      "63f5b08e426bb9d2f1efa5ffb2c07e1d2967344435b75a797df89753fe982c30",
+      "776ae8d87e17b99590d129717791dbfb2402f031106df84d676e3b16d4296334",
+      "818a544057356ad6fbd3d78878b3b1edc4d8456b7774bda249c62f5c77234305",
+      "8a2775b8056616d3f6f840ea5d0e93407d7a6a2895b08eb4d477a04277e7434e",
+      "8ab4d1d9cad6a063d7fe62b49787c79bbb1ddae81ff80aef6d3ad64694901737",
+      "98bd2f3ddf59a06e55f5b06831df191a2c713952b194444dd68c8246d43420e8",
+      "b20b008ef73ce097453301eb4a1191e36f88cda182f66c92b5589a2ecf4ef19b",
+      "ba8b15b4a385e85878b1c03c11f9312e808a06d07ec8b7147abd89330a526c42",
+      "bdb56ad7d933ccc20dcef76752dc133b446f5c286438a8f1ff95b34c538f1501",
+      "bdc3b0e9776e5415845ef6467193f746b893f7804a4a1ca10f5abc00926413f2",
+      "bff2eb362f6c279c033f7b79aa00e81749549de05d3e68681c004f07cabcc21b",
+      "c8adc86545695d3fe1cca1efe77c989882766924a72909ae04850b366d991d5e",
+      "c8d2c00befdd7c6ae05a6116b5ba86fad1c5fab787103718459d51ddf31d27a7",
+      "f002983bfe776ee0ec5858c7b0350322d0ba4eb4b6b13755b61505482912c765"
+    ],
+    "task082CurrentIds": [
+      "005d4c30eb2d9ff5462c64f3749d3f42c1eaf74d7dc5813888d5865eabc954d3",
+      "01b60e7aff0d81b4fb205dde011711e68da61267a9c87c2b7118a146a73df0fd",
+      "0548484ce7cb2230d5fc6c47b99f8e363499a919eb1b5a7a38350ab7e9553939",
+      "1a983b4dd4c771315f1db3b5072dec57ef1f380cc15e9bb75ee8dfbd107737ae",
+      "224f95ff11eccea0215b529762489a13e31f2685ae1d144591548aa0ea905e48",
+      "498a7978c40e87657b73e601e7efe79104c423cc11ae66c16a8065004d963d3d",
+      "4dffdea813a4c8d044bbc819696c3c1a93445cfd928e1e72f0ca0277f371ec65",
+      "6290ccfce758baa0db248fb642e2f6874109586cf53c583c3bed41b8ad9b4e31",
+      "0550ed2fbeabd9e8e68368ad446b1635b12e8840f98eb36411ce7510214c560d",
+      "776ae8d87e17b99590d129717791dbfb2402f031106df84d676e3b16d4296334",
+      "818a544057356ad6fbd3d78878b3b1edc4d8456b7774bda249c62f5c77234305",
+      "8a2775b8056616d3f6f840ea5d0e93407d7a6a2895b08eb4d477a04277e7434e",
+      "8ab4d1d9cad6a063d7fe62b49787c79bbb1ddae81ff80aef6d3ad64694901737",
+      "98bd2f3ddf59a06e55f5b06831df191a2c713952b194444dd68c8246d43420e8",
+      "b20b008ef73ce097453301eb4a1191e36f88cda182f66c92b5589a2ecf4ef19b",
+      "ba8b15b4a385e85878b1c03c11f9312e808a06d07ec8b7147abd89330a526c42",
+      "bdb56ad7d933ccc20dcef76752dc133b446f5c286438a8f1ff95b34c538f1501",
+      "bdc3b0e9776e5415845ef6467193f746b893f7804a4a1ca10f5abc00926413f2",
+      "bff2eb362f6c279c033f7b79aa00e81749549de05d3e68681c004f07cabcc21b",
+      "c8adc86545695d3fe1cca1efe77c989882766924a72909ae04850b366d991d5e",
+      "710bc10fbac4a5166c9c44bdd7e3ee832a78687581d5acb7c5cd54ec8b86c6e3",
+      "f002983bfe776ee0ec5858c7b0350322d0ba4eb4b6b13755b61505482912c765"
+    ],
+    "relation": "V2 is a separate source/ABI/custody implementation. Its 23 Highs are not an in-place rescan or remediation of V1's 22 remaining Highs. No old ID or gate is removed, reclassified or cleared. Broad balance/route categories are analogous; independent exact source registers remain authoritative.",
+    "otherUnchangedHighScopes": {
+      "core": 22,
+      "treasuryV1": 6,
+      "activeReclaimV2": 7,
+      "rejectedHistoricalReclaimV1": 4
+    }
+  },
+  "rows": [
+    {
+      "id": "07edf44350c3a0a755311989d6727e216eebdcd21e0cc57c0c1ca6eb56c62c13",
+      "detector": "arbitrary-send-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202) sends eth to arbitrary user\n\tDangerous calls:\n\t- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: s.total}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)\n\t- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: 0}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)\n",
+      "externalCall": "- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: s.total}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)\n\t- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: 0}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)",
+      "observedBalance": null,
+      "postconditions": null,
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "0a8d5bd7b8b1179e8a5b55f7208076608f010a23869e57e098276ff773123f5a",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)\n\tBalance read before the call:\n\t- s.oldHeld = _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)\n\t\t- stale variable `TMP_384`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`\n",
+      "externalCall": "- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)",
+      "observedBalance": "- s.oldHeld = _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)\n\t\t- stale variable `TMP_384`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "0bb5cbecacf0c8cd75bb89b49c84ffe38d1a1cee034d3dd7b36d33dabf1a68e8",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\tBalance read before the call:\n\t- s.oldCurrency = _balance(s.currency,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n",
+      "externalCall": "- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)",
+      "observedBalance": "- s.oldCurrency = _balance(s.currency,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "2f19f97eed8645e44876353ac526fbb66051da3ecdff43669bab67678fdf7a72",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: s.total}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)\n\tBalance read before the call:\n\t- s.oldCurrency = _balance(s.currency,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`\n",
+      "externalCall": "- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: s.total}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)",
+      "observedBalance": "- s.oldCurrency = _balance(s.currency,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "447916a95ca1582a4afbdcc69cf9ffe0f5c7f49ac5df8e26678a4b43d0fabf6b",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)\n\tBalance read before the call:\n\t- s.oldSeller = _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)\n\t\t- stale variable `TMP_384`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`\n",
+      "externalCall": "- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)",
+      "observedBalance": "- s.oldSeller = _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)\n\t\t- stale variable `TMP_384`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "529f3c73bab84c7bcad4348d925bb1a29f91c8ccba772f514bb9a03a216c6676",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 19692,
+        "length": 1807,
+        "firstLine": 223,
+        "lastLine": 240
+      },
+      "function": "executeWithdrawal",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.executeWithdrawal(uint64) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#223-240):\n\tExternal call allowing reentrancy:\n\t- IAcquisition1155(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId,w.quantity,) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#235)\n\tBalance read before the call:\n\t- b_scope_1 = _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#233)\n\tPossible stale balance used after the call in a condition:\n\t- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && IAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#236-237)\n\t\t- stale variable `b_scope_1`\n",
+      "externalCall": "- IAcquisition1155(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId,w.quantity,) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#235)",
+      "observedBalance": "- b_scope_1 = _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#233)",
+      "postconditions": "- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && IAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#236-237)\n\t\t- stale variable `b_scope_1`",
+      "assetOrAuthorityAtRisk": "Previously accounted capital or purchased NFT custody under an exact current-epoch asset/ID/quantity/recipient notice.",
+      "preconditions": "The current supported controller previously scheduled this exact withdrawal, reserving only accounted assets or credited NFT inventory. Its real two-day notice has matured and bounded execution window has not expired. Any caller may execute those fixed terms; no recipient substitution is possible.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "The lock is active before any transfer. The exact notice is marked executed and its reservation released before the external call; native/ERC20 held accounting or purchased NFT inventory is decremented. Exact vault debit and recipient credit are required, plus ownerOf for ERC721, followed by dependency binding. Callback failure, immediate forwarding, wrong final ownership or unsupported token behavior reverts notice/reservation/accounting and all transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testReservedFundsCannotBeSpentAndNoticeCannotExecuteEarly"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testPurchased721And1155OnlyLeaveAfterBoundedNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testControllerRotationDisablesPolicyAndInvalidatesOldNotices"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeWithdrawalCallbackCannotConsumeSecondMatureNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNoticed721And1155ForwardingRollbackCustodyAndReservations"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenWithdrawalRejectsFalseReturnFeeAndOverpullWithoutLosingNotice"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "567283d05be34a1eaf02dbf9bb9297e91ac7a3a6472db3cd7a18701cc20031c7",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: 0}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)\n\tBalance read before the call:\n\t- s.oldSeller = _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`\n",
+      "externalCall": "- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: 0}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)",
+      "observedBalance": "- s.oldSeller = _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "65f195c414f077bd63b1b21ee0a04066c189418e6cee0adfe34e89c2ae2c2d74",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: 0}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)\n\tBalance read before the call:\n\t- s.oldCurrency = _balance(s.currency,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`\n",
+      "externalCall": "- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: 0}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)",
+      "observedBalance": "- s.oldCurrency = _balance(s.currency,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "671c9e8b540f0c16a4c2e8de7c1544160a2b849c600e1001a7c9529ecf365f5d",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 19692,
+        "length": 1807,
+        "firstLine": 223,
+        "lastLine": 240
+      },
+      "function": "executeWithdrawal",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.executeWithdrawal(uint64) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#223-240):\n\tExternal call allowing reentrancy:\n\t- (ok,None) = address(w.recipient).call{value: w.quantity}() (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#228)\n\tBalance read before the call:\n\t- b = _balance(w.asset,w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#227)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#230)\n\t\t- stale variable `b`\n",
+      "externalCall": "- (ok,None) = address(w.recipient).call{value: w.quantity}() (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#228)",
+      "observedBalance": "- b = _balance(w.asset,w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#227)",
+      "postconditions": "- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#230)\n\t\t- stale variable `b`",
+      "assetOrAuthorityAtRisk": "Previously accounted capital or purchased NFT custody under an exact current-epoch asset/ID/quantity/recipient notice.",
+      "preconditions": "The current supported controller previously scheduled this exact withdrawal, reserving only accounted assets or credited NFT inventory. Its real two-day notice has matured and bounded execution window has not expired. Any caller may execute those fixed terms; no recipient substitution is possible.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "The lock is active before any transfer. The exact notice is marked executed and its reservation released before the external call; native/ERC20 held accounting or purchased NFT inventory is decremented. Exact vault debit and recipient credit are required, plus ownerOf for ERC721, followed by dependency binding. Callback failure, immediate forwarding, wrong final ownership or unsupported token behavior reverts notice/reservation/accounting and all transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testReservedFundsCannotBeSpentAndNoticeCannotExecuteEarly"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testPurchased721And1155OnlyLeaveAfterBoundedNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testControllerRotationDisablesPolicyAndInvalidatesOldNotices"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeWithdrawalCallbackCannotConsumeSecondMatureNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNoticed721And1155ForwardingRollbackCustodyAndReservations"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenWithdrawalRejectsFalseReturnFeeAndOverpullWithoutLosingNotice"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "757ad417fbdec03c1e419667790676a75c22e940d85e039f05e79788681f5edf",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 19692,
+        "length": 1807,
+        "firstLine": 223,
+        "lastLine": 240
+      },
+      "function": "executeWithdrawal",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.executeWithdrawal(uint64) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#223-240):\n\tExternal call allowing reentrancy:\n\t- IAcquisition721(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#234)\n\tBalance read before the call:\n\t- b_scope_1 = _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#233)\n\tPossible stale balance used after the call in a condition:\n\t- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && IAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#236-237)\n\t\t- stale variable `b_scope_1`\n",
+      "externalCall": "- IAcquisition721(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#234)",
+      "observedBalance": "- b_scope_1 = _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#233)",
+      "postconditions": "- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && IAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#236-237)\n\t\t- stale variable `b_scope_1`",
+      "assetOrAuthorityAtRisk": "Previously accounted capital or purchased NFT custody under an exact current-epoch asset/ID/quantity/recipient notice.",
+      "preconditions": "The current supported controller previously scheduled this exact withdrawal, reserving only accounted assets or credited NFT inventory. Its real two-day notice has matured and bounded execution window has not expired. Any caller may execute those fixed terms; no recipient substitution is possible.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "The lock is active before any transfer. The exact notice is marked executed and its reservation released before the external call; native/ERC20 held accounting or purchased NFT inventory is decremented. Exact vault debit and recipient credit are required, plus ownerOf for ERC721, followed by dependency binding. Callback failure, immediate forwarding, wrong final ownership or unsupported token behavior reverts notice/reservation/accounting and all transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testReservedFundsCannotBeSpentAndNoticeCannotExecuteEarly"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testPurchased721And1155OnlyLeaveAfterBoundedNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testControllerRotationDisablesPolicyAndInvalidatesOldNotices"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeWithdrawalCallbackCannotConsumeSecondMatureNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNoticed721And1155ForwardingRollbackCustodyAndReservations"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenWithdrawalRejectsFalseReturnFeeAndOverpullWithoutLosingNotice"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "7bcfc8baa28b11ff913b716fbced190220e44a8330f389db5dfcaae52f0c0769",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\tBalance read before the call:\n\t- s.oldSeller = _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n",
+      "externalCall": "- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)",
+      "observedBalance": "- s.oldSeller = _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "7d8c21dc22137cca504fb5eb0bfa8fbd9cf5def18e39d075c876125f4a7a0045",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 19692,
+        "length": 1807,
+        "firstLine": 223,
+        "lastLine": 240
+      },
+      "function": "executeWithdrawal",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.executeWithdrawal(uint64) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#223-240):\n\tExternal call allowing reentrancy:\n\t- ! IAcquisitionToken(w.asset).transfer(w.recipient,w.quantity) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#229)\n\tBalance read before the call:\n\t- a = _balance(w.asset,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#227)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#230)\n\t\t- stale variable `a`\n",
+      "externalCall": "- ! IAcquisitionToken(w.asset).transfer(w.recipient,w.quantity) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#229)",
+      "observedBalance": "- a = _balance(w.asset,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#227)",
+      "postconditions": "- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#230)\n\t\t- stale variable `a`",
+      "assetOrAuthorityAtRisk": "Previously accounted capital or purchased NFT custody under an exact current-epoch asset/ID/quantity/recipient notice.",
+      "preconditions": "The current supported controller previously scheduled this exact withdrawal, reserving only accounted assets or credited NFT inventory. Its real two-day notice has matured and bounded execution window has not expired. Any caller may execute those fixed terms; no recipient substitution is possible.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "The lock is active before any transfer. The exact notice is marked executed and its reservation released before the external call; native/ERC20 held accounting or purchased NFT inventory is decremented. Exact vault debit and recipient credit are required, plus ownerOf for ERC721, followed by dependency binding. Callback failure, immediate forwarding, wrong final ownership or unsupported token behavior reverts notice/reservation/accounting and all transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testReservedFundsCannotBeSpentAndNoticeCannotExecuteEarly"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testPurchased721And1155OnlyLeaveAfterBoundedNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testControllerRotationDisablesPolicyAndInvalidatesOldNotices"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeWithdrawalCallbackCannotConsumeSecondMatureNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNoticed721And1155ForwardingRollbackCustodyAndReservations"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenWithdrawalRejectsFalseReturnFeeAndOverpullWithoutLosingNotice"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "86d7656b4478624eec044185a3ff2e43ece547c0290cffe7ba899ded6e149d40",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 19692,
+        "length": 1807,
+        "firstLine": 223,
+        "lastLine": 240
+      },
+      "function": "executeWithdrawal",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.executeWithdrawal(uint64) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#223-240):\n\tExternal call allowing reentrancy:\n\t- IAcquisition721(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#234)\n\tBalance read before the call:\n\t- a_scope_0 = _nftBalance(w.asset,w.kind,address(this),w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#233)\n\tPossible stale balance used after the call in a condition:\n\t- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && IAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#236-237)\n\t\t- stale variable `a_scope_0`\n",
+      "externalCall": "- IAcquisition721(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#234)",
+      "observedBalance": "- a_scope_0 = _nftBalance(w.asset,w.kind,address(this),w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#233)",
+      "postconditions": "- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && IAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#236-237)\n\t\t- stale variable `a_scope_0`",
+      "assetOrAuthorityAtRisk": "Previously accounted capital or purchased NFT custody under an exact current-epoch asset/ID/quantity/recipient notice.",
+      "preconditions": "The current supported controller previously scheduled this exact withdrawal, reserving only accounted assets or credited NFT inventory. Its real two-day notice has matured and bounded execution window has not expired. Any caller may execute those fixed terms; no recipient substitution is possible.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "The lock is active before any transfer. The exact notice is marked executed and its reservation released before the external call; native/ERC20 held accounting or purchased NFT inventory is decremented. Exact vault debit and recipient credit are required, plus ownerOf for ERC721, followed by dependency binding. Callback failure, immediate forwarding, wrong final ownership or unsupported token behavior reverts notice/reservation/accounting and all transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testReservedFundsCannotBeSpentAndNoticeCannotExecuteEarly"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testPurchased721And1155OnlyLeaveAfterBoundedNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testControllerRotationDisablesPolicyAndInvalidatesOldNotices"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeWithdrawalCallbackCannotConsumeSecondMatureNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNoticed721And1155ForwardingRollbackCustodyAndReservations"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenWithdrawalRejectsFalseReturnFeeAndOverpullWithoutLosingNotice"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "9a342596553439e237a6c9706aa8241e472bb5e456c736f7636048cb5b37275a",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 8927,
+        "length": 622,
+        "firstLine": 123,
+        "lastLine": 129
+      },
+      "function": "fundToken",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.fundToken(uint256,bytes32) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#123-129):\n\tExternal call allowing reentrancy:\n\t- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#127)\n\tBalance read before the call:\n\t- b = t.balanceOf(msg.sender) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#125)\n\tPossible stale balance used after the call in a condition:\n\t- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#127)\n\t\t- stale variable `b`\n",
+      "externalCall": "- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#127)",
+      "observedBalance": "- b = t.balanceOf(msg.sender) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#125)",
+      "postconditions": "- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#127)\n\t\t- stale variable `b`",
+      "assetOrAuthorityAtRisk": "Deliberately transferred controller ERC20 funding, with exact controller debit and segregated vault credit.",
+      "preconditions": "Current supported controller deliberately calls fundToken with positive amount and source, and approves only this vault. The immutable admitted payment token executes transferFrom and could attempt callbacks or falsify transfer semantics.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Funding/accountedHeld are incremented under the active lock before transferFrom. Both token endpoints must change by exactly amount and transfer must return true. Failure rolls back funding and allowance effects; no fee entitlement or external treasury credit is pulled.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testFundingAndConfigurationOnlyCurrentController"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "b515ec8226d3e35dfe3804eff46ac886aebc6a5bfd08dcba556751f201a09ed9",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 8927,
+        "length": 622,
+        "firstLine": 123,
+        "lastLine": 129
+      },
+      "function": "fundToken",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.fundToken(uint256,bytes32) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#123-129):\n\tExternal call allowing reentrancy:\n\t- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#127)\n\tBalance read before the call:\n\t- a = t.balanceOf(address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#125)\n\tPossible stale balance used after the call in a condition:\n\t- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#127)\n\t\t- stale variable `a`\n",
+      "externalCall": "- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#127)",
+      "observedBalance": "- a = t.balanceOf(address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#125)",
+      "postconditions": "- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#127)\n\t\t- stale variable `a`",
+      "assetOrAuthorityAtRisk": "Deliberately transferred controller ERC20 funding, with exact controller debit and segregated vault credit.",
+      "preconditions": "Current supported controller deliberately calls fundToken with positive amount and source, and approves only this vault. The immutable admitted payment token executes transferFrom and could attempt callbacks or falsify transfer semantics.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Funding/accountedHeld are incremented under the active lock before transferFrom. Both token endpoints must change by exactly amount and transfer must return true. Failure rolls back funding and allowance effects; no fee entitlement or external treasury credit is pulled.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testFundingAndConfigurationOnlyCurrentController"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "bc6d9865997a46c59149abada13091be3040a22783758d76dbe3e99b6373e922",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: 0}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)\n\tBalance read before the call:\n\t- s.oldHeld = _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`\n",
+      "externalCall": "- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: 0}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)",
+      "observedBalance": "- s.oldHeld = _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "cb39a1da1ad0227dc00f783816a25128b87b07c3a7357fa3866dbdcc35512526",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 19692,
+        "length": 1807,
+        "firstLine": 223,
+        "lastLine": 240
+      },
+      "function": "executeWithdrawal",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.executeWithdrawal(uint64) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#223-240):\n\tExternal call allowing reentrancy:\n\t- ! IAcquisitionToken(w.asset).transfer(w.recipient,w.quantity) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#229)\n\tBalance read before the call:\n\t- b = _balance(w.asset,w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#227)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#230)\n\t\t- stale variable `b`\n",
+      "externalCall": "- ! IAcquisitionToken(w.asset).transfer(w.recipient,w.quantity) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#229)",
+      "observedBalance": "- b = _balance(w.asset,w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#227)",
+      "postconditions": "- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#230)\n\t\t- stale variable `b`",
+      "assetOrAuthorityAtRisk": "Previously accounted capital or purchased NFT custody under an exact current-epoch asset/ID/quantity/recipient notice.",
+      "preconditions": "The current supported controller previously scheduled this exact withdrawal, reserving only accounted assets or credited NFT inventory. Its real two-day notice has matured and bounded execution window has not expired. Any caller may execute those fixed terms; no recipient substitution is possible.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "The lock is active before any transfer. The exact notice is marked executed and its reservation released before the external call; native/ERC20 held accounting or purchased NFT inventory is decremented. Exact vault debit and recipient credit are required, plus ownerOf for ERC721, followed by dependency binding. Callback failure, immediate forwarding, wrong final ownership or unsupported token behavior reverts notice/reservation/accounting and all transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testReservedFundsCannotBeSpentAndNoticeCannotExecuteEarly"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testPurchased721And1155OnlyLeaveAfterBoundedNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testControllerRotationDisablesPolicyAndInvalidatesOldNotices"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeWithdrawalCallbackCannotConsumeSecondMatureNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNoticed721And1155ForwardingRollbackCustodyAndReservations"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenWithdrawalRejectsFalseReturnFeeAndOverpullWithoutLosingNotice"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "d65a6b82d27ae20e38c3e892b8dfe4eb2b59f1f34fc7264f706534f6d3f5dcc4",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: s.total}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)\n\tBalance read before the call:\n\t- s.oldHeld = _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`\n",
+      "externalCall": "- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: s.total}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)",
+      "observedBalance": "- s.oldHeld = _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "de741e2523a760c9315914acd83c92b7c64f156c7fbb6418861b260060e54a80",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 19692,
+        "length": 1807,
+        "firstLine": 223,
+        "lastLine": 240
+      },
+      "function": "executeWithdrawal",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.executeWithdrawal(uint64) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#223-240):\n\tExternal call allowing reentrancy:\n\t- IAcquisition1155(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId,w.quantity,) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#235)\n\tBalance read before the call:\n\t- a_scope_0 = _nftBalance(w.asset,w.kind,address(this),w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#233)\n\tPossible stale balance used after the call in a condition:\n\t- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && IAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#236-237)\n\t\t- stale variable `a_scope_0`\n",
+      "externalCall": "- IAcquisition1155(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId,w.quantity,) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#235)",
+      "observedBalance": "- a_scope_0 = _nftBalance(w.asset,w.kind,address(this),w.tokenId) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#233)",
+      "postconditions": "- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && IAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#236-237)\n\t\t- stale variable `a_scope_0`",
+      "assetOrAuthorityAtRisk": "Previously accounted capital or purchased NFT custody under an exact current-epoch asset/ID/quantity/recipient notice.",
+      "preconditions": "The current supported controller previously scheduled this exact withdrawal, reserving only accounted assets or credited NFT inventory. Its real two-day notice has matured and bounded execution window has not expired. Any caller may execute those fixed terms; no recipient substitution is possible.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "The lock is active before any transfer. The exact notice is marked executed and its reservation released before the external call; native/ERC20 held accounting or purchased NFT inventory is decremented. Exact vault debit and recipient credit are required, plus ownerOf for ERC721, followed by dependency binding. Callback failure, immediate forwarding, wrong final ownership or unsupported token behavior reverts notice/reservation/accounting and all transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testReservedFundsCannotBeSpentAndNoticeCannotExecuteEarly"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testPurchased721And1155OnlyLeaveAfterBoundedNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testControllerRotationDisablesPolicyAndInvalidatesOldNotices"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeWithdrawalCallbackCannotConsumeSecondMatureNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNoticed721And1155ForwardingRollbackCustodyAndReservations"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenWithdrawalRejectsFalseReturnFeeAndOverpullWithoutLosingNotice"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "e249d693ca7023323b7289ab68422f6d58fbe28e88266aafd062be53977cb809",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\tBalance read before the call:\n\t- s.oldHeld = _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n",
+      "externalCall": "- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)",
+      "observedBalance": "- s.oldHeld = _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "e467b3a4d48d713a50cd4666703ec284e4512bc8d7eef3754bf821b8a3e78b6d",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: s.total}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)\n\tBalance read before the call:\n\t- s.oldSeller = _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`\n",
+      "externalCall": "- ! IAcquisitionSeaport(seaport).fulfillAdvancedOrder{value: s.total}(a,new SeaportAcquisitionTypes.CriteriaResolver[](0),bytes32(0),address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#188)",
+      "observedBalance": "- s.oldSeller = _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "e84f44ab0fd51302a53370633ae6e01e0f8a283175d70fcd26b2381d587e1f31",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 12667,
+        "length": 4945,
+        "firstLine": 161,
+        "lastLine": 202
+      },
+      "function": "purchase",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.purchase(SeaportAcquisitionTypes.AdvancedOrder,SeaportAcquisitionTypes.Request) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#161-202):\n\tExternal call allowing reentrancy:\n\t- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)\n\tBalance read before the call:\n\t- s.oldCurrency = _balance(s.currency,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)\n\t\t- stale variable `TMP_384`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`\n",
+      "externalCall": "- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)",
+      "observedBalance": "- s.oldCurrency = _balance(s.currency,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#179)",
+      "postconditions": "- _balance(s.currency,o.consideration[i].recipient) != s.recipientBalances[i] + o.consideration[i].startAmount (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#198)\n\t\t- stale variable `REF_292`\n\t- t.allowance(address(this),seaport) != 0 || ! t.approve(seaport,s.total) || t.allowance(address(this),seaport) != s.total (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#186)\n\t\t- stale variable `TMP_384`\n\t- ! t_scope_0.approve(seaport,0) || t_scope_0.allowance(address(this),seaport) != 0 (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#190)\n\t\t- stale variable `TMP_401`\n\t- ! checks.supported(controller) || r.policyEpoch != policyEpoch || r.controllerEpoch != controllerEpoch || ! purchasesEnabled || IAcquisitionSeaport(seaport).getCounter(o.offerer) != r.counter || n.token.codehash != c.runtimeHash || (c.standard == 2 && ! received) || _balance(s.currency,address(this)) + s.total != s.oldCurrency || _nftBalance(n.token,c.standard,o.offerer,n.identifierOrCriteria) + n.startAmount != s.oldSeller || _nftBalance(n.token,c.standard,address(this),n.identifierOrCriteria) != s.oldHeld + n.startAmount || (c.standard == 1 && IAcquisition721(n.token).ownerOf(n.identifierOrCriteria) != address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#192-196)\n\t\t- stale variable `TMP_426`\n\t- checks.royalty(n.token,n.identifierOrCriteria,s.total) != s.royaltyHash (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#197)\n\t\t- stale variable `TMP_447`",
+      "assetOrAuthorityAtRisk": "Settled unreserved native/ERC20 consideration; exact seller/fee/royalty endpoint deltas and ERC721/ERC1155 custody credited only to this project vault.",
+      "preconditions": "Controller explicitly enables a current-epoch standing policy. A permissionless caller supplies a current canonical seller signature over the exact Seaport FULL_OPEN static single-NFT order, current counter/hash/status, admitted collection/ID/quantity/currency, every recipient and exact ERC2981 royalty. All price/lifetime/day/cooldown/reserve limits and deadline must hold.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "Before mutable calls: orderConsumed=true, accountedHeld decreases, lifetime/day spend and cooldown increase, and the exact ERC1155 expected receive window is installed. Only immutable pinned Seaport.fulfillAdvancedOrder can spend, with exact native value or finite ERC20 approval, zero zone/conduits/criteria/extraData/tips and receiver=this vault. Approval is explicitly zeroed afterwards. Full 1/1 status, counter, signatures, authority/epochs, code, royalty, all recipient payment deltas, seller NFT debit, vault credit and ERC721 ownerOf are checked before inventory credit. Every failure atomically rolls back all state and transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineNative721CustodyWithoutSafeReceiverCallback"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testGenuineToken1155AtomicCustody"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testMinedDisableInvalidatesOldEpochAndLeavesFundsAndNft"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeFeeCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenApprovalAndEveryPaymentCallbackCannotExecuteMatureWithdrawal"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftCallbackCannotExecuteMatureWithdrawalOrReenter"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeForwardingFeeRecipientIsExplicitlyRejectedAtomically"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNftMutatingRoyaltyAfterTransferRollsBackEveryAssetAndState"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+          "name": "invariantFundedConservationBudgetAllowanceAndExactAcquiredCustody"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    },
+    {
+      "id": "f24427c15372dd25ad827d1a832ab0630c893c42d5c9aa18cacce416c826ef43",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "source": {
+        "path": "packages/contracts/seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+        "start": 19692,
+        "length": 1807,
+        "firstLine": 223,
+        "lastLine": 240
+      },
+      "function": "executeWithdrawal",
+      "rawDescription": "Reentrancy in RMTSeaportAcquisitionVaultV2.executeWithdrawal(uint64) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#223-240):\n\tExternal call allowing reentrancy:\n\t- (ok,None) = address(w.recipient).call{value: w.quantity}() (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#228)\n\tBalance read before the call:\n\t- a = _balance(w.asset,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#227)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#230)\n\t\t- stale variable `a`\n",
+      "externalCall": "- (ok,None) = address(w.recipient).call{value: w.quantity}() (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#228)",
+      "observedBalance": "- a = _balance(w.asset,address(this)) (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#227)",
+      "postconditions": "- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol#230)\n\t\t- stale variable `a`",
+      "assetOrAuthorityAtRisk": "Previously accounted capital or purchased NFT custody under an exact current-epoch asset/ID/quantity/recipient notice.",
+      "preconditions": "The current supported controller previously scheduled this exact withdrawal, reserving only accounted assets or credited NFT inventory. Its real two-day notice has matured and bounded execution window has not expired. Any caller may execute those fixed terms; no recipient substitution is possible.",
+      "potentialPath": "Admitted payment/NFT/payee external call -> callback attempts another purchase, mature withdrawal, funding, policy or controller mutation; or supplies dishonest final balance/owner/status evidence. A loss would require defeating the lock/exact settlement checks or an unresolved source/implementation/authority assumption.",
+      "guard": "guarded rejects entered!=1 before dependency reads, verifies constructor-pinned identity through static view calls, sets entered=2 before any mutable external effect and resets only on success. All financial/policy/notice mutations use guarded. Receiver exceptions admit exactly one expected Seaport ERC1155 delivery while entered==2; ERC721 safe callbacks and ERC1155 batches always revert.",
+      "stateBeforeExternalEffectAndAtomicPostconditions": "The lock is active before any transfer. The exact notice is marked executed and its reservation released before the external call; native/ERC20 held accounting or purchased NFT inventory is decremented. Exact vault debit and recipient credit are required, plus ownerOf for ERC721, followed by dependency binding. Callback failure, immediate forwarding, wrong final ownership or unsupported token behavior reverts notice/reservation/accounting and all transfers.",
+      "applicableRegressionTests": [
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testReservedFundsCannotBeSpentAndNoticeCannotExecuteEarly"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testPurchased721And1155OnlyLeaveAfterBoundedNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+          "name": "testControllerRotationDisablesPolicyAndInvalidatesOldNotices"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNativeWithdrawalCallbackCannotConsumeSecondMatureNotice"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testNoticed721And1155ForwardingRollbackCustodyAndReservations"
+        },
+        {
+          "source": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+          "name": "testTokenWithdrawalRejectsFalseReturnFeeAndOverpullWithoutLosingNotice"
+        }
+      ],
+      "testsExecutedLocally": false,
+      "localEvidence": "Pinned solc ABI/AST/bytecode compilation is recorded separately as PASS_NOT_EXECUTED. Actual Foundry/Anvil/CI execution must be corroborated separately.",
+      "disposition": "HIGH_RETAINED_UNCLEARED_INTERNAL_PATH_ASSESSMENT",
+      "severityOverridden": false,
+      "independentAudit": false,
+      "confirmedReachableLossDemonstrated": false,
+      "mitigation": "Retain guard, exact source/asset/authority pins, finite approval, before/after balance/ownership assertions and bounded standing/notice authority. Exercise hostile callbacks and atomic rollback. No balance check or detector is suppressed.",
+      "remainingUncertainty": "Internal finite-path assessment, not an independent audit or security clearance. Exact runtime hashes identify code but cannot establish honest token/NFT balance semantics, proxy implementation/admin policy, current listing provenance or finality. Native and NFT recipients that forward immediately fail exact endpoint checks as an explicit liveness restriction. Forced/unaccounted gifts confer no withdrawal right. Production acquisition remains NO-GO; every High and strict scanner failure remains unresolved."
+    }
+  ]
+}

@@ -1,0 +1,193 @@
+name: Isolated Seaport acquisition V2 acceptance
+
+on:
+  pull_request:
+    paths:
+      - "packages/contracts/seaport-acquisition/**"
+      - "packages/contracts/nft-acquisition/**"
+      - "packages/contracts/seaport-verification/**"
+      - "packages/contracts/lib/**"
+      - "packages/launchpad-common/seaport-*.mjs"
+      - "packages/launchpad-common/seaport-*.mts"
+      - "scripts/seaport-acquisition/**"
+      - "scripts/seaport-verification/**"
+      - "apps/launch-website/**"
+      - "apps/indexer/**"
+      - "config/seaport-acquisition*"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - ".github/workflows/seaport-acquisition.yml"
+      - ".github/scripts/prepare-postgres-18.sh"
+
+permissions:
+  contents: read
+
+jobs:
+  seaport-vault-units:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
+      - name: Verify bounded listings, custody proofs and unavailable evidence
+        run: node --test scripts/seaport-acquisition/*.test.mjs packages/launchpad-common/seaport-vault-*.test.mjs
+      - run: pnpm --filter indexer typecheck
+      - run: pnpm --filter indexer exec tsx --test src/seaport-acquisition*.test.ts
+      - run: pnpm --filter @rmt/launch-website typecheck
+
+  seaport-vault-strict-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.10"
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
+      - name: Prepare exact compiler and genuine upstream fixture artifacts
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc"
+          printf '%s  %s\n' d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef "$RUNNER_TEMP/solc" | sha256sum --check --strict
+          chmod 700 "$RUNNER_TEMP/solc"
+          node scripts/seaport-verification/fixture-compile.mjs --solc "$RUNNER_TEMP/solc" \
+            --output packages/contracts/seaport-acquisition/official-artifacts.json
+          node scripts/seaport-acquisition/compiler.mjs --solc "$RUNNER_TEMP/solc" \
+            --standard-json "$RUNNER_TEMP/seaport-acquisition.json" --manifest "$RUNNER_TEMP/seaport-acquisition-manifest.json"
+      - name: Verify genuine Seaport custody, authorization, callbacks and accounting invariants
+        run: forge test --root packages/contracts/seaport-acquisition --use "$RUNNER_TEMP/solc" -vvv
+      - run: python -m pip install --disable-pip-version-check slither-analyzer==0.11.5 crytic-compile==0.3.11
+      - name: Analyze every new production root and reachable dependency with all 101 detectors
+        run: |
+          python docs/evidence/rmt-task043/analyze-rotation.py "$RUNNER_TEMP/seaport-acquisition.json" \
+            "$RUNNER_TEMP/solc" "$RUNNER_TEMP/seaport-acquisition-source" "$RUNNER_TEMP/seaport-acquisition-slither.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: seaport-vault-strict-security-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/seaport-acquisition.json
+            ${{ runner.temp }}/seaport-acquisition-manifest.json
+            ${{ runner.temp }}/seaport-acquisition-slither.json
+          retention-days: 14
+
+  seaport-vault-robinhood-fork:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
+      - name: Prepare the exact compiler and prior dependency pins
+        run: |
+          set -euo pipefail
+          (cd packages/contracts && bash scripts/install-v4-deps.sh)
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc"
+          printf '%s  %s\n' d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef "$RUNNER_TEMP/solc" | sha256sum --check --strict
+          chmod 700 "$RUNNER_TEMP/solc"
+      - name: Exercise actual canonical Seaport on a private Robinhood fork
+        run: |
+          node scripts/seaport-acquisition/fixture-run.mjs --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc" --fork-robinhood --output "$RUNNER_TEMP/seaport-vault-4663-fork"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: seaport-vault-4663-fork-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/seaport-vault-4663-fork/*.json
+          retention-days: 14
+
+  seaport-vault-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - name: Build the existing app and isolated indexer
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin 8dca5773cbd4dc98f52a45616f420bce96b000f0
+          bash .github/scripts/prepare-browser-apt.sh
+          pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
+          pnpm --filter @rmt/launch-website build
+          pnpm --filter indexer build
+          pnpm exec playwright install --with-deps chromium webkit
+          (cd packages/contracts && bash scripts/install-v4-deps.sh)
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc"
+          printf '%s  %s\n' d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef "$RUNNER_TEMP/solc" | sha256sum --check --strict
+          chmod 700 "$RUNNER_TEMP/solc"
+      - name: Prepare exact PostgreSQL 18.6 without a production database
+        run: bash .github/scripts/prepare-postgres-18.sh
+      - name: Verify connected creator budgets, real Seaport delivery and durable recovery
+        run: |
+          node scripts/seaport-acquisition/browser-run.mjs --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc" --pg-bin "$RMT_PG18_BIN" \
+            --browser "${{ matrix.browser }}" --output "$RUNNER_TEMP/seaport-vault-browser"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: seaport-vault-browser-${{ matrix.browser }}-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/seaport-vault-browser/*.json
+            ${{ runner.temp }}/seaport-vault-browser/*.png
+            ${{ runner.temp }}/seaport-vault-browser/next.log
+            ${{ runner.temp }}/seaport-vault-browser/chain/seaport-acquisition-fixture-evidence.json
+            ${{ runner.temp }}/seaport-vault-browser/chain/seaport-acquisition-deployment.json
+            ${{ runner.temp }}/seaport-vault-browser/website*.log
+            ${{ runner.temp }}/seaport-vault-browser/worker*.log
+            !${{ runner.temp }}/seaport-vault-browser/*password*
+            !${{ runner.temp }}/seaport-vault-browser/*private*
+            !${{ runner.temp }}/seaport-vault-browser/**/postgres-data/**
+            !${{ runner.temp }}/seaport-vault-browser/**/anvil-state*
+          retention-days: 14

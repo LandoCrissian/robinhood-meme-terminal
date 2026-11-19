@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "scope": "SUPPLEMENTAL_WINDOWS_DEVELOPMENT_CHECKS_NOT_FINAL_HEAD_CI",
+  "observedDateUtc": "2026-11-19",
+  "production": false,
+  "results": [
+    {"command": "node --test scripts/seaport-acquisition/*.test.mjs packages/launchpad-common/seaport-vault-*.test.mjs", "passed": 15, "failed": 0, "skipped": 0, "exit": 0},
+    {"command": "pnpm --filter @rmt/launch-website typecheck", "exit": 0},
+    {"command": "pnpm --filter indexer typecheck", "exit": 0},
+    {"command": "pnpm test:release-evidence", "passed": 181, "failed": 0, "skipped": 0, "exit": 0, "scope": "Before the six new Task083 integrity tests were added; final Linux count must be observed separately."},
+    {"command": "pnpm --filter indexer exec tsx --test src/seaport-acquisition-store.test.ts src/seaport-acquisition-sync.test.ts", "passed": 5, "failed": 0, "skipped": 0, "exit": 0},
+    {"command": "pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json --test lib/server/seaport-acquisition.test.ts", "passed": 4, "failed": 0, "skipped": 0, "exit": 0},
+    {"command": "node --test docs/evidence/rmt-task083/security/integrity.test.mjs", "passed": 6, "failed": 0, "skipped": 0, "exit": 0},
+    {"command": "pnpm check:repo", "exit": 1, "status": "LOCAL_ENVIRONMENT_FAILURE", "node": "22.23.2", "knip": "6.29.0", "parser": "oxc-parser 0.140.0", "error": "RangeError: Array buffer allocation failed", "source": "oxc-parser/src-js/raw-transfer/common.js:294 new ArrayBuffer(ARRAY_BUFFER_SIZE)", "boundary": "Local Windows parser allocation failed before a repository diagnosis. No parser mode, assertion, dependency or gate was changed. The prior b928ce22 Linux repository job passed; the final source requires its own Linux result."}
+  ],
+  "limitations": ["These checks ran during development in the isolated worktree. They do not replace exact-source Linux CI, real receipt/database/browser acceptance or physical iPhone verification.", "No local Foundry or browser execution is inferred from typechecking."]
+}

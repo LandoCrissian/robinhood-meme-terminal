@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "note": "Checksums establish integrity only. Hash text after LF normalization for cross-platform checkout; compressed raw originals remain byte-exact. Raw originals outside repository preserved.",
+  "files": [
+    {
+      "path": "FINDINGS.md",
+      "bytes": 6754,
+      "sha256": "aac5667b4357514f32455b4ecf66c3cf3c40c26de856e221196fdb02ddb6b47e",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "REVIEW.md",
+      "bytes": 18412,
+      "sha256": "15ed26db04ba6c732e664d312b72ec54921f6adf22683fb4278a2ab6b40dcdc7",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "build-register.mjs",
+      "bytes": 14644,
+      "sha256": "e3e086f763b701ebbce36568dfdc5ede09071daf4a211e89f70054b3fc4aa39a",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "ci-execution.json",
+      "bytes": 3145,
+      "sha256": "d220a2a0f196faeadeee274285ec9667634bef87d3f5ef0c0c8a0dab57deae49",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "compiler-input.json.gz",
+      "bytes": 8897,
+      "sha256": "f47f92c88970f6ed39398d87b46446a4dedfbd45b35711b495d133c0d811dc71",
+      "uncompressedBytes": 38851,
+      "uncompressedSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5"
+    },
+    {
+      "path": "compiler-manifest.json",
+      "bytes": 3353,
+      "sha256": "33ef13447c4b39faee863c75ae978da40854a58dbafad2a6f1a536db096c8fa7",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "findings.json",
+      "bytes": 187958,
+      "sha256": "383fd204e22e77674b722cf133ff94ce7a33b7e2b18d08c940b10bced4ed81c3",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "forge-dbacc-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "forge-dbacc.log.gz",
+      "bytes": 3237,
+      "sha256": "dee13f923d01ce5eb0d23376a326551aaa76aa4a89ac6893ee4c6da9b19ad4ab",
+      "uncompressedBytes": 11824,
+      "uncompressedSha256": "514392636e24432f69c69ffe2e41e26170cddfc5a046fe0f8b6fc9cb44540af5"
+    },
+    {
+      "path": "integrity.test.mjs",
+      "bytes": 2926,
+      "sha256": "1545d0c123cb571847a6c5ff71a0f520042e166c54599385f0c9e6acf1bc84f7",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "linux-compiler-manifest.json",
+      "bytes": 3353,
+      "sha256": "b8c63063319fcc0519b49418fd9a8b7f00f68cae79a0df29cf927ec5a92824de",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "linux-slither.json.gz",
+      "bytes": 72153,
+      "sha256": "1a3a30ffec4e0df676a624391b4cc8e50a7ed0b8e6049b97948bf400703a84f7",
+      "uncompressedBytes": 1956487,
+      "uncompressedSha256": "42b68c7caceaaa7ff65fda391691f8c8c43c6612da87e50bbd9c8cdd4979fc4b"
+    },
+    {
+      "path": "local-syntax.json",
+      "bytes": 4292,
+      "sha256": "8cac6dabc1240b450ec30c5353aa22a5f81eeb2b308bd9921ffad77f8da25aae",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "preliminary-slither.json.gz",
+      "bytes": 71987,
+      "sha256": "6ee44448dcf4bc0bdf3bdc554ddc734a0a563775199a43fe737b0db9ec60c132",
+      "uncompressedBytes": 1963705,
+      "uncompressedSha256": "dc58c88072e0aa8bec8c7b1a87d97db008d8e1468007bdab23be08286886d8b7"
+    },
+    {
+      "path": "raw-input-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-input-gitleaks.log",
+      "bytes": 81,
+      "sha256": "a158bdf3e8eee65c7d050660f9f5f25c612dd1d993a7fbfe4f4ed459e2760d56",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-manifest-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-manifest-gitleaks.log",
+      "bytes": 79,
+      "sha256": "410b71ff2a9c6147e48caf36702be54afdbb81517c0b377a1df0866a848b6f72",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-preliminary-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-preliminary-gitleaks.log",
+      "bytes": 80,
+      "sha256": "74af055220f8bfef1e02841ce2b82116cd1c8b7a051ede8cb4b98f056cc77187",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-scan.json",
+      "bytes": 2678,
+      "sha256": "cbe28e2f65b976f10ff0f3e1d32059483302f0a381f9c51ec5b0f365ca64f968",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-slither-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "raw-slither-gitleaks.log",
+      "bytes": 82,
+      "sha256": "01715036163b5d9e3c8d2543295dbeca1a5fef12acb44e0fb446a019274532a5",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "security-linux-dbacc-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "source-preservation.json",
+      "bytes": 46082,
+      "sha256": "c0abe8320433862bffb1b178f5b0b8938e9b8ec79753b22aaf0171ba0cf4ecb8",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "verify-artifacts.mjs",
+      "bytes": 13092,
+      "sha256": "35064ce3faa423d29b2dd3baed1bfcd8fe20bd8660bc720cd644cf7a6c62516c",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "windows-slither.json.gz",
+      "bytes": 72088,
+      "sha256": "d555495f9e66bc1738d4409474f0b089c137b76b5a0e4453d213b8d681337247",
+      "uncompressedBytes": 1962101,
+      "uncompressedSha256": "a5f89274dbecfac900f9d07b23158d4b68440b6a5a1699706a837254b6f56e98"
+    }
+  ]
+}

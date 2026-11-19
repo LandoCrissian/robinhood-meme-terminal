@@ -1,0 +1,218 @@
+{
+  "schemaVersion": 1,
+  "status": "PRESERVED_FAILED_BROWSER_ATTEMPTS_NOT_ACCEPTANCE",
+  "scope": "Selected original isolated-chain31337 browser diagnostics only",
+  "production": false,
+  "selectionPolicy": {
+    "allowedBasenames": [
+      "failure.json",
+      "worker-diagnostics.json",
+      "indexer-acceptance.json",
+      "next.log"
+    ],
+    "jsonMaximumBytes": 65536,
+    "nextLogMaximumBytes": 32768,
+    "archiveDownload": "ZIP held in memory only; only allowlisted files extracted",
+    "excluded": "No chain files, deployment manifests, PostgreSQL data, credentials, private files or screenshots extracted or published"
+  },
+  "scanner": {
+    "name": "Gitleaks",
+    "version": "8.30.1",
+    "scope": "Selected raw diagnostics and extraction inventory before compression; not the entire ZIP",
+    "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+    "reportPath": "raw-gitleaks-report.json.gz",
+    "uncompressedReportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "compressedReportSha256": "abc129be8d26e8d4afe9ce45f9d5a73c8ed9aa62810ca24ee789fe4581dc4a80",
+    "exitCode": 0,
+    "findings": 0,
+    "unknown": 0,
+    "suppressionsAdded": false,
+    "historyRewritten": false
+  },
+  "artifacts": [
+    {
+      "artifactId": "14557789363",
+      "runId": "44580175875",
+      "jobId": "135758379405",
+      "browser": "chromium",
+      "sourceCommit": "b928ce2219dbef8c2c252a481ed06629d6a8cc1e",
+      "jobConclusion": "failure",
+      "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44580175875/job/135758379405",
+      "artifactUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44580175875/artifacts/14557789363",
+      "artifactZipBytes": 180316,
+      "artifactZipSha256": "530c7f08af628426f0c2649313dfbafe9ab19492b60cd122a2f56688bd0f613b",
+      "githubReportedZipSha256": "530c7f08af628426f0c2649313dfbafe9ab19492b60cd122a2f56688bd0f613b",
+      "reportedDigestMatchesDownloadedZip": true,
+      "diagnosticLabel": "OUTER_READINESS_TIMEOUT_NO_WORKER_FAILURE_RECORD",
+      "observation": "Outer wait reported that the V2 trace/index checkpoint did not become ready. Earlier same-block indexer acceptance is retained. No worker-diagnostics file or last-failure record was available; this does not prove an internal worker, provider or contract cause.",
+      "rootCauseProvenByTheseFiles": false,
+      "workerSnapshot": null,
+      "partialIndexerAcceptanceStatus": "PASS",
+      "files": [
+        {
+          "archiveMember": "failure.json",
+          "path": "b928ce22-chromium/failure.json.gz",
+          "uncompressedBytes": 1097,
+          "uncompressedSha256": "66446ba1f368f6dca57236bb854e84804b774dc396e68f0dddea7bd4b1f04ef1",
+          "compressedSha256": "2e1e19b72053d7dd4ccbc98a895dd3b599fa25af00b1083f35b704a8873db98a"
+        },
+        {
+          "archiveMember": "indexer-acceptance.json",
+          "path": "b928ce22-chromium/indexer-acceptance.json.gz",
+          "uncompressedBytes": 1081,
+          "uncompressedSha256": "bcabd3643b460bcc1742f6a3e1ee440bde7123aa7a2cf0e39bda9609a8b66eb6",
+          "compressedSha256": "7dce75edab1e007c800fff401844387133c250ae2672b6619db71910e264b61e"
+        },
+        {
+          "archiveMember": "next.log",
+          "path": "b928ce22-chromium/next.log.gz",
+          "uncompressedBytes": 145,
+          "uncompressedSha256": "71a792c37a99dbc6cdd17b921015365b0c6ce4e34ded42e82e344ef7682b5c2e",
+          "compressedSha256": "5dfdbc548c3913bfd85b349ccd805a68a578343c04d56b8bd20e2ebb31ed89a7"
+        }
+      ]
+    },
+    {
+      "artifactId": "14557968434",
+      "runId": "44580175875",
+      "jobId": "135758379306",
+      "browser": "webkit",
+      "sourceCommit": "b928ce2219dbef8c2c252a481ed06629d6a8cc1e",
+      "jobConclusion": "failure",
+      "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44580175875/job/135758379306",
+      "artifactUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44580175875/artifacts/14557968434",
+      "artifactZipBytes": 178755,
+      "artifactZipSha256": "ea34ac346ba66ad4e59dc7696e7c848357c133037deab142b87976eae9ca6f70",
+      "githubReportedZipSha256": "ea34ac346ba66ad4e59dc7696e7c848357c133037deab142b87976eae9ca6f70",
+      "reportedDigestMatchesDownloadedZip": true,
+      "diagnosticLabel": "OUTER_READINESS_TIMEOUT_NO_WORKER_FAILURE_RECORD",
+      "observation": "Initial outer readiness wait timed out before indexer acceptance or browser interaction. No worker-diagnostics file or last-failure record was available; no internal cause is established.",
+      "rootCauseProvenByTheseFiles": false,
+      "workerSnapshot": null,
+      "partialIndexerAcceptanceStatus": null,
+      "files": [
+        {
+          "archiveMember": "failure.json",
+          "path": "b928ce22-webkit/failure.json.gz",
+          "uncompressedBytes": 919,
+          "uncompressedSha256": "8446dd04827c99d4507af94f65754da2dc8fd3be1e573b5cf2191dc37b9a3c44",
+          "compressedSha256": "615b50f49eccee1d732c67e993131dc74daabaa18f88d3e61a2ea44e5c1b82cc"
+        }
+      ]
+    },
+    {
+      "artifactId": "14561331145",
+      "runId": "44583987619",
+      "jobId": "135771862475",
+      "browser": "chromium",
+      "sourceCommit": "e73a5c0a80697c2c6cd218bef68c955b189cc193",
+      "jobConclusion": "failure",
+      "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44583987619/job/135771862475",
+      "artifactUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44583987619/artifacts/14561331145",
+      "artifactZipBytes": 178792,
+      "artifactZipSha256": "fa823d949dd25887d0723d0ec37f1020274ec24927fc729cc4eee5db275ff3ec",
+      "githubReportedZipSha256": "fa823d949dd25887d0723d0ec37f1020274ec24927fc729cc4eee5db275ff3ec",
+      "reportedDigestMatchesDownloadedZip": true,
+      "diagnosticLabel": "STALE_CHECKPOINT_READY_ROW_COUNT_MISMATCH",
+      "observation": "The required same-block settlement query returned zero rows instead of one. The retained worker snapshot says READY with two successful cycles at target/checkpoint 57648372 and lastFailure null. This records the stale-checkpoint/readiness mismatch; the raw snapshot alone does not prove every timing cause.",
+      "rootCauseProvenByTheseFiles": false,
+      "workerSnapshot": {
+        "schemaVersion": 1,
+        "scope": "isolated-local31337",
+        "production": false,
+        "status": "ready",
+        "running": false,
+        "attempts": 2,
+        "successfulCycles": 2,
+        "stage": "READY",
+        "targetHeight": "57648372",
+        "checkpointHeight": "57648372",
+        "lastFailure": null
+      },
+      "partialIndexerAcceptanceStatus": null,
+      "files": [
+        {
+          "archiveMember": "failure.json",
+          "path": "e73a5c0a-chromium/failure.json.gz",
+          "uncompressedBytes": 717,
+          "uncompressedSha256": "0d775633efb0adb93ae9566a56131c2ac997972d81cb07a96c4c0b88bb157b90",
+          "compressedSha256": "1eb14035848701879c66675bb4afe24e0a56345eda5c4c5ba378eb8391f8008f"
+        },
+        {
+          "archiveMember": "worker-diagnostics.json",
+          "path": "e73a5c0a-chromium/worker-diagnostics.json.gz",
+          "uncompressedBytes": 272,
+          "uncompressedSha256": "10a205c459e53af9102c8db174cdf86c8cd8d9fa2f5853bc7d888105263cf474",
+          "compressedSha256": "418cdf906e2813779798482a5db11b2bc2b321468b6bdb82edf9b8e740c418a8"
+        }
+      ]
+    },
+    {
+      "artifactId": "14560138404",
+      "runId": "44583987619",
+      "jobId": "135771862866",
+      "browser": "webkit",
+      "sourceCommit": "e73a5c0a80697c2c6cd218bef68c955b189cc193",
+      "jobConclusion": "failure",
+      "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44583987619/job/135771862866",
+      "artifactUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44583987619/artifacts/14560138404",
+      "artifactZipBytes": 180713,
+      "artifactZipSha256": "47033788dddcf588bfc9a37d29f5863e2948ee0ef15fcbc81397645e5ef36892",
+      "githubReportedZipSha256": "47033788dddcf588bfc9a37d29f5863e2948ee0ef15fcbc81397645e5ef36892",
+      "reportedDigestMatchesDownloadedZip": true,
+      "diagnosticLabel": "EXACT_ACTION_LABEL_LOCATOR_TIMEOUT",
+      "observation": "Playwright selectOption timed out after 45000ms waiting for getByLabel(Action, exact:true). Same-block indexer acceptance is retained; worker diagnostics report READY after 40 successful cycles, target/checkpoint 57648379 and lastFailure null. This is the observed locator failure, not a contract settlement failure.",
+      "rootCauseProvenByTheseFiles": false,
+      "workerSnapshot": {
+        "schemaVersion": 1,
+        "scope": "isolated-local31337",
+        "production": false,
+        "status": "ready",
+        "running": false,
+        "attempts": 40,
+        "successfulCycles": 40,
+        "stage": "READY",
+        "targetHeight": "57648379",
+        "checkpointHeight": "57648379",
+        "lastFailure": null
+      },
+      "partialIndexerAcceptanceStatus": "PASS",
+      "files": [
+        {
+          "archiveMember": "failure.json",
+          "path": "e73a5c0a-webkit/failure.json.gz",
+          "uncompressedBytes": 964,
+          "uncompressedSha256": "228e78c5d6225a5cc49bd42aa8d0dd071adfb368149bb39797a3ba702d312b74",
+          "compressedSha256": "0a8f04aa32a9ce46aca5821988111d0dff6192504c47357e5232c3b2d6b5d628"
+        },
+        {
+          "archiveMember": "indexer-acceptance.json",
+          "path": "e73a5c0a-webkit/indexer-acceptance.json.gz",
+          "uncompressedBytes": 1081,
+          "uncompressedSha256": "f070d1f1858b9a8d62cd511945b8990149d78812d8c82ce1171764f76dcaf49e",
+          "compressedSha256": "1ac315db8490cbcda88a85f535bf31f851d9bb4a3c9c258641c1229a47cf1046"
+        },
+        {
+          "archiveMember": "next.log",
+          "path": "e73a5c0a-webkit/next.log.gz",
+          "uncompressedBytes": 145,
+          "uncompressedSha256": "d601564ae369eb048fb7721eb70b9a678a9104d00772373eda913bc05db0c4b2",
+          "compressedSha256": "18ea0b2ccaffc9bdd7e49310d8c804e73881e9b86cfc8b7b9fbdcae2c4d23bfc"
+        },
+        {
+          "archiveMember": "worker-diagnostics.json",
+          "path": "e73a5c0a-webkit/worker-diagnostics.json.gz",
+          "uncompressedBytes": 274,
+          "uncompressedSha256": "0e26959a540dd766612e5918506c629b1a008b514128ce377ad2d7da601043c5",
+          "compressedSha256": "d2b08e5ace5179ab2b52841b0b890e55b8db8ae0eb999b43d949b6cde8996032"
+        }
+      ]
+    }
+  ],
+  "limitations": [
+    "Outer timeouts without retained inner failure records do not prove a particular root cause.",
+    "A READY snapshot is one bounded observation; it does not establish complete browser acceptance.",
+    "Partial indexer PASS files cover their named fixture checks only; every indexed job here failed.",
+    "These records do not clear security findings or enable a current listing, production deployment, owner signing or spending."
+  ]
+}
