@@ -1,3 +1,4 @@
+import {readSeaportRawAccountCode} from "../../../../packages/launchpad-common/seaport-vault-account-code.mjs";
 import {readFileSync,statSync} from "node:fs";
 import {isAbsolute} from "node:path";
 import * as viem from "viem";
@@ -46,7 +47,7 @@ export async function prepareSeaportAcquisition(c:SeaportLocalConfig,body:Record
   const mark=(stage:string)=>observe?.(stage);mark("VALIDATE_PREPARE");
   need(address(body.account)&&["buy","configure","disable"].includes(String(body.operation))&&body.fields&&typeof body.fields==="object"&&!Array.isArray(body.fields));
   const fields=body.fields as Record<string,unknown>;mark("LOCAL_CONTEXT");const x=await seaportLocalContext(c),{rpc,m,head}=x,account=viem.getAddress(body.account as Address),operation=body.operation as SeaportAcquisitionReview["operation"];
-  mark("CALLER_CODE");need((await rpc.getCode({address:account,blockTag:"pending"})??"0x")==="0x");
+  mark("CALLER_CODE");need(await readSeaportRawAccountCode(rpc,account,"pending")==="0x");
   mark("FRESHNESS");const expiresAt=prior?.expiresAt??Number(head.timestamp)+180;need(expiresAt>Number(head.timestamp)&&expiresAt<=Number(head.timestamp)+300);
   let data:Hex,listing:SeaportAcquisitionReview["listing"]=null;
   mark(operation==="buy"?"BUILD_BUY":operation==="configure"?"BUILD_CONFIGURE":"BUILD_DISABLE");
