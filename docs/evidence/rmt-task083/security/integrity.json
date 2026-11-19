@@ -11,14 +11,20 @@
     },
     {
       "path": "REVIEW.md",
-      "bytes": 13833,
-      "sha256": "eaf0e329f564462ff9d0bf8478534110ae1ad088b911e6924ba77a1a97237d4f",
+      "bytes": 16247,
+      "sha256": "68d045375d98102c61d9680de9af07f499db52c1b49dfd15e1a944b9dda21907",
       "textNormalization": "LF"
     },
     {
       "path": "build-register.mjs",
-      "bytes": 14115,
-      "sha256": "f2d99ee89cc8ccdb5568a09ec3f5349a07c3274b39413a066a14ac084e3819d8",
+      "bytes": 14644,
+      "sha256": "e3e086f763b701ebbce36568dfdc5ede09071daf4a211e89f70054b3fc4aa39a",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "ci-execution.json",
+      "bytes": 3145,
+      "sha256": "d220a2a0f196faeadeee274285ec9667634bef87d3f5ef0c0c8a0dab57deae49",
       "textNormalization": "LF"
     },
     {
@@ -36,9 +42,35 @@
     },
     {
       "path": "findings.json",
-      "bytes": 184615,
-      "sha256": "0bf7f6f9f60a3da8b9f72c2c0e246df90b65114587df5f22afd1d2de7fd74641",
+      "bytes": 187958,
+      "sha256": "383fd204e22e77674b722cf133ff94ce7a33b7e2b18d08c940b10bced4ed81c3",
       "textNormalization": "LF"
+    },
+    {
+      "path": "forge-dbacc-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "forge-dbacc.log.gz",
+      "bytes": 3237,
+      "sha256": "dee13f923d01ce5eb0d23376a326551aaa76aa4a89ac6893ee4c6da9b19ad4ab",
+      "uncompressedBytes": 11824,
+      "uncompressedSha256": "514392636e24432f69c69ffe2e41e26170cddfc5a046fe0f8b6fc9cb44540af5"
+    },
+    {
+      "path": "linux-compiler-manifest.json",
+      "bytes": 3353,
+      "sha256": "b8c63063319fcc0519b49418fd9a8b7f00f68cae79a0df29cf927ec5a92824de",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "linux-slither.json.gz",
+      "bytes": 72153,
+      "sha256": "1a3a30ffec4e0df676a624391b4cc8e50a7ed0b8e6049b97948bf400703a84f7",
+      "uncompressedBytes": 1956487,
+      "uncompressedSha256": "42b68c7caceaaa7ff65fda391691f8c8c43c6612da87e50bbd9c8cdd4979fc4b"
     },
     {
       "path": "local-syntax.json",
@@ -105,6 +137,12 @@
       "path": "raw-slither-gitleaks.log",
       "bytes": 82,
       "sha256": "01715036163b5d9e3c8d2543295dbeca1a5fef12acb44e0fb446a019274532a5",
+      "textNormalization": "LF"
+    },
+    {
+      "path": "security-linux-dbacc-gitleaks.json",
+      "bytes": 3,
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
       "textNormalization": "LF"
     },
     {

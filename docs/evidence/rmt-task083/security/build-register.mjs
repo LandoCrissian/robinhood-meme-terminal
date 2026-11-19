@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
-import {readFileSync,writeFileSync} from "node:fs";
+import {existsSync,readFileSync,writeFileSync} from "node:fs";
 import {fileURLToPath} from "node:url";
 import {resolve} from "node:path";
 import {gzipSync,gunzipSync} from "node:zlib";
@@ -63,9 +63,11 @@ export function buildRegister(){
  assert.equal(prior.currentHighs,22);assert.equal(prior.originalRows,23);
  const rows=highs.map(assessment);
  for(const row of rows)for(const t of row.applicableRegressionTests)assert.ok(readFileSync(resolve(repository,t.source),"utf8").includes("function "+t.name+"("),"Missing named regression "+t.name);
+ const ci=existsSync(resolve(directory,"ci-execution.json"))?json(read("ci-execution.json")):null;
+ if(ci){const linux=json(gunzipSync(read("linux-slither.json.gz")));assert.equal(linux.inputSha256,manifest.inputSha256);assert.equal(linux.detectorCount,101);assert.equal(linux.sources,4);assert.deepEqual(linux.detectors.filter(x=>x.impact==="High").map(x=>x.id).sort(),highs.map(x=>x.id).sort());assert.equal(ci.tests.passed,48);assert.equal(ci.tests.failed,0);assert.equal(ci.tests.skipped,0);}
  const register={schemaVersion:1,status:"BLOCKED_NO_BROADCAST",sourceCommit:"f66154eff50a0c7956452a22a8b3d4dc27c6f16d",productionInputSha256:manifest.inputSha256,analysisInputSha256:report.analysisInputSha256,
   tool:report.tool,cryticCompile:report.cryticCompile,detectorCount:101,detectorFilters:[],sourceFilters:[],severityOverrides:[],strictExit:1,
-  counts:report.detectors.reduce((r,x)=>(r[x.impact]=(r[x.impact]??0)+1,r),{}),highRows:rows.length,independentAudit:false,
+  counts:report.detectors.reduce((r,x)=>(r[x.impact]=(r[x.impact]??0)+1,r),{}),highRows:rows.length,independentAudit:false,actualCiExecution:ci,
   preliminary:{inputSha256:preliminary.inputSha256,highs:23,exactIdsUnchanged:preliminaryMapping.filter(x=>x.identicalId).length,relocatedTemporaryIds:preliminaryMapping.filter(x=>!x.identicalId).length,removed:0,cleared:0,mapping:preliminaryMapping},
   distinctHistoricalScope:{task082InputSha256:prior.afterInputSha256,task082CurrentHighs:22,task081OriginalRows:23,retainedOriginalIds:prior.rows.map(x=>x.originalId),task082CurrentIds:prior.rows.filter(x=>x.currentObservation).map(x=>x.currentObservation.id),
    relation:"V2 is a separate source/ABI/custody implementation. Its 23 Highs are not an in-place rescan or remediation of V1's 22 remaining Highs. No old ID or gate is removed, reclassified or cleared. Broad balance/route categories are analogous; independent exact source registers remain authoritative.",otherUnchangedHighScopes:{core:22,treasuryV1:6,activeReclaimV2:7,rejectedHistoricalReclaimV1:4}},rows};

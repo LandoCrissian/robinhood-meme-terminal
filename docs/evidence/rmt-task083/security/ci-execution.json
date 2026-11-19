@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "candidateHead": "dbaccb83dcb5d1b96a5804b277de681792ecd6f4",
+  "testedMerge": "2086192353647172fff352f7bd8f04940a487d5a",
+  "runId": 44576823363,
+  "jobId": 135746427171,
+  "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44576823363/job/135746427171",
+  "jobConclusion": "failure",
+  "foundryStepConclusion": "success",
+  "strictAnalysisStepConclusion": "failure",
+  "tests": {
+    "passed": 48,
+    "failed": 0,
+    "skipped": 0,
+    "suites": {
+      "main": 32,
+      "hostile": 11,
+      "safe": 4,
+      "invariant": 1
+    },
+    "fuzzGroups": 2,
+    "fuzzRunsEach": 512,
+    "invariantRuns": 128,
+    "invariantCalls": 4096
+  },
+  "compiler": {
+    "filesCompiled": 9,
+    "compilerConclusion": "Compiler run successful!",
+    "productionClosureFiles": 4,
+    "settingsAndSourcesAndTemplatesMatchWindows": true
+  },
+  "auxiliarySourcePathDiagnostics": {
+    "count": 4,
+    "exactLines": [
+      "2026-11-19T17:25:50.9352775Z error: file ../../nft-acquisition/src/NftAcquisitionAccounts.sol not found",
+      "2026-11-19T17:25:50.9359362Z error: file ../../nft-acquisition/test/fixtures/NftAcquisitionAssets.sol not found",
+      "2026-11-19T17:25:50.9399755Z error: file ../../nft-acquisition/src/NftAcquisitionAccounts.sol not found",
+      "2026-11-19T17:25:50.9402638Z error: file ../../nft-acquisition/test/fixtures/NftAcquisitionAssets.sol not found"
+    ],
+    "locations": [
+      "src/SeaportAcquisitionChecksV2.sol:4:38",
+      "test/SeaportAcquisitionInvariant.t.sol:6:38",
+      "src/RMTSeaportAcquisitionVaultV2.sol:5:38",
+      "test/SeaportAcquisition.t.sol:5:107"
+    ],
+    "disposition": "RETAINED_POSTCOMPILE_SOURCE_PATH_DIAGNOSTICS_NOT_A_CLEAN_LOG",
+    "coverage": "Successful solc compilation includes nine source/test files. Independent exact analyzer includes all three new roots and unchanged Accounts import (four production files). No source or detector exclusion."
+  },
+  "scan": {
+    "detectors": 101,
+    "sources": 4,
+    "observations": 48,
+    "High": 23,
+    "Medium": 6,
+    "Low": 13,
+    "Informational": 6,
+    "strictExit": 1,
+    "allHighIdsMatchWindows": true,
+    "inputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5"
+  },
+  "artifact": {
+    "id": 14557323104,
+    "bytes": 83425,
+    "sha256": "9d5961c99a3bd288b36506080d479260204d539967c3d2e7a65eb5fff71e4833",
+    "uploadedDigestMatch": true,
+    "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44576823363/artifacts/14557323104"
+  },
+  "rawBeforeCompressionScans": [
+    {
+      "scope": "Linux compiler/manifest/Slither raw artifact directory",
+      "tool": "Gitleaks 8.30.1",
+      "exit": 0,
+      "findings": 0,
+      "report": "security-linux-dbacc-gitleaks.json"
+    },
+    {
+      "scope": "Unedited Forge step log",
+      "sha256": "514392636e24432f69c69ffe2e41e26170cddfc5a046fe0f8b6fc9cb44540af5",
+      "tool": "Gitleaks 8.30.1",
+      "exit": 0,
+      "findings": 0,
+      "report": "forge-dbacc-gitleaks.json"
+    }
+  ],
+  "productionApproved": false,
+  "highsCleared": 0
+}
