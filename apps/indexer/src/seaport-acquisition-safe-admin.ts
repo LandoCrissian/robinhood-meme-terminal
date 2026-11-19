@@ -1,5 +1,6 @@
 import * as viem from "viem";
 import {readSeaportSafeState,safeAuthorityIdentity,seaportSafeTypedData,seaportSafePins,seaportSafeSignatures,seaportSafeVaultSignatures,decodeSeaportSafeCall,verifySeaportSafeApprovals,assertSeaportSafeAdminTrace,assertSeaportSafeAdminRevertTrace,type SeaportSafeTx} from "../../../packages/launchpad-common/seaport-vault-safe.mjs";
+import {readSeaportRawAccountCode} from "../../../packages/launchpad-common/seaport-vault-account-code.mjs";
 import {reclaimCallerPins} from "./reclaim-fixture-origin.js";
 import {verifySeaportVaultRuntime} from "./seaport-acquisition-evidence.js";
 import type {SeaportVaultManifest,SeaportVaultPoint} from "./seaport-acquisition-types.js";
@@ -11,16 +12,26 @@ const same=(a:unknown,b:unknown)=>typeof a==="string"&&typeof b==="string"&&a.to
 const need=(v:unknown)=>{if(!v)throw Error("Exact Seaport Safe admin receipt unavailable or conflicting");};
 class UnsupportedSafeAdmin extends Error{}
 const hashArgs=(s:SeaportSafeTx)=>[s.to,BigInt(s.value),s.data,0,0n,0n,0n,viem.zeroAddress,viem.zeroAddress,BigInt(s.nonce)]as const;
+/** Exact local role admission for both outer payers and incoming controllers. */
+export async function readSeaportSafeAdminAccount(rpc:Rpc,address:Address,block:bigint){
+ need(await rpc.getChainId()===31337);const code=await readSeaportRawAccountCode(rpc,address,block);
+ if(code==="0x")return{kind:"eoa" as const,code};
+ if(same(code,reclaimCallerPins.designator)){
+  const delegate=await readSeaportRawAccountCode(rpc,reclaimCallerPins.delegate,block);need(same(viem.keccak256(delegate),reclaimCallerPins.delegateHash));
+  return{kind:"metamask-7702" as const,code};
+ }
+ need(same(viem.keccak256(code),seaportSafePins.proxyHash));return{kind:"safe-1.4.1" as const,code,state:await readSeaportSafeState(rpc,address,block,viem)};
+}
 async function boundPayer(rpc:Rpc,payer:Address,before:bigint,after:bigint){
- const a=await rpc.getCode({address:payer,blockNumber:before}),b=await rpc.getCode({address:payer,blockNumber:after});need(same(a??"0x",b??"0x"));
- if(a&&a!=="0x"){need(same(a,reclaimCallerPins.designator));for(const blockNumber of[before,after]){const code=await rpc.getCode({address:reclaimCallerPins.delegate,blockNumber});need(code&&same(viem.keccak256(code),reclaimCallerPins.delegateHash));}}
+ const[a,b]=await Promise.all([readSeaportSafeAdminAccount(rpc,payer,before),readSeaportSafeAdminAccount(rpc,payer,after)]);
+ need((a.kind==="eoa"||a.kind==="metamask-7702")&&a.kind===b.kind&&same(a.code,b.code));
 }
 export async function seaportSafeAdminCandidates(rpc:Rpc,m:SeaportVaultManifest,height:bigint){
  if(height<=BigInt(m.deployment.blockNumber))return[];const values=new Set<Address>();
  for(const blockNumber of[height-1n,height]){
   const controller=await rpc.readContract({address:m.vault,abi:vaultAbi,functionName:"controller",blockNumber})as Address;
   const pending=await rpc.readContract({address:m.vault,abi:vaultAbi,functionName:"pendingController",blockNumber})as readonly[Address,number,number,bigint];
-  for(const address of[controller,pending[0]]){if(same(address,viem.zeroAddress))continue;const code=await rpc.getCode({address,blockNumber});if(code&&same(viem.keccak256(code),seaportSafePins.proxyHash))values.add(address);}
+  for(const address of[controller,pending[0]]){if(same(address,viem.zeroAddress))continue;const code=await readSeaportRawAccountCode(rpc,address,blockNumber);if(code!=="0x"&&same(viem.keccak256(code),seaportSafePins.proxyHash))values.add(address);}
  }
  return [...values];
 }
@@ -45,7 +56,12 @@ async function verifyReceipt(rpc:Rpc,m:SeaportVaultManifest,hash:Hash):Promise<S
  const [controller,ce,pe,controllerAfter,ceAfter,peAfter,pending,pendingAfter]=await Promise.all([get<Address>("controller",before),get<bigint>("controllerEpoch",before),get<bigint>("policyEpoch",before),get<Address>("controller",receipt.blockNumber),get<bigint>("controllerEpoch",receipt.blockNumber),get<bigint>("policyEpoch",receipt.blockNumber),get<readonly[Address,number,number,bigint]>("pendingController",before),get<readonly[Address,number,number,bigint]>("pendingController",receipt.blockNumber)]);
  const events=viem.parseEventLogs({abi:vaultAbi,strict:true,logs:receipt.logs.filter(l=>same(l.address,m.vault))})as unknown as {eventName:string;args:any}[];
  const outcomes=viem.parseEventLogs({abi:safeAbi,strict:true,logs:receipt.logs.filter(l=>same(l.address,safe))}).filter(e=>e.eventName==="ExecutionSuccess"||e.eventName==="ExecutionFailure");
- const admittedSafes:Address[]=[];if(inner.operation==="propose-controller"){const incoming=inner.fields.incoming as Address,code=await rpc.getCode({address:incoming,blockNumber:before});if(code&&code!=="0x"){const incomingPre=await readSeaportSafeState(rpc,incoming,before,viem),incomingPost=await readSeaportSafeState(rpc,incoming,receipt.blockNumber,viem);need(safeAuthorityIdentity(incomingPre)===safeAuthorityIdentity(incomingPost)&&incomingPre.nonce===incomingPost.nonce);admittedSafes.push(incoming);}}
+ const admittedSafes:Address[]=[];if(inner.operation==="propose-controller"){
+  const incoming=inner.fields.incoming as Address,[incomingPre,incomingPost]=await Promise.all([readSeaportSafeAdminAccount(rpc,incoming,before),readSeaportSafeAdminAccount(rpc,incoming,receipt.blockNumber)]);
+  need(incomingPre.kind===incomingPost.kind&&same(incomingPre.code,incomingPost.code));
+  if(incomingPre.kind==="safe-1.4.1"){need(incomingPost.kind==="safe-1.4.1"&&safeAuthorityIdentity(incomingPre.state)===safeAuthorityIdentity(incomingPost.state)&&incomingPre.state.nonce===incomingPost.state.nonce);admittedSafes.push(incoming);}
+ }
+
  const trace=await rpc.request({method:"debug_traceTransaction",params:[hash,{tracer:"callTracer"}]}as never),origin={from:tx.from,to:safe,input:tx.input,value:0n},expected={safe,target:a[0],data:a[2],value:a[1],admittedSafes};
  let proof;
  if(receipt.status==="reverted"){
