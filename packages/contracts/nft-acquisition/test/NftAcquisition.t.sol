@@ -63,6 +63,12 @@ contract NftAcquisitionTest is AcquisitionTestBase {
         T.Order memory batch=_order(address(multi),2,101,2,address(0),.1 ether);signature=_sign(batch);batch.quantity=3;_reject(batch,signature);
         SyntheticNftListingVenueV1 foreign=new SyntheticNftListingVenueV1(FEE,250);(uint8 v,bytes32 r,bytes32 s)=vm.sign(SELLER_KEY,foreign.orderHash(o));_reject(o,abi.encodePacked(r,s,v));
     }
+    function testVenueCannotUseAnotherApprovedPayersCurrencyEvenWithValidSellerOrder()public{
+        T.Order memory o=_order(address(nft),1,1,1,address(currency),.1 ether);o.vault=CREATOR;bytes memory signature=_sign(o);
+        uint256 total=o.sellerAmount+o.feeAmount+o.royaltyAmount;vm.prank(CREATOR);currency.approve(address(venue),total);uint256 before=currency.balanceOf(CREATOR);
+        vm.prank(OTHER);vm.expectRevert(SyntheticNftListingVenueV1.InvalidOrder.selector);venue.fill(o,signature);
+        require(currency.balanceOf(CREATOR)==before&&currency.allowance(CREATOR,address(venue))==total&&nft.ownerOf(1)==seller&&venue.orderState(venue.orderHash(o))==0);
+    }
     function testExpiredFutureCancelledAndNonceInvalidatedOrdersFail()public{
         T.Order memory o=_order(address(nft),1,1,1,address(0),.1 ether);o.endTime=_now()-1;o.startTime=_now()-100;_reject(o,_sign(o));
         o=_order(address(nft),1,1,1,address(0),.1 ether);o.startTime=_now()+1;_reject(o,_sign(o));
