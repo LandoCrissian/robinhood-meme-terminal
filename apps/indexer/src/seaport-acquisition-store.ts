@@ -19,8 +19,9 @@ export async function assertSeaportVaultWriter(db:Db){
   // pg_locks is checked on this exact backend; another connection never inherits authority.
   need((await db.query("SELECT 1 FROM pg_locks WHERE locktype='advisory' AND pid=pg_backend_pid() AND objid=$1 AND granted",[lease])).rowCount===1);
 }
-export async function commitSeaportVaultBlock(db:Db,point:SeaportVaultPoint,rows:SeaportVaultSettlement[]){
-  await assertSeaportVaultWriter(db);need(rows.length<=32&&rows.every(r=>r.blockNumber===point.blockNumber&&r.blockHash===point.blockHash));
+export async function commitSeaportVaultBlock(db:Db,point:SeaportVaultPoint,rows:SeaportVaultSettlement[],m:SeaportVaultManifest){
+  await assertSeaportVaultWriter(db);need((await db.query("SELECT 1 FROM rmt_seaport_v2_binding WHERE id=1 AND identity=$1::jsonb",[json(m)])).rowCount===1);
+  need(rows.length<=32&&rows.every(r=>r.blockNumber===point.blockNumber&&r.blockHash===point.blockHash&&r.vault.toLowerCase()===m.vault.toLowerCase()&&r.projectToken.toLowerCase()===m.projectToken.toLowerCase()&&r.custody.toLowerCase()===m.vault.toLowerCase()&&r.proof.evidence==="canonical-receipt-and-exact-local-call-trace"));
   await db.query("BEGIN");try{
     need((await db.query("INSERT INTO rmt_seaport_v2_blocks VALUES($1,$2,$3) ON CONFLICT(block_number) DO UPDATE SET block_hash=EXCLUDED.block_hash WHERE rmt_seaport_v2_blocks.block_hash=EXCLUDED.block_hash RETURNING block_number",[point.blockNumber,point.blockHash,point.timestamp])).rowCount===1);
     for(const row of rows)need((await db.query("INSERT INTO rmt_seaport_v2_settlements VALUES($1,$2,$3) ON CONFLICT(transaction_hash) DO UPDATE SET payload=EXCLUDED.payload WHERE rmt_seaport_v2_settlements.payload=EXCLUDED.payload RETURNING transaction_hash",[row.transactionHash.toLowerCase(),point.blockNumber,json(row)])).rowCount===1);

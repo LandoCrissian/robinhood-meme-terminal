@@ -32,7 +32,7 @@ export async function startSeaportAcquisitionIndexer({db,rpc,manifest:m,readKey,
       const hashes=[...new Set(events.map(e=>e.transactionHash))];if(hashes.length>32)throw Error("Seaport V2 transaction bound exceeded");
       for(const hash of hashes){if(!hash)throw Error("Seaport V2 log identity unavailable");rows.push(await verifySeaportVaultReceipt(rpc,m,hash as Hash));}
       const canonical=await rpc.getBlock({blockNumber:height});if(canonical.hash!==h.hash)throw Error("Seaport V2 reorg during indexing");
-      await commitSeaportVaultBlock(db,{blockNumber:String(height),blockHash:h.hash,timestamp:new Date(Number(h.timestamp)*1000).toISOString()},rows);
+      await commitSeaportVaultBlock(db,{blockNumber:String(height),blockHash:h.hash,timestamp:new Date(Number(h.timestamp)*1000).toISOString()},rows,m);
       parent=h.hash;
     }
     status="ready";
