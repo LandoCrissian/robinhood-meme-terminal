@@ -39,8 +39,12 @@ jobs:
       - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
       - name: Verify bounded listings, custody proofs and unavailable evidence
         run: node --test scripts/seaport-acquisition/*.test.mjs packages/launchpad-common/seaport-vault-*.test.mjs
+      - name: Replay retained genuine Safe receipts, signatures and rejected tampering
+        run: |
+          node docs/evidence/rmt-task084/browser/replay-raw-proofs.mjs
+          node docs/evidence/rmt-task084/browser/source-73fc6d0/replay-raw-proofs.mjs
       - run: pnpm --filter indexer typecheck
-      - run: pnpm --filter indexer exec tsx --test src/seaport-acquisition*.test.ts
+      - run: pnpm --filter indexer exec tsx --test src/seaport-acquisition*.test.ts src/seaport-listing-watch*.test.ts
       - run: pnpm --filter @rmt/launch-website typecheck
 
   seaport-vault-strict-security:
@@ -82,6 +86,14 @@ jobs:
         run: |
           python docs/evidence/rmt-task043/analyze-rotation.py "$RUNNER_TEMP/seaport-acquisition.json" \
             "$RUNNER_TEMP/solc" "$RUNNER_TEMP/seaport-acquisition-source" "$RUNNER_TEMP/seaport-acquisition-slither.json"
+      - name: Bind all 23 Task084 observations to exact source and raw AST evidence
+        if: ${{ always() && !cancelled() }}
+        run: |
+          test -f "$RUNNER_TEMP/seaport-acquisition-slither.json"
+          node docs/evidence/rmt-task084/security/build-dispositions.mjs \
+            --report "$RUNNER_TEMP/seaport-acquisition-slither.json" \
+            --output "$RUNNER_TEMP/task084-security-dispositions"
+          node --test docs/evidence/rmt-task084/security/review.test.mjs
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:
@@ -90,6 +102,7 @@ jobs:
             ${{ runner.temp }}/seaport-acquisition.json
             ${{ runner.temp }}/seaport-acquisition-manifest.json
             ${{ runner.temp }}/seaport-acquisition-slither.json
+            ${{ runner.temp }}/task084-security-dispositions/**
           retention-days: 14
 
   seaport-vault-robinhood-fork:
@@ -191,3 +204,67 @@ jobs:
             !${{ runner.temp }}/seaport-vault-browser/**/postgres-data/**
             !${{ runner.temp }}/seaport-vault-browser/**/anvil-state*
           retention-days: 14
+
+
+  seaport-vault-robinhood-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - name: Build the existing app and isolated indexer
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin 8dca5773cbd4dc98f52a45616f420bce96b000f0
+          bash .github/scripts/prepare-browser-apt.sh
+          pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
+          pnpm --filter @rmt/launch-website build
+          pnpm --filter indexer build
+          pnpm exec playwright install --with-deps chromium webkit
+          (cd packages/contracts && bash scripts/install-v4-deps.sh)
+          curl --fail --silent --show-error --retry 2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc"
+          printf '%s  %s\n' d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef "$RUNNER_TEMP/solc" | sha256sum --check --strict
+          chmod 700 "$RUNNER_TEMP/solc"
+      - name: Prepare exact PostgreSQL 18.6 without a production database
+        run: bash .github/scripts/prepare-postgres-18.sh
+      - name: Verify connected creator budgets, real Seaport delivery and durable recovery
+        run: |
+          node scripts/seaport-acquisition/browser-run.mjs --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc" --pg-bin "$RMT_PG18_BIN" \
+            --browser "${{ matrix.browser }}" --fork-robinhood --output "$RUNNER_TEMP/seaport-vault-robinhood-browser"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: seaport-vault-robinhood-browser-${{ matrix.browser }}-${{ github.event.pull_request.head.sha }}
+          path: |
+            ${{ runner.temp }}/seaport-vault-robinhood-browser/*.json
+            ${{ runner.temp }}/seaport-vault-robinhood-browser/*.png
+            ${{ runner.temp }}/seaport-vault-robinhood-browser/next.log
+            ${{ runner.temp }}/seaport-vault-robinhood-browser/chain/seaport-acquisition-fixture-evidence.json
+            ${{ runner.temp }}/seaport-vault-robinhood-browser/chain/seaport-acquisition-deployment.json
+            ${{ runner.temp }}/seaport-vault-robinhood-browser/website*.log
+            ${{ runner.temp }}/seaport-vault-robinhood-browser/worker*.log
+            !${{ runner.temp }}/seaport-vault-robinhood-browser/*password*
+            !${{ runner.temp }}/seaport-vault-robinhood-browser/*private*
+            !${{ runner.temp }}/seaport-vault-robinhood-browser/**/postgres-data/**
+            !${{ runner.temp }}/seaport-vault-robinhood-browser/**/anvil-state*
+          retention-days: 14
+

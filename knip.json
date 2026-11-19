@@ -50,7 +50,13 @@
         "docs/evidence/rmt-task046/run-shared-owner-safe-fork.mjs",
         "docs/evidence/rmt-task047/probe-hosted-launchpad.mjs",
         "docs/evidence/rmt-task047/rmt-token-identity.mjs",
-        "docs/evidence/rmt-task047/treasury-support-fork.mjs"
+        "docs/evidence/rmt-task047/treasury-support-fork.mjs",
+        "packages/launchpad-common/seaport-vault-safe.d.mts",
+        "scripts/seaport-acquisition/owner-supplied-order.d.mts",
+        "scripts/seaport-acquisition/listing-watcher.d.mts",
+        "packages/launchpad-common/seaport-vault-account-code.d.mts",
+        "docs/evidence/rmt-task084/browser/replay-raw-proofs.mjs",
+        "docs/evidence/rmt-task084/browser/source-73fc6d0/replay-raw-proofs.mjs"
       ]
     },
     "apps/launch-website": {
