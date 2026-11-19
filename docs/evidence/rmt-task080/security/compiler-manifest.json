@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "profile": "rmt-reclaim-v2-permanent-review",
+  "status": "BLOCKED_NO_BROADCAST",
+  "broadcastAuthorized": false,
+  "coreModified": false,
+  "compilerVersion": "0.8.26+commit.8a97fa7a",
+  "executablePlatform": "win32-x64",
+  "executableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "compilerSettings": {
+    "evmVersion": "cancun",
+    "viaIR": true,
+    "optimizer": {
+      "enabled": true,
+      "runs": 200
+    },
+    "metadata": {
+      "bytecodeHash": "ipfs",
+      "appendCBOR": true,
+      "useLiteralContent": false
+    },
+    "remappings": [
+      "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+      "@uniswap/v4-core/=lib/v4-core/",
+      "@uniswap/v4-periphery/=lib/v4-periphery/"
+    ]
+  },
+  "roots": [
+    "reclaim-v2/src/RMTReclaimCampaignDeployerV2.sol",
+    "reclaim-v2/src/RMTReclaimCampaignV2.sol",
+    "reclaim-v2/src/RMTReclaimCodePartV2.sol",
+    "reclaim-v2/src/RMTReclaimFactoryV2.sol",
+    "reclaim-v2/src/RMTReclaimSinkV2.sol",
+    "reclaim-v2/src/ReclaimV2Interfaces.sol"
+  ],
+  "sourceCount": 6,
+  "sourceSha256": [
+    [
+      "reclaim-v2/src/ReclaimV2Interfaces.sol",
+      "d99cb236da8b4c1d98242a61cb11aa2217dae6ac32cadabd9d1d645b7b5283f8"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimCampaignDeployerV2.sol",
+      "f429b384d99050260c52642a4a16b9e12ffdc533d6fb48c59365b8d5f34904a1"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimCampaignV2.sol",
+      "53f9300f0556bef5584cb5cca4e8dfefb19ae7f6c0fbb02d354c1c011333beb1"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimCodePartV2.sol",
+      "a45c4460e0b2b2d5ca7c7c51a8ffecd0782758fb0febd8a4b3cb4f0229e7b96f"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimFactoryV2.sol",
+      "f33c6c69ba40b85056ad9b5b99786a06dfc3076c7974e17cb417f0f5af12d854"
+    ],
+    [
+      "reclaim-v2/src/RMTReclaimSinkV2.sol",
+      "c2000425b62be0f0ccecc3b0c711bb84c02f73e746729eb5d7d08580565f6a34"
+    ]
+  ],
+  "inputSha256": "fece6e205ff52f8369c732cbddaa663a0d19530062b7539dc4b4467099a08cdc",
+  "scope": "All new production module sources plus every reachable import; tests excluded unless imported by production source",
+  "transformations": [],
+  "dependencyPinManifest": "docs/evidence/rmt-task043/4663-rotation-profile.json"
+}
