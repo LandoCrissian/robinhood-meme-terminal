@@ -18,11 +18,11 @@ export function assertSeaportVaultTrace(raw,origin,expected){
       &&["CALL","STATICCALL","DELEGATECALL"].includes(node.type)&&node.error===undefined
       &&address(node.from)&&address(node.to)&&bytes(node.input??"0x")
       &&(node.calls===undefined||Array.isArray(node.calls)));
-    const amount=node.value??(["STATICCALL","DELEGATECALL"].includes(node.type)?"0x0":null);
+    const amount=node.value??(node.type==="DELEGATECALL"?"0x"+(parent?.amount??0n).toString(16):node.type==="STATICCALL"?"0x0":null);
     need(typeof amount==="string"&&/^0x[0-9a-f]{1,64}$/i.test(amount));
     need(!parent||same(node.from,parent.type==="DELEGATECALL"?parent.from:parent.to));
     const item={...node,input:node.input??"0x",amount:BigInt(amount)};flat.push(item);
-    if(item.type==="DELEGATECALL")need(item.amount===0n&&Array.isArray(expected.admittedSafeDelegates)&&expected.admittedSafeDelegates.some(pin=>address(pin.proxy)&&address(pin.singleton)&&same(item.from,pin.proxy)&&same(item.to,pin.singleton)));
+    if(item.type==="DELEGATECALL")need(parent&&item.amount===parent.amount&&Array.isArray(expected.admittedSafeDelegates)&&expected.admittedSafeDelegates.some(pin=>address(pin.proxy)&&address(pin.singleton)&&same(item.from,pin.proxy)&&same(item.to,pin.singleton)));
     if(item.type==="STATICCALL")need(item.amount===0n);
     for(const child of node.calls??[])visit(child,item,depth+1);
     return item;

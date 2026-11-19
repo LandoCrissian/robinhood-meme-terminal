@@ -16,3 +16,10 @@ test("V2 token proof requires per-recipient exact transferFrom calls, no native 
   assert.equal(assertSeaportVaultTrace(t,origin,e).nativeTransfers,0);
   t.calls[0].calls[1].input="0x33333333";assert.throws(()=>assertSeaportVaultTrace(t,origin,e));
 });
+test("V2 nested canonical Safe delegate frames inherit context but never add a native transfer",()=>{
+ const t=trace(),e={...expected,admittedSafeDelegates:[{proxy:a(5),singleton:a(8)}]};
+ t.calls[0].calls[1].calls=[{...call(a(5),a(8),"0x12345678","0x5a"),type:"DELEGATECALL"}];
+ assert.equal(assertSeaportVaultTrace(t,origin,e).nativeTransfers,3);
+ assert.throws(()=>assertSeaportVaultTrace(t,origin,expected));
+ t.calls[0].calls[1].calls[0].to=a(9);assert.throws(()=>assertSeaportVaultTrace(t,origin,e));
+});
