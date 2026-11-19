@@ -24,8 +24,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm audit:production
       - run: pnpm check:repo
-      - name: Fetch exact Task080 envelope-evidence baseline
-        run: git fetch --no-tags --depth=1 origin 526cf004d267596f6203f977be40439825f1204b
+      - name: Fetch exact historical browser evidence sources
+        run: |
+          git fetch --no-tags --depth=1 origin 526cf004d267596f6203f977be40439825f1204b
+          git fetch --no-tags --depth=1 origin c1ae53179c7e8ad91c637af0471a20a2f2c67b3c
+          git fetch --no-tags --depth=1 origin c7e75623ff1163d8c36fd110fc7cf5188b814db1
+          git fetch --no-tags --depth=1 origin d0e26573d3df350ffdad5bf0d558a0c3947e57bf
       - run: pnpm test:release-evidence
       - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
         with:

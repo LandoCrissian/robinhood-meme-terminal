@@ -1,0 +1,449 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "productionEnabled": false,
+  "independentAudit": false,
+  "sourceCommit": "d01937b1d10310f1faa6e6520691632d3c366af3",
+  "compilerInputSha256": "de1c5645525e7bc7b1a692974f158fec4e3f62f39a690db37d3377990c66838c",
+  "strictExit": 1,
+  "highs": 23,
+  "findings": [
+    {
+      "id": "251991d91fae87d18b92781ecf65e3422d77a1de7b0290b43a99558ea7133955",
+      "detector": "arbitrary-send-erc20",
+      "impact": "High",
+      "confidence": "High",
+      "description": "SyntheticNftListingVenueV1._pay(address,address,address,uint256) (nft-acquisition/src/SyntheticNftListingVenueV1.sol#30-34) uses arbitrary from in transferFrom: ! t.transferFrom(from,to,amount) || t.balanceOf(from) + amount != a || t.balanceOf(to) != b + amount (nft-acquisition/src/SyntheticNftListingVenueV1.sol#33)\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Venue transferFrom source is exactly the listing vault, and fill requires msg.sender==order.vault before the seller signature, payment and NFT transfer. A different approved payer cannot be selected by another caller.",
+      "tests": [
+        "testVenueCannotUseAnotherApprovedPayersCurrencyEvenWithValidSellerOrder",
+        "testToken1155FullQuantityAndBoundedApprovalConsumedExactly"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "005d4c30eb2d9ff5462c64f3749d3f42c1eaf74d7dc5813888d5865eabc954d3",
+      "detector": "arbitrary-send-eth",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104) sends eth to arbitrary user\n\tDangerous calls:\n\t- INftAcquisitionVenue(venue).fill{value: total}(o,signature) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#96)\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase calls exactly the immutable runtime-pinned venue through its typed fill method. The constructor commits this route; orders cannot change its address. Creator policy, exact full cost, current epochs and custody are checked; only deliberately settled available funds may be spent.",
+      "tests": [
+        "testChangedRouteCodeAndCreationPartsFailClosed",
+        "testNative721ExactSellerFeeRoyaltyAndRealCustody",
+        "testReservedOrInsufficientFundsAreNeverSpent"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "01b60e7aff0d81b4fb205dde011711e68da61267a9c87c2b7118a146a73df0fd",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.executeWithdrawal(uint64) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#114-123):\n\tExternal call allowing reentrancy:\n\t- INftAcquisition721(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#120)\n\tBalance read before the call:\n\t- b_scope_1 = _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#119)\n\tPossible stale balance used after the call in a condition:\n\t- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && INftAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#121)\n\t\t- stale variable `b_scope_1`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "A controller-authorized finite two-day notice fixes recipient, asset, quantity and epoch. Effects release exactly its reservation before the guarded transfer. Both asset endpoints and NFT ownership are verified, and a rejected payout reverts the notice and all custody/accounting.",
+      "tests": [
+        "testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior",
+        "testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout",
+        "testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept",
+        "testControllerRotationNoticeInvalidatesOldEpochAndKeepsBudgets"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "0548484ce7cb2230d5fc6c47b99f8e363499a919eb1b5a7a38350ab7e9553939",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.fundToken(uint256,bytes32) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#62-66):\n\tExternal call allowing reentrancy:\n\t- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#65)\n\tBalance read before the call:\n\t- a = t.balanceOf(address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#63)\n\tPossible stale balance used after the call in a condition:\n\t- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#65)\n\t\t- stale variable `a`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Controller-only guarded funding records its effect, then compares both actual sender debit and vault credit against the pre-call snapshots. Any transfer false return, undercredit or overdebit must restore funding, approvals and balances.",
+      "tests": [
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "1a983b4dd4c771315f1db3b5072dec57ef1f380cc15e9bb75ee8dfbd107737ae",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104):\n\tExternal call allowing reentrancy:\n\t- t.allowance(address(this),venue) != 0 || ! t.approve(venue,total) || t.allowance(address(this),venue) != total (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#97)\n\tBalance read before the call:\n\t- oldCurrency = _balance(o.currency,address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#92)\n\tPossible stale balance used after the call in a condition:\n\t- ! received || INftAcquisitionVenue(venue).orderState(id) != 1 || _balance(o.currency,address(this)) + total != oldCurrency || o.collection.codehash != c.runtimeHash || venue.codehash != venueHash || _nftBalance(o.collection,o.standard,o.seller,o.tokenId) + o.quantity != oldSeller || _nftBalance(o.collection,o.standard,address(this),o.tokenId) != oldHeld + o.quantity || (o.standard == 1 && INftAcquisition721(o.collection).ownerOf(o.tokenId) != address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#99-101)\n\t\t- stale variable `oldCurrency`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase consumes budget/order state before the immutable venue call. Guarded callbacks cannot reenter; the callback alone is insufficient. Actual currency debit, seller NFT decrement, vault increment, ownerOf, venue fill status and collection/venue runtime are required, with atomic rollback on a mismatch.",
+      "tests": [
+        "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+        "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+        "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "224f95ff11eccea0215b529762489a13e31f2685ae1d144591548aa0ea905e48",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104):\n\tExternal call allowing reentrancy:\n\t- t.allowance(address(this),venue) != 0 || ! t.approve(venue,total) || t.allowance(address(this),venue) != total (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#97)\n\tBalance read before the call:\n\t- oldSeller = _nftBalance(o.collection,o.standard,o.seller,o.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#92)\n\tPossible stale balance used after the call in a condition:\n\t- ! received || INftAcquisitionVenue(venue).orderState(id) != 1 || _balance(o.currency,address(this)) + total != oldCurrency || o.collection.codehash != c.runtimeHash || venue.codehash != venueHash || _nftBalance(o.collection,o.standard,o.seller,o.tokenId) + o.quantity != oldSeller || _nftBalance(o.collection,o.standard,address(this),o.tokenId) != oldHeld + o.quantity || (o.standard == 1 && INftAcquisition721(o.collection).ownerOf(o.tokenId) != address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#99-101)\n\t\t- stale variable `oldSeller`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase consumes budget/order state before the immutable venue call. Guarded callbacks cannot reenter; the callback alone is insufficient. Actual currency debit, seller NFT decrement, vault increment, ownerOf, venue fill status and collection/venue runtime are required, with atomic rollback on a mismatch.",
+      "tests": [
+        "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+        "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+        "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "498a7978c40e87657b73e601e7efe79104c423cc11ae66c16a8065004d963d3d",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104):\n\tExternal call allowing reentrancy:\n\t- INftAcquisitionVenue(venue).fill(o,signature) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#97)\n\tBalance read before the call:\n\t- oldHeld = _nftBalance(o.collection,o.standard,address(this),o.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#92)\n\tPossible stale balance used after the call in a condition:\n\t- ! received || INftAcquisitionVenue(venue).orderState(id) != 1 || _balance(o.currency,address(this)) + total != oldCurrency || o.collection.codehash != c.runtimeHash || venue.codehash != venueHash || _nftBalance(o.collection,o.standard,o.seller,o.tokenId) + o.quantity != oldSeller || _nftBalance(o.collection,o.standard,address(this),o.tokenId) != oldHeld + o.quantity || (o.standard == 1 && INftAcquisition721(o.collection).ownerOf(o.tokenId) != address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#99-101)\n\t\t- stale variable `oldHeld`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase consumes budget/order state before the immutable venue call. Guarded callbacks cannot reenter; the callback alone is insufficient. Actual currency debit, seller NFT decrement, vault increment, ownerOf, venue fill status and collection/venue runtime are required, with atomic rollback on a mismatch.",
+      "tests": [
+        "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+        "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+        "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "4dffdea813a4c8d044bbc819696c3c1a93445cfd928e1e72f0ca0277f371ec65",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.executeWithdrawal(uint64) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#114-123):\n\tExternal call allowing reentrancy:\n\t- ! INftAcquisitionERC20(w.asset).transfer(w.recipient,w.quantity) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#117)\n\tBalance read before the call:\n\t- a = _balance(w.asset,address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#116)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#118)\n\t\t- stale variable `a`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "A controller-authorized finite two-day notice fixes recipient, asset, quantity and epoch. Effects release exactly its reservation before the guarded transfer. Both asset endpoints and NFT ownership are verified, and a rejected payout reverts the notice and all custody/accounting.",
+      "tests": [
+        "testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior",
+        "testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout",
+        "testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept",
+        "testControllerRotationNoticeInvalidatesOldEpochAndKeepsBudgets"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "6290ccfce758baa0db248fb642e2f6874109586cf53c583c3bed41b8ad9b4e31",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.executeWithdrawal(uint64) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#114-123):\n\tExternal call allowing reentrancy:\n\t- INftAcquisition1155(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId,w.quantity,) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#120)\n\tBalance read before the call:\n\t- a_scope_0 = _nftBalance(w.asset,w.kind,address(this),w.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#119)\n\tPossible stale balance used after the call in a condition:\n\t- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && INftAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#121)\n\t\t- stale variable `a_scope_0`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "A controller-authorized finite two-day notice fixes recipient, asset, quantity and epoch. Effects release exactly its reservation before the guarded transfer. Both asset endpoints and NFT ownership are verified, and a rejected payout reverts the notice and all custody/accounting.",
+      "tests": [
+        "testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior",
+        "testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout",
+        "testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept",
+        "testControllerRotationNoticeInvalidatesOldEpochAndKeepsBudgets"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "63f5b08e426bb9d2f1efa5ffb2c07e1d2967344435b75a797df89753fe982c30",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in SyntheticNftListingVenueV1._pay(address,address,address,uint256) (nft-acquisition/src/SyntheticNftListingVenueV1.sol#30-34):\n\tExternal call allowing reentrancy:\n\t- ! t.transferFrom(from,to,amount) || t.balanceOf(from) + amount != a || t.balanceOf(to) != b + amount (nft-acquisition/src/SyntheticNftListingVenueV1.sol#33)\n\tBalance read before the call:\n\t- b = t.balanceOf(to) (nft-acquisition/src/SyntheticNftListingVenueV1.sol#33)\n\tPossible stale balance used after the call in a condition:\n\t- ! t.transferFrom(from,to,amount) || t.balanceOf(from) + amount != a || t.balanceOf(to) != b + amount (nft-acquisition/src/SyntheticNftListingVenueV1.sol#33)\n\t\t- stale variable `b`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "The guarded synthetic venue pays only the exact signed seller/fee/royalty consideration. Its fixed caller/source binding prevents arbitrary payer selection. Each endpoint delta is exact; malformed or rejected payout reverts all earlier payouts, order state and delivery.",
+      "tests": [
+        "testNative721ExactSellerFeeRoyaltyAndRealCustody",
+        "testRejectingRoyaltyRecipientRollsBackEveryPayoutAndNft",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "776ae8d87e17b99590d129717791dbfb2402f031106df84d676e3b16d4296334",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.executeWithdrawal(uint64) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#114-123):\n\tExternal call allowing reentrancy:\n\t- (ok,None) = address(w.recipient).call{value: w.quantity}() (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#117)\n\tBalance read before the call:\n\t- a = _balance(w.asset,address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#116)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#118)\n\t\t- stale variable `a`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "A controller-authorized finite two-day notice fixes recipient, asset, quantity and epoch. Effects release exactly its reservation before the guarded transfer. Both asset endpoints and NFT ownership are verified, and a rejected payout reverts the notice and all custody/accounting.",
+      "tests": [
+        "testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior",
+        "testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout",
+        "testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept",
+        "testControllerRotationNoticeInvalidatesOldEpochAndKeepsBudgets"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "818a544057356ad6fbd3d78878b3b1edc4d8456b7774bda249c62f5c77234305",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104):\n\tExternal call allowing reentrancy:\n\t- INftAcquisitionVenue(venue).fill{value: total}(o,signature) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#96)\n\tBalance read before the call:\n\t- oldHeld = _nftBalance(o.collection,o.standard,address(this),o.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#92)\n\tPossible stale balance used after the call in a condition:\n\t- ! received || INftAcquisitionVenue(venue).orderState(id) != 1 || _balance(o.currency,address(this)) + total != oldCurrency || o.collection.codehash != c.runtimeHash || venue.codehash != venueHash || _nftBalance(o.collection,o.standard,o.seller,o.tokenId) + o.quantity != oldSeller || _nftBalance(o.collection,o.standard,address(this),o.tokenId) != oldHeld + o.quantity || (o.standard == 1 && INftAcquisition721(o.collection).ownerOf(o.tokenId) != address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#99-101)\n\t\t- stale variable `oldHeld`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase consumes budget/order state before the immutable venue call. Guarded callbacks cannot reenter; the callback alone is insufficient. Actual currency debit, seller NFT decrement, vault increment, ownerOf, venue fill status and collection/venue runtime are required, with atomic rollback on a mismatch.",
+      "tests": [
+        "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+        "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+        "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "8a2775b8056616d3f6f840ea5d0e93407d7a6a2895b08eb4d477a04277e7434e",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104):\n\tExternal call allowing reentrancy:\n\t- INftAcquisitionVenue(venue).fill(o,signature) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#97)\n\tBalance read before the call:\n\t- oldCurrency = _balance(o.currency,address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#92)\n\tPossible stale balance used after the call in a condition:\n\t- ! received || INftAcquisitionVenue(venue).orderState(id) != 1 || _balance(o.currency,address(this)) + total != oldCurrency || o.collection.codehash != c.runtimeHash || venue.codehash != venueHash || _nftBalance(o.collection,o.standard,o.seller,o.tokenId) + o.quantity != oldSeller || _nftBalance(o.collection,o.standard,address(this),o.tokenId) != oldHeld + o.quantity || (o.standard == 1 && INftAcquisition721(o.collection).ownerOf(o.tokenId) != address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#99-101)\n\t\t- stale variable `oldCurrency`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase consumes budget/order state before the immutable venue call. Guarded callbacks cannot reenter; the callback alone is insufficient. Actual currency debit, seller NFT decrement, vault increment, ownerOf, venue fill status and collection/venue runtime are required, with atomic rollback on a mismatch.",
+      "tests": [
+        "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+        "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+        "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "8ab4d1d9cad6a063d7fe62b49787c79bbb1ddae81ff80aef6d3ad64694901737",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.executeWithdrawal(uint64) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#114-123):\n\tExternal call allowing reentrancy:\n\t- (ok,None) = address(w.recipient).call{value: w.quantity}() (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#117)\n\tBalance read before the call:\n\t- b = _balance(w.asset,w.recipient) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#116)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#118)\n\t\t- stale variable `b`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "A controller-authorized finite two-day notice fixes recipient, asset, quantity and epoch. Effects release exactly its reservation before the guarded transfer. Both asset endpoints and NFT ownership are verified, and a rejected payout reverts the notice and all custody/accounting.",
+      "tests": [
+        "testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior",
+        "testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout",
+        "testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept",
+        "testControllerRotationNoticeInvalidatesOldEpochAndKeepsBudgets"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "98bd2f3ddf59a06e55f5b06831df191a2c713952b194444dd68c8246d43420e8",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104):\n\tExternal call allowing reentrancy:\n\t- t.allowance(address(this),venue) != 0 || ! t.approve(venue,total) || t.allowance(address(this),venue) != total (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#97)\n\tBalance read before the call:\n\t- oldHeld = _nftBalance(o.collection,o.standard,address(this),o.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#92)\n\tPossible stale balance used after the call in a condition:\n\t- ! received || INftAcquisitionVenue(venue).orderState(id) != 1 || _balance(o.currency,address(this)) + total != oldCurrency || o.collection.codehash != c.runtimeHash || venue.codehash != venueHash || _nftBalance(o.collection,o.standard,o.seller,o.tokenId) + o.quantity != oldSeller || _nftBalance(o.collection,o.standard,address(this),o.tokenId) != oldHeld + o.quantity || (o.standard == 1 && INftAcquisition721(o.collection).ownerOf(o.tokenId) != address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#99-101)\n\t\t- stale variable `oldHeld`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase consumes budget/order state before the immutable venue call. Guarded callbacks cannot reenter; the callback alone is insufficient. Actual currency debit, seller NFT decrement, vault increment, ownerOf, venue fill status and collection/venue runtime are required, with atomic rollback on a mismatch.",
+      "tests": [
+        "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+        "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+        "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "b20b008ef73ce097453301eb4a1191e36f88cda182f66c92b5589a2ecf4ef19b",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.executeWithdrawal(uint64) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#114-123):\n\tExternal call allowing reentrancy:\n\t- ! INftAcquisitionERC20(w.asset).transfer(w.recipient,w.quantity) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#117)\n\tBalance read before the call:\n\t- b = _balance(w.asset,w.recipient) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#116)\n\tPossible stale balance used after the call in a condition:\n\t- _balance(w.asset,address(this)) + w.quantity != a || _balance(w.asset,w.recipient) != b + w.quantity (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#118)\n\t\t- stale variable `b`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "A controller-authorized finite two-day notice fixes recipient, asset, quantity and epoch. Effects release exactly its reservation before the guarded transfer. Both asset endpoints and NFT ownership are verified, and a rejected payout reverts the notice and all custody/accounting.",
+      "tests": [
+        "testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior",
+        "testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout",
+        "testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept",
+        "testControllerRotationNoticeInvalidatesOldEpochAndKeepsBudgets"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "ba8b15b4a385e85878b1c03c11f9312e808a06d07ec8b7147abd89330a526c42",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104):\n\tExternal call allowing reentrancy:\n\t- INftAcquisitionVenue(venue).fill{value: total}(o,signature) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#96)\n\tBalance read before the call:\n\t- oldSeller = _nftBalance(o.collection,o.standard,o.seller,o.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#92)\n\tPossible stale balance used after the call in a condition:\n\t- ! received || INftAcquisitionVenue(venue).orderState(id) != 1 || _balance(o.currency,address(this)) + total != oldCurrency || o.collection.codehash != c.runtimeHash || venue.codehash != venueHash || _nftBalance(o.collection,o.standard,o.seller,o.tokenId) + o.quantity != oldSeller || _nftBalance(o.collection,o.standard,address(this),o.tokenId) != oldHeld + o.quantity || (o.standard == 1 && INftAcquisition721(o.collection).ownerOf(o.tokenId) != address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#99-101)\n\t\t- stale variable `oldSeller`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase consumes budget/order state before the immutable venue call. Guarded callbacks cannot reenter; the callback alone is insufficient. Actual currency debit, seller NFT decrement, vault increment, ownerOf, venue fill status and collection/venue runtime are required, with atomic rollback on a mismatch.",
+      "tests": [
+        "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+        "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+        "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "bdb56ad7d933ccc20dcef76752dc133b446f5c286438a8f1ff95b34c538f1501",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.fundToken(uint256,bytes32) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#62-66):\n\tExternal call allowing reentrancy:\n\t- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#65)\n\tBalance read before the call:\n\t- b = t.balanceOf(msg.sender) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#63)\n\tPossible stale balance used after the call in a condition:\n\t- ! t.transferFrom(msg.sender,address(this),amount) || t.balanceOf(address(this)) != a + amount || t.balanceOf(msg.sender) + amount != b (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#65)\n\t\t- stale variable `b`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Controller-only guarded funding records its effect, then compares both actual sender debit and vault credit against the pre-call snapshots. Any transfer false return, undercredit or overdebit must restore funding, approvals and balances.",
+      "tests": [
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "bdc3b0e9776e5415845ef6467193f746b893f7804a4a1ca10f5abc00926413f2",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.executeWithdrawal(uint64) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#114-123):\n\tExternal call allowing reentrancy:\n\t- INftAcquisition1155(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId,w.quantity,) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#120)\n\tBalance read before the call:\n\t- b_scope_1 = _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#119)\n\tPossible stale balance used after the call in a condition:\n\t- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && INftAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#121)\n\t\t- stale variable `b_scope_1`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "A controller-authorized finite two-day notice fixes recipient, asset, quantity and epoch. Effects release exactly its reservation before the guarded transfer. Both asset endpoints and NFT ownership are verified, and a rejected payout reverts the notice and all custody/accounting.",
+      "tests": [
+        "testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior",
+        "testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout",
+        "testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept",
+        "testControllerRotationNoticeInvalidatesOldEpochAndKeepsBudgets"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "bff2eb362f6c279c033f7b79aa00e81749549de05d3e68681c004f07cabcc21b",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104):\n\tExternal call allowing reentrancy:\n\t- INftAcquisitionVenue(venue).fill(o,signature) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#97)\n\tBalance read before the call:\n\t- oldSeller = _nftBalance(o.collection,o.standard,o.seller,o.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#92)\n\tPossible stale balance used after the call in a condition:\n\t- ! received || INftAcquisitionVenue(venue).orderState(id) != 1 || _balance(o.currency,address(this)) + total != oldCurrency || o.collection.codehash != c.runtimeHash || venue.codehash != venueHash || _nftBalance(o.collection,o.standard,o.seller,o.tokenId) + o.quantity != oldSeller || _nftBalance(o.collection,o.standard,address(this),o.tokenId) != oldHeld + o.quantity || (o.standard == 1 && INftAcquisition721(o.collection).ownerOf(o.tokenId) != address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#99-101)\n\t\t- stale variable `oldSeller`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase consumes budget/order state before the immutable venue call. Guarded callbacks cannot reenter; the callback alone is insufficient. Actual currency debit, seller NFT decrement, vault increment, ownerOf, venue fill status and collection/venue runtime are required, with atomic rollback on a mismatch.",
+      "tests": [
+        "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+        "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+        "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "c8adc86545695d3fe1cca1efe77c989882766924a72909ae04850b366d991d5e",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.purchase(NftAcquisitionTypes.Order,bytes,uint64,uint64,uint48) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#84-104):\n\tExternal call allowing reentrancy:\n\t- INftAcquisitionVenue(venue).fill{value: total}(o,signature) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#96)\n\tBalance read before the call:\n\t- oldCurrency = _balance(o.currency,address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#92)\n\tPossible stale balance used after the call in a condition:\n\t- ! received || INftAcquisitionVenue(venue).orderState(id) != 1 || _balance(o.currency,address(this)) + total != oldCurrency || o.collection.codehash != c.runtimeHash || venue.codehash != venueHash || _nftBalance(o.collection,o.standard,o.seller,o.tokenId) + o.quantity != oldSeller || _nftBalance(o.collection,o.standard,address(this),o.tokenId) != oldHeld + o.quantity || (o.standard == 1 && INftAcquisition721(o.collection).ownerOf(o.tokenId) != address(this)) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#99-101)\n\t\t- stale variable `oldCurrency`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "Purchase consumes budget/order state before the immutable venue call. Guarded callbacks cannot reenter; the callback alone is insufficient. Actual currency debit, seller NFT decrement, vault increment, ownerOf, venue fill status and collection/venue runtime are required, with atomic rollback on a mismatch.",
+      "tests": [
+        "testSuccessfulNftCallbackDoesNotSubstituteForExactSellerAndVaultBalances",
+        "testWrongCustodyReceiverAndInterruptedTransferRollBackPaymentsAndOrder",
+        "testMaliciousNftCallbackIsStoppedByExactReentrancyGuard",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "c8d2c00befdd7c6ae05a6116b5ba86fad1c5fab787103718459d51ddf31d27a7",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in SyntheticNftListingVenueV1._pay(address,address,address,uint256) (nft-acquisition/src/SyntheticNftListingVenueV1.sol#30-34):\n\tExternal call allowing reentrancy:\n\t- ! t.transferFrom(from,to,amount) || t.balanceOf(from) + amount != a || t.balanceOf(to) != b + amount (nft-acquisition/src/SyntheticNftListingVenueV1.sol#33)\n\tBalance read before the call:\n\t- a = t.balanceOf(from) (nft-acquisition/src/SyntheticNftListingVenueV1.sol#33)\n\tPossible stale balance used after the call in a condition:\n\t- ! t.transferFrom(from,to,amount) || t.balanceOf(from) + amount != a || t.balanceOf(to) != b + amount (nft-acquisition/src/SyntheticNftListingVenueV1.sol#33)\n\t\t- stale variable `a`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "The guarded synthetic venue pays only the exact signed seller/fee/royalty consideration. Its fixed caller/source binding prevents arbitrary payer selection. Each endpoint delta is exact; malformed or rejected payout reverts all earlier payouts, order state and delivery.",
+      "tests": [
+        "testNative721ExactSellerFeeRoyaltyAndRealCustody",
+        "testRejectingRoyaltyRecipientRollsBackEveryPayoutAndNft",
+        "testHostileCurrencyFundingAndPurchasePreserveExactBalancesAndAllowance"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    },
+    {
+      "id": "f002983bfe776ee0ec5858c7b0350322d0ba4eb4b6b13755b61505482912c765",
+      "detector": "reentrancy-balance",
+      "impact": "High",
+      "confidence": "Medium",
+      "description": "Reentrancy in RMTNftAcquisitionVaultV1.executeWithdrawal(uint64) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#114-123):\n\tExternal call allowing reentrancy:\n\t- INftAcquisition721(w.asset).safeTransferFrom(address(this),w.recipient,w.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#120)\n\tBalance read before the call:\n\t- a_scope_0 = _nftBalance(w.asset,w.kind,address(this),w.tokenId) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#119)\n\tPossible stale balance used after the call in a condition:\n\t- _nftBalance(w.asset,w.kind,address(this),w.tokenId) + w.quantity != a_scope_0 || _nftBalance(w.asset,w.kind,w.recipient,w.tokenId) != b_scope_1 + w.quantity || (w.kind == 1 && INftAcquisition721(w.asset).ownerOf(w.tokenId) != w.recipient) (nft-acquisition/src/RMTNftAcquisitionVaultV1.sol#121)\n\t\t- stale variable `a_scope_0`\n",
+      "assessment": "UNRESOLVED_STATIC_OBSERVATION_IN_SYNTHETIC_LOCAL_CANDIDATE",
+      "confirmedDefect": false,
+      "cleared": false,
+      "boundary": "A controller-authorized finite two-day notice fixes recipient, asset, quantity and epoch. Effects release exactly its reservation before the guarded transfer. Both asset endpoints and NFT ownership are verified, and a rejected payout reverts the notice and all custody/accounting.",
+      "tests": [
+        "testTokenWithdrawalExactDeltasAndNoticeSurviveHostileReturnBehavior",
+        "testNoticedAssetWithdrawalReservationExpiryAndRejectedPayout",
+        "testAcquiredNftNeedsSeparateTwoDayWithdrawalAndCannotBeSwept",
+        "testControllerRotationNoticeInvalidatesOldEpochAndKeepsBudgets"
+      ],
+      "testExecution": "PINNED_LINUX_CI_TESTS_PASSED_WITH_FINITE_COVERAGE_NOT_CLEARANCE",
+      "remainingUncertainty": "Finite tests and runtime hashing do not prove arbitrary dependencies safe. Only synthetic local source/route is executable; no actual 4663 marketplace adapter or production release is approved. Preserve full high gate; independently review supported account and external asset semantics before a changed release."
+    }
+  ],
+  "limitations": [
+    "This venue is a signed all-or-nothing synthetic local listing venue, not Seaport or OpenSea. Official Robinhood marketplace support is a separate read-only research result, not evidence of an implemented adapter.",
+    "All new constructors and state-changing execution require chain31337. No production activation or contract change to 4663 is authorized.",
+    "Funding is a deliberate separately settled native/token transfer. V1/core/ledger/reclaim sources and immutable beneficiary rights are not modified or inherited.",
+    "Generic ERC1271 seller signatures, criteria/trait orders, multi-item orders, partial fills and external conduits are unsupported. Current exact ECDSA seller signatures are chain/venue/buyer bound.",
+    "Controller EOAs, exact pinned7702 designator, and strict pinnedSafeL2 1.4.1 3owner/2threshold/no module/no guard profile are admitted; actual current Safe owner approvals are required by Safe execution.",
+    "NFT custody withdrawals are typed two-day-noticed transfers to fixed recipients. There is no generic execute, NFT sweep, upgrade, LP principal or fungible buyback path.",
+    "The synthetic configurable NFT and currency fixtures deliberately model incorrect transfers and royalty changes; they are not real collection admissions or production payment assets.",
+    "Native payment recipients that forward funds during receipt fail exact endpoint-balance checks; no generic arbitrary wallet compatibility is claimed.",
+    "Old22core/dependency+6treasury+7ReclaimV2+4historicalReclaimV1 highs remain distinct and uncleared."
+  ]
+}

@@ -1,0 +1,86 @@
+{
+  "schemaVersion": 1,
+  "status": "ALL_REPORTED_VALUES_MATCH_PUBLIC_CANONICAL_IDENTITIES_NOT_CREDENTIALS",
+  "source": "robinhood-4663.json.gz",
+  "sourceUncompressedSha256": "665bf4e48da10cd1e1fe473dc041a7b3f7982d281e792022914e6bd5bc68720c",
+  "rawScannerReportSha256": "cb92cb5952c74c27788e39d95a377542ab4e9bad0c168c0844a00ad6dae25b10",
+  "rawScannerFindings": 9,
+  "scriptScannerReportSha256": "427f096fc2e163d9c8f69651d229ce78c47813e56552040ac2fbfd10e24c75e1",
+  "scriptScannerFindings": 1,
+  "scannerVersion": "8.30.1",
+  "scannerConfigurationModified": false,
+  "scannerSuppressed": false,
+  "rows": [
+    {
+      "line": 24,
+      "rule": "generic-api-key",
+      "field": "conduitKey",
+      "classification": "PUBLIC_OPENSEA_CONDUIT_IDENTIFIER",
+      "valueSha256": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a"
+    },
+    {
+      "line": 151,
+      "rule": "generic-api-key",
+      "field": "token",
+      "classification": "PUBLIC_WETH_CONTRACT_ADDRESS",
+      "valueSha256": "6c0ce0c475bc9dfefe77775431c238a38be2f339d6f08ad305dda51f7abbc723"
+    },
+    {
+      "line": 159,
+      "rule": "generic-api-key",
+      "field": "token",
+      "classification": "PUBLIC_NFT_CONTRACT_ADDRESS",
+      "valueSha256": "0140dee2321debdb2ca8346847729401fd826b772edef137a2a288462e602a79"
+    },
+    {
+      "line": 166,
+      "rule": "generic-api-key",
+      "field": "token",
+      "classification": "PUBLIC_WETH_CONTRACT_ADDRESS",
+      "valueSha256": "6c0ce0c475bc9dfefe77775431c238a38be2f339d6f08ad305dda51f7abbc723"
+    },
+    {
+      "line": 173,
+      "rule": "generic-api-key",
+      "field": "token",
+      "classification": "PUBLIC_WETH_CONTRACT_ADDRESS",
+      "valueSha256": "6c0ce0c475bc9dfefe77775431c238a38be2f339d6f08ad305dda51f7abbc723"
+    },
+    {
+      "line": 317,
+      "rule": "generic-api-key",
+      "field": "token",
+      "classification": "PUBLIC_WETH_CONTRACT_ADDRESS",
+      "valueSha256": "6c0ce0c475bc9dfefe77775431c238a38be2f339d6f08ad305dda51f7abbc723"
+    },
+    {
+      "line": 325,
+      "rule": "generic-api-key",
+      "field": "token",
+      "classification": "PUBLIC_NFT_CONTRACT_ADDRESS",
+      "valueSha256": "0140dee2321debdb2ca8346847729401fd826b772edef137a2a288462e602a79"
+    },
+    {
+      "line": 332,
+      "rule": "generic-api-key",
+      "field": "token",
+      "classification": "PUBLIC_WETH_CONTRACT_ADDRESS",
+      "valueSha256": "6c0ce0c475bc9dfefe77775431c238a38be2f339d6f08ad305dda51f7abbc723"
+    },
+    {
+      "line": 339,
+      "rule": "generic-api-key",
+      "field": "token",
+      "classification": "PUBLIC_WETH_CONTRACT_ADDRESS",
+      "valueSha256": "6c0ce0c475bc9dfefe77775431c238a38be2f339d6f08ad305dda51f7abbc723"
+    }
+  ],
+  "note": "Raw evidence scan and public identifier source-code finding remain visible. Classification is not a zero-finding scanner claim or security waiver.",
+  "currentScriptScan": {
+    "source": "scripts/nft-marketplace/probe-4663.mjs",
+    "report": "script-gitleaks-after.json",
+    "findings": 0,
+    "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+    "change": "One descriptive public identifier constant; unchanged literal and RPC semantics. Original one-finding source scan retained. No scanner configuration, detector or source exclusion changed."
+  }
+}

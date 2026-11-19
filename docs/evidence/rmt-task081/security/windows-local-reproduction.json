@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "executedLocally": false,
+  "reason": "Native Forge unavailable; local pinned-solc syntax/type checks are not EVM execution. Actual Linux run is separately recorded.",
+  "syntaxAndTypeAnalysis": {
+    "errors": 0,
+    "warnings": 0
+  },
+  "tool": "Slither 0.11.5",
+  "cryticCompile": "0.3.11",
+  "compilerExecutableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "compilerInputSha256": "de1c5645525e7bc7b1a692974f158fec4e3f62f39a690db37d3377990c66838c",
+  "analysisInputSha256": "fa84044c1f2a44cbd3cfe9c469022516419105cc3ae8f12f95070f31b381d79e",
+  "rawReportSha256": "f4162a209492842db29c48ee469140fc1376a0777243e3af05e42976e5a527fe",
+  "detectors": 101,
+  "strictExit": 1,
+  "counts": {
+    "High": 23,
+    "Medium": 1,
+    "Low": 15,
+    "Informational": 9
+  },
+  "allFindingIdsIdenticalToLinux": true
+}

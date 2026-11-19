@@ -1,0 +1,62 @@
+import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
+import {createRequire} from "node:module";
+import {writeFileSync} from "node:fs";
+import {resolve} from "node:path";
+import {fileURLToPath} from "node:url";
+import {makeReadOnlyRpc,ROBINHOOD_SOURCES} from "../production-readiness/rpc.mjs";
+
+const require=createRequire(new URL("../../apps/launch-website/package.json",import.meta.url));
+const {decodeFunctionResult,encodeAbiParameters,encodeFunctionData,keccak256,parseAbi,parseEventLogs,stringToHex}=require("viem");
+const abi=parseAbi(["function information() view returns(string version,bytes32 domainSeparator,address conduitController)","function getConduit(bytes32 conduitKey) view returns(address conduit,bool exists)","function getChannelStatus(address conduit,address channel) view returns(bool isOpen)","function name() view returns(string)","function symbol() view returns(string)","function decimals() view returns(uint8)","event OrderFulfilled(bytes32 orderHash,address indexed offerer,address indexed zone,address recipient,(uint8 itemType,address token,uint256 identifier,uint256 amount)[] offer,(uint8 itemType,address token,uint256 identifier,uint256 amount,address recipient)[] consideration)"]);
+// Public on-chain conduit identifier from the pinned OpenSea SDK; not a credential.
+const officialConduitIdentifier="0x61159fefdfada89302ed55f8b9e89e2d67d8258712b3a3f89aa88525877f1d5e";
+export const marketplacePins=Object.freeze({
+ seaport:"0x0000000000000068F116a894984e2DB1123eB395",
+ conduitController:"0x00000000F9490004C11Cef243f5400493c00Ad63",
+ conduit:"0x963f00d3ff000064ffcba824b800c0000000c300",
+ conduitKey:officialConduitIdentifier,
+ weth:"0x0Bd7D308f8E1639FAb988df18A8011f41EAcAD73"
+});
+export const officialSources=Object.freeze({sdkCommit:"3b6f8655f80263942108cf31ef15f6277610cd43",seaportCommit:"117019831a71efb46108e379d1a873a631731dc4",
+ sdkChain:"https://raw.githubusercontent.com/ProjectOpenSea/opensea-sdk/3b6f8655f80263942108cf31ef15f6277610cd43/src/utils/chain.ts",
+ sdkConstants:"https://raw.githubusercontent.com/ProjectOpenSea/opensea-sdk/3b6f8655f80263942108cf31ef15f6277610cd43/src/constants.ts",
+ sdkChainIds:"https://raw.githubusercontent.com/ProjectOpenSea/opensea-sdk/3b6f8655f80263942108cf31ef15f6277610cd43/src/utils/chainIds.generated.ts",
+ sdkChangelog:"https://raw.githubusercontent.com/ProjectOpenSea/opensea-sdk/3b6f8655f80263942108cf31ef15f6277610cd43/CHANGELOG.md",
+ seaportDeployment:"https://raw.githubusercontent.com/ProjectOpenSea/seaport/117019831a71efb46108e379d1a873a631731dc4/docs/Deployments.md",
+ collectionApi:"https://docs.opensea.io/reference/get_collection",chainsApi:"https://docs.opensea.io/reference/get_chains"});
+const sha=bytes=>createHash("sha256").update(bytes).digest("hex");
+export async function boundedPublicRead(url,fetcher=fetch){
+ assert.ok(Object.values(officialSources).includes(url)||/^https:\/\/robinhoodchain\.blockscout\.com\/api\/v2\/smart-contracts\/0x[a-fA-F0-9]{40}$/.test(url)||["https://api.opensea.io/api/v2/chains","https://api.opensea.io/api/v2/collections/lammbs-59693791","https://api.opensea.io/api/v2/listings/collection/lammbs-59693791/best?limit=1"].includes(url),"Read outside fixed public provenance endpoints");
+ try{const response=await fetcher(url,{redirect:"error",signal:AbortSignal.timeout(8000),headers:{accept:"application/json,text/plain"}});if(!response.ok){await response.body?.cancel();return{status:"unavailable",httpStatus:response.status};}
+  if(!response.body)return{status:"unavailable",reason:"missing-body"};const reader=response.body.getReader();let size=0;const chunks=[];try{for(;;){const part=await reader.read();if(part.done)break;size+=part.value.length;if(size>2*1024*1024)throw Error("body limit");chunks.push(part.value);}}finally{await reader.cancel().catch(()=>{});reader.releaseLock();}
+  const bytes=Buffer.concat(chunks);return{status:"observed",httpStatus:response.status,bytes:bytes.length,sha256:sha(bytes),text:bytes.toString("utf8")};
+ }catch{return{status:"unavailable",reason:"transport-json-or-bound"};}
+}
+const publicSummary=({text,...metadata})=>metadata;
+export async function probeMarketplace4663(){
+ const report={schemaVersion:1,scope:"READ_ONLY_4663_NFT_MARKETPLACE_OBSERVATION_NOT_EXECUTION_APPROVAL",observedAt:new Date().toISOString(),status:"BLOCKED_NO_BROADCAST",productionChanged:false,broadcast:false,signatures:false,officialSources,pins:marketplacePins,providers:{},sourceVerification:{},publicApi:{},limitations:["No current executable listing or seller signature was admitted.","Seaport deployment and historical settlement do not establish collection eligibility, live listing availability or treasury adapter compatibility.","Independent Ethereum L1 finality is unverified; no purchase or approval was submitted."]};
+ report.sources={};for(const[key,url]of Object.entries(officialSources).filter(([,url])=>url.startsWith("https://raw.githubusercontent.com/"))){const result=await boundedPublicRead(url);report.sources[key]={url,...publicSummary(result),...(result.status==="observed"&&{robinhoodMention:result.text.toLowerCase().includes("robinhood"),chain4663Mention:result.text.includes("4663")})};}
+ const endpoints=["official","pocket"],clients=Object.fromEntries(endpoints.map(name=>[name,makeReadOnlyRpc({name,url:ROBINHOOD_SOURCES[name]})]));
+ const tips=await Promise.all(endpoints.map(async name=>[name,await clients[name]("eth_getBlockByNumber",["latest",false])]));
+ const numbers=tips.filter(([,x])=>x.status==="observed").map(([,x])=>BigInt(x.value.number));if(numbers.length!==2){report.verdict="PROVIDER_OBSERVATION_UNAVAILABLE";return report;}
+ const height=numbers.reduce((a,b)=>a<b?a:b)-8n,tag="0x"+height.toString(16);report.anchorBlock=height.toString();
+ const call=async(client,address,functionName,args=[])=>client("eth_call",[{to:address,data:encodeFunctionData({abi,functionName,args})},tag],raw=>decodeFunctionResult({abi,functionName,data:raw}));
+ for(const name of endpoints){const client=clients[name],chain=await client("eth_chainId",[],x=>Number(BigInt(x))),header=await client("eth_getBlockByNumber",[tag,false],x=>({number:BigInt(x.number).toString(),hash:x.hash,timestamp:new Date(Number(BigInt(x.timestamp))*1000).toISOString()})),contracts={};
+  for(const[key,address]of Object.entries(marketplacePins).filter(([key])=>key!=="conduitKey"))contracts[key]={address,code:await client("eth_getCode",[address,tag],code=>({bytes:(code.length-2)/2,runtimeHash:keccak256(code)}))};
+  report.providers[name]={url:ROBINHOOD_SOURCES[name],chain,header,contracts,seaportInformation:await call(client,marketplacePins.seaport,"information"),conduitBinding:await call(client,marketplacePins.conduitController,"getConduit",[marketplacePins.conduitKey]),seaportChannelOpen:await call(client,marketplacePins.conduitController,"getChannelStatus",[marketplacePins.conduit,marketplacePins.seaport]),weth:{symbol:await call(client,marketplacePins.weth,"symbol"),decimals:await call(client,marketplacePins.weth,"decimals")},headerAfter:await client("eth_getBlockByNumber",[tag,false],x=>({number:BigInt(x.number).toString(),hash:x.hash}))};
+  const historical=await client("eth_getTransactionReceipt",["0xbbd7ebdc2b3665ae7781afbf8854125ed430baaf2bb1fd4629612b6e269827fe"],receipt=>({transactionHash:receipt.transactionHash,blockNumber:BigInt(receipt.blockNumber).toString(),blockHash:receipt.blockHash,status:receipt.status,orderFulfilled:parseEventLogs({abi,eventName:"OrderFulfilled",strict:true,logs:receipt.logs.filter(l=>l.address.toLowerCase()===marketplacePins.seaport.toLowerCase())}).map(log=>({logIndex:log.logIndex,args:log.args}))}));report.providers[name].historicalSettlement=historical;
+  if(historical.status==="observed")report.providers[name].historicalCanonicalHeader=await client("eth_getBlockByNumber",["0x"+BigInt(historical.value.blockNumber).toString(16),false],block=>({number:BigInt(block.number).toString(),hash:block.hash,timestamp:new Date(Number(BigInt(block.timestamp))*1000).toISOString()}));
+ }
+ for(const[key,address]of Object.entries(marketplacePins).filter(([key])=>key!=="conduitKey")){
+  const url=`https://robinhoodchain.blockscout.com/api/v2/smart-contracts/${address}`,result=await boundedPublicRead(url);report.sourceVerification[key]={url,...publicSummary(result)};if(result.status==="observed")try{const body=JSON.parse(result.text),sourceFiles=[{path:body.file_path,content:body.source_code},...(body.additional_sources??[]).map(x=>({path:x.file_path,content:x.source_code}))].filter(x=>typeof x.content==="string");report.sourceVerification[key]={...report.sourceVerification[key],name:body.name,compilerVersion:body.compiler_version,isVerified:body.is_verified,isPartiallyVerified:body.is_partially_verified,isFullyVerified:body.is_fully_verified,sourceFiles:sourceFiles.map(x=>({path:x.path,sha256Utf8:sha(Buffer.from(x.content)),bytes:Buffer.byteLength(x.content)})),...(typeof body.deployed_bytecode==="string"&&{explorerRuntimeHash:keccak256(body.deployed_bytecode)})};}catch{report.sourceVerification[key].reason="malformed-explorer-source";}}
+ for(const[name,url]of Object.entries({chains:"https://api.opensea.io/api/v2/chains",historicalCollection:"https://api.opensea.io/api/v2/collections/lammbs-59693791",oneListingHint:"https://api.opensea.io/api/v2/listings/collection/lammbs-59693791/best?limit=1"})){const result=await boundedPublicRead(url);report.publicApi[name]={url,...publicSummary(result)};if(result.status==="observed")try{const body=JSON.parse(result.text);report.publicApi[name].summary=name==="chains"?{robinhood:body.chains?.filter(x=>x.chain==="robinhood")??[]}:name==="historicalCollection"?{slug:body.collection??body.slug,contracts:body.contracts,name:body.name}:{listingCount:body.listings?.length??null,listingHints:body.listings?.slice(0,1).map(x=>({chain:x.chain,orderHash:x.order_hash,protocolAddress:x.protocol_address,status:x.status,remainingQuantity:x.remaining_quantity,signatureAvailable:typeof x.protocol_data?.signature==="string"&&x.protocol_data.signature!=="0x"}))};}catch{report.publicApi[name].reason="non-json-response";}}
+ const providers=Object.values(report.providers),agreed=providers.every(x=>x.chain.status==="observed"&&x.chain.value===4663&&x.header.status==="observed"&&x.headerAfter.status==="observed"&&x.header.value.hash===x.headerAfter.value.hash)&&providers[0].header.value.hash===providers[1].header.value.hash&&Object.keys(providers[0].contracts).every(key=>providers.every(x=>x.contracts[key].code.status==="observed"&&x.contracts[key].code.value.bytes>0&&x.contracts[key].code.value.runtimeHash===providers[0].contracts[key].code.value.runtimeHash));
+ report.expectedSeaportDomain=keccak256(encodeAbiParameters([{type:"bytes32"},{type:"bytes32"},{type:"bytes32"},{type:"uint256"},{type:"address"}],[keccak256(stringToHex("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)")),keccak256(stringToHex("Seaport")),keccak256(stringToHex("1.6")),4663n,marketplacePins.seaport]));
+ report.bindingsObserved=agreed&&providers.every(x=>x.seaportInformation.status==="observed"&&x.seaportInformation.value[0]==="1.6"&&x.seaportInformation.value[1]===report.expectedSeaportDomain&&x.seaportInformation.value[2].toLowerCase()===marketplacePins.conduitController.toLowerCase()&&x.conduitBinding.status==="observed"&&x.conduitBinding.value[0].toLowerCase()===marketplacePins.conduit.toLowerCase()&&x.conduitBinding.value[1]===true&&x.seaportChannelOpen.status==="observed"&&x.seaportChannelOpen.value===true);
+ report.sourceReproduction="UNVERIFIED_EXPLORER_ACCESS_BLOCKED_NO_INDEPENDENT_BYTECODE_REBUILD";report.listingVerified=false;report.productionAdapterImplemented=false;report.executionApproved=false;
+ report.verdict=report.bindingsObserved?"SEAPORT_1_6_AND_CONDUIT_BINDINGS_OBSERVED_EXECUTION_NOT_APPROVED":"VENUE_EVIDENCE_UNAVAILABLE_OR_DISAGREES";return report;
+}
+if(process.argv[1]&&resolve(process.argv[1])===fileURLToPath(import.meta.url)){
+ assert.equal(process.argv.length,3,"Usage: node scripts/nft-marketplace/probe-4663.mjs /absolute/output.json");const output=resolve(process.argv[2]);const report=await probeMarketplace4663();writeFileSync(output,JSON.stringify(report,(_,v)=>typeof v==="bigint"?v.toString():v,2)+"\n");console.log(JSON.stringify({output,verdict:report.verdict,anchorBlock:report.anchorBlock,status:report.status}));
+}

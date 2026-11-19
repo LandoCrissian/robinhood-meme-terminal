@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL_DEVELOPMENT_OF_OFFLINE_ARTIFACT_VALIDATOR_NOT_A_BROWSER_RUNTIME_FAILURE",
+  "firstFocusedExecution": {
+    "command": "node --test docs/evidence/rmt-task081/browser/acceptance.test.mjs",
+    "passed": 7,
+    "failed": 4,
+    "skipped": 0,
+    "cause": "Two draft assertions each failed in both engines: the setup record uses production:false, and the pinned iPhone device descriptor uses viewport dimensions rather than full screen dimensions."
+  },
+  "exactCorrections": [
+    {
+      "assertion": "Setup release boundary",
+      "draftAssumption": "setup.productionExecution === false",
+      "actualRecordedField": "setup.production === false"
+    },
+    {
+      "assertion": "Pinned iPhone layout PNG pixel dimensions",
+      "draftAssumption": {"portrait": [1170, 2532], "landscape": [2532, 1170]},
+      "actualRecordedDimensions": {"portrait": [1170, 1992], "landscape": [2250, 1026]},
+      "reason": "Playwright iPhone 13 viewport 390x664 and landscape 750x342, both device scale factor 3."
+    }
+  ],
+  "rawArtifactsChanged": false,
+  "browserResultsChanged": false,
+  "securityGateChanged": false,
+  "subsequentFocusedExecution": {"passed": 11, "failed": 0, "skipped": 0}
+}

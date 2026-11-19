@@ -1,0 +1,903 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "scope": "LOCAL_SYNTHETIC_NFT_ACQUISITION_NOT_PRODUCTION_OR_PHYSICAL_PHONE",
+  "productionAuthorization": false,
+  "physicalIPhoneAcceptance": false,
+  "securityClearance": false,
+  "sourceCommit": "d0e26573d3df350ffdad5bf0d558a0c3947e57bf",
+  "identicalSourceTree": "93db50232ad4b161d77710f93a4c91d28679b792",
+  "baselineCommit": "c7e75623ff1163d8c36fd110fc7cf5188b814db1",
+  "runId": "44544710919",
+  "runUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44544710919",
+  "baselineSolidity": [
+    {
+      "path": "docs/evidence/rmt-task040/foundry/RMTLaunchTask040Review.t.sol",
+      "sha256": "3d4da11aa50859a60675546d64d56bd67284767c908f7281f216d7d5f01d0a64"
+    },
+    {
+      "path": "docs/evidence/rmt-task041/RejectingTreasury.sol",
+      "sha256": "3ff4af02679fff778e5f1c4f6fdcec912fa12bd19b68b321a8d9cb9f52373a26"
+    },
+    {
+      "path": "docs/evidence/rmt-task042/foundry/RMTLaunchTreasuryReview.t.sol",
+      "sha256": "9a8a7da35094731ca305a587af0fed3848c192b947351a771269b2290c69ef18"
+    },
+    {
+      "path": "packages/contracts/project-treasury/src/RMTProjectTreasuryFactoryV1.sol",
+      "sha256": "ae4e43069cf61ae3887bb6db1f11eeb479705f1892adb29be1186dba180d7e7b"
+    },
+    {
+      "path": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+      "sha256": "5d4c696cf8cc1caa98d696695164319b6da12fcb5003ad1edde84039d091c888"
+    },
+    {
+      "path": "packages/contracts/project-treasury/src/TreasuryInterfaces.sol",
+      "sha256": "3aa24a3b5b55550f9cd4bfdfa49ebe59c4aec00889069a7b0cf4339191a59f3d"
+    },
+    {
+      "path": "packages/contracts/project-treasury/test/RMTProjectTreasuryInvariant.t.sol",
+      "sha256": "50b6a819fd35cff6f4d8e8b2878464cff5bf176506e5dd0e91f6500e6671823c"
+    },
+    {
+      "path": "packages/contracts/project-treasury/test/RMTProjectTreasuryV1.t.sol",
+      "sha256": "2096395b1bc20eccede4dc1d3e3b4b15d5be5d2c2e42a48771b25c884fe65755"
+    },
+    {
+      "path": "packages/contracts/project-treasury/test/TreasuryMocks.sol",
+      "sha256": "f0bbabe75d978ffbb6b5854d3229eef65d7ce7d305513293be004e0827588e2d"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/src/RMTReclaimCampaignDeployerV2.sol",
+      "sha256": "f429b384d99050260c52642a4a16b9e12ffdc533d6fb48c59365b8d5f34904a1"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/src/RMTReclaimCampaignV2.sol",
+      "sha256": "53f9300f0556bef5584cb5cca4e8dfefb19ae7f6c0fbb02d354c1c011333beb1"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/src/RMTReclaimCodePartV2.sol",
+      "sha256": "a45c4460e0b2b2d5ca7c7c51a8ffecd0782758fb0febd8a4b3cb4f0229e7b96f"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/src/RMTReclaimFactoryV2.sol",
+      "sha256": "f33c6c69ba40b85056ad9b5b99786a06dfc3076c7974e17cb417f0f5af12d854"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/src/RMTReclaimSinkV2.sol",
+      "sha256": "c2000425b62be0f0ccecc3b0c711bb84c02f73e746729eb5d7d08580565f6a34"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/src/ReclaimV2Interfaces.sol",
+      "sha256": "d99cb236da8b4c1d98242a61cb11aa2217dae6ac32cadabd9d1d645b7b5283f8"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/test/RMTReclaimV2.t.sol",
+      "sha256": "40199a3bf50ddf24ea9dc00e69468b35d8e27205e8a23390cf7b35a4a5e28bd1"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/test/RMTReclaimV2BoundarySecurity.t.sol",
+      "sha256": "cd745b9fcb614de090b213243097c46464cf265b8006051bac9bb146bc2cde42"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/test/RMTReclaimV2Invariant.t.sol",
+      "sha256": "232ccaf875892c45373539a72d79f4ce092ed72965ee4486c0ee1db04d8e4dd5"
+    },
+    {
+      "path": "packages/contracts/reclaim-v2/test/ReclaimV2Assets.sol",
+      "sha256": "f825e6d13f2c67011cc1e26f0134fadc4ae102290242c2b99cda6816977ba381"
+    },
+    {
+      "path": "packages/contracts/reclaim/src/RMTReclaimCampaignV1.sol",
+      "sha256": "c512460a491fc6a5e003bcdb5519994bf4b4b81aa154c08f3aad08ec63863844"
+    },
+    {
+      "path": "packages/contracts/reclaim/src/RMTReclaimFactoryV1.sol",
+      "sha256": "48b97d7c8cd6811465d5f3e7f3ee610a6d158e09f46949fe40cfdfe56bf9fbdb"
+    },
+    {
+      "path": "packages/contracts/reclaim/src/ReclaimInterfaces.sol",
+      "sha256": "7118e2c8ce61d185def272b47ac2f330d1dc92240f2969fe19662800bb10b1f0"
+    },
+    {
+      "path": "packages/contracts/reclaim/test/RMTReclaimHostile.t.sol",
+      "sha256": "a7d4927524530a1eec7294451066510db96dd00a2789bdcf2b95cc5e3ac2d548"
+    },
+    {
+      "path": "packages/contracts/reclaim/test/RMTReclaimV1.t.sol",
+      "sha256": "f47473d07a6b049789fa490da7d11dee47b8b0f08dc7357f8335c4cbbd9c69fc"
+    },
+    {
+      "path": "packages/contracts/reclaim/test/ReclaimAssets.sol",
+      "sha256": "48369f8b95f5e8e90e432cbcb6c64c4ebc3b3996d9c3a57d4137435251c86a03"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV1.sol",
+      "sha256": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV2.sol",
+      "sha256": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV3.sol",
+      "sha256": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDeploymentV2.sol",
+      "sha256": "31e3173f1999f8d68e4bbc6cd55196d618d02de7d9a2da37c53d76dfc7ccfb93"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDirectoryV1.sol",
+      "sha256": "cc8e4b76a3783b5422a309d0ed83a3346985e363e68fa2145b37cf0fba1fe3e0"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+      "sha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "sha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "sha256": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+      "sha256": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveRevenueLedgerV1.sol",
+      "sha256": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "sha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV1.sol",
+      "sha256": "48fa079c05c0cb840dc0c7027d407e54b1472ff0924c30d8e4dc4780a490e717"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV2.sol",
+      "sha256": "67f22eed981c6627ce6045001dbcfd23eff2e7d8b178c540b9f9979b7acee6ab"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+      "sha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c"
+    },
+    {
+      "path": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "sha256": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e"
+    },
+    {
+      "path": "packages/contracts/src/RMTV4CurveInitializationGuardV1.sol",
+      "sha256": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f"
+    },
+    {
+      "path": "packages/contracts/src/interfaces/IRMTLaunchCurveExecution.sol",
+      "sha256": "9b5793ca3cfbffc912e53f6e26d6744aa49a1dfce913791e867e466a5bfa451c"
+    },
+    {
+      "path": "packages/contracts/src/interfaces/IRMTV4CurveGraduationV1.sol",
+      "sha256": "d3fe566a9b14f907c5289860d96f26b58649027f0ea6d1718862c377839ebefe"
+    },
+    {
+      "path": "packages/contracts/test/RMTDependencyArithmeticReview.t.sol",
+      "sha256": "030491f216ffeadde1e4c60715095fc5cb7dda79e25cbbd9923f462767a799ba"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchAdjacentMigrationProof.t.sol",
+      "sha256": "72459d50784b0e7bc2631e68a23d68b7597b45ad2bc5e0b02e840669ed730853"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchBondingCurveV1.t.sol",
+      "sha256": "486e7fc0018a79261ad60b0d270adf3ea957039373df5cd6ebd658026f98f487"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCreatorEarnings.t.sol",
+      "sha256": "b7c81e81b008ece8cab270d1cefd815745845933de46c4c50d0e80ba9f502401"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveAccountingInvariant.t.sol",
+      "sha256": "367ff93c9cc30b8349098696522e6f5c914c401d3fb9bdcef7d7d90720005aa0"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveCreationFeeV1.t.sol",
+      "sha256": "db42861f5a55e8be52786720db3690e16e0e6d9a12585eb83cbc79a6e1e983c0"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveDirectoryV1.t.sol",
+      "sha256": "4606cf9e959c176af11fe3869ff0b63971e4b1056431300e049276b5231b9cef"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveDirectoryV2.t.sol",
+      "sha256": "3e08403cdd4801d32210198899c3e5c1249f20386c6f3b456db710f493838236"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveSymbolic.t.sol",
+      "sha256": "2c84db5a0dc7bba267d2ea39bf4f01b347006e35c7bbb680a035fe216c820764"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchMigrationReadiness.t.sol",
+      "sha256": "7b811ac656f393d80b36cc639fbc1798d194ca7089697da5804a50efecd91901"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchProjectRegistryV1.t.sol",
+      "sha256": "f1ba0190be9ac82a0b128c302e543223cfde7ab1605a7febae22f1b4fcd0a6af"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchProjectRegistryV2.t.sol",
+      "sha256": "9edb5b27502096dd78a17de26059debabf830197fbd6b48e0b8c6881bd30410d"
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchProjectRegistryV3.t.sol",
+      "sha256": "91276bbb300a91625291af6a35d5a609d6dde1a8b1b04559133926122bb0b1e8"
+    },
+    {
+      "path": "packages/contracts/test/RMTV4CurveGraduationV1.t.sol",
+      "sha256": "efcbb6cbfa479f2c2c46d47b9b7c938e6dd64c20460a539acf44069c7fd6f832"
+    },
+    {
+      "path": "packages/contracts/test/RMTV4SharedPoolSettlement.t.sol",
+      "sha256": "11393f4d11e2f024675ab35b3d33dc7cd6440eb24b7185311f3fe1f8d0e583ff"
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/src/PurchaseEvidenceV2.sol",
+      "sha256": "654423ffc7489285a6d238403af0431357195d67ee561f6d6aa89f928e9b8ae4"
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol",
+      "sha256": "de7b6de01b74909152e1096effd3be9be6a48ca115f70e9e59b1102a4ac8791c"
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol",
+      "sha256": "9f3394afa0779e752fde073ef8324e5220934bd80b11f8cbb884af589eb788f8"
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/test/PurchaseBoundaryV2.t.sol",
+      "sha256": "4fb1010326364d69b35a698b51eb110bf3f2d8d91acaf8ca8c9b8d1c24ae8c01"
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol",
+      "sha256": "68dc5a973c6d4df34d21eceb8e0ac90630ab5e8c8eeeb1ec6c8dc4ac4c9683d6"
+    }
+  ],
+  "verifiedSourceFiles": [
+    {
+      "path": ".github/workflows/ci.yml",
+      "normalization": "canonical-lf",
+      "bytes": 7150,
+      "sha256": "6681571396b9e12ea1f283a3be20a99e2d4b82886a5a16926d3473fba6bdeef4"
+    },
+    {
+      "path": ".github/workflows/launch-website-review.yml",
+      "normalization": "canonical-lf",
+      "bytes": 15288,
+      "sha256": "4813a18142c84d644543bbc5a4e7d541a80b8aed6b2b988b723aaab54ef384ea"
+    },
+    {
+      "path": ".github/workflows/nft-acquisition.yml",
+      "normalization": "canonical-lf",
+      "bytes": 8560,
+      "sha256": "99877803f2d0b95057d25f7606cdc7e5e76d0ce2b404531ec8b0f3b39e613d9d"
+    },
+    {
+      "path": ".github/workflows/reclaim-v2-security.yml",
+      "normalization": "canonical-lf",
+      "bytes": 2841,
+      "sha256": "5de33817cf8c46d7427524277a0a6000f7663e4ad06aa568588d25f8c7ee473f"
+    },
+    {
+      "path": "apps/indexer/src/curve-fixture-earnings-postgres-smoke.ts",
+      "normalization": "canonical-lf",
+      "bytes": 7538,
+      "sha256": "e2fd9f04465cc364081b42ed9d9471e407b9edb76e1d164dde14291d08f5d52f"
+    },
+    {
+      "path": "apps/indexer/src/curve-fixture-worker.ts",
+      "normalization": "canonical-lf",
+      "bytes": 38714,
+      "sha256": "c3985efff937ba7bacef0b1373420e442e6485856d2da01f200379321a722e79"
+    },
+    {
+      "path": "apps/indexer/src/nft-acquisition-fixture-evidence.test.ts",
+      "normalization": "canonical-lf",
+      "bytes": 14214,
+      "sha256": "3f127dc4d0a9f33feb68bbc10d90e9dbb0174ea69c058b59271d9d045e6a167f"
+    },
+    {
+      "path": "apps/indexer/src/nft-acquisition-fixture-evidence.ts",
+      "normalization": "canonical-lf",
+      "bytes": 30414,
+      "sha256": "5bb0cad5627d8ff57480fb21cd3154e29e4a4e8df0b3a4677277fdb1c18f601d"
+    },
+    {
+      "path": "apps/indexer/src/nft-acquisition-fixture-postgres-smoke.ts",
+      "normalization": "canonical-lf",
+      "bytes": 8151,
+      "sha256": "ddd3a6c249ad3aad63428549c36d77fe7f7ba1275e2054f8a4888b489205c6f8"
+    },
+    {
+      "path": "apps/indexer/src/nft-acquisition-fixture-store.ts",
+      "normalization": "canonical-lf",
+      "bytes": 7569,
+      "sha256": "aafb00660c52f947cf6943b57968392ce5281cfa7a2a478f71e84f9b3bb6def7"
+    },
+    {
+      "path": "apps/indexer/src/nft-acquisition-fixture-types.ts",
+      "normalization": "canonical-lf",
+      "bytes": 2030,
+      "sha256": "ab3b6bf6a9e1a71d678e5052412329093bdb6aac623d769550be05fe5f298283"
+    },
+    {
+      "path": "apps/launch-website/app/_components/nft-acquisition-dashboard.tsx",
+      "normalization": "canonical-lf",
+      "bytes": 35254,
+      "sha256": "6fa6da2d16697a4c037afc94ffd6b8e9357add1af041fa8e6502e2a811c994cd"
+    },
+    {
+      "path": "apps/launch-website/app/_components/test-lifecycle-wallet.tsx",
+      "normalization": "canonical-lf",
+      "bytes": 41011,
+      "sha256": "c0d3d706cf5f38e5d8064ed0c68c1a7d55021da7fbd71c6ab74bfcd9d3cc6913"
+    },
+    {
+      "path": "apps/launch-website/app/_components/treasury-dashboard.tsx",
+      "normalization": "canonical-lf",
+      "bytes": 13845,
+      "sha256": "24e27d1503b5e2909c337c1d994d42bcc68f5bb0c1fc0946e054fb427ba83b7a"
+    },
+    {
+      "path": "apps/launch-website/app/_components/treasury-wallet-controls.tsx",
+      "normalization": "canonical-lf",
+      "bytes": 30297,
+      "sha256": "be7d0c11d02f405f8353cdab23b9da30adb8e02a1f5b89f81df99a33b21e936c"
+    },
+    {
+      "path": "apps/launch-website/app/api/nft-acquisition/route.ts",
+      "normalization": "canonical-lf",
+      "bytes": 280,
+      "sha256": "f7df333e115fa2ffaf0a71eac7edc58ae20c168b244867d450ebc1fb0ac3f1dc"
+    },
+    {
+      "path": "apps/launch-website/app/my-launches/treasury/nft-purchases/page.tsx",
+      "normalization": "canonical-lf",
+      "bytes": 484,
+      "sha256": "f1026e94bcc3b8a7b5ca1bdd49956e2c6ec1c48c22a5f3503b991cb97d37cf34"
+    },
+    {
+      "path": "apps/launch-website/lib/nft-acquisition-calldata.ts",
+      "normalization": "canonical-lf",
+      "bytes": 5242,
+      "sha256": "ead5902e6a5d1959c4c8059021e3e60cd7583377d44715f6d6ce18ee78e74fd0"
+    },
+    {
+      "path": "apps/launch-website/lib/nft-acquisition-recovery.ts",
+      "normalization": "canonical-lf",
+      "bytes": 6991,
+      "sha256": "7c4109f819a83bc32e80f89944fc72a0f8a9fc372673322528b19f41b52a7bdc"
+    },
+    {
+      "path": "apps/launch-website/lib/nft-acquisition-safe-recovery.ts",
+      "normalization": "canonical-lf",
+      "bytes": 7027,
+      "sha256": "2c91d11235a8baf5b8a4cb2ae7bb1637aa88f79c86c641c1e7de674de0671b42"
+    },
+    {
+      "path": "apps/launch-website/lib/nft-acquisition-safe.ts",
+      "normalization": "canonical-lf",
+      "bytes": 9862,
+      "sha256": "679ac39ca9e5564ff3c4ee6033fdd2178504ffac809c4f81ee8ae54f238e4f65"
+    },
+    {
+      "path": "apps/launch-website/lib/nft-acquisition.ts",
+      "normalization": "canonical-lf",
+      "bytes": 9469,
+      "sha256": "9a7a6ae30aa57b80a38aff4167d5b077a504afc61070897b5b91aa58aed21f6d"
+    },
+    {
+      "path": "apps/launch-website/lib/server/nft-acquisition-actions.ts",
+      "normalization": "canonical-lf",
+      "bytes": 35189,
+      "sha256": "ec225e52cc6a2f9d44dabe63ed2bb268a6d92e650895059eaa6222dc3ebecf22"
+    },
+    {
+      "path": "apps/launch-website/lib/server/nft-acquisition-fixture.ts",
+      "normalization": "canonical-lf",
+      "bytes": 17489,
+      "sha256": "454aab6a83b77160bb8e171cf4f8fecd22ee0b523f00d49e92d6f54d93c0492e"
+    },
+    {
+      "path": "apps/launch-website/lib/server/nft-acquisition-safe-actions.ts",
+      "normalization": "canonical-lf",
+      "bytes": 10966,
+      "sha256": "73129f50ac5d239be0d43a6112af310e09d23ef25b019a31c03061e9e36bd481"
+    },
+    {
+      "path": "apps/launch-website/lib/server/nft-acquisition-snapshot.test.json",
+      "normalization": "canonical-lf",
+      "bytes": 3298,
+      "sha256": "997d38cc2534fa95350764e4893fdcd99f424d3d5b2fce517c672f85dba334d8"
+    },
+    {
+      "path": "apps/launch-website/lib/server/nft-acquisition.test.ts",
+      "normalization": "canonical-lf",
+      "bytes": 18780,
+      "sha256": "078fda14aebaba18756215c2a16df834f9061cb7d5272e3802b8e132c07bc1b2"
+    },
+    {
+      "path": "apps/launch-website/middleware.ts",
+      "normalization": "canonical-lf",
+      "bytes": 5467,
+      "sha256": "8d9a1ae3b690de869d4a1654dd2fe1b1fe658aec31d61045c8dff2127f4ee466"
+    },
+    {
+      "path": "knip.json",
+      "normalization": "canonical-lf",
+      "bytes": 2935,
+      "sha256": "1666836d7c4e655b3bc294e020a1b7ce355a421252b1ec7786ec8fbcb3bcf1d9"
+    },
+    {
+      "path": "packages/contracts/nft-acquisition/src/NftAcquisitionAccounts.sol",
+      "normalization": "canonical-lf",
+      "bytes": 2341,
+      "sha256": "3aa7822061e9f6347dbba1db3625347270c1a905a43ccc5ac20acaa86a056e3f"
+    },
+    {
+      "path": "packages/contracts/nft-acquisition/src/NftAcquisitionTypes.sol",
+      "normalization": "canonical-lf",
+      "bytes": 2144,
+      "sha256": "ee08f38f1210eb9b857f19e1b8d007626f8584f9953e4e4e3aed72d8a3ee7a5d"
+    },
+    {
+      "path": "packages/contracts/nft-acquisition/src/RMTNftAcquisitionFactoryV1.sol",
+      "normalization": "canonical-lf",
+      "bytes": 4768,
+      "sha256": "d4e4adfd31e808af8c2ebdb4c3e9defa3cd169f2b81462e5db2ee31e5d00253a"
+    },
+    {
+      "path": "packages/contracts/nft-acquisition/src/RMTNftAcquisitionVaultV1.sol",
+      "normalization": "canonical-lf",
+      "bytes": 19219,
+      "sha256": "6143d8af3e3bb87e9f1b377573a9ffb891c8a94f0f6d30ce8d9ac78767791890"
+    },
+    {
+      "path": "packages/contracts/nft-acquisition/src/SyntheticNftListingVenueV1.sol",
+      "normalization": "canonical-lf",
+      "bytes": 5362,
+      "sha256": "9ef6357c193ba6df74ca0a9c495984ac07324e89a1a5294fa14b4da70b5d31e6"
+    },
+    {
+      "path": "packages/contracts/nft-acquisition/test/NftAcquisition.t.sol",
+      "normalization": "canonical-lf",
+      "bytes": 20830,
+      "sha256": "0d8540d9093b847c854fe7f6feeda5dcf83f92542d5d9c9640cb15fe58b04ae1"
+    },
+    {
+      "path": "packages/contracts/nft-acquisition/test/NftAcquisitionInvariant.t.sol",
+      "normalization": "canonical-lf",
+      "bytes": 3241,
+      "sha256": "0a167de4ec32c07bd43a28a6a29c8860e491b3b700258d22afbac7fb66a7ee99"
+    },
+    {
+      "path": "packages/contracts/nft-acquisition/test/fixtures/NftAcquisitionAssets.sol",
+      "normalization": "canonical-lf",
+      "bytes": 8932,
+      "sha256": "ce2e9334390d8f4cb11d6f0c7664c90a8998d137ced2fe9f7044ba0b4df6e126"
+    },
+    {
+      "path": "packages/launchpad-common/nft-acquisition-proof.d.mts",
+      "normalization": "canonical-lf",
+      "bytes": 521,
+      "sha256": "0a6ddbd34f32210a2522b5bc38e61b553b165f86045247c2c2f0e3473b027134"
+    },
+    {
+      "path": "packages/launchpad-common/nft-acquisition-proof.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 4447,
+      "sha256": "4dfd44aeb83518fde99d4936ffb3295f65cc5c193ad9da8eff0533738cfaa031"
+    },
+    {
+      "path": "packages/launchpad-common/nft-acquisition-runtime.d.mts",
+      "normalization": "canonical-lf",
+      "bytes": 748,
+      "sha256": "389c1529d2ee0e0321dc7590871584ba039bd53bb6b8e64515ffdbba2af3ada6"
+    },
+    {
+      "path": "packages/launchpad-common/nft-acquisition-runtime.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 9021,
+      "sha256": "872d8496e1d26f06e709785aa9d8cfb1c7ab4d250ecce542c29f99586f3f4c30"
+    },
+    {
+      "path": "packages/launchpad-common/nft-collection-resolver.d.mts",
+      "normalization": "canonical-lf",
+      "bytes": 1670,
+      "sha256": "4115466126eecb892645013a3c553113d1f4a68b46fdb92a64fdfd31db4ccd10"
+    },
+    {
+      "path": "packages/launchpad-common/nft-collection-resolver.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 7725,
+      "sha256": "959cb3c1946bd954481fa33d3e2f3e244846d21b3a66b3c0fb151d82973066e5"
+    },
+    {
+      "path": "packages/launchpad-common/nft-collection-resolver.test.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 7313,
+      "sha256": "7859a53ed00ed6b14ab0281327d7709f443429e7f312e4667bc66d231698769b"
+    },
+    {
+      "path": "scripts/nft-acquisition/browser-integration.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 20144,
+      "sha256": "9623881f44c96179a120b9bb670645b59fab9f2dc5279d0c1672baa0a5cf34da"
+    },
+    {
+      "path": "scripts/nft-acquisition/browser-public.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 5065,
+      "sha256": "50470cccb7eb8c72ee1082321d7d5afe94dad1933d11e7aa01e5212297ab12d4"
+    },
+    {
+      "path": "scripts/nft-acquisition/compiler.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 9389,
+      "sha256": "dcb24be51028934da6c9ef496bd6280c6a83007fb75cb028c5f13be3ca3fb69d"
+    },
+    {
+      "path": "scripts/nft-acquisition/deploy-fixture.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 10829,
+      "sha256": "b6281695ed9efa3e4b52d768cb61215c129160305b0c30b2189257da39e75b34"
+    },
+    {
+      "path": "scripts/nft-acquisition/local-integration.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 20241,
+      "sha256": "f2bb8dc9614972577a91668b49500124755369c97b12c0d109ecd5e4b543b5b9"
+    },
+    {
+      "path": "scripts/nft-acquisition/trace.test.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 2292,
+      "sha256": "949f71b2299a5be770ab5c345e020f257a1618d05bc42e5e869353e55eacb0bd"
+    },
+    {
+      "path": "scripts/nft-marketplace/probe-4663.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 12402,
+      "sha256": "58b5e63bb1b86cb9817313c55ad58ff239f122d9e5e11176541dc00445d30d59"
+    },
+    {
+      "path": "scripts/nft-marketplace/probe-4663.test.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 1481,
+      "sha256": "a82807b3fdab99d8014911976d9f252fb7d216dffc45bb5f8bb0f03c3f63e535"
+    },
+    {
+      "path": "scripts/reclaim-v2/browser-integration.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 33273,
+      "sha256": "31892c526ef4256ba3a1bf74c9e4964e1d2b21128d4d5440cd897fbe6306fddf"
+    },
+    {
+      "path": "scripts/visual-qa/rmt-creator-integration.mjs",
+      "normalization": "canonical-lf",
+      "bytes": 94504,
+      "sha256": "657848413884f910efa44db7a0b6d7c416789e36891387529f66d6dd7abfe30a"
+    }
+  ],
+  "browsers": {
+    "chromium": {
+      "artifactId": "14540088038",
+      "jobId": "135632066854",
+      "conclusion": "success",
+      "checkoutCommit": "e82b2c83486d30b73550f9eb7a3a9b560330e855",
+      "archiveSha256": "9c30f3235f05e67e7b3ab2707d12d21116ec8a8d6c917b7649dc2f8283c3a2d1",
+      "archiveBytes": 7702387,
+      "files": [
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-acquisition-acceptance.json.gz",
+          "bytes": 71839,
+          "sha256": "a3adbaca91a0f327937c5078e9f82dbd218addd1363ba74aa9044957df67ec28",
+          "uncompressedBytes": 579779,
+          "uncompressedSha256": "23d16353cc8f42f61073fccd2474a46ecce5b562d562e6cdb99d915cbe6a1e0b"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-acquisition-browser-evidence.json.gz",
+          "bytes": 53190,
+          "sha256": "28d6f35bb1d503bb1e702dac4d94892801e20fd31169d756a1a97e03d4f3ced1",
+          "uncompressedBytes": 722950,
+          "uncompressedSha256": "a1415786815647646e6cf9703cfeb5f46a2d2e8e1b990dd90f36f98bd293bffb"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-acquisition-compiler-manifest.json.gz",
+          "bytes": 1753,
+          "sha256": "f7b87271ba31573d9af823a06809b367fc42a51bf3bb3436292e867c8eb18705",
+          "uncompressedBytes": 4583,
+          "uncompressedSha256": "bed6b250c35be17dc09b6bc61fcaa6cc4c13cc934770568e397d5b30e59423e1"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-acquisition-deployment.json.gz",
+          "bytes": 28047,
+          "sha256": "52e6cb319ef3b6d54cbf0e1b8187eccc83612151d2cc5d5735126b89c56d53e1",
+          "uncompressedBytes": 107935,
+          "uncompressedSha256": "9643285b0ebfdda6102cc388db483f87a33efcfb8b71afdb8a755a18b38de21f"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-acquisition-desktop.png",
+          "bytes": 105449,
+          "sha256": "636815bce751e67b6d2a855031324d77f6ddae45cb1ed0dcdd89d2981a600ab5"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-acquisition-landscape.png",
+          "bytes": 126136,
+          "sha256": "9159609b1d001c5c9d59800e1171a38541f4dd87396ab59bd128d0b16eaeafd5"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-acquisition-portrait.png",
+          "bytes": 260649,
+          "sha256": "4933f36fbafe01ae68df18e85ab508e25aad644edf0a253434a064141cc05f20"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-acquisition-setup.json.gz",
+          "bytes": 33578,
+          "sha256": "2fe9f2f3ca2b8616242f8f906bac3351020f6d1b6591381805b94381a3d27427",
+          "uncompressedBytes": 129072,
+          "uncompressedSha256": "c2238f6ac1db6f55566e2995909d27a8e550a8a891a784cb6c772b71b36fe4a4"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-1155-9-cost-viewport.png",
+          "bytes": 217356,
+          "sha256": "f8ec0708ad094c7b322e0ff06a468ecb92607bc0f27720a45cf99048c05d3d93"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-1155-9-top-viewport.png",
+          "bytes": 246213,
+          "sha256": "c996e3361f90609d95c2ef77352595897c11c1268a381a96a92f671388bb527f"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-13-cost-viewport.png",
+          "bytes": 234818,
+          "sha256": "f75602bc7d56afe4a7cf6978e5562ed63dcee073329b1c6a02f40abcbf1d191d"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-13-top-viewport.png",
+          "bytes": 247014,
+          "sha256": "a1607d1aa023c05cc763802e97a6b36ef6e4ee1c7683f6ff0dcceb24aab1b42f"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-16-cost-viewport.png",
+          "bytes": 217099,
+          "sha256": "51b398ec50c766769535e79140ed53de3d644f5468999a21c49cdb3e123700c0"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-16-top-viewport.png",
+          "bytes": 246322,
+          "sha256": "41bd26159522b456ffd3e11bd1009eba77a383c8c1afc25fd9f9d0dfe008c98b"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-17-cost-viewport.png",
+          "bytes": 218831,
+          "sha256": "bca5e4a34fb3fde6b4b68b8d7720df2953735c519c557d5d7821a2d8dfc8561a"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-17-top-viewport.png",
+          "bytes": 247949,
+          "sha256": "741c78e99d8b0a90607eb323dd96941fcfee1a93dd488a7e5ec7b733cad5f0c7"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-5-cost-viewport.png",
+          "bytes": 219340,
+          "sha256": "b2427c5224985e3dd4f02ab57c2c894eb7ea0efab78b28932c6185c3a208ae30"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-5-top-viewport.png",
+          "bytes": 249056,
+          "sha256": "9ec6a504f262f214ec7bad18e3300eff4a0bdc0c2d34358da93cf449ddfb8c9f"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-6-cost-viewport.png",
+          "bytes": 219340,
+          "sha256": "b2427c5224985e3dd4f02ab57c2c894eb7ea0efab78b28932c6185c3a208ae30"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-direct-721-6-top-viewport.png",
+          "bytes": 249056,
+          "sha256": "9ec6a504f262f214ec7bad18e3300eff4a0bdc0c2d34358da93cf449ddfb8c9f"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-safe-outer-1155-24-cost-viewport.png",
+          "bytes": 227712,
+          "sha256": "b0ab1c835ff4d892069090c244748205983c9a3922e374042ef9c6a01814b103"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-safe-outer-1155-24-top-viewport.png",
+          "bytes": 228839,
+          "sha256": "11121399e23269b43cdf8d6c8ebe0a9366900c4ec948d48a287b668fce936a1e"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-safe-outer-721-27-cost-viewport.png",
+          "bytes": 231170,
+          "sha256": "c570e74437d0c93215311a1a7434bdb4c099fc50f84b241bdd4781b9e3e51b32"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/nft-safe-outer-721-27-top-viewport.png",
+          "bytes": 228312,
+          "sha256": "0927ff3892d1c2a084514aff0c798b68d5ce555f6c2ea226bacf2d75af95fb9c"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/public-data-classification.json",
+          "bytes": 48019,
+          "sha256": "681d436fbfcc9c4d90ac522b684385e6d3a11d462d5923cc752ba10bd1ec21b5"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/chromium/raw-gitleaks-report.json.gz",
+          "bytes": 2060,
+          "sha256": "39fc61094ce0fb937594f74ea7db31bac0d53652c8725975cc6ddb8fc9b80c9c",
+          "uncompressedBytes": 75213,
+          "uncompressedSha256": "da44a0c5ba76165f048c3f480d84506847dfe778a6a894b78eb595b225151348"
+        }
+      ]
+    },
+    "webkit": {
+      "artifactId": "14540641931",
+      "jobId": "135632066665",
+      "conclusion": "success",
+      "checkoutCommit": "e82b2c83486d30b73550f9eb7a3a9b560330e855",
+      "archiveSha256": "773d9dbea6f0c8b23c3562d0758cad4b47d395e713e007ba04f940cd66526f37",
+      "archiveBytes": 8537066,
+      "files": [
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-acquisition-acceptance.json.gz",
+          "bytes": 71755,
+          "sha256": "c654ea5a068039d5d7942f31dff260c4205ada2519f4c0d681b1e5c88626e673",
+          "uncompressedBytes": 579777,
+          "uncompressedSha256": "9ea95f853b69295c6a1b99ee62c869f34f2718790657729acee83de5db2d6e0d"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-acquisition-browser-evidence.json.gz",
+          "bytes": 52337,
+          "sha256": "a8e330977c33ba6b3d863874f71303da43efeadfd9e39505a505d2d6555cb05a",
+          "uncompressedBytes": 687642,
+          "uncompressedSha256": "9af448388fdbe28858b4565882fad5297c92df1a900f6801cd4f90de667a4bdd"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-acquisition-compiler-manifest.json.gz",
+          "bytes": 1753,
+          "sha256": "f7b87271ba31573d9af823a06809b367fc42a51bf3bb3436292e867c8eb18705",
+          "uncompressedBytes": 4583,
+          "uncompressedSha256": "bed6b250c35be17dc09b6bc61fcaa6cc4c13cc934770568e397d5b30e59423e1"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-acquisition-deployment.json.gz",
+          "bytes": 28051,
+          "sha256": "349d82e332fb8b3d97231376a4c611d96eb012506db56fb7bd0002eda66e9574",
+          "uncompressedBytes": 107935,
+          "uncompressedSha256": "4cc7a08513e566611b09680cad2f00e2614c247e5fc1cbdd8085413a85e0f00b"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-acquisition-desktop.png",
+          "bytes": 124366,
+          "sha256": "29b6b5bd01725fa5281c61bd0b0a654f329f244a6140859b42d1ee9c3a902942"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-acquisition-landscape.png",
+          "bytes": 152925,
+          "sha256": "5b3300acf6449460ae0d6bd7cb9e48fc2c8264f0959621ca93ebab77a4d55206"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-acquisition-portrait.png",
+          "bytes": 300932,
+          "sha256": "c57d5f19da64412909526cf1a4f00d0dee7c8d57d0691b8ebd15563ba6b0784a"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-acquisition-setup.json.gz",
+          "bytes": 33591,
+          "sha256": "b8e133e6be468af6965b2907607c8c511f090d9682a446925c5b56c0e5114245",
+          "uncompressedBytes": 129072,
+          "uncompressedSha256": "6702c16603e82e6f729a1688a865fd6caf7cefe16b590b9db9acaf5987c5984e"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-1155-9-cost-viewport.png",
+          "bytes": 271326,
+          "sha256": "1b34801716a609045bd6d3a7ca638d7deb5fe48319d5c94794ad14d31d971cf8"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-1155-9-top-viewport.png",
+          "bytes": 292405,
+          "sha256": "e05559fdc8492238b72923f80bbf97db8a4c47ef48b355c9f090f4981b6075c3"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-13-cost-viewport.png",
+          "bytes": 292524,
+          "sha256": "1c5913aa68f3097385ee0d37d8628142312bb6b75e01fcf4afb9eb97db6d9092"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-13-top-viewport.png",
+          "bytes": 292849,
+          "sha256": "60e6c95146a998ee227a479ce319a07f61499c26a30a3eb385fb74898ff2bc86"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-16-cost-viewport.png",
+          "bytes": 274075,
+          "sha256": "f4470e5eedf654d7dd5623c59c7a93c7c55deabe094a5e07142720f1a7a9d27b"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-16-top-viewport.png",
+          "bytes": 295405,
+          "sha256": "ea0e05152e7ec8e857d2117cb7b952e18249de577449f425b230ca2353e0b6f7"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-17-cost-viewport.png",
+          "bytes": 270133,
+          "sha256": "ced5dea7751690c98786ccd58cd1decdcc442182d5c97607cf34e40f0e9ed652"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-17-top-viewport.png",
+          "bytes": 291440,
+          "sha256": "14a1e5179a2def37863d9d54ad7b1ceaa1e10fc5f6dc2cab876e0a729b2d2b1f"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-5-cost-viewport.png",
+          "bytes": 272568,
+          "sha256": "af95bb524558bc1e4a85a583b03cbbdd02e3c94f0d3d31824ec940b7fa23cccc"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-5-top-viewport.png",
+          "bytes": 294415,
+          "sha256": "ac95b7bd4c0b3de8bd647d7908e1eff9c8018814e19c2c1d420c74f6c9ba2ea3"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-6-cost-viewport.png",
+          "bytes": 272568,
+          "sha256": "af95bb524558bc1e4a85a583b03cbbdd02e3c94f0d3d31824ec940b7fa23cccc"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-direct-721-6-top-viewport.png",
+          "bytes": 294415,
+          "sha256": "ac95b7bd4c0b3de8bd647d7908e1eff9c8018814e19c2c1d420c74f6c9ba2ea3"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-safe-outer-1155-24-cost-viewport.png",
+          "bytes": 266631,
+          "sha256": "b343f94e7e1d1059e2adabd8127b6c794d21dc8c7bad864c16eb311b322fa467"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-safe-outer-1155-24-top-viewport.png",
+          "bytes": 254697,
+          "sha256": "93c8a64a0d3856e1e6fc710d1ac99a03d8986b3b7713e2b165e4d714c11d9b48"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-safe-outer-721-27-cost-viewport.png",
+          "bytes": 258643,
+          "sha256": "d7a37c4a08967696930bd38377435176e4de6105a15c19473b12063181f15837"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/nft-safe-outer-721-27-top-viewport.png",
+          "bytes": 253948,
+          "sha256": "6c980b65f5412506ffd7aa4aa68d5b7bd53ac25321da1e07b63bff74dc7d0c68"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/public-data-classification.json",
+          "bytes": 48019,
+          "sha256": "e052145de34eb2967660961d59a0465cda101debc235766ccb5ffe380b287307"
+        },
+        {
+          "path": "docs/evidence/rmt-task081/browser/webkit/raw-gitleaks-report.json.gz",
+          "bytes": 2075,
+          "sha256": "6846c35a2edc98c0e58a6ea27abfd76baebbe11487d3dbc4b11ffaa0de0cd71b",
+          "uncompressedBytes": 74863,
+          "uncompressedSha256": "d4447ed3d1c67171d35eafc6b0cace9ce4735d88db5cdd7130eca4baa06fa327"
+        }
+      ]
+    }
+  },
+  "strictSecurityJob": {
+    "jobId": "135632066637",
+    "conclusion": "failure"
+  }
+}

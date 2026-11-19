@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import {createHash} from "node:crypto";
+import {execFileSync} from "node:child_process";
+import {fileURLToPath} from "node:url";
 import {readFileSync} from "node:fs";
 import {createRequire} from "node:module";
 import {gunzipSync} from "node:zlib";
@@ -21,9 +23,9 @@ function bytes(path){assert.match(path,/^docs\/evidence\/rmt-task080\/browser\/(
 function load(engine,name){return JSON.parse(gunzipSync(bytes(`docs/evidence/rmt-task080/browser/${engine}/${name}.json.gz`),{maxOutputLength:4*1024*1024}));}
 function data(engine){return{a:load(engine,"reclaim-acceptance"),b:load(engine,"reclaim-browser-evidence"),m:load(engine,"reclaim-deployment"),setup:load(engine,"reclaim-setup"),policy:load(engine,"reclaim-administration-policy"),compiler:load(engine,"reclaim-compiler-manifest"),budget:load(engine,"budget-browser--reclaim-browser-evidence")};}
 
-test("archived browser evidence binds the actual current implementation without granting production or physical-wallet approval",()=>{
+test("archived Task080 browser evidence binds its exact recorded Git source without clearing later implementations",()=>{
   assert.equal(manifest.productionAuthorization,false);assert.equal(manifest.physicalIPhoneAcceptance,false);assert.equal(manifest.verifiedSourceFiles.length,20);assert.equal(new Set(manifest.verifiedSourceFiles.map(row=>row.path)).size,20);
-  for(const row of manifest.verifiedSourceFiles){assert.equal(row.normalization,"canonical-lf");assert.ok(!row.path.includes("..")&&!row.path.includes("\\")&&!row.path.startsWith("/"));const actual=Buffer.from(readFileSync(new URL("../../../"+row.path,import.meta.url),"utf8").replaceAll("\r\n","\n"));assert.equal(actual.length,row.bytes);assert.equal(sha(actual),row.sha256);}
+  for(const row of manifest.verifiedSourceFiles){assert.equal(row.normalization,"canonical-lf");assert.ok(!row.path.includes("..")&&!row.path.includes("\\")&&!row.path.startsWith("/"));const actual=execFileSync("git",["show",manifest.sourceCommit+":"+row.path],{cwd:fileURLToPath(new URL("../../../",import.meta.url)),windowsHide:true});assert.equal(actual.length,row.bytes);assert.equal(sha(actual),row.sha256);}
   assert.equal(manifest.ciChecks.filter(row=>row.state==="FAILURE").length,5,"Retain five strict analysis failures independently of passing browser checks");
 });
 

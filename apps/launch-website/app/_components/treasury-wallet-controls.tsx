@@ -9,6 +9,7 @@ import { isLocalTestWallet, isTransactionHash } from "../../lib/test-creation";
 import { connectTestWallet, subscribeTestWallet, testProviderAtWindow, testWalletErrorCode, type TestWallet } from "../../lib/test-wallet";
 import { readActiveTestCreation } from "../../lib/test-creation-history";
 import { assertNoPendingReclaim } from "../../lib/reclaim-recovery";
+import {assertNoPendingNftAcquisition} from "../../lib/nft-acquisition-recovery";
 import { treasuryPurchaseIntentAction, treasuryPurchaseIntentLabel } from "../../lib/treasury-purchase-capability";
 import { isProjectTreasuryProof, isProjectTreasuryReview, isProjectTreasurySnapshot, projectTreasuryProfile, projectTreasuryTestPath,
   treasuryHash, type ProjectTreasuryOperation, type ProjectTreasuryProof, type ProjectTreasuryReview,
@@ -46,6 +47,7 @@ function readJournals(): Journal[] {
  * outcome. Canonically observed completed receipts remain recoverable history. */
 export function assertNoUnresolvedFinancialRequests(account: string) {
   assertNoPendingReclaim(localStorage, account);
+  assertNoPendingNftAcquisition(localStorage, account);
   if (readJournals().some(j => same(j.review.actor, account) && !terminal(j))) throw Error("Recover the earlier treasury transaction before creating a token.");
   if (listClaimJournals(localStorage).some(j => same(j.review.gasPayer, account)
     && !["canonical-l2", "settled", "reverted", "wallet-rejected"].includes(j.stage))) throw Error("Recover the earlier profiled claim before creating a token.");
@@ -177,6 +179,7 @@ export function useTreasuryExecution({ fixture, treasury, expected, onVerified, 
       };
       const available = () => {
         assertNoPendingReclaim(localStorage, original.actor);
+        assertNoPendingNftAcquisition(localStorage, original.actor);
         const all = readJournals(), old = all.find(j => j.review.reviewHash === original.reviewHash);
         if (old && !(old.stage === "wallet-rejected" && old.transactionHash === null)) throw Error("Recover the original treasury transaction; do not submit it again.");
         if (all.some(j => !terminal(j) && j.review.reviewHash !== original.reviewHash && same(j.review.actor, original.actor)

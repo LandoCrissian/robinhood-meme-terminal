@@ -1,0 +1,53 @@
+{
+  "schemaVersion": 1,
+  "status": "FULL_HISTORY_SECRET_GATE_FAILED_PUBLIC_PROTOCOL_IDENTIFIER_OBSERVATION",
+  "sourceCommit": "d01937b1d10310f1faa6e6520691632d3c366af3",
+  "tool": "Gitleaks 8.30.1",
+  "command": "gitleaks git . --config .gitleaks.toml --redact=100 --report-format json --report-path <outside-repository> --no-banner",
+  "localResult": {
+    "exit": 1,
+    "commitsScanned": 1956,
+    "findings": 1,
+    "rawRedactedReport": "git-history-gitleaks.json.gz",
+    "rawSha256": "e0f097b244d2e2d65ac011f925603bf02e83116ac8ccd3492c9ff6f974f041a6"
+  },
+  "ci": {
+    "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44536834460/job/135604372978",
+    "status": "FAILURE",
+    "fullHistoryGateCleared": false
+  },
+  "finding": {
+    "rule": "generic-api-key",
+    "sourcePath": "scripts/nft-marketplace/probe-4663.mjs",
+    "sourceCommit": "1eec8bee33023db343bcd5ae1373f540f613d9a4",
+    "line": 12,
+    "fingerprint": "1eec8bee33023db343bcd5ae1373f540f613d9a4:scripts/nft-marketplace/probe-4663.mjs:generic-api-key:12",
+    "originalSourceBlobGitSHA1": "6021400052fb006b4869382364abbb37010fac36",
+    "originalSourceLine": "original-public-identifier-line.txt.gz",
+    "originalSourceLineSha256": "65cd838ea57d24e35a3b48527fa1951a778c0e60c5c3130c509182c5b1dfbd3c"
+  },
+  "binding": {
+    "kind": "PUBLIC_OPENSEA_CONDUIT_IDENTIFIER_NOT_AUTHENTICATION_CREDENTIAL",
+    "sourceUrl": "https://raw.githubusercontent.com/ProjectOpenSea/opensea-sdk/3b6f8655f80263942108cf31ef15f6277610cd43/src/constants.ts",
+    "officialSourceSha256": "337ffe921834518bc0c6aec345e21b12bb60476ff4b10425a14740288710b7f0",
+    "officialConstant": "OPENSEA_CONDUIT_KEY_2",
+    "valueSha256Utf8Lowercase": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a",
+    "canonicalOnchainEvidence": "robinhood-4663.json.gz",
+    "canonicalProviderNames": [
+      "official",
+      "pocket"
+    ],
+    "currentSourceLiteralUnchanged": true
+  },
+  "scannerConfigurationChanged": false,
+  "suppressionAdded": false,
+  "historyRewritten": false,
+  "currentSourceScan": "script-gitleaks-after.json",
+  "currentSourceScanFindings": 0,
+  "limitations": [
+    "The native local redacted report is a separate reproduction, not a downloaded CI report.",
+    "A zero current-source scan does not clear a reachable Git-history finding.",
+    "No credential exists in this exact matched public identifier; no general credential or financial-security clearance follows.",
+    "The failed history gate remains in force; any exact-fingerprint treatment requires separate explicit review."
+  ]
+}

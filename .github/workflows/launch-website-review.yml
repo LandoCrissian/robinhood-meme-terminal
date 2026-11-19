@@ -120,6 +120,8 @@ jobs:
               --browser "$engine" --output "$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/purchase-capability"
             node scripts/reclaim-v2/browser-public.mjs --url http://127.0.0.1:3205/ \
               --browser "$engine" --output "$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/reclaim"
+            node scripts/nft-acquisition/browser-public.mjs --url http://127.0.0.1:3205/ \
+              --browser "$engine" --output "$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/nft-acquisition"
           done
           RMT_POLISH_URL=http://127.0.0.1:3205/ \
             RMT_POLISH_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/polish" pnpm test:polish

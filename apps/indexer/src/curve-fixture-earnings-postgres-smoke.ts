@@ -9,6 +9,7 @@ import { syntheticProductionConfig, syntheticProductionRegistration } from "./cu
 import type { FixtureFeeActivity } from "./curve-fixture-fee-activity.js";
 import { testProjectTreasuryFixturePostgres } from "./project-treasury-fixture-postgres-smoke.js";
 import { testReclaimFixturePostgres } from "./reclaim-fixture-postgres-smoke.js";
+import { testNftAcquisitionPostgres } from "./nft-acquisition-fixture-postgres-smoke.js";
 
 const address = (id: number): Address => `0x${((1n << 156n) + BigInt(id)).toString(16).padStart(40, "0")}`;
 const hash = (id: number): Hash => `0x${id.toString(16).padStart(64, "0")}`;
@@ -55,6 +56,7 @@ try {
   await assert.rejects(readCurveFixtureFeeActivity(writer, scope, { ...checkpoint, blockHash: hash(999) }, event.transactionHash), /checkpoint unavailable/);
   await testProjectTreasuryFixturePostgres(writer, competing, binding, graduation, checkpoint);
   await testReclaimFixturePostgres(writer, competing, binding, checkpoint);
+  await testNftAcquisitionPostgres(writer, competing, binding, checkpoint);
   await reader.connect();
   await reader.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
   const options = { recipient: treasury, operatingRecipient: binding.creationFeeRecipient,
