@@ -20,11 +20,12 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
   const vaultAbi = parseAbi(nftAcquisitionVaultSignatures), venueAbi = parseAbi(nftAcquisitionVenueSignatures), creator = creatorAccount.address;
   const evidence = { schemaVersion: 1, profile: m.profile, status: "incomplete", chainId: 31337, productionExecution: false,
     scope: "LOCAL_SYNTHETIC_NOT_PRODUCTION_OR_PHYSICAL_PHONE", sourceIdentity, module: m, compiler: compilation.manifest,
-    checks: {}, purchases: [], sameBlock: [], withdrawals: [], safeExecutions: [], screenshots: [] };
+    checks: {}, purchases: [], purchaseTraces:[],sameBlock: [], withdrawals: [], safeExecutions: [], screenshots: [] };
   evidence.postgresql={serverVersion:(await pg.query("SHOW server_version")).rows[0].server_version,encoding:(await pg.query("SHOW server_encoding")).rows[0].server_encoding};assert.match(evidence.postgresql.serverVersion,/^18\.6(?:\D|$)/);assert.equal(evidence.postgresql.encoding,"UTF8");
   const save = () => writeFileSync(join(out, "nft-acquisition-acceptance.json"), json(evidence));
   const read = (fn, args = []) => client.readContract({ address: m.vault, abi: vaultAbi, functionName: fn, args });
   const sync = async () => { await mine(); await ready(); };
+  async function retainPurchaseTrace(review,receipt){if(review.operation!=="buy")return;const trace=await rpc("debug_traceTransaction",[receipt.transactionHash,{tracer:"callTracer"}]);assert.ok(Buffer.byteLength(json(trace))<=131072,"Bound archived synthetic purchase trace");evidence.purchaseTraces.push({transactionHash:receipt.transactionHash,trace});save();}
   const post = async body => {
     const result = await fetch(new URL("/api/nft-acquisition", site), { method: "POST", headers: { Origin: new URL(site).origin, "Content-Type": "application/json" }, body: json(body) });
     return { http: result.status, body: await result.json() };
@@ -57,7 +58,7 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
       const verified = await session.verify(review, undefined, "confirmed"); assert.equal(verified.transactionHash, result.receipt.transactionHash);
       assert.equal(session.evidence.sends.length, before); evidence.checks.missingHashWithoutDuplicate = true;
     } else {await sync();await session.verify(review, result.receipt.transactionHash, "confirmed");}
-    return { review, ...result };
+    await retainPurchaseTrace(review,result.receipt);return { review, ...result };
   }
   async function safeComplete(operation, fields = {}, lose = false) {
     await session.account(owners[0].address); await session.configureSafe(true, creator, safe);
@@ -73,7 +74,7 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
     if (lose) {const unavailable=await post({action:"safe-verify",review:outer});assert.ok(["pending","unavailable"].includes(unavailable.body.status));hideReceipt(undefined);}
     await sync();if(lose){await session.reload(); await session.connect();}
     const verified = await session.safeVerify(outer, lose ? undefined : sent.receipt.transactionHash, "confirmed");
-    evidence.safeExecutions.push({ operation, proposal, outer, receipt: sent.receipt, verified }); save(); return { review: inner, outer, ...sent };
+    await retainPurchaseTrace(inner,sent.receipt);evidence.safeExecutions.push({ operation, proposal, outer, receipt: sent.receipt, verified }); save(); return { review: inner, outer, ...sent };
   }
   try {
     await session.connect(); assert.equal(await read("purchasesEnabled"), false);
@@ -125,7 +126,7 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
     await sync();const batchVerified=await session.verify(batchReview,firstBatchSend.receipt.transactionHash,"confirmed");
     assert.equal(Number((await pg.query("SELECT count(*)::int AS n FROM rmt_nft_acquisition_fixture_events WHERE transaction_hash=$1 AND payload->>'eventName'='PurchaseExecuted'",[firstBatchSend.receipt.transactionHash.toLowerCase()])).rows[0].n),1);
     assert.equal(Number((await pg.query("SELECT count(*)::int AS n FROM rmt_nft_acquisition_fixture_events WHERE transaction_hash=$1",[secondBatchReceipt.transactionHash.toLowerCase()])).rows[0].n),0);
-    evidence.sameBlock={successful:firstBatchSend.receipt,rejected:secondBatchReceipt,successfulVerification:batchVerified,reason:"Per-vault cooldown prevents two successful fills at one block timestamp",noFailedFillPaymentOrCustody:true};save();
+    await retainPurchaseTrace(batchReview,firstBatchSend.receipt);evidence.sameBlock={successful:firstBatchSend.receipt,rejected:secondBatchReceipt,successfulVerification:batchVerified,reason:"Per-vault cooldown prevents two successful fills at one block timestamp",noFailedFillPaymentOrCustody:true};save();
     // The pinned designator changes only this local fixture account. No live delegation action.
     const delegate = JSON.parse(gunzipSync(readFileSync(new URL("../../apps/launch-website/lib/server/claim-delegate-runtime.test.json.gz", import.meta.url)))).delegate;
     assert.equal(keccak256(delegate.code), delegate.runtimeHash); await rpc("anvil_setCode", [delegate.address, delegate.code]); await rpc("anvil_setCode", [creator, "0xef0100" + delegate.address.slice(2).toLowerCase()]); await sync();
