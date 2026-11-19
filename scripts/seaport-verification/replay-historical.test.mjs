@@ -37,3 +37,20 @@ test("all twenty raw scanner observations remain individually bound to public to
  assert.equal(sha(reportRaw),manifest.rawScannerReportSha256);assert.equal(rows.length,20);assert.equal(manifest.scanner.exitCode,1);assert.equal(manifest.scanner.unclassified,0);assert.equal(manifest.scanner.suppressionsAdded,false);assert.equal(rows.length,manifest.classifications.length);
  for(let i=0;i<rows.length;i++){const r=rows[i],c=manifest.classifications[i],line=lines[c.line-1],m=line.match(/"(token|conduitKey|fulfillerConduitKey)": "(0x[0-9a-fA-F]+)"/);assert.equal(r.RuleID,c.ruleId);assert.equal(r.StartLine,c.line);assert.equal(sha(line),c.lineSha256);assert.equal(sha(m[2]),c.publicValueSha256);assert.ok(known.includes(m[2].toLowerCase()));}
 });
+test("actual WETH and NFT Transfer logs reconcile the conduit transferFrom child routes without inventing balance proofs",()=>{
+ const p=evidence.providers.pocket,weth="0x0bd7d308f8e1639fab988df18a8011f41eacad73",nft="0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",conduit="0x963f00d3ff000064ffcba824b800c0000000c300",bidder=p.decoded.advancedOrder.parameters.offerer,seller=p.transaction.value.from,terms=p.decoded.advancedOrder.parameters.consideration,transferTopic=viem.keccak256(viem.toHex("Transfer(address,address,uint256)"));
+ const expected=[{asset:weth,from:bidder,to:seller,amount:900000000000000n},{asset:nft,from:seller,to:bidder,amount:408n},{asset:weth,from:seller,to:terms[1].recipient,amount:9000000000000n},{asset:weth,from:seller,to:terms[2].recipient,amount:90000000000000n}];
+ for(const point of Object.values(evidence.providers)){
+  const transfers=point.receipt.value.logs.filter(l=>l.topics[0]===transferTopic);assert.equal(transfers.length,4);
+  for(let i=0;i<expected.length;i++){const log=transfers[i],e=expected[i];assert.ok(same(log.address,e.asset));assert.ok(same("0x"+log.topics[1].slice(-40),e.from));assert.ok(same("0x"+log.topics[2].slice(-40),e.to));assert.equal(log.topics.length,e.asset===nft?4:3);assert.equal(e.asset===nft?BigInt(log.topics[3]):BigInt(log.data),e.amount);assert.equal(log.transactionHash,historicalSeaportTransaction);assert.equal(log.blockHash,point.receipt.value.blockHash);assert.equal(log.removed,false);}
+ }
+ const calls=p.trace.value.calls.filter(c=>same(c.to,conduit));assert.equal(calls.length,1);const route=calls[0];assert.equal(route.type,"CALL");assert.ok(same(route.from,p.transaction.value.to));assert.equal(route.error,undefined);const decoded=viem.decodeFunctionData({abi:loadSeaportArtifacts().Conduit.abi,data:route.input});assert.equal(decoded.functionName,"execute");assert.equal(decoded.args[0].length,4);assert.equal(route.calls.length,4);
+ for(let i=0;i<expected.length;i++){
+  const e=expected[i],c=route.calls[i],item=decoded.args[0][i];assert.equal(item.itemType,e.asset===nft?2:1);assert.ok(same(item.token,e.asset)&&same(item.from,e.from)&&same(item.to,e.to));assert.equal(item.identifier,e.asset===nft?408n:0n);assert.equal(item.amount,e.asset===nft?1n:e.amount);
+  assert.equal(c.type,"CALL");assert.ok(same(c.from,conduit)&&same(c.to,e.asset));assert.equal(c.error,undefined);const x=viem.decodeFunctionData({abi:viem.erc20Abi,data:c.input});assert.equal(x.functionName,"transferFrom");assert.ok(same(x.args[0],e.from)&&same(x.args[1],e.to));assert.equal(x.args[2],e.amount);assert.equal(BigInt(c.value),0n);if(e.asset===weth)assert.equal(viem.decodeFunctionResult({abi:viem.erc20Abi,functionName:"transferFrom",data:c.output}),true);
+  const delegate=c.calls.filter(child=>child.type==="DELEGATECALL");assert.equal(delegate.length,1);assert.ok(same(delegate[0].from,e.asset));assert.equal(delegate[0].input,c.input);assert.equal(delegate[0].error,undefined);
+ }
+ // Emitted asset events and successful call routes are corroborated. No historic
+ // balanceOf/ownerOf before/after state or proxy upgrade-policy proof is invented.
+ const netSeller=expected[0].amount-expected[2].amount-expected[3].amount;assert.equal(netSeller,801000000000000n);assert.equal(p.transaction.value.value,"0x0");assert.equal(evidence.executionApproved,false);
+});
