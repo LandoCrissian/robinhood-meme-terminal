@@ -14,6 +14,8 @@ const unzip=name=>gunzipSync(read(name));
 const inputHash="de1c5645525e7bc7b1a692974f158fec4e3f62f39a690db37d3377990c66838c";
 const source="d01937b1d10310f1faa6e6520691632d3c366af3";
 const base="c7e75623ff1163d8c36fd110fc7cf5188b814db1";
+const configCanonicalLfSha256="faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c";
+const configOriginalCrLfSha256="682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc";
 const execution=json("linux-execution.json"),dispositions=json("high-findings.json");
 const linux=JSON.parse(unzip("slither-linux.json.gz")),windows=JSON.parse(unzip("slither-windows.json.gz"));
 const counts=r=>r.detectors.reduce((a,f)=>(a[f.impact]=(a[f.impact]??0)+1,a),{});
@@ -24,6 +26,16 @@ function strictReport(r){
   assert.equal(r.tool,"Slither 0.11.5");assert.equal(r.cryticCompile,"0.3.11");assert.equal(r.detectors.length,48);
   assert.deepEqual(counts(r),{High:23,Medium:1,Low:15,Informational:9});
   assert.equal(new Set(ids(r)).size,48);
+}
+function verifyScanConfiguration(text,recordedRawSha256){
+  const canonical=text.replaceAll("\r\n","\n");
+  assert.ok(!canonical.includes("\r"),"Unexpected lone CR in scanner configuration");
+  assert.equal(sha(canonical),configCanonicalLfSha256,"Scanner rules changed");
+  // The actual scan used Windows checkout bytes. Preserve that recorded hash;
+  // derive precisely those CRLF bytes from the exact pinned LF Git content.
+  const originalBytes=canonical.replaceAll("\n","\r\n");
+  assert.equal(sha(originalBytes),configOriginalCrLfSha256);
+  assert.equal(recordedRawSha256,configOriginalCrLfSha256,"Original scan identity changed");
 }
 
 test("exact all-root compiler closure, hashes and immutable template sizes match the recorded review artifact",()=>{
@@ -98,7 +110,16 @@ test("artifact provenance and raw precompression secret scan preserve failed rel
   assert.equal(execution.staticAnalysis.artifactArchiveSha256,"b4c0b89ecf1ce29290ec1b9e30fe4ccd6e0c795e64908628b58679d425ddb48f");
   assert.equal(execution.compilerInputSha256,inputHash);assert.equal(execution.secretScan.rawBeforeCompression,true);
   assert.equal(execution.secretScan.version,"8.30.1");assert.equal(execution.secretScan.exit,0);assert.equal(execution.secretScan.findings,0);
-  assert.equal(execution.secretScan.configSha256,sha(readFileSync(resolve(repository,".gitleaks.toml"))));
+  verifyScanConfiguration(readFileSync(resolve(repository,".gitleaks.toml"),"utf8"),execution.secretScan.configSha256);
   const mapping={"nft-acquisition.json":"compiler-input.json.gz","nft-acquisition-manifest.json":"compiler-manifest-linux.json.gz","nft-acquisition-slither.json":"slither-linux.json.gz","slither-windows.json":"slither-windows.json.gz","foundry-linux-fragment.txt":"foundry-linux-fragment.txt.gz"};
   for(const f of execution.rawEvidence.artifacts){const bytes=unzip(mapping[f.file]);assert.equal(bytes.length,f.bytes);assert.equal(sha(bytes),f.sha256);}
+});
+
+test("configuration portability accepts only exact pinned LF content and its original CRLF scan identity",()=>{
+  const actual=readFileSync(resolve(repository,".gitleaks.toml"),"utf8"),lf=actual.replaceAll("\r\n","\n");
+  verifyScanConfiguration(lf,configOriginalCrLfSha256);verifyScanConfiguration(lf.replaceAll("\n","\r\n"),configOriginalCrLfSha256);
+  assert.throws(()=>verifyScanConfiguration(lf+"\n# changed rules or source\n",configOriginalCrLfSha256));
+  assert.throws(()=>verifyScanConfiguration(lf,configCanonicalLfSha256));
+  assert.throws(()=>verifyScanConfiguration(lf,"0".repeat(64)));
+  assert.throws(()=>verifyScanConfiguration(lf.replace("\n","\r"),configOriginalCrLfSha256));
 });
