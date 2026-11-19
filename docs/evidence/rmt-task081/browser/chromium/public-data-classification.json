@@ -1,0 +1,1069 @@
+{
+  "schemaVersion": 1,
+  "scope": "RAW_JSON_AND_PNG_BEFORE_COMPRESSION",
+  "scanner": "gitleaks",
+  "version": "8.30.1",
+  "configurationPath": ".gitleaks.toml",
+  "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
+  "exitCode": 1,
+  "findingCount": 103,
+  "classifiedCount": 103,
+  "countsByField": {
+    "projectToken": 62,
+    "paymentToken": 38,
+    "paymentTokenRuntimeHash": 3
+  },
+  "findingsSuppressed": false,
+  "historyGateCleared": false,
+  "rawFiles": [
+    {
+      "path": "nft-acquisition-acceptance.json",
+      "bytes": 579779,
+      "sha256": "23d16353cc8f42f61073fccd2474a46ecce5b562d562e6cdb99d915cbe6a1e0b"
+    },
+    {
+      "path": "nft-acquisition-browser-evidence.json",
+      "bytes": 722950,
+      "sha256": "a1415786815647646e6cf9703cfeb5f46a2d2e8e1b990dd90f36f98bd293bffb"
+    },
+    {
+      "path": "nft-acquisition-compiler-manifest.json",
+      "bytes": 4583,
+      "sha256": "bed6b250c35be17dc09b6bc61fcaa6cc4c13cc934770568e397d5b30e59423e1"
+    },
+    {
+      "path": "nft-acquisition-deployment.json",
+      "bytes": 107935,
+      "sha256": "9643285b0ebfdda6102cc388db483f87a33efcfb8b71afdb8a755a18b38de21f"
+    },
+    {
+      "path": "nft-acquisition-desktop.png",
+      "bytes": 105449,
+      "sha256": "636815bce751e67b6d2a855031324d77f6ddae45cb1ed0dcdd89d2981a600ab5"
+    },
+    {
+      "path": "nft-acquisition-landscape.png",
+      "bytes": 126136,
+      "sha256": "9159609b1d001c5c9d59800e1171a38541f4dd87396ab59bd128d0b16eaeafd5"
+    },
+    {
+      "path": "nft-acquisition-portrait.png",
+      "bytes": 260649,
+      "sha256": "4933f36fbafe01ae68df18e85ab508e25aad644edf0a253434a064141cc05f20"
+    },
+    {
+      "path": "nft-acquisition-setup.json",
+      "bytes": 129072,
+      "sha256": "c2238f6ac1db6f55566e2995909d27a8e550a8a891a784cb6c772b71b36fe4a4"
+    },
+    {
+      "path": "nft-direct-1155-9-cost-viewport.png",
+      "bytes": 217356,
+      "sha256": "f8ec0708ad094c7b322e0ff06a468ecb92607bc0f27720a45cf99048c05d3d93"
+    },
+    {
+      "path": "nft-direct-1155-9-top-viewport.png",
+      "bytes": 246213,
+      "sha256": "c996e3361f90609d95c2ef77352595897c11c1268a381a96a92f671388bb527f"
+    },
+    {
+      "path": "nft-direct-721-13-cost-viewport.png",
+      "bytes": 234818,
+      "sha256": "f75602bc7d56afe4a7cf6978e5562ed63dcee073329b1c6a02f40abcbf1d191d"
+    },
+    {
+      "path": "nft-direct-721-13-top-viewport.png",
+      "bytes": 247014,
+      "sha256": "a1607d1aa023c05cc763802e97a6b36ef6e4ee1c7683f6ff0dcceb24aab1b42f"
+    },
+    {
+      "path": "nft-direct-721-16-cost-viewport.png",
+      "bytes": 217099,
+      "sha256": "51b398ec50c766769535e79140ed53de3d644f5468999a21c49cdb3e123700c0"
+    },
+    {
+      "path": "nft-direct-721-16-top-viewport.png",
+      "bytes": 246322,
+      "sha256": "41bd26159522b456ffd3e11bd1009eba77a383c8c1afc25fd9f9d0dfe008c98b"
+    },
+    {
+      "path": "nft-direct-721-17-cost-viewport.png",
+      "bytes": 218831,
+      "sha256": "bca5e4a34fb3fde6b4b68b8d7720df2953735c519c557d5d7821a2d8dfc8561a"
+    },
+    {
+      "path": "nft-direct-721-17-top-viewport.png",
+      "bytes": 247949,
+      "sha256": "741c78e99d8b0a90607eb323dd96941fcfee1a93dd488a7e5ec7b733cad5f0c7"
+    },
+    {
+      "path": "nft-direct-721-5-cost-viewport.png",
+      "bytes": 219340,
+      "sha256": "b2427c5224985e3dd4f02ab57c2c894eb7ea0efab78b28932c6185c3a208ae30"
+    },
+    {
+      "path": "nft-direct-721-5-top-viewport.png",
+      "bytes": 249056,
+      "sha256": "9ec6a504f262f214ec7bad18e3300eff4a0bdc0c2d34358da93cf449ddfb8c9f"
+    },
+    {
+      "path": "nft-direct-721-6-cost-viewport.png",
+      "bytes": 219340,
+      "sha256": "b2427c5224985e3dd4f02ab57c2c894eb7ea0efab78b28932c6185c3a208ae30"
+    },
+    {
+      "path": "nft-direct-721-6-top-viewport.png",
+      "bytes": 249056,
+      "sha256": "9ec6a504f262f214ec7bad18e3300eff4a0bdc0c2d34358da93cf449ddfb8c9f"
+    },
+    {
+      "path": "nft-safe-outer-1155-24-cost-viewport.png",
+      "bytes": 227712,
+      "sha256": "b0ab1c835ff4d892069090c244748205983c9a3922e374042ef9c6a01814b103"
+    },
+    {
+      "path": "nft-safe-outer-1155-24-top-viewport.png",
+      "bytes": 228839,
+      "sha256": "11121399e23269b43cdf8d6c8ebe0a9366900c4ec948d48a287b668fce936a1e"
+    },
+    {
+      "path": "nft-safe-outer-721-27-cost-viewport.png",
+      "bytes": 231170,
+      "sha256": "c570e74437d0c93215311a1a7434bdb4c099fc50f84b241bdd4781b9e3e51b32"
+    },
+    {
+      "path": "nft-safe-outer-721-27-top-viewport.png",
+      "bytes": 228312,
+      "sha256": "0927ff3892d1c2a084514aff0c798b68d5ce555f6c2ea226bacf2d75af95fb9c"
+    }
+  ],
+  "classifications": [
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 4838,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 4846,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 4940,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 4948,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5042,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5050,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5144,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5152,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5246,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5254,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5365,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5373,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5475,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5483,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5585,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5593,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5711,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5719,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 538,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "bf25ba39c3ead1ed7dcb66652a253aef9dcc11cee471e194ff44a2db0c8e71b4",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 539,
+      "ruleId": "generic-api-key",
+      "field": "paymentTokenRuntimeHash",
+      "lineSha256": "df9524508936e8bb9564bae96fca4cfb41941a566e81c7b2a2145dbf465f0c44",
+      "publicValueSha256": "233cbcac6c4a4a1d5933cd68e1ac0b654dc0735b91814a7b18235f47bf1b71da",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-deployment.json",
+      "line": 11,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "a1a9eaf0521609fb492cb618bf51adc1a6d7e4ecd669390e4050f04426f4412e",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 540,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "a90fdfc394c32a752bb97944f598fdc6c921da96aa1baea74b162e33d7eac09a",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-deployment.json",
+      "line": 12,
+      "ruleId": "generic-api-key",
+      "field": "paymentTokenRuntimeHash",
+      "lineSha256": "234a95586b386c85d464e6e9d25489f9574e6c84b4947c9219bab0385833ccb1",
+      "publicValueSha256": "233cbcac6c4a4a1d5933cd68e1ac0b654dc0735b91814a7b18235f47bf1b71da",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-deployment.json",
+      "line": 13,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "86eac64d5869431d928eb487af45b9264c05caa38351c9197ed3360156ec6941",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-setup.json",
+      "line": 22,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "bf25ba39c3ead1ed7dcb66652a253aef9dcc11cee471e194ff44a2db0c8e71b4",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-setup.json",
+      "line": 23,
+      "ruleId": "generic-api-key",
+      "field": "paymentTokenRuntimeHash",
+      "lineSha256": "df9524508936e8bb9564bae96fca4cfb41941a566e81c7b2a2145dbf465f0c44",
+      "publicValueSha256": "233cbcac6c4a4a1d5933cd68e1ac0b654dc0735b91814a7b18235f47bf1b71da",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-setup.json",
+      "line": 24,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "a90fdfc394c32a752bb97944f598fdc6c921da96aa1baea74b162e33d7eac09a",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5837,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5845,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5954,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 5962,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6071,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6079,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6188,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6196,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6321,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6329,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6445,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6453,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6569,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6577,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6709,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6717,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6856,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6864,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 6994,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 7002,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 7125,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 7133,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 3978,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 3986,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 8574,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 8582,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 8710,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 8718,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 8846,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 8854,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 8998,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 9006,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 4481,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 4489,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "4d808ba38c05d388e5d29f823fba2c091a2765ac8fbef5506475d83cd48fa10d",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 4880,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 4888,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "4d808ba38c05d388e5d29f823fba2c091a2765ac8fbef5506475d83cd48fa10d",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 9141,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 9149,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 9284,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 9292,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 9808,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "388678f89d2bf7f47b689d07dfa6d772b9f3f76a67be5a6394df25b174b46035",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-browser-evidence.json",
+      "line": 9816,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5275849617b11c38f90a5b42dc45ffa53b2c49219f8dc35112976200995b49d5",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 5339,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 5347,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "4d808ba38c05d388e5d29f823fba2c091a2765ac8fbef5506475d83cd48fa10d",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 5740,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 5748,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "4d808ba38c05d388e5d29f823fba2c091a2765ac8fbef5506475d83cd48fa10d",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 6146,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 6154,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "4d808ba38c05d388e5d29f823fba2c091a2765ac8fbef5506475d83cd48fa10d",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 6612,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 6620,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "4d808ba38c05d388e5d29f823fba2c091a2765ac8fbef5506475d83cd48fa10d",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 6849,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "6c43fcf1bc7030ef310bec5a004945f8a1065e508338ce6468b8b4a08d453084",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 6857,
+      "ruleId": "generic-api-key",
+      "field": "paymentToken",
+      "lineSha256": "5b4106d35398f4f1789f27959f768290c5891e9ff0828ae36d81c1485255d87c",
+      "publicValueSha256": "3f3655f5c1cf3e466e6096b8156314dd1c196eba47dc4da9e734b517d70f6368",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7033,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7067,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7101,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7123,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7167,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7189,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7211,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7255,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7284,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7306,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7350,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7372,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7394,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7438,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7482,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7505,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7541,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7559,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7576,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7598,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7648,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7670,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7692,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    },
+    {
+      "sourceFile": "nft-acquisition-acceptance.json",
+      "line": 7714,
+      "ruleId": "generic-api-key",
+      "field": "projectToken",
+      "lineSha256": "18af8743953440c6613fa2d64580dd3b2bce12d61635bf25ed753f0c50a50da8",
+      "publicValueSha256": "eb13cb8d2c9ca711ac757fd92214d0132626f28e504fb004137258778a07be38",
+      "disposition": "EXACT_PUBLIC_SYNTHETIC_MODULE_IDENTIFIER_NOT_A_CREDENTIAL"
+    }
+  ]
+}
