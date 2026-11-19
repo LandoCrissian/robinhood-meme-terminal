@@ -2,7 +2,7 @@
 pragma solidity 0.8.26;
 import {SeaportAcquisitionBase} from "./SeaportAcquisition.t.sol";
 import {RMTSeaportAcquisitionVaultV2 as Vault} from "../src/RMTSeaportAcquisitionVaultV2.sol";
-import {SeaportAcquisitionTypes as T} from "../src/SeaportAcquisitionTypes.sol";
+import {SeaportAcquisitionTypes as T,IAcquisition721,IAcquisition1155} from "../src/SeaportAcquisitionTypes.sol";
 
 contract V2NativeCallback {
     address private target; bytes private payload; address payable private forward;
@@ -27,6 +27,12 @@ contract V2CallbackCurrency {
     function _move(address from,address to,uint256 amount) private {balanceOf[from]-=amount;balanceOf[to]+=amount;emit Transfer(from,to,amount);}
 }
 interface IV2Receive {function onERC1155Received(address,address,uint256,uint256,bytes calldata)external returns(bytes4);}
+contract V2ForwardingNftRecipient {
+    address private immutable to;
+    constructor(address destination){to=destination;}
+    function onERC721Received(address,address,uint256 id,bytes calldata)external returns(bytes4){IAcquisition721(msg.sender).safeTransferFrom(address(this),to,id);return 0x150b7a02;}
+    function onERC1155Received(address,address,uint256 id,uint256 amount,bytes calldata)external returns(bytes4){IAcquisition1155(msg.sender).safeTransferFrom(address(this),to,id,amount,"");return 0xf23a6e61;}
+}
 contract V2Hostile1155 {
     mapping(uint256=>mapping(address=>uint256)) private balances; mapping(address=>mapping(address=>bool))public isApprovedForAll;
     address public royaltyRecipient; address private target; bytes private payload; uint8 private fault;
@@ -48,6 +54,25 @@ contract V2Hostile1155 {
     }
 }
 contract SeaportAcquisitionHostileTest is SeaportAcquisitionBase {
+    function testNativeWithdrawalCallbackCannotConsumeSecondMatureNotice() public {
+        V2NativeCallback recipient=new V2NativeCallback();vm.startPrank(CREATOR);
+        uint64 first=vault.scheduleAssetWithdrawal(address(0),1 ether,address(recipient),uint48(_now()+3 days));
+        uint64 second=vault.scheduleAssetWithdrawal(address(0),2 ether,OTHER,uint48(_now()+3 days));vm.stopPrank();
+        recipient.configure(address(vault),abi.encodeWithSignature("executeWithdrawal(uint64)",second),payable(address(0)));vm.warp(_now()+2 days);
+        vault.executeWithdrawal(first);require(recipient.attempts()==1&&recipient.successes()==0&&address(recipient).balance==1 ether&&OTHER.balance==0&&vault.reservedAsset(address(0))==2 ether);
+        vault.executeWithdrawal(second);require(OTHER.balance==2 ether);_conserved(address(0));
+    }
+    function testNoticed721And1155ForwardingRollbackCustodyAndReservations() public {
+        _policy(false);_buy(_order(false,false,1));vm.warp(_now()+1);_buy(_order(true,false,2));V2ForwardingNftRecipient recipient=new V2ForwardingNftRecipient(OTHER);
+        vm.startPrank(CREATOR);uint64 first=vault.scheduleNftWithdrawal(address(nft),1,1,address(recipient),uint48(_now()+3 days));uint64 second=vault.scheduleNftWithdrawal(address(multi),2,2,address(recipient),uint48(_now()+3 days));vm.stopPrank();
+        vm.warp(_now()+2 days);vm.expectRevert();vault.executeWithdrawal(first);vm.expectRevert();vault.executeWithdrawal(second);
+        require(nft.ownerOf(1)==address(vault)&&vault.nftHeld(address(nft),1)==1&&vault.nftReserved(address(nft),1)==1&&multi.balanceOf(OTHER,2)==0&&vault.nftReserved(address(multi),2)==2);
+    }
+    function testTokenWithdrawalRejectsFalseReturnFeeAndOverpullWithoutLosingNotice() public {
+        vm.prank(CREATOR);uint64 id=vault.scheduleAssetWithdrawal(address(cash),1 ether,OTHER,uint48(_now()+3 days));vm.warp(_now()+2 days);
+        for(uint8 mode=1;mode<=3;mode++){cash.configureFault(mode);vm.expectRevert();vault.executeWithdrawal(id);require(vault.reservedAsset(address(cash))==1 ether&&vault.accountedHeld(address(cash))==10 ether&&cash.balanceOf(OTHER)==0);}
+        cash.configureFault(0);vault.executeWithdrawal(id);require(cash.balanceOf(OTHER)==1 ether);_conserved(address(cash));
+    }
     function testNativeFeeCallbackCannotExecuteMatureWithdrawal() public {
         V2NativeCallback recipient=new V2NativeCallback(); vm.startPrank(CREATOR);
         vault.configureFeeRecipient(address(recipient),250); uint64 id=vault.scheduleAssetWithdrawal(address(0),1 ether,OTHER,uint48(_now()+3 days));vm.stopPrank();
