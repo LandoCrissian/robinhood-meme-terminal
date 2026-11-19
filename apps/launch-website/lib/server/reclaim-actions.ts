@@ -8,6 +8,7 @@ import {configuredReclaimFixture,reclaimFactoryAbi,reclaimCampaignAbi,reclaim721
   verifyReclaimContext,reclaimRead,reclaimPoint,requireReclaim,sameReclaim as same,normalizedReclaim as normalized,
   type ReclaimFixture,type ReclaimRpc,type ReclaimHead} from "./reclaim-fixture";
 import type {ReclaimAsset} from "./reclaim-fixture";
+import {reclaimRetirementEvidenceMatches,type ReclaimAcceptedEvidenceV2,type ReclaimRetiredIdentityV2,type ReclaimStoredTradeInV2} from "./reclaim-retirement-evidence";
 
 const responseHeaders={"Cache-Control":"private, no-store","Netlify-CDN-Cache-Control":"no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"};
 const reply=(body:object,status=200)=>Response.json(body,{status,headers:responseHeaders});
@@ -211,13 +212,23 @@ export async function verifyReclaimTransaction(config:ReclaimFixture,review:Recl
       await verifyTokenDelta(config,rpc,receipt,review.operation==="fund"?review.actor:review.campaign,review.operation==="fund"?review.campaign:args.controller,args.amount);
     }else if(review.operation==="redeem"){
       const event=events.filter(e=>e.eventName==="TradeInAccepted");requireReclaim(event.length===1);
-      const args=event[0].args as{receiptId:bigint;claimant:Address;collection:Address;reward:bigint;ids:readonly bigint[];quantities:readonly bigint[];retirementMode:number;destination:Address};
-      const id=args.receiptId,r=await reclaimRead<readonly[Address,Address,number,bigint,bigint,number,number]>(rpc,review.campaign,reclaimCampaignAbi,"tradeIns",[id],receipt.blockNumber);
+      const args=event[0].args as ReclaimAcceptedEvidenceV2;
+      const id=args.receiptId,r=await reclaimRead<ReclaimStoredTradeInV2>(rpc,review.campaign,reclaimCampaignAbi,"tradeIns",[id],receipt.blockNumber);
       const items=await reclaimRead<readonly[readonly bigint[],readonly bigint[]]>(rpc,review.campaign,reclaimCampaignAbi,"receiptItems",[id],receipt.blockNumber);
       requireReclaim(same(args.claimant,review.actor)&&same(r[0],review.actor)&&r[4]===BigInt(review.rewardWei)&&r[6]===1&&r[3]===BigInt(review.policyEpoch));
       requireReclaim(review.nft&&review.fields.permanentConsent===true&&same(r[1],review.fields.collection!)&&JSON.stringify(items[0].map(String))===JSON.stringify(review.fields.tokenIds)&&JSON.stringify(items[1].map(String))===JSON.stringify(review.fields.quantities)&&args.reward===r[4]);
       await verifyTokenDelta(config,rpc,receipt,review.campaign,review.actor,r[4]);
       const asset=config.module.collections.find(a=>same(a.address,r[1]));requireReclaim(asset&&asset.standard===r[2]);
+      const retired=events.filter(e=>e.eventName==="NFTPermanentlyRetired");requireReclaim(retired.length===1);
+      const[claimantNonceBefore,claimantNonceAfter,tradeInNonceBefore,tradeInNonceAfter]=await Promise.all([
+        reclaimRead<bigint>(rpc,review.campaign,reclaimCampaignAbi,"claimantNonces",[review.actor],receipt.blockNumber-1n),
+        reclaimRead<bigint>(rpc,review.campaign,reclaimCampaignAbi,"claimantNonces",[review.actor],receipt.blockNumber),
+        reclaimRead<bigint>(rpc,review.campaign,reclaimCampaignAbi,"tradeInNonce",[],receipt.blockNumber-1n),
+        reclaimRead<bigint>(rpc,review.campaign,reclaimCampaignAbi,"tradeInNonce",[],receipt.blockNumber),
+      ]);
+      requireReclaim(reclaimRetirementEvidenceMatches(review,{accepted:args,retired:retired[0].args as ReclaimRetiredIdentityV2,stored:r,items,
+        standard:asset.standard,retirementMode:asset.retirementMode,destination:asset.retirementMode===1?zeroAddress:config.module.permanentSink,
+        claimantNonceBefore,claimantNonceAfter,tradeInNonceBefore,tradeInNonceAfter}));
       const code=await rpc.getCode({address:asset.address,blockNumber:receipt.blockNumber});requireReclaim(code&&same(keccak256(code),asset.runtimeHash));
       await verifyPermanentRetirement(config,rpc,receipt,review,asset,id,items,events);
       settlement={kind:"permanent-surrender",receiptId:id.toString(),claimant:review.actor,collection:asset.address,tokenIds:items[0].map(String),quantities:items[1].map(String),rewardToken:config.module.rewardToken,rewardWei:r[4].toString(),custody:"permanent-retirement",retirementMode:asset.retirementMode,destination:review.nft.destination,policyHash:asset.policyHash,transactionHash:found,canonical};
