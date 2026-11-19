@@ -76,6 +76,8 @@ Native Forge/Anvil executables from the earlier temporary installation are unava
 
 Changed dashboard Chromium/WebKit/PG18.6 acceptance is still pending at this snapshot; a passing old Task079 run is not substituted. The first repository job also exposed a missing exact baseline in the shallow checkout. Its [failed evidence](evidence/rmt-task080/ci-shallow-baseline-failure.json) is retained; CI now fetches that SHA before the unchanged source comparison. The register verifies all dependency source hashes, so that job materializes the same already pinned v4 dependencies with the existing toolchain rather than skipping absent files. Final exact source, receipts/screenshots and CI outcomes will be recorded after execution; pending is not passed.
 
+Both first changed-dashboard browser runs actually passed unrelated-wallet denial, malformed-policy rejection, participant preparation and canonical recovery without policy, and six retirements. They then correctly lacked administrative controls after the fixture restored its temporary EIP7702 code without refreshing the unavailable authority snapshot. [Both original failures and actual partial results](evidence/rmt-task080/ci-initial-authority-refresh-failure.json) are retained. The harness now explicitly verifies unavailable controls under the unadmitted runtime, fetches fresh on-chain state after restoration, and verifies administration returns only with that evidence. No application authorization or error assertion was relaxed; later skipped browser groups in the failed runs are not called passed.
+
 ```sh
 node scripts/security/findings-register.mjs --check
 node --test scripts/security/findings-register.test.mjs

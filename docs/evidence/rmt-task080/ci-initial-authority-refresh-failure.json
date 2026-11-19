@@ -1,0 +1,72 @@
+{
+  "schemaVersion": 1,
+  "status": "FAILED_BEFORE_FIXTURE_REFRESH_NOT_SECURITY_CLEARANCE",
+  "sourceCommit": "36925b41814896d0279ed71500ff89ce134c9535",
+  "cause": "The fixture removed its temporary EIP7702 code after a participant transaction but reused the unavailable controller-authority snapshot, so Incoming controller was correctly absent",
+  "correction": "Read a fresh actual onchain snapshot after synthetic runtime restoration; assert controls remain absent under unadmitted runtime and reappear only with renewed evidence",
+  "applicationOrSolidityChangedForThisCorrection": false,
+  "assertionsWeakened": false,
+  "laterBrowserGroupsSkippedNotPassed": true,
+  "records": [
+    {
+      "engine": "chromium",
+      "artifactId": "14501938883",
+      "artifactArchiveSha256": "f71946b5c3530fa457b35a828a1312de359151931e496285b30dab8d51a4bdc2",
+      "rawAcceptanceSha256": "42fdd45451f3c7ccc3e5ccb40555a1e9e35aa8de99983b4365035f7579f04799",
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44466792082/job/135366409031",
+      "status": "incomplete",
+      "postgresql": {
+        "serverVersion": "18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+        "encoding": "UTF8",
+        "isolatedTestDatabase": true
+      },
+      "administrationChecksBeforeFailure": {
+        "explicitSyntheticPolicy": true,
+        "productionControllerAssigned": false,
+        "unrelatedWallet": "0x7adFA37B5aCa2B86586b7EB97193D8395B3F557e",
+        "permissionlessContractSimulation": "0x",
+        "dashboardPreparationDenied": true,
+        "unrelatedAdminControlsAbsent": true,
+        "participantPreparationWithoutPolicy": true,
+        "malformedPolicyBlocksRevalidation": true,
+        "canonicalRecoveryWithoutPolicy": true,
+        "noWalletSubmission": true
+      },
+      "observedRetirementsBeforeFailure": 6,
+      "observedSafeExecutionsBeforeFailure": 0,
+      "failure": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByLabel('Incoming controller', { exact: true })\n\n    at action (/home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/reclaim-v2/browser-integration.mjs:182:84)\n    at async Object.action (/home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/reclaim-v2/browser-integration.mjs:339:59)\n    at async complete (/home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/reclaim-v2/local-integration.mjs:43:18)\n    at async testReclaimJourney (/home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/reclaim-v2/local-integration.mjs:191:3)\n    at async file:///home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/visual-qa/rmt-creator-integration.mjs:443:5",
+      "errorFragment": "ci-initial-chromium-authority-refresh-error.txt.gz",
+      "errorFragmentRawSha256": "52c6cca5a244f92fcbea9c2784bb9648c0b247dc0f889f451b6245419a1b90c9"
+    },
+    {
+      "engine": "webkit",
+      "artifactId": "14502428300",
+      "artifactArchiveSha256": "02b860aa1fd767934fb623dc541edf532c6ce597b1c7397bc25847b87a4a6ecf",
+      "rawAcceptanceSha256": "603b1a5e733ccd3c38617a43bc65221463f31aa97b329de63d4f0b6c24efd801",
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44466792082/job/135366408904",
+      "status": "incomplete",
+      "postgresql": {
+        "serverVersion": "18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+        "encoding": "UTF8",
+        "isolatedTestDatabase": true
+      },
+      "administrationChecksBeforeFailure": {
+        "explicitSyntheticPolicy": true,
+        "productionControllerAssigned": false,
+        "unrelatedWallet": "0x81cb0b04C057832De6a532a5cc8C91889bc5D8F5",
+        "permissionlessContractSimulation": "0x",
+        "dashboardPreparationDenied": true,
+        "unrelatedAdminControlsAbsent": true,
+        "participantPreparationWithoutPolicy": true,
+        "malformedPolicyBlocksRevalidation": true,
+        "canonicalRecoveryWithoutPolicy": true,
+        "noWalletSubmission": true
+      },
+      "observedRetirementsBeforeFailure": 6,
+      "observedSafeExecutionsBeforeFailure": 0,
+      "failure": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n  - waiting for getByLabel('Incoming controller', { exact: true })\n\n    at action (/home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/reclaim-v2/browser-integration.mjs:182:84)\n    at async Object.action (/home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/reclaim-v2/browser-integration.mjs:339:59)\n    at async complete (/home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/reclaim-v2/local-integration.mjs:43:18)\n    at async testReclaimJourney (/home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/reclaim-v2/local-integration.mjs:191:3)\n    at async file:///home/runner/work/robinhood-meme-terminal/robinhood-meme-terminal/scripts/visual-qa/rmt-creator-integration.mjs:443:5",
+      "errorFragment": "ci-initial-webkit-authority-refresh-error.txt.gz",
+      "errorFragmentRawSha256": "bc1515d64441796f8b31e9bcad52dd02fdd8283526d896748d77ebbc9ed9e231"
+    }
+  ]
+}
