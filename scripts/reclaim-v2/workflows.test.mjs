@@ -39,3 +39,13 @@ test("active browser acceptance uses V2 while old V1 is syntax-checked as histor
   const repository=read(".github/workflows/ci.yml");
   assert.match(repository,/node --test scripts\/reclaim\/\*\.test\.mjs/);assert.match(repository,/node --test scripts\/reclaim-v2\/\*\.test\.mjs/);
 });
+test("failed PostgreSQL diagnostics and uploads cover exactly the four isolated lifecycle directories without database contents",()=>{
+  const workflow=read(".github/workflows/launch-website-review.yml");
+  const diagnostic=workflow.split("- name: Read local PostgreSQL diagnostics after failure")[1].split("- uses:")[0];
+  assert.match(diagnostic,/if: failure\(\)/);
+  assert.match(diagnostic,/for scope in rmt-reclaim rmt-creator-lifecycle rmt-claim-wallet-profiles rmt-project-treasury; do/);
+  assert.match(diagnostic,/for name in postgres-init postgres-start postgres-stop postgres; do/);assert.match(diagnostic,/tail -n 20/);
+  const logs=[...workflow.matchAll(/^\s+\$\{\{ runner\.temp \}\}\/([^\s]+\/postgres[^\s]*)$/gm)].map(match=>match[1]);
+  assert.deepEqual(logs,["rmt-reclaim","rmt-creator-lifecycle","rmt-claim-wallet-profiles","rmt-project-treasury"].flatMap(scope=>
+    ["postgres-init.log","postgres-start.log","postgres-stop.log","postgres.log"].map(file=>`${scope}/${file}`)));
+});

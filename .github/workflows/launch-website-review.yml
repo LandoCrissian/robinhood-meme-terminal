@@ -207,9 +207,14 @@ jobs:
       - name: Read local PostgreSQL diagnostics after failure
         if: failure()
         run: |
-          for name in postgres-init postgres-start postgres; do
-            file="$RUNNER_TEMP/rmt-creator-lifecycle/$name.log"
-            if [ -f "$file" ]; then tail -n 20 "$file"; fi
+          for scope in rmt-reclaim rmt-creator-lifecycle rmt-claim-wallet-profiles rmt-project-treasury; do
+            for name in postgres-init postgres-start postgres-stop postgres; do
+              file="$RUNNER_TEMP/$scope/$name.log"
+              if [ -f "$file" ]; then
+                printf 'PostgreSQL diagnostic: %s/%s.log\n' "$scope" "$name"
+                tail -n 20 "$file"
+              fi
+            done
           done
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
@@ -223,6 +228,22 @@ jobs:
             ${{ env.RMT_PG18_EVIDENCE }}/Packages.gz
             ${{ env.RMT_PG18_EVIDENCE }}/ubuntu-*
             ${{ env.RMT_PG18_EVIDENCE }}/*.ldd
+            ${{ runner.temp }}/rmt-reclaim/postgres-init.log
+            ${{ runner.temp }}/rmt-reclaim/postgres-start.log
+            ${{ runner.temp }}/rmt-reclaim/postgres-stop.log
+            ${{ runner.temp }}/rmt-reclaim/postgres.log
+            ${{ runner.temp }}/rmt-creator-lifecycle/postgres-init.log
+            ${{ runner.temp }}/rmt-creator-lifecycle/postgres-start.log
+            ${{ runner.temp }}/rmt-creator-lifecycle/postgres-stop.log
+            ${{ runner.temp }}/rmt-creator-lifecycle/postgres.log
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/postgres-init.log
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/postgres-start.log
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/postgres-stop.log
+            ${{ runner.temp }}/rmt-claim-wallet-profiles/postgres.log
+            ${{ runner.temp }}/rmt-project-treasury/postgres-init.log
+            ${{ runner.temp }}/rmt-project-treasury/postgres-start.log
+            ${{ runner.temp }}/rmt-project-treasury/postgres-stop.log
+            ${{ runner.temp }}/rmt-project-treasury/postgres.log
             ${{ runner.temp }}/rmt-creator-lifecycle/*.png
             ${{ runner.temp }}/rmt-creator-lifecycle/creation-journey-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/graduation-review-evidence.json
