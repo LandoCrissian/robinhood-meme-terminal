@@ -9,6 +9,8 @@ import {configuredReclaimFixture,reclaimFactoryAbi,reclaimCampaignAbi,reclaim721
   type ReclaimFixture,type ReclaimRpc,type ReclaimHead} from "./reclaim-fixture";
 import type {ReclaimAsset} from "./reclaim-fixture";
 import {reclaimRetirementEvidenceMatches,type ReclaimAcceptedEvidenceV2,type ReclaimRetiredIdentityV2,type ReclaimStoredTradeInV2} from "./reclaim-retirement-evidence";
+import {reclaimAdministrationOperation} from "../reclaim-administration";
+import {authorizeReclaimAdministration,requireReclaimAdministrationPolicy} from "./reclaim-administration";
 
 const responseHeaders={"Cache-Control":"private, no-store","Netlify-CDN-Cache-Control":"no-store","X-Content-Type-Options":"nosniff","X-Robots-Tag":"noindex, nofollow"};
 const reply=(body:object,status=200)=>Response.json(body,{status,headers:responseHeaders});
@@ -81,11 +83,13 @@ export async function prepareReclaim(config:ReclaimFixture,body:Record<string,un
   requireReclaim(syntheticReclaimActor(body.account)&&reclaimOperations.includes(body.operation as ReclaimOperation));
   const actor=normalized(body.account),operation=body.operation as ReclaimOperation;
   requireReclaim(validReclaimFields(operation,body.fields));const fields=body.fields;
+  if(reclaimAdministrationOperation(operation))requireReclaimAdministrationPolicy(config);
   const{rpc,head}=await verifyReclaimContext(config),m=config.module;
   let campaign:Address;
   if(operation==="create-campaign")campaign=await reclaimRead<Address>(rpc,m.reclaimFactory,reclaimFactoryAbi,"predict",[actor,fields.intentId,normalized(fields.controller!),BigInt(fields.rewardPerUnit!),Number(fields.walletCap!)],head.number);
   else{requireReclaim(reclaimAddress(body.campaign));campaign=normalized(body.campaign);}
   const terms=await operationTerms(config,rpc,head,actor,campaign,operation,fields,prior);
+  if(reclaimAdministrationOperation(operation))await authorizeReclaimAdministration(config,rpc,head,actor,campaign,operation,fields,terms.controller);
   const kind=await projectTreasuryControllerKind(rpc,actor,head.number);requireReclaim(kind!=="unsupported");
   requireReclaim(operation!=="create-campaign"||kind!=="safe-1.4.1","Safe campaign creation is not admitted by this fixture's direct-creator receipt verifier");
   const actorCode=await rpc.getCode({address:actor,blockNumber:head.number}),observed=prior?.observed??reclaimPoint(head),expiresAt=prior?.expiresAt??Number(head.timestamp)+180;

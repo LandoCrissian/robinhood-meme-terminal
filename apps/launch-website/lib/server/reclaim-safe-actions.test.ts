@@ -37,7 +37,8 @@ async function outer(){
   r.reviewHash=reclaimSafeOuterReviewHash(r);assert.ok(isReclaimSafeOuterReview(r));return r;
 }
 const config={curve:{rpcUrl:"http://127.0.0.1:4502",factory,factoryRuntimeHash:hash(1),registry:address(6),registryRuntimeHash:hash(2),deploymentBlock:1n,deploymentBlockHash:hash(3),feeRecipient:address(7)},
-  module:{reclaimFactory:factory,factoryRuntimeHash:hash(1),rewardToken:reward,rewardTokenRuntimeHash:hash(3)}}as ReclaimFixture;
+  module:{reclaimFactory:factory,factoryRuntimeHash:hash(1),rewardToken:reward,rewardTokenRuntimeHash:hash(3)},
+  administration:{schemaVersion:1,profile:"rmt-reclaim-administration-policy-v1",scope:"isolated-local",chainId:31337,reclaimFactory:factory,factoryRuntimeHash:hash(1),authorizedControllers:[{address:safe,runtimeHash:hash(4)}]}}as ReclaimFixture;
 
 test("server refuses unsupported Safe inputs and real owner identities before making a provider request",async()=>{
   const previous=globalThis.fetch;let calls=0;globalThis.fetch=async()=>{calls++;throw Error("No provider read authorized");};

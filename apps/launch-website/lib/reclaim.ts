@@ -1,6 +1,7 @@
 import type { Address, Hex } from "viem";
 import { claimProfileDigest } from "./claim-profiles";
 import { reclaimCalldataMatchesReview } from "./reclaim-calldata";
+import {validReclaimAdministrationEvidence,type ReclaimAdministrationEvidence} from "./reclaim-administration";
 
 export const reclaimProfile = "rmt-reclaim-v2-permanent";
 export const reclaimReadPath = "/api/launchpad/reclaim";
@@ -77,6 +78,7 @@ export type ReclaimSnapshot = {
   collections: ReclaimCollection[]; receipts: ReclaimReceipt[]; pending: ReclaimNotice[];
   history: { status: "ready" | "pending" | "unavailable"; indexed: boolean; checkpoint?: ReclaimPoint };
   observed: ReclaimPoint; notices: string[];
+  administration?: ReclaimAdministrationEvidence;
 };
 export function isReclaimSnapshot(value: unknown): value is ReclaimSnapshot {
   try {
@@ -93,6 +95,8 @@ export function isReclaimSnapshot(value: unknown): value is ReclaimSnapshot {
       || !Array.isArray(s.pending) || s.pending.length > 5 || !Array.isArray(s.notices) || s.notices.length > 16
       || !s.notices.every(item => typeof item === "string" && item.length <= 1000) || !["ready", "pending", "unavailable"].includes(s.history.status) || typeof s.history.indexed !== "boolean") return false;
     if (s.history.checkpoint && !point(s.history.checkpoint)) return false;
+    if(s.administration&&(!validReclaimAdministrationEvidence(s.administration)||s.administration.controller&&(!sameReclaimHex(s.administration.controller.address,s.controller)
+      ||s.administration.controller.kind!==s.controllerKind)))return false;
     if (new Set(s.collections.map(item => item.address.toLowerCase())).size !== s.collections.length) return false;
     for (const c of s.collections) {
       if (!reclaimAddress(c.address) || !reclaimHash(c.runtimeHash) || !reclaimHash(c.eligibilityRoot) || ![1, 2].includes(c.standard) || typeof c.enabled !== "boolean"

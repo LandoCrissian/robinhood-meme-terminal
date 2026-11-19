@@ -16,6 +16,7 @@ import { canonicalSafeApprovals, canonicalSafeTypedData, isReclaimSafeOuterRevie
   type ReclaimSafeApproval, type ReclaimSafeOuterReview, type ReclaimSafeProposal } from "../../lib/reclaim-safe";
 import { listReclaimSafeJournals, storeReclaimSafeJournal, reconcileReclaimSafeRecovery, type ReclaimSafeJournal } from "../../lib/reclaim-safe-recovery";
 import { MyLaunchesNav } from "./my-launches-nav";
+import {reclaimAdministrationWallet} from "../../lib/reclaim-administration";
 
 const amount = (value: string) => {
   try { const n = BigInt(value), whole = n / 10n ** 18n, fraction = (n % 10n ** 18n).toString().padStart(18, "0").replace(/0+$/, ""); return whole + (fraction ? "." + fraction : ""); }
@@ -45,7 +46,7 @@ function intentFor(account: string) {
   if (localStorage.getItem(key) !== next) throw Error("Campaign intent could not be preserved."); return next;
 }
 
-export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fixture?: boolean; initialCampaign?: string }) {
+export function ReclaimDashboard({ fixture = false, initialCampaign = "", adminCreators=[] }: { fixture?: boolean; initialCampaign?: string; adminCreators?:readonly Address[] }) {
   const [campaignInput, setCampaignInput] = useState(initialCampaign), [snapshot, setSnapshot] = useState<ReclaimSnapshot | null>(null);
   const [selectedCampaign, setSelectedCampaign] = useState(""), [stale, setStale] = useState(false), [message, setMessage] = useState("");
   const [ready, setReady] = useState(false), [busy, setBusy] = useState(false), [wallet, setWallet] = useState<TestWallet | null>(null);
@@ -314,6 +315,9 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
   const localDisabled = !fixture || !ready || busy;
   const selectedJournal = journals.find(entry => entry.review.reviewHash === journalKey);
   const completedCreation = journals.find(entry => entry.review.fields.intentId === creationIntent && sameReclaimHex(entry.review.actor, actor) && canStartAnotherReclaimCampaign(entry));
+  const mayCreate=!!wallet&&sameReclaimHex(actor,wallet.account)&&adminCreators.some(address=>sameReclaimHex(address,wallet.account));
+  const mayAdminister=!!wallet&&!stale&&snapshot?.administration?.status==="verified"&&reclaimAdministrationWallet(snapshot.administration.controller,actor,wallet.account);
+  const mayAcceptController=!!wallet&&!stale&&snapshot?.administration?.status==="verified"&&reclaimAdministrationWallet(snapshot.administration.incoming,actor,wallet.account);
   return <>
     <header className="lpPageHeading"><div><h1>RMT Reclaim</h1><p>Permanent NFT surrender. Separate funding, verified retirement and exact rewards.</p></div></header>
     <MyLaunchesNav active="reclaim" />
@@ -364,11 +368,14 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
         <button className="lpButton" disabled={localDisabled || !wallet || !permanentConsent || !snapshot || stale || snapshot.paused || snapshot.closed || !collectionData?.enabled || collectionData.admission !== "admitted"} onClick={() => void prepare("redeem", { collection, tokenIds: entries(tokenIds), quantities: entries(quantities), permanentConsent: true })}>Review permanent NFT surrender</button></div>
       {collectionData?.standard === 2 && <p className="lpInlineNotice">ERC-1155 approval covers this collection for the exact campaign operator. It is not a one-token allowance. Review the immutable campaign and operator address before confirming.</p>}
       {collectionData?.standard === 2 && <button className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet} onClick={() => void prepare("revoke-1155", { collection })}>Review ERC-1155 approval revocation</button>}
-      <details className="lpReclaimOwner"><summary>Campaign owner dashboard</summary><p>Funding is manual. Ownership, notices and available reserves are rechecked before every transaction. Rates affect only later successful redemptions; a stale submitted rate reverts atomically.</p>
+      {(mayCreate||mayAdminister||mayAcceptController)&&<details className="lpReclaimOwner"><summary>Campaign owner dashboard</summary><p>Only an explicitly admitted controller may administer this campaign through RMT. The server rechecks its on-chain authority, runtime, notices and reserves before every review. An unsigned review does not prove wallet ownership; actual execution still requires the controller's wallet signature or two Safe-owner approvals.</p>
+        {mayCreate&&<>
         <h3>Create an isolated campaign</h3><label htmlFor="reclaim-controller">Controller address<input id="reclaim-controller" value={controller} disabled={localDisabled} onChange={change(setController)} placeholder={wallet?.account ?? "0x…"} /></label>
         <div className="lpReclaimGrid"><label htmlFor="reclaim-reward">Fixed reward per NFT (synthetic RMT)<input id="reclaim-reward" value={rewardUnits} disabled={localDisabled} onChange={change(setRewardUnits)} inputMode="decimal" /></label><label htmlFor="reclaim-wallet-cap">Campaign units per wallet<input id="reclaim-wallet-cap" value={walletCap} disabled={localDisabled} onChange={change(setWalletCap)} inputMode="numeric" /></label></div>
         <button className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet} onClick={() => { try { if (!wallet) throw Error("Connect a test wallet."); void prepare("create-campaign", { intentId: intentFor(actor), controller: controller || actor, rewardPerUnit: tokens(rewardUnits), walletCap }); } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid campaign terms."); } }}>Review campaign creation</button>
         {completedCreation && <><button type="button" className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet} onClick={() => void startAnother(completedCreation)}>Start another campaign</button><small>Available only after the original creation is confirmed and indexed. This releases its creation intent; all transaction recovery records remain intact.</small></>}
+        </>}
+        {mayAdminister&&<>
         <h3>Manual funding and reserve</h3><label htmlFor="reclaim-funding">Amount (synthetic RMT)<input id="reclaim-funding" value={fundUnits} disabled={localDisabled} onChange={change(setFundUnits)} inputMode="decimal" /></label><div className="lpReclaimActions">
           <button className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet || !snapshot} onClick={() => { try { void prepare("approve-funding", { amountWei: tokens(fundUnits) }); } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid amount."); } }}>Review exact funding approval</button>
           <button className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet || !snapshot} onClick={() => { try { void prepare("fund", { amountWei: tokens(fundUnits) }); } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid amount."); } }}>Review manual funding</button></div>
@@ -378,8 +385,11 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "" }: { fi
         <div className="lpReclaimActions"><button className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet || !snapshot} onClick={() => { try { void prepare("propose-rate", { rewardPerUnit: tokens(rewardUnits), expiresAt: expiry() }); } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid rate."); } }}>Review future reward notice</button>
           <button className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet || !snapshot || !snapshot.closed} onClick={() => { try { void prepare("propose-recovery", { amountWei: tokens(fundUnits), expiresAt: expiry() }); } catch (error) { setMessage(error instanceof Error ? error.message : "Invalid recovery amount."); } }}>Review uncommitted reserve recovery</button></div>
         <h3>Controller continuity</h3><label htmlFor="reclaim-next-controller">Incoming controller<input id="reclaim-next-controller" value={nextController} disabled={localDisabled} onChange={change(setNextController)} placeholder="0x…" /></label>
-        <div className="lpReclaimActions">{(["propose-controller", "accept-controller", "cancel-controller"] as const).map(operation => <button key={operation} className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet || !snapshot} onClick={() => { try { void prepare(operation, operation === "propose-controller" ? { next: nextController, expiresAt: expiry() } : {}); } catch (error) { setMessage(error instanceof Error ? error.message : "Controller notice unavailable."); } }}>{label(operation)}</button>)}</div>
-      </details>
+        <div className="lpReclaimActions">{(["propose-controller", "cancel-controller"] as const).map(operation => <button key={operation} className="lpButton lpButtonSecondary" disabled={localDisabled || !wallet || !snapshot} onClick={() => { try { void prepare(operation, operation === "propose-controller" ? { next: nextController, expiresAt: expiry() } : {}); } catch (error) { setMessage(error instanceof Error ? error.message : "Controller notice unavailable."); } }}>{label(operation)}</button>)}</div>
+        </>}
+        {mayAcceptController&&<button className="lpButton lpButtonSecondary" disabled={localDisabled} onClick={()=>void prepare("accept-controller",{})}>accept controller</button>}
+      </details>}
+      {!mayCreate&&!mayAdminister&&!mayAcceptController&&<p className="lpInlineNotice">Dashboard administration is unavailable for this wallet. Public eligibility and your own permanent-surrender recovery remain available. No production controller is assigned.</p>}
       {snapshot && <details><summary>Permanent surrender records</summary><p>Every accepted record is permanent. Eligibility remains consumed and no repayment or return is possible.</p><ul className="lpTreasuryHistory">{snapshot.receipts.length ? snapshot.receipts.map(receipt => <li key={receipt.id}><strong>Record {receipt.id} · {retirement(receipt.retirementMode)}</strong><span>{receipt.collection} · IDs {receipt.tokenIds.join(", ")} · quantities {receipt.quantities.join(", ")}</span><span>Claimant {receipt.claimant} · paid reward {amount(receipt.rewardWei)} {snapshot.rewardSymbol}</span><span>{receipt.retirementMode === 1 ? "Verified supply reduction" : `Permanent sink ${receipt.destination}`}</span></li>) : <li>No canonically verified permanent surrender is available.</li>}</ul></details>}
       {review && <section className="lpRecovery lpReclaimReview" aria-label="Reviewed Reclaim transaction"><h3>{review.status === "needs-safe-approvals" ? "Safe approval required" : "Review exact test transaction"}</h3><dl className="lpFacts"><dt>Action</dt><dd>{label(review.operation)}</dd><dt>Acting wallet</dt><dd>{review.actor}</dd><dt>Campaign</dt><dd>{review.campaign}</dd><dt>Target</dt><dd>{review.innerCall.to}</dd><dt>Native value</dt><dd>0 ETH</dd><dt>Reward or funding</dt><dd>{amount(review.rewardWei)} synthetic tokens · fixed units, no USD quote</dd>
         {review.fields.amountWei && <><dt>Exact token amount</dt><dd>{amount(review.fields.amountWei)} synthetic tokens</dd></>}
