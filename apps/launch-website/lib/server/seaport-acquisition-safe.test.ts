@@ -20,7 +20,7 @@ const storage=()=>{const data=new Map<string,string>();return{get length(){retur
 test("Safe protocol requires two distinct typed-data owners and exact gas payer envelope",async()=>{
  const p=proposal(),r=await review(p);assert.equal(validSeaportSafeProposal(p),true);assert.equal(validSeaportSafeOuter(r),true);assert.equal(await verifySafeOwnerApproval(p,r.approvals[0]!),true);assert.equal(await verifySafeOwnerApprovals(p,r.approvals),true);
  assert.equal(await verifySafeOwnerApprovals(p,r.approvals.slice(0,1)),false);
- const changed={...r,request:{...r.request,value:"0x1"}};changed.reviewHash=seaportSafeOuterHash(changed);assert.equal(validSeaportSafeOuter(changed),false);
+ const changed={...r,request:{...r.request,value:"0x1" as Hex}};changed.reviewHash=seaportSafeOuterHash(changed);assert.equal(validSeaportSafeOuter(changed),false);
  const delegated={...p,safeTx:{...p.safeTx,operation:1}};assert.equal(validSeaportSafeProposal(delegated),false);
 });
 test("a recomputed unkeyed proposal hash cannot extend canonical local review freshness",()=>{
