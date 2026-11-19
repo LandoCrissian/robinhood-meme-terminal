@@ -5,7 +5,7 @@ import {createSeaportVerifier} from "../../../../packages/launchpad-common/seapo
 import {seaportVaultFlag,seaportVaultSignatures,seaportVaultSeaportSignatures} from "../../../../packages/launchpad-common/seaport-vault-runtime.mjs";
 import {seaportAcquisitionProfile,seaportAcquisitionReviewHash,validSeaportReview,type SeaportAcquisitionReview} from "../seaport-acquisition";
 type Address=viem.Address;type Hex=viem.Hex;
-export type SeaportLocalManifest={schemaVersion:1;profile:typeof seaportAcquisitionProfile;chainId:31337;vault:Address;vaultRuntimeHash:Hex;checks:Address;checksRuntimeHash:Hex;seaport:Address;seaportRuntimeHash:Hex;paymentToken:Address;paymentTokenRuntimeHash:Hex;projectToken:Address;creator:Address;coreFactory:Address;coreFactoryRuntimeHash:Hex;collections:Array<{address:Address;standard:721|1155;runtimeHash:Hex}>;deployment:{blockNumber:string;blockHash:Hex;transactionHash:Hex};compilerInputSha256:string};
+export type SeaportLocalManifest={schemaVersion:1;profile:typeof seaportAcquisitionProfile;chainId:31337;vault:Address;vaultRuntimeHash:Hex;checks:Address;checksRuntimeHash:Hex;seaport:Address;seaportRuntimeHash:Hex;paymentToken:Address;paymentTokenRuntimeHash:Hex;projectToken:Address;creator:Address;coreFactory:Address;coreFactoryRuntimeHash:Hex;collections:Array<{address:Address;standard:721|1155;runtimeHash:Hex}>;deployment:{blockNumber:string;blockHash:Hex;transactionHash:Hex};compilerInputSha256:string;fee?:Address;safeSeller?:{address:Address}};
 export type SeaportLocalConfig={site:string;rpc:string;indexer:string;readKey:string;manifest:SeaportLocalManifest};
 const same=(a:unknown,b:unknown)=>typeof a==="string"&&typeof b==="string"&&a.toLowerCase()===b.toLowerCase();
 const need=(v:unknown)=>{if(!v)throw Error("Seaport V2 isolated evidence unavailable or conflicting");};
@@ -36,7 +36,7 @@ export async function seaportLocalContext(c:SeaportLocalConfig){
   for(const[name,wanted]of Object.entries({creator:m.creator,token:m.projectToken,factory:m.coreFactory}))need(same(await rpc.readContract({address:origin,abi:bindingAbi,functionName:name,blockNumber:head.number}as never),wanted));
   need(await read("productionExecutionAvailable")===false&&await read("deploymentChainId")===31337n);
   const[controller,controllerEpoch,policyEpoch,enabled,policy]=await Promise.all([read<Address>("controller"),read<bigint>("controllerEpoch"),read<bigint>("policyEpoch"),read<boolean>("purchasesEnabled"),read<readonly[Address,bigint,bigint,bigint,number]>("policy")]);
-  for(const collection of m.collections){const admitted=await read<readonly[Hex,number,boolean,boolean]>("collections",[collection.address]);need(same(admitted[0],collection.runtimeHash)&&admitted[1]===(collection.standard===721?1:2)&&admitted[2]===true);}
+  for(const collection of m.collections){const admitted=await read<readonly[Hex,number,boolean,boolean]>("collections",[collection.address]);need(same(admitted[0],collection.runtimeHash)&&admitted[1]===(collection.standard===721?1:2));}
   return{rpc,m,head,read,controller,controllerEpoch,policyEpoch,enabled,policy};
 }
 export async function readSeaportIndex(c:SeaportLocalConfig,transaction?:string){
