@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 1,
+  "task": 78,
+  "baseCommit": "8d1876daed6449e40388166255f52f13f3c488dd",
+  "status": "WORKFLOW_STRUCTURE_VALIDATED_NOT_CI_EXECUTION",
+  "validator": "Existing locked yaml 2.9.0 uniqueKeys parser; every step has exactly one run/uses",
+  "preservedSecurityJobs": {
+    "slither": "a35d6c577a0587599d2bd07c039fbba35ac57306d6d94960cbb5b7c8344216f0",
+    "fixed-supply-4663": "c0655209836ed1dff38f1d0e641d7abce43fc52b6cb092099445885dea8e6fb9",
+    "treasury-purchase-v2-prototype": "4d008bd6c710d059c8e719c3be7ee9579833e3431cf549ce623baceee2c55098",
+    "project-treasury-v1": "9332e06f11448acd09f76204fa86d52e5431d6af171f69a14e4ce3ca3db09040"
+  },
+  "newSecurityJob": "reclaim-v1",
+  "retainedSecurityJobObjectsUnchanged": true,
+  "reclaimAnalysisFiltered": false,
+  "separateReclaimBrowserStep": true,
+  "retainedTreasuryStep": true,
+  "browserMatrix": [
+    "chromium",
+    "webkit"
+  ],
+  "timeoutChanged": false,
+  "preservedSecurityJobTextSha256": {
+    "slither": "58e8ce11b3fc40ab34da27262b2e77237c0c3091fd1fa576d42365c4a1719022",
+    "fixed-supply-4663": "8be166710e47c5aff5eda924a62f101bb26d0328bd7446fbac2e1f18190c005d",
+    "treasury-purchase-v2-prototype": "b6e543def5ffb2977e899697ad24b60fd736195b1bec072d4ea7370ee91323da",
+    "project-treasury-v1": "c38e7153e99dd3687a5593efba0d477f5fd35df1fcc7430db8ef2362e2d34f4e"
+  }
+}

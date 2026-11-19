@@ -1,0 +1,345 @@
+{
+  "schemaVersion": 1,
+  "task": 78,
+  "baseCommit": "8d1876daed6449e40388166255f52f13f3c488dd",
+  "sourceValidationCommit": "1d05977bc7ae0bbe48bd18de8462810f031adabf",
+  "status": "BLOCKED_NO_BROADCAST",
+  "unchangedBaseSolidityFiles": 47,
+  "comparison": "Exact original Git blobs and bytes, plus working-tree UTF8 CRLF-to-LF compiler bytes. Includes old contracts, tests and historical evidence.",
+  "core31337InputSha256": "437fb783d7dce558a05317e8b15877f6d08b9571bc12aefec360382469d53648",
+  "core4663InputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "treasuryV1InputSha256": "513609f57dea2fd706ac749999c47119955be16bb0b4f46a54b9fc4283683cf0",
+  "treasuryV2PrototypeInputSha256": "02d430dc4018a9a75c9c69f204c4e94c57fa8b94722c90effc79293cad7fff7d",
+  "newReclaimInputSha256": "d3596a541f62f25e579e7f8186e017f678a297f454423a4fa9984c898e720471",
+  "originalSolidity": [
+    {
+      "path": "docs/evidence/rmt-task040/foundry/RMTLaunchTask040Review.t.sol",
+      "gitBlob": "00fd90476f6999ae7e8e3533690d5684e3baec01",
+      "sourceBytes": 5031,
+      "sha256": "3d4da11aa50859a60675546d64d56bd67284767c908f7281f216d7d5f01d0a64",
+      "unchanged": true
+    },
+    {
+      "path": "docs/evidence/rmt-task041/RejectingTreasury.sol",
+      "gitBlob": "0547a9888b3a7bab18d1daa1323bcba15b25060f",
+      "sourceBytes": 840,
+      "sha256": "3ff4af02679fff778e5f1c4f6fdcec912fa12bd19b68b321a8d9cb9f52373a26",
+      "unchanged": true
+    },
+    {
+      "path": "docs/evidence/rmt-task042/foundry/RMTLaunchTreasuryReview.t.sol",
+      "gitBlob": "c04e26e4f0f6a764e074c3f43fd671fd4d31f71f",
+      "sourceBytes": 8607,
+      "sha256": "9a8a7da35094731ca305a587af0fed3848c192b947351a771269b2290c69ef18",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/project-treasury/src/RMTProjectTreasuryFactoryV1.sol",
+      "gitBlob": "05218400c436b8d8ac49a26e6600811c329f3bb0",
+      "sourceBytes": 4026,
+      "sha256": "ae4e43069cf61ae3887bb6db1f11eeb479705f1892adb29be1186dba180d7e7b",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/project-treasury/src/RMTProjectTreasuryV1.sol",
+      "gitBlob": "46c33f1ae081c65fe8db92eaf0b33fa2a28b79ea",
+      "sourceBytes": 28288,
+      "sha256": "5d4c696cf8cc1caa98d696695164319b6da12fcb5003ad1edde84039d091c888",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/project-treasury/src/TreasuryInterfaces.sol",
+      "gitBlob": "bf014f775a5e88d2884bfabea6615ca5a99f35aa",
+      "sourceBytes": 3579,
+      "sha256": "3aa24a3b5b55550f9cd4bfdfa49ebe59c4aec00889069a7b0cf4339191a59f3d",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/project-treasury/test/RMTProjectTreasuryInvariant.t.sol",
+      "gitBlob": "e1f5ec861b97c843d300f649ec900a73aeb4ef30",
+      "sourceBytes": 3764,
+      "sha256": "50b6a819fd35cff6f4d8e8b2878464cff5bf176506e5dd0e91f6500e6671823c",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/project-treasury/test/RMTProjectTreasuryV1.t.sol",
+      "gitBlob": "9e9132cf3a29849a5784205a90e2546af91614b5",
+      "sourceBytes": 20105,
+      "sha256": "2096395b1bc20eccede4dc1d3e3b4b15d5be5d2c2e42a48771b25c884fe65755",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/project-treasury/test/TreasuryMocks.sol",
+      "gitBlob": "b55a4ee778c59d0bee24b82b4c8fecc9f384a8c9",
+      "sourceBytes": 5368,
+      "sha256": "f0bbabe75d978ffbb6b5854d3229eef65d7ce7d305513293be004e0827588e2d",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV1.sol",
+      "gitBlob": "6dd4d524b7110d2b2e320868bf87b5ca37fa37d2",
+      "sourceBytes": 15096,
+      "sha256": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV2.sol",
+      "gitBlob": "12c94e2ac10a3f18cd9f5c116aba91c58ee3eaaa",
+      "sourceBytes": 1379,
+      "sha256": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV3.sol",
+      "gitBlob": "a3668cdb0a800f9ced44e00606fb7e09b9ef99a4",
+      "sourceBytes": 1273,
+      "sha256": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDeploymentV2.sol",
+      "gitBlob": "0d58dffd33d58cdd79961aa665d09d7905d5785d",
+      "sourceBytes": 2203,
+      "sha256": "31e3173f1999f8d68e4bbc6cd55196d618d02de7d9a2da37c53d76dfc7ccfb93",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDirectoryV1.sol",
+      "gitBlob": "c0a21cfe57916a13b161c467d527bdc8df537f13",
+      "sourceBytes": 9218,
+      "sha256": "cc8e4b76a3783b5422a309d0ed83a3346985e363e68fa2145b37cf0fba1fe3e0",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+      "gitBlob": "81fa6c65bbdffd8f53f086f1308df96e1dea7fc3",
+      "sourceBytes": 16469,
+      "sha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "gitBlob": "bd46461d307ebf18ea6ea286ebb87ab7dcf7db8c",
+      "sourceBytes": 12418,
+      "sha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "gitBlob": "b8c1fa3c07ec21c444647940d40297405ff8e3c7",
+      "sourceBytes": 6365,
+      "sha256": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+      "gitBlob": "053e45510bfeb4f1451a67c16fed187dc703293e",
+      "sourceBytes": 2398,
+      "sha256": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveRevenueLedgerV1.sol",
+      "gitBlob": "a6e0b388e721be9ccc096fec14f9aa75eff89d78",
+      "sourceBytes": 4285,
+      "sha256": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "gitBlob": "a47038cd1b74dfcad764938f765e48852e4f6a7e",
+      "sourceBytes": 499,
+      "sha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV1.sol",
+      "gitBlob": "d4a34a9bdd9e73233fd2b1e3bb50b081aca0a366",
+      "sourceBytes": 13731,
+      "sha256": "48fa079c05c0cb840dc0c7027d407e54b1472ff0924c30d8e4dc4780a490e717",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV2.sol",
+      "gitBlob": "490362499f6f442d94e4e99c6189a64f00ab3d17",
+      "sourceBytes": 15056,
+      "sha256": "67f22eed981c6627ce6045001dbcfd23eff2e7d8b178c540b9f9979b7acee6ab",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+      "gitBlob": "4a58fbc0821aba7f8a554827cdbf6a97fa560ca2",
+      "sourceBytes": 16244,
+      "sha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "gitBlob": "1395f0038f78a7b1e6dcc30990e68b0e7556102e",
+      "sourceBytes": 20387,
+      "sha256": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/RMTV4CurveInitializationGuardV1.sol",
+      "gitBlob": "fe6bae1b5a8b1b83b30cd087115f06138d299ab1",
+      "sourceBytes": 1808,
+      "sha256": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/interfaces/IRMTLaunchCurveExecution.sol",
+      "gitBlob": "d989d71548c47f9c41f7120fd45be207f9ed89da",
+      "sourceBytes": 651,
+      "sha256": "9b5793ca3cfbffc912e53f6e26d6744aa49a1dfce913791e867e466a5bfa451c",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/src/interfaces/IRMTV4CurveGraduationV1.sol",
+      "gitBlob": "3c37f85cd2c9bf68c8b9e442032ce93b184188d6",
+      "sourceBytes": 463,
+      "sha256": "d3fe566a9b14f907c5289860d96f26b58649027f0ea6d1718862c377839ebefe",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTDependencyArithmeticReview.t.sol",
+      "gitBlob": "d131f4a7042b8f82432a4c159bf263366de329ef",
+      "sourceBytes": 5574,
+      "sha256": "030491f216ffeadde1e4c60715095fc5cb7dda79e25cbbd9923f462767a799ba",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchAdjacentMigrationProof.t.sol",
+      "gitBlob": "83b4ad7bd9033d48f416aefe97912dcf63bd17d0",
+      "sourceBytes": 20674,
+      "sha256": "72459d50784b0e7bc2631e68a23d68b7597b45ad2bc5e0b02e840669ed730853",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchBondingCurveV1.t.sol",
+      "gitBlob": "621c25541c4119378fe9d0abc3806f0ae013d4a5",
+      "sourceBytes": 36011,
+      "sha256": "486e7fc0018a79261ad60b0d270adf3ea957039373df5cd6ebd658026f98f487",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCreatorEarnings.t.sol",
+      "gitBlob": "0dc96418572894677df835150fc77e661b0f2d1d",
+      "sourceBytes": 27817,
+      "sha256": "b7c81e81b008ece8cab270d1cefd815745845933de46c4c50d0e80ba9f502401",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveAccountingInvariant.t.sol",
+      "gitBlob": "a0c74a06bd5dea8e0121f085c12d127a22190388",
+      "sourceBytes": 11052,
+      "sha256": "367ff93c9cc30b8349098696522e6f5c914c401d3fb9bdcef7d7d90720005aa0",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveCreationFeeV1.t.sol",
+      "gitBlob": "f4b73a33bff2daf4ada2eb8a4672bd100d76efd0",
+      "sourceBytes": 12446,
+      "sha256": "db42861f5a55e8be52786720db3690e16e0e6d9a12585eb83cbc79a6e1e983c0",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveDirectoryV1.t.sol",
+      "gitBlob": "b63cb4bc4346e4086dfccf328ca1166276933155",
+      "sourceBytes": 7068,
+      "sha256": "4606cf9e959c176af11fe3869ff0b63971e4b1056431300e049276b5231b9cef",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveDirectoryV2.t.sol",
+      "gitBlob": "1767337cd7b07f66eef26c52ca85665c312e5f17",
+      "sourceBytes": 19970,
+      "sha256": "3e08403cdd4801d32210198899c3e5c1249f20386c6f3b456db710f493838236",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchCurveSymbolic.t.sol",
+      "gitBlob": "051c1be153ba34f0815995a5cfd62c68bad336b2",
+      "sourceBytes": 6071,
+      "sha256": "2c84db5a0dc7bba267d2ea39bf4f01b347006e35c7bbb680a035fe216c820764",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchMigrationReadiness.t.sol",
+      "gitBlob": "4ab4a812b90b445363f2853118d3a07487f96ae3",
+      "sourceBytes": 44551,
+      "sha256": "7b811ac656f393d80b36cc639fbc1798d194ca7089697da5804a50efecd91901",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchProjectRegistryV1.t.sol",
+      "gitBlob": "fe5b276c40f33926f0695dbe07ff8b6cb5da3e1c",
+      "sourceBytes": 9422,
+      "sha256": "f1ba0190be9ac82a0b128c302e543223cfde7ab1605a7febae22f1b4fcd0a6af",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchProjectRegistryV2.t.sol",
+      "gitBlob": "47efdba80376648dcd6c09090dde5e7289dc2fdc",
+      "sourceBytes": 18562,
+      "sha256": "9edb5b27502096dd78a17de26059debabf830197fbd6b48e0b8c6881bd30410d",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTLaunchProjectRegistryV3.t.sol",
+      "gitBlob": "9a9702624e69993d9376f5aa005eef2a10ad30a8",
+      "sourceBytes": 9658,
+      "sha256": "91276bbb300a91625291af6a35d5a609d6dde1a8b1b04559133926122bb0b1e8",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTV4CurveGraduationV1.t.sol",
+      "gitBlob": "0c889db98321244e72c89d2c6da9243f4e81ba56",
+      "sourceBytes": 46232,
+      "sha256": "efcbb6cbfa479f2c2c46d47b9b7c938e6dd64c20460a539acf44069c7fd6f832",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/test/RMTV4SharedPoolSettlement.t.sol",
+      "gitBlob": "df16751b25ed6b60849f15473984449fa87424e9",
+      "sourceBytes": 16956,
+      "sha256": "11393f4d11e2f024675ab35b3d33dc7cd6440eb24b7185311f3fe1f8d0e583ff",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/src/PurchaseEvidenceV2.sol",
+      "gitBlob": "e1304d4a7b9b3f7fb99bee5b830d5e6e85ee5fb8",
+      "sourceBytes": 2720,
+      "sha256": "654423ffc7489285a6d238403af0431357195d67ee561f6d6aa89f928e9b8ae4",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2Prototype.sol",
+      "gitBlob": "b678fe0fed14e21b88987d27ffa4b7dd3a27bea3",
+      "sourceBytes": 8299,
+      "sha256": "de7b6de01b74909152e1096effd3be9be6a48ca115f70e9e59b1102a4ac8791c",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/src/RMTTreasuryPurchaseV2PrototypeFactory.sol",
+      "gitBlob": "a702fd9f39a2570cb2a2b6d60c0c2697609be30f",
+      "sourceBytes": 1780,
+      "sha256": "9f3394afa0779e752fde073ef8324e5220934bd80b11f8cbb884af589eb788f8",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/test/PurchaseBoundaryV2.t.sol",
+      "gitBlob": "75374036e3970d137d4358da6b2dd08b59483f82",
+      "sourceBytes": 15367,
+      "sha256": "4fb1010326364d69b35a698b51eb110bf3f2d8d91acaf8ca8c9b8d1c24ae8c01",
+      "unchanged": true
+    },
+    {
+      "path": "packages/contracts/treasury-purchase-v2/test/V1SecurityDisposition.t.sol",
+      "gitBlob": "4c945929a00bad0a3f571965a0da029a44a5d40e",
+      "sourceBytes": 14999,
+      "sha256": "68dc5a973c6d4df34d21eceb8e0ac90630ab5e8c8eeeb1ec6c8dc4ac4c9683d6",
+      "unchanged": true
+    }
+  ]
+}

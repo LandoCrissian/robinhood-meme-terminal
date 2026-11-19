@@ -14,6 +14,7 @@ on:
       - "apps/indexer/src/curve-*.ts"
       - "apps/indexer/src/production-claim*.ts"
       - "apps/indexer/src/project-treasury*.ts"
+      - "apps/indexer/src/reclaim*.ts"
       - "apps/indexer/package.json"
       - "apps/indexer/tsconfig.json"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
@@ -43,6 +44,8 @@ on:
       - "scripts/visual-qa/rmt-earnings-public.mjs"
       - "scripts/claims/**"
       - "scripts/treasury/**"
+      - "scripts/treasury-v2/**"
+      - "scripts/reclaim/**"
       - "scripts/visual-qa/rmt-polish.mjs"
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
@@ -110,6 +113,8 @@ jobs:
               node scripts/visual-qa/rmt-earnings-public.mjs
             node scripts/treasury-v2/browser-capability.mjs --url http://127.0.0.1:3205/ \
               --browser "$engine" --output "$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/purchase-capability"
+            node scripts/reclaim/browser-public.mjs --url http://127.0.0.1:3205/ \
+              --browser "$engine" --output "$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/reclaim"
           done
           RMT_POLISH_URL=http://127.0.0.1:3205/ \
             RMT_POLISH_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/polish" pnpm test:polish
@@ -184,6 +189,13 @@ jobs:
             --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-project-treasury"
+      - name: Verify separate Reclaim custody and reward lifecycle on synthetic chain 31337
+        run: |
+          node scripts/visual-qa/rmt-creator-integration.mjs --reclaim-only \
+            --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --browser "${{ matrix.browser }}" \
+            --output "$RUNNER_TEMP/rmt-reclaim"
       - name: Read local PostgreSQL diagnostics after failure
         if: failure()
         run: |
@@ -216,3 +228,8 @@ jobs:
             ${{ runner.temp }}/rmt-project-treasury/project-treasury-compiler-manifest.json
             ${{ runner.temp }}/rmt-project-treasury/project-treasury-deployment.json
             ${{ runner.temp }}/rmt-project-treasury/purchase-v2-acceptance.json
+            ${{ runner.temp }}/rmt-reclaim/*.png
+            ${{ runner.temp }}/rmt-reclaim/reclaim-acceptance.json
+            ${{ runner.temp }}/rmt-reclaim/reclaim-browser-evidence.json
+            ${{ runner.temp }}/rmt-reclaim/reclaim-compiler-manifest.json
+            ${{ runner.temp }}/rmt-reclaim/reclaim-deployment.json
