@@ -10,6 +10,7 @@
         "packages/launchpad-common/nft-acquisition-proof.d.mts",
         "packages/launchpad-common/nft-acquisition-runtime.d.mts",
         "packages/launchpad-common/nft-collection-resolver.d.mts",
+        "packages/launchpad-common/seaport-order-verifier.d.mts",
         "packages/launchpad-common/native-proof.d.mts",
         "packages/launchpad-common/project-treasury-runtime.d.mts",
         "packages/launchpad-common/reclaim-runtime.d.mts",
