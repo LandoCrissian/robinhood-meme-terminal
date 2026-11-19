@@ -43,6 +43,8 @@ try{
   browser=await({chromium,webkit}[values.browser]).launch({headless:true});const connected=await testSeaportAcquisitionBrowser({browserEngine:browser,site,fixture,out,sync,hideTrace:v=>{traceHidden=v;},restart:async()=>{await worker.close();await db.end();db=await connectDb();worker=await startSeaportAcquisitionIndexer({db,rpc,manifest,readKey,port:indexPort});await sync();}});
   const version=(await db.query("SHOW server_version")).rows[0].server_version;return{status:connected.status,postgresql:version,singleWriterDenied:true,privateTables:["rmt_seaport_v2_binding","rmt_seaport_v2_blocks","rmt_seaport_v2_settlements"],browser:values.browser,production:false};
  }});assert.equal(result.status,"PASS");console.log(JSON.stringify({status:"PASS",browser:values.browser,output:out,production:false}));
+}catch(error){
+ const failure=String(error?.stack??error).replaceAll(password,"[redacted]").replaceAll(readKey,"[redacted]").slice(0,20000);writeFileSync(join(out,"failure.json"),JSON.stringify({status:"incomplete",scope:"isolated-local31337",production:false,failure},null,2)+"\n");throw error;
 }finally{
  if(browser)await browser.close();if(next){next.kill();await Promise.race([new Promise(done=>next.once("exit",done)),delay(3000)]);}if(worker)await worker.close();if(db)await db.end();if(proxy)await new Promise(done=>proxy.close(done));if(pgStarted)execFileSync(pgExe("pg_ctl"),["-D",cluster,"-w","-m","fast","stop"],{env:pgEnv,windowsHide:true,stdio:"ignore"});
 }

@@ -48,6 +48,7 @@ export async function startSeaportAcquisitionIndexer({db,rpc,manifest:m,readKey,
     const h=await rpc.getBlock({blockNumber:BigInt(stored.checkpoint.blockNumber)});if(h.hash?.toLowerCase()!==stored.checkpoint.blockHash.toLowerCase())throw Error("Reorg pending");
     const body=json({schemaVersion:1,profile:m.profile,chainId:31337,productionExecution:false,status:"ready",...stored});if(Buffer.byteLength(body)>131072)throw Error("Read bound exceeded");res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store","Content-Length":Buffer.byteLength(body)});res.end(body);
   }catch{res.writeHead(503,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end(json({status:"pending",productionExecution:false}));}});
-  await new Promise<void>((done,fail)=>{server.once("error",fail);server.listen(port,"127.0.0.1",done);});await sync();
+  try{await new Promise<void>((done,fail)=>{server.once("error",fail);server.listen(port,"127.0.0.1",done);});await sync();}
+  catch(error){closed=true;clearInterval(timer);if(server.listening)await new Promise<void>(done=>server.close(()=>done()));throw error;}
   return{sync,status:()=>status,close:async()=>{closed=true;clearInterval(timer);while(running)await new Promise(done=>setTimeout(done,20));await new Promise<void>((done,fail)=>server.close(e=>e?fail(e):done()));}};
 }
