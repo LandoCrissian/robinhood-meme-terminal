@@ -20,6 +20,7 @@ import type { FixtureProjectTreasuryAdmission } from "./curve-fixture-project-tr
 import { configuredFixtureTreasuryModule, verifyFixtureTreasuryModule, projectTreasuryAdmission, projectTreasuryFixtureTables,
   initializeProjectTreasuryFixtureStore, readProjectTreasuryFixtureRange, commitProjectTreasuryFixtureRange, readProjectTreasuryFixture } from "./project-treasury-fixture-store.js";
 import { configuredReclaimFixtureModule, verifyReclaimFixtureModule, readReclaimFixtureRange } from "./reclaim-fixture-evidence.js";
+import { localReclaimSourceDiagnostic } from "./reclaim-fixture-diagnostics.js";
 import { reclaimFixtureTables, initializeReclaimFixtureStore, commitReclaimFixtureRange, readReclaimFixture } from "./reclaim-fixture-store.js";
 import { indexFixtureSuccessorGraduation, verifyFixtureGraduationCoverage } from "./curve-fixture-successor-graduation.js";
 import { fixtureFeeActivityEventAbi, fixtureFeeActivityTopics, fixtureLpFeeActivity, indexFixtureFeeActivity,
@@ -492,7 +493,11 @@ async function main() {
         verified = null;
         const issue = error instanceof Error && /^[Ff]ixture [\w ,.-]+(?::[\w ,.-]+)?$/.test(error.message)
           ? error.message : "Fixture evidence read or persistence unavailable";
-        if (issue !== previousIssue) console.error(issue);
+        if (issue !== previousIssue) {
+          console.error(issue);
+          const location=localReclaimSourceDiagnostic(error,binding.chainId,!!reclaimModule);
+          if(location)console.error(location);
+        }
         previousIssue = issue;
       }
       await wait(pollMs, undefined, { signal: stop.signal }).catch(() => undefined);
