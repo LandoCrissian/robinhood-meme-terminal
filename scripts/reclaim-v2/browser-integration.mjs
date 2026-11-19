@@ -141,15 +141,28 @@ export async function createReclaimBrowserSession({ browserEngine, site, out, rp
       await region.getByText(inner.nft.retirementMode === 1 ? "None — actual native burn" : inner.nft.destination, { exact: true }).waitFor();
       await region.getByText(/Permanent loss by verified native burn or validated immutable sink/).waitFor();
     }
-    await region.getByText(`${humanUnits(review.maximumNetworkFeeWei)} synthetic ETH`, { exact: true }).waitFor();
+    const fee = region.getByText(`${humanUnits(review.maximumNetworkFeeWei)} synthetic ETH`, { exact: true });
+    await fee.waitFor();
     const before = evidence.walletMethods.length;
     const media = () => page.evaluate(() => ({ touch: navigator.maxTouchPoints, coarse: matchMedia("(pointer: coarse)").matches }));
     const originalMedia = await media();
-    const screenshot = `reclaim-${safe ? "safe-outer" : "direct"}-review-${inner.nft.retirementMode === 1 ? "native-burn" : "permanent-sink"}.png`;
-    await region.screenshot({ path: join(out, screenshot) });
-    assert.deepEqual(await media(), originalMedia); assert.equal(evidence.walletMethods.length, before, "Capturing review evidence cannot request a wallet action");
-    capturedReviewModes.add(key); evidence.screenshots.push(screenshot); evidence.reviewScreenshots ??= [];
-    evidence.reviewScreenshots.push({ screenshot, region: label, reviewHash: review.reviewHash, retirementMode: inner.nft.retirementMode,
+    const prefix = `reclaim-${safe ? "safe-outer" : "direct"}-review-${inner.nft.retirementMode === 1 ? "native-burn" : "permanent-sink"}`;
+    const screenshots = [];
+    // Locator screenshots change Chromium's touch emulation in Playwright
+    // 1.55.1. Retain normal viewport capture and scroll only the document.
+    for (const [part, target] of [["top", region], ["cost", fee]]) {
+      await target.evaluate((element, part) => {
+        element.scrollIntoView({ block: part === "top" ? "start" : "center", behavior: "instant" });
+        if (part === "top") window.scrollBy({ top: -96, behavior: "instant" });
+      }, part);
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+      const screenshot = `${prefix}-${part}-viewport.png`;
+      await page.screenshot({ path: join(out, screenshot), fullPage: false });
+      assert.deepEqual(await media(), originalMedia); assert.equal(evidence.walletMethods.length, before, "Capturing review evidence cannot request a wallet action");
+      screenshots.push(screenshot); evidence.screenshots.push(screenshot);
+    }
+    capturedReviewModes.add(key); evidence.reviewScreenshots ??= [];
+    evidence.reviewScreenshots.push({ screenshots, captureKind: "document-scroll-viewport-not-element-crop", region: label, reviewHash: review.reviewHash, retirementMode: inner.nft.retirementMode,
       destination: inner.nft.destination, maximumSyntheticNetworkFeeWei: review.maximumNetworkFeeWei, irreversibleTermsVisible: true,
       beforeWalletConfirmation: true, walletActionsDuringCapture: 0 }); save();
   }
