@@ -51,6 +51,8 @@ on:
       - "docs/evidence/mobile-signing/**"
       - ".github/workflows/launch-website-review.yml"
       - ".github/scripts/prepare-browser-apt.sh"
+      - ".github/scripts/prepare-postgres-18.sh"
+      - ".github/scripts/postgres-18-packages.mjs"
 
 permissions:
   contents: read
@@ -168,14 +170,15 @@ jobs:
             'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
             --output "$RUNNER_TEMP/solc-0.8.26"
           chmod 700 "$RUNNER_TEMP/solc-0.8.26"
-          "$(pg_config --bindir)/pg_ctl" --version
           node packages/contracts/scripts/mobile-review-plan.mjs --solc "$RUNNER_TEMP/solc-0.8.26" \
             --fixture-lifecycle --verify docs/evidence/mobile-signing/review-plan-4663.json
+      - name: Prepare exact PostgreSQL 18.6 isolated fixture binaries
+        run: bash .github/scripts/prepare-postgres-18.sh
       - name: Verify permanent Reclaim and two-owner Safe execution on synthetic chain 31337
         run: |
           node scripts/visual-qa/rmt-creator-integration.mjs --reclaim-only \
             --anvil "$(command -v anvil)" \
-            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$RMT_PG18_BIN" \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-reclaim"
       - name: Verify the same-app lifecycle on synthetic chain 31337
@@ -183,7 +186,7 @@ jobs:
           node --test scripts/visual-qa/receipt-observation.test.mjs
           node scripts/visual-qa/rmt-creator-integration.mjs \
             --anvil "$(command -v anvil)" \
-            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$RMT_PG18_BIN" \
             --mobile-plan docs/evidence/mobile-signing/review-plan-4663.json \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-creator-lifecycle"
@@ -191,14 +194,14 @@ jobs:
         run: |
           node scripts/visual-qa/rmt-creator-integration.mjs --profiles-only \
             --anvil "$(command -v anvil)" \
-            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$RMT_PG18_BIN" \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-claim-wallet-profiles"
       - name: Verify optional treasury lifecycle and hard-disabled V2 purchase boundary
         run: |
           node scripts/visual-qa/rmt-creator-integration.mjs --treasury-only --treasury-v2 \
             --anvil "$(command -v anvil)" \
-            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$(pg_config --bindir)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$RMT_PG18_BIN" \
             --browser "${{ matrix.browser }}" \
             --output "$RUNNER_TEMP/rmt-project-treasury"
       - name: Read local PostgreSQL diagnostics after failure
@@ -213,6 +216,12 @@ jobs:
         with:
           name: rmt-creator-lifecycle-${{ matrix.browser }}-${{ github.event.pull_request.head.sha }}
           path: |
+            ${{ env.RMT_PG18_EVIDENCE }}/provenance.json
+            ${{ env.RMT_PG18_EVIDENCE }}/versions-and-runtime.txt
+            ${{ env.RMT_PG18_EVIDENCE }}/InRelease
+            ${{ env.RMT_PG18_EVIDENCE }}/Release
+            ${{ env.RMT_PG18_EVIDENCE }}/Packages.gz
+            ${{ env.RMT_PG18_EVIDENCE }}/*.ldd
             ${{ runner.temp }}/rmt-creator-lifecycle/*.png
             ${{ runner.temp }}/rmt-creator-lifecycle/creation-journey-evidence.json
             ${{ runner.temp }}/rmt-creator-lifecycle/graduation-review-evidence.json
