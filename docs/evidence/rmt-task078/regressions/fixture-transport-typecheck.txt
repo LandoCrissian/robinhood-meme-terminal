@@ -1,0 +1,4 @@
+
+> @rmt/launch-website@0.1.0 typecheck C:\Users\RMT\Documents\Codex\2026-11-11\rmt-task078\apps\launch-website
+> tsc --noEmit
+

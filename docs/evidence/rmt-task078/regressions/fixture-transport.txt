@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: loopback simulation accepts a three-second read without retrying or broadcasting
+ok 1 - loopback simulation accepts a three-second read without retrying or broadcasting
+  ---
+  duration_ms: 3274.5166
+  type: 'test'
+  ...
+# Subtest: loopback simulation retains a finite timeout, fails closed and does not retry
+ok 2 - loopback simulation retains a finite timeout, fails closed and does not retry
+  ---
+  duration_ms: 10020.6138
+  type: 'test'
+  ...
+# Subtest: test execution is unreachable unless all loopback inputs and the pinned fixture profile match
+ok 3 - test execution is unreachable unless all loopback inputs and the pinned fixture profile match
+  ---
+  duration_ms: 3.4024
+  type: 'test'
+  ...
+# Subtest: server fixture reads the manifest only for the exact bound Host and HTTP transport
+ok 4 - server fixture reads the manifest only for the exact bound Host and HTTP transport
+  ---
+  duration_ms: 20.3913
+  type: 'test'
+  ...
+# Subtest: fixture diagnostics preserve the exact inner stage and allowlisted invariant only
+ok 5 - fixture diagnostics preserve the exact inner stage and allowlisted invariant only
+  ---
+  duration_ms: 1.6341
+  type: 'test'
+  ...
+# Subtest: fixture gas diagnostics identify a nested RPC timeout without exposing its request
+ok 6 - fixture gas diagnostics identify a nested RPC timeout without exposing its request
+  ---
+  duration_ms: 0.3643
+  type: 'test'
+  ...
+# Subtest: fixture diagnostics disclose only a four-byte revert selector, never encoded arguments
+ok 7 - fixture diagnostics disclose only a four-byte revert selector, never encoded arguments
+  ---
+  duration_ms: 0.2766
+  type: 'test'
+  ...
+# Subtest: fixture diagnostics bound malformed, cyclic and oversized upstream data
+ok 8 - fixture diagnostics bound malformed, cyclic and oversized upstream data
+  ---
+  duration_ms: 0.2279
+  type: 'test'
+  ...
+# Subtest: diagnostic wrapping does not retry, alter return values or convert failures to success
+ok 9 - diagnostic wrapping does not retry, alter return values or convert failures to success
+  ---
+  duration_ms: 0.2094
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 14608.2158
