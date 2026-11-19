@@ -1,0 +1,76 @@
+{
+  "schemaVersion": 1,
+  "status": "GENUINE_ISOLATED_REGRESSION_FAILURE_PRESERVED_NOT_ROOT_CAUSED",
+  "scope": "WEBKIT_SYNTHETIC_CHAIN_31337_NOT_PRODUCTION_OR_PHYSICAL_IPHONE",
+  "sourceHead": "7f486dc3404760b94b11499f1b125c19d1ab6a91",
+  "actualCheckout": "e56ed40a4ce6f203b0c67e4e66f4ee90ba33e8b1",
+  "runUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44539880509",
+  "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44539880509/job/135615046117",
+  "artifactId": "14537308375",
+  "artifactName": "rmt-creator-lifecycle-webkit-7f486dc3404760b94b11499f1b125c19d1ab6a91",
+  "failedStep": "Verify permanent Reclaim and two-owner Safe execution on synthetic chain 31337",
+  "terminalError": "page.waitForFunction: Timeout 30000ms exceeded.",
+  "terminalLocation": "scripts/reclaim-v2/browser-integration.mjs:206:16",
+  "precedingObservedError": {
+    "operator": "strictEqual",
+    "actual": null,
+    "expectedPublicHash": "0x87d59ea7147615eff6ba5d99d231ba29b28317dcfcec29f5168ed1480f4b208c",
+    "meaning": "A synthetic wallet callback assertion failed before pending-journal completion. Its caught message lacks the original assertion callsite."
+  },
+  "observedBoundary": {
+    "lastReviewedOperation": "approve-1155",
+    "lastReviewedNonce": "0x3e",
+    "lastWalletMethod": "eth_sendTransaction",
+    "lastCompletedOperation": "redeem",
+    "completedRetirementModes": [
+      "native-burn-ERC721",
+      "native-burn-ERC1155",
+      "permanent-sink-ERC721"
+    ],
+    "retirementCount": 3,
+    "workerErrorLogBytes": 0,
+    "pageErrorCount": 0
+  },
+  "notEstablished": [
+    "Which assertion returned null: raw-send returned hash, numbered block hash versus receipt, or redundant browser receipt-header check.",
+    "Whether the fourth approval was mined; no canonical receipt was retained for that failed action.",
+    "A new indexer, contract, application or WebKit defect.",
+    "A transient failure or safe retry; no retry or assertion bypass was introduced."
+  ],
+  "chromium": {
+    "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44539880509/job/135615046161",
+    "status": "SUCCESS",
+    "meaning": "Separate actual Chromium run completed the four existing private acceptance groups; it does not substitute for the failed WebKit run."
+  },
+  "followupDiagnostic": {
+    "commit": "819b0266",
+    "source": "scripts/reclaim-v2/browser-integration.mjs",
+    "change": "Bounded basename/line/column callsites; retain all assertions and rethrow the exact original error. No retries or pageerror filters.",
+    "executionOfNewDiagnosticObserved": false
+  },
+  "rawSelectedEvidence": [
+    {
+      "artifactEntry": "rmt-reclaim/reclaim-acceptance.json",
+      "bytes": 175286,
+      "sha256": "559ce7709e02c2f31bd418bf701f3a8bd29e39209268a81b9e2440555b7955a8"
+    },
+    {
+      "artifactEntry": "rmt-reclaim/reclaim-browser-evidence.json",
+      "bytes": 424223,
+      "sha256": "5a80eb86e7eafcc9113e7538806000c96a5b49e525e3852013c5bd88ee885ead"
+    },
+    {
+      "artifactEntry": "rmt-reclaim/reclaim-browser-failure.txt",
+      "bytes": 6245,
+      "sha256": "6877e149a95ff70766e209d714d403aab17a610be10d70a4fba1afc713e0bec5"
+    },
+    {
+      "artifactEntry": "rmt-reclaim/worker-reclaim.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "productionChanged": false,
+  "failedWebKitCalledPassed": false,
+  "releaseHoldsChanged": false
+}
