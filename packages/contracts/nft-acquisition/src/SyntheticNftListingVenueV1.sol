@@ -27,7 +27,10 @@ contract SyntheticNftListingVenueV1 {
         assembly("memory-safe"){r:=calldataload(signature.offset)s:=calldataload(add(signature.offset,32))v:=byte(0,calldataload(add(signature.offset,64)))}
         if((v!=27&&v!=28)||uint256(s)==0||uint256(s)>0x7fffffffffffffffffffffffffffffff5d576e7357a4501ddfe92f46681b20a0||ecrecover(id,v,r,s)!=seller)revert InvalidOrder();
     }
-    function _pay(address currency,address from,address to,uint256 amount) private {
+    // The fill caller is the only possible ERC-20 payer. Derive it here rather
+    // than forwarding a redundant address that a future callsite could misuse.
+    function _pay(address currency,address to,uint256 amount) private {
+        address from=msg.sender;
         if(amount==0)return;if(to==address(0)||to==from||to==address(this))revert InvalidOrder();
         if(currency==address(0)){uint256 before_=to.balance;(bool ok,)=payable(to).call{value:amount}("");if(!ok||to.balance!=before_+amount)revert TransferFailed();}
         else{INftAcquisitionERC20 t=INftAcquisitionERC20(currency);uint256 a=t.balanceOf(from);uint256 b=t.balanceOf(to);if(!t.transferFrom(from,to,amount)||t.balanceOf(from)+amount!=a||t.balanceOf(to)!=b+amount)revert TransferFailed();}
@@ -44,7 +47,7 @@ contract SyntheticNftListingVenueV1 {
             if(recipient!=o.royaltyRecipient||amount!=o.royaltyAmount)revert InvalidOrder();
         }else if(o.royaltyRecipient!=address(0)||o.royaltyAmount!=0)revert InvalidOrder();
         orderState[id]=1;
-        _pay(o.currency,o.vault,o.seller,o.sellerAmount);_pay(o.currency,o.vault,o.feeRecipient,o.feeAmount);_pay(o.currency,o.vault,o.royaltyRecipient,o.royaltyAmount);
+        _pay(o.currency,o.seller,o.sellerAmount);_pay(o.currency,o.feeRecipient,o.feeAmount);_pay(o.currency,o.royaltyRecipient,o.royaltyAmount);
         if(o.standard==1)INftAcquisition721(o.collection).safeTransferFrom(o.seller,o.vault,o.tokenId);
         else INftAcquisition1155(o.collection).safeTransferFrom(o.seller,o.vault,o.tokenId,o.quantity,"");
         emit OrderFilled(id,o.vault,o.seller,o.collection,o.tokenId,o.quantity,o.currency,total);
