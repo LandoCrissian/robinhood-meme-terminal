@@ -269,6 +269,7 @@ jobs:
             ${{ runner.temp }}/rmt-reclaim/reclaim-browser-evidence.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-compiler-manifest.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-deployment.json
+            ${{ runner.temp }}/rmt-reclaim/reclaim-administration-policy.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-safe-acceptance.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-safe-browser-evidence.json
             ${{ runner.temp }}/rmt-reclaim/reclaim-safe-browser-failure.txt
