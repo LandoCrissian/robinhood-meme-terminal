@@ -21,6 +21,7 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
   const evidence = { schemaVersion: 1, profile: m.profile, status: "incomplete", chainId: 31337, productionExecution: false,
     scope: "LOCAL_SYNTHETIC_NOT_PRODUCTION_OR_PHYSICAL_PHONE", sourceIdentity, module: m, compiler: compilation.manifest,
     checks: {}, purchases: [], sameBlock: [], withdrawals: [], safeExecutions: [], screenshots: [] };
+  evidence.postgresql={serverVersion:(await pg.query("SHOW server_version")).rows[0].server_version,encoding:(await pg.query("SHOW server_encoding")).rows[0].server_encoding};assert.match(evidence.postgresql.serverVersion,/^18\.6(?:\D|$)/);assert.equal(evidence.postgresql.encoding,"UTF8");
   const save = () => writeFileSync(join(out, "nft-acquisition-acceptance.json"), json(evidence));
   const read = (fn, args = []) => client.readContract({ address: m.vault, abi: vaultAbi, functionName: fn, args });
   const sync = async () => { await mine(); await ready(); };
@@ -98,7 +99,8 @@ export async function testNftAcquisitionJourney({ browserEngine, rpcUrl, rpc, co
     const secondBuy = await complete("buy", second.fields); evidence.purchases.push(secondBuy);
     // Exact receipt is insufficient when the independent trace facade is down.
     hideNativeProof(true); const unproven = await post({ action: "verify", review: secondBuy.review, transactionHash: secondBuy.receipt.transactionHash });
-    assert.equal(unproven.body.status, "pending"); hideNativeProof(false); await session.verify(secondBuy.review, secondBuy.receipt.transactionHash, "confirmed");
+    assert.equal(unproven.body.status, "pending"); hideNativeProof(false);const recoveredTrace=await session.verify(secondBuy.review, secondBuy.receipt.transactionHash, "confirmed");
+    evidence.traceRecovery={reviewHash:secondBuy.review.reviewHash,transactionHash:secondBuy.receipt.transactionHash,missingTrace:unproven,restoredTrace:recoveredTrace};save();
     evidence.checks.missingTraceRemainsPending = true;
     await complete("approve-funding", { amountWei: "40000000000000000" }); await complete("fund-token", { amountWei: "40000000000000000", source: "0x" + "82".repeat(32) });
     await complete("configure", normalConfig(m.paymentToken));
