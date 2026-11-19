@@ -49,8 +49,8 @@
       "sha256": "6f84aba868d4c48589101f8a24ca3e4db3e0a92afce3823b5cd913b3e97a49d1"
     },
     "scripts/seaport-acquisition/marketplace-current-qualification.test.mjs": {
-      "bytes": 4160,
-      "sha256": "a050aa518466c5a1f2cdbaa2a2e9c948e76eb3a5f9ed9e0cf5947cef8b4fdb2a"
+      "bytes": 4873,
+      "sha256": "f73a3bf0364b9341fca7b7d23bcd85d821c3f9ef321f449a0425290695f1b76e"
     }
   },
   "privacy": {
@@ -58,15 +58,24 @@
     "version": "8.30.1",
     "configurationSha256": "682c4983b955469645ca36b3145f10bd9baa6e3011ac4f8d82cc4de6b49be8cc",
     "mode": "stdin, raw in-memory bytes before remote archive; no local files",
-    "inputBytes": 114680,
-    "inputSha256": "69bdd6322b79ec0bd549352d9b1c3b7500fdb81b8f99bf639df4220223ecae38",
-    "scope": "Seven initial implementation/schema/test sources at scan time plus exact qualification observation; later source/test additions are separately checked by scoped unit tests and final repository CI",
+    "inputBytes": 96591,
+    "inputSha256": "5c6ed1490dc76e965c4c8b38b012974cf1b0a6d5a3811f3b2d9df21dd4722d6a",
+    "scope": "Exact original qualification output plus unescaped original UTF8 body of the OpenSea response and all twelve nested proxy RPC responses; scanned as plaintext before remote archive",
     "exitCode": 0,
     "findings": 0,
     "unclassified": 0,
     "report": "raw-gitleaks-report.json",
     "suppressionsAdded": false,
-    "historyRewritten": false
+    "historyRewritten": false,
+    "priorCombinedSourceScan": {
+      "inputBytes": 114680,
+      "inputSha256": "69bdd6322b79ec0bd549352d9b1c3b7500fdb81b8f99bf639df4220223ecae38",
+      "findings": 0,
+      "unclassified": 0
+    },
+    "inputConstruction": "originalQualificationBytes + newline + DECODED_TRANSPORT OpenSea + newline + publicSource.rawUtf8 + newline; then for each rawReads index: newline + DECODED_TRANSPORT {index} {provider} {method} + newline + rawUtf8 + newline",
+    "decodedTransportBodies": 13,
+    "stderr": "1:40PM INF scanned ~96591 bytes (96.59 KB) in 194ms\n1:40PM INF no leaks found\n"
   },
   "currentPublicListingVerified": false,
   "productionPaymentAdmitted": false,
@@ -80,8 +89,8 @@
     "laterChange": "Final executable waits all settled provider reads before reporting a failed authority probe; positive report behavior is unchanged and tested against retained exact responses"
   },
   "unitValidation": {
-    "checks": 15,
-    "passed": 15,
+    "checks": 16,
+    "passed": 16,
     "failed": 0,
     "method": "Actual Node stdin in-memory execution of the three new test modules; module URLs remapped and new evidence bytes injected into memory, no checkout/build/install or local writes",
     "commandForCheckout": "node --test scripts/seaport-acquisition/owner-supplied-order.test.mjs scripts/seaport-acquisition/payment-policy.test.mjs scripts/seaport-acquisition/marketplace-current-qualification.test.mjs",

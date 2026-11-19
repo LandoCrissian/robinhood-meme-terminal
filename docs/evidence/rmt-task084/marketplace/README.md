@@ -36,7 +36,7 @@ All production ERC20s, including aeWETH, remain blocked regardless of ticker, in
 
 ## Validation, integrity and limits
 
-Fifteen focused checks passed in actual in-memory Node execution: strict parsing, supported profiles, domain/counter/status/signature/ownership/approval/reserve failures, disagreement/reorg, exact consideration, production ERC20 exclusion, no credential fallback, actual artifact integrity, bounded proxy control-map replay and unknown-code/changed-anchor rejection. No local checkout, build, package install or file write was used because C: had no free space. Root integration CI and genuine connected/fork suites remain separate requirements.
+Sixteen focused checks passed in actual in-memory Node execution: strict parsing, supported profiles, domain/counter/status/signature/ownership/approval/reserve failures, disagreement/reorg, exact consideration, production ERC20 exclusion, no credential fallback, actual artifact integrity, bounded proxy control-map replay and unknown-code/changed-anchor rejection. No local checkout, build, package install or file write was used because C: had no free space. Root integration CI and genuine connected/fork suites remain separate requirements.
 
 Run after checkout:
 
@@ -46,6 +46,6 @@ node --test scripts/seaport-acquisition/owner-supplied-order.test.mjs \
   scripts/seaport-acquisition/marketplace-current-qualification.test.mjs
 ```
 
-Gitleaks 8.30.1 scanned exact original observation bytes and the implementation sources in memory before archive: **zero findings, zero unclassified**, using the unchanged repository configuration. The exact redacted scanner stdout is [retained](raw-gitleaks-report.json). The manifest binds raw/input/source hashes and distinguishes the actual observation producer snapshot from a later failure-handling refinement. No scanner rules, ignores or history changed. Original raw JSON and public RPC error responses remain intact.
+Gitleaks 8.30.1 scanned the exact original observation plus all thirteen decoded original transport bodies as plaintext in memory before archive; the initial combined source/observation scan also passed: **zero findings, zero unclassified**, using the unchanged repository configuration. The exact redacted scanner stdout is [retained](raw-gitleaks-report.json). The manifest binds raw/input/source hashes and distinguishes the actual observation producer snapshot from a later failure-handling refinement. No scanner rules, ignores or history changed. Original raw JSON and public RPC error responses remain intact.
 
 The bounded observation does not establish an available live feed, current NFT price, L1 finality, audit clearance, acceptable production upgrade authority, funded keeper or execution approval. No live transaction, real owner signature, wallet funding or production change occurred.
