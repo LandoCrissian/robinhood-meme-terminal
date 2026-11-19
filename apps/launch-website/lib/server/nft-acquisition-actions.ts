@@ -157,8 +157,15 @@ const reply=(body:object,status=200)=>Response.json(body,{status,headers:respons
 function acquire(){const now=Math.floor(Date.now()/60_000);if(now!==minute){minute=now;calls=0;}if(active>=2||calls>=120)return null;active++;calls++;return()=>{active--;};}
 export async function handleNftAcquisitionRead(request:Request){const config=configuredNftAcquisitionFixture(request.headers);if(!config)return reply({status:"unavailable",executionEnabled:false},404);
   if(new URL(request.url).search)return reply({status:"invalid",executionEnabled:false},400);const release=acquire();if(!release)return reply({status:"unavailable",executionEnabled:false},429);try{return reply(await readNftAcquisitionSnapshot(config));}catch{return reply({status:"unavailable",executionEnabled:false});}finally{release();}}
+export function nftAcquisitionRequestOriginMatches(request:Request,siteOrigin:string):boolean{try{const url=new URL(request.url),site=new URL(siteOrigin);
+  // Next's local server may normalize its internal Request URL to localhost.
+  // The actual Host and browser Origin still bind the exact127.0.0.1 fixture.
+  return site.protocol==="http:"&&site.hostname==="127.0.0.1"&&Number(site.port)>=1024&&url.protocol==="http:"&&["localhost","127.0.0.1"].includes(url.hostname)&&url.port===site.port
+    &&url.pathname==="/api/nft-acquisition"&&!url.search&&!url.hash&&request.headers.get("host")===site.host&&request.headers.get("origin")===site.origin&&!request.headers.has("forwarded")
+    &&(!request.headers.has("x-forwarded-host")||request.headers.get("x-forwarded-host")===site.host)&&(!request.headers.has("x-forwarded-proto")||request.headers.get("x-forwarded-proto")==="http");
+}catch{return false;}}
 export async function handleNftAcquisitionTest(request:Request){const config=configuredNftAcquisitionFixture(request.headers);if(!config||request.method!=="POST")return reply({status:"unavailable",executionEnabled:false},404);
-  const url=new URL(request.url);if(url.origin!==config.curve.origin||url.search||url.hash||request.headers.get("origin")!==config.curve.origin||request.headers.has("forwarded"))return reply({status:"invalid",executionEnabled:false},403);
+  if(!nftAcquisitionRequestOriginMatches(request,config.curve.origin))return reply({status:"invalid",executionEnabled:false},403);
   const length=request.headers.get("content-length");if(request.headers.get("content-type")?.split(";")[0]!=="application/json"||length!==null&&(!/^\d+$/.test(length)||Number(length)>65536))return reply({status:"invalid",executionEnabled:false},400);
   const release=acquire();if(!release)return reply({status:"unavailable",executionEnabled:false},429);
   try{requireNft(request.body);const body=await readTreasuryBody(request.body,65536);
