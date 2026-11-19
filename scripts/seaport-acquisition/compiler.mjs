@@ -117,9 +117,25 @@ export function compileSeaportAcquisitionFixtures(options) {
   return{artifacts,input:fixtureInput,manifest:{schemaVersion:1,profile:"rmt-seaport-acquisition-synthetic-fixtures",productionEligibility:false,compilerVersion:manifest.compilerVersion,compilerExecutableSha256:manifest.executableSha256,inputSha256:sha256(fixtureInput),sources:[[fixture,sha256(data.sources[fixture].content)]]}};
 }
 
+/** Syntax/type/bytecode compilation is separate from actual Foundry execution. */
+export function compileSeaportAcquisitionTests(options) {
+  const {input}=buildSeaportAcquisitionInput(options), data=JSON.parse(input);
+  for (const file of readdirSync(join(contracts,"seaport-acquisition/test"),{recursive:true})) {
+    if (!file.endsWith(".sol")) continue;
+    const key="seaport-acquisition/test/"+file.replaceAll("\\","/");
+    data.sources[key]={content:normalized(join(contracts,key))};
+  }
+  const asset="nft-acquisition/test/fixtures/NftAcquisitionAssets.sol";
+  data.sources[asset]={content:normalized(join(contracts,asset))};
+  const testInput=JSON.stringify(data), output=JSON.parse(execFileSync(resolve(options.solc),["--standard-json","--no-import-callback"],{input:testInput,encoding:"utf8",maxBuffer:64*1024*1024,timeout:240000,windowsHide:true}));
+  const errors=(output.errors??[]).filter(e=>e.severity==="error"); assert.equal(errors.length,0,errors.map(e=>e.formattedMessage).join("\n"));
+  return {syntax:"PASS_NOT_EXECUTED",inputSha256:sha256(testInput),tests:Object.values(output.contracts).flatMap(units=>Object.entries(units).flatMap(([name,c])=>c.abi.filter(x=>x.type==="function"&&/^(test|invariant)/.test(x.name)).map(x=>name+"."+x.name)))};
+}
+
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
-  const { values } = parseArgs({ options: { solc: { type: "string" }, "standard-json": { type: "string" }, manifest: { type: "string" } } });
+  const { values } = parseArgs({ options: { solc: { type: "string" }, "standard-json": { type: "string" }, manifest: { type: "string" }, "check-foundry-syntax": {type:"boolean"} } });
   assert.ok(values.solc, "Supply --solc with the checksum-verified compiler");
+  if(values["check-foundry-syntax"]) {console.log(JSON.stringify(compileSeaportAcquisitionTests({solc:values.solc}),null,2)); process.exit(0);}
   const compiled = compileSeaportAcquisition({ solc: values.solc });
   for (const [file, body] of [[values["standard-json"], compiled.input], [values.manifest, JSON.stringify(compiled.manifest, null, 2) + "\n"]]) {
     if (!file) continue; assert.ok(!existsSync(file), "Use a fresh output path");

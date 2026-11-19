@@ -88,7 +88,7 @@ contract RMTSeaportAcquisitionVaultV2 {
     modifier onlyController() { if (msg.sender != controller || !checks.supported(controller)) revert Unauthorized(); _; }
 
     constructor(address creator_,address token,address controller_,bytes32 intent,T.Pins memory p) {
-        if (block.chainid != 31337 || creator_ == address(0) || intent == bytes32(0) || !NftAcquisitionAccounts.supported(controller_)
+        if (block.chainid != 31337 || creator_ == address(0) || msg.sender != creator_ || intent == bytes32(0) || !NftAcquisitionAccounts.supported(controller_)
             || p.coreFactory.code.length == 0 || p.coreFactory.codehash != p.coreFactoryHash || p.coreFactoryHash == bytes32(0)
             || p.seaport.code.length == 0 || p.seaport.codehash != p.seaportHash || p.seaportHash == bytes32(0)
             || p.paymentToken.code.length == 0 || p.paymentToken.codehash != p.paymentTokenHash || p.paymentTokenHash == bytes32(0)
