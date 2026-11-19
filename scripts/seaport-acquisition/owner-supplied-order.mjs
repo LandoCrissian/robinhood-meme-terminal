@@ -64,7 +64,10 @@ export async function verifyCurrentOwnerSuppliedOrder(envelope,{profile="robinho
   const {rpc,witnessRpc,pins,review:r}=o,methods=["getChainId","getBlock","getCode","readContract","getBalance"];need(methods.every(k=>typeof rpc[k]==="function"&&typeof witnessRpc[k]==="function"),"INVALID_READ_ONLY_PROVIDER");
   async function corroborate(method,args){
     need(reads+2<=ownerSuppliedOrderLimits.maxReads,"RPC_READ_LIMIT");reads+=2;const remaining=Math.min(ownerSuppliedOrderLimits.timeoutMs,ownerSuppliedOrderLimits.totalReadMs-(Date.now()-started));need(remaining>0,"RPC_TIME_LIMIT");let timer;
-    try{return await Promise.race([(async()=>{let a,b;if(method==="getBlock"&&args?.blockTag==="latest"){a=await rpc[method](args);b=await witnessRpc[method]({blockNumber:a.number});}else[a,b]=await Promise.all([rpc[method](args),witnessRpc[method](args)]);const view=x=>method==="getBlock"?{number:x.number,hash:x.hash,timestamp:x.timestamp}:x;need(JSON.stringify(stable(view(a)))===JSON.stringify(stable(view(b))),"PROVIDER_DISAGREEMENT");return a;})(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error("RPC_TIMEOUT")),remaining);})]);}finally{clearTimeout(timer);}
+    try{return await Promise.race([(async()=>{let a,b;if(method==="getBlock"&&args?.blockTag==="latest"){a=await rpc[method](args);b=await witnessRpc[method]({blockNumber:a.number});}else[a,b]=await Promise.all([rpc[method](args),witnessRpc[method](args)]);// viem getCode maps the JSON-RPC empty bytecode "0x" to undefined.
+      // Normalize that documented outcome only; null/malformed/contract code
+      // remains distinct, including disagreement with a nonempty witness.
+      const view=x=>method==="getBlock"?{number:x.number,hash:x.hash,timestamp:x.timestamp}:method==="getCode"&&x===undefined?"0x":x;need(JSON.stringify(stable(view(a)))===JSON.stringify(stable(view(b))),"PROVIDER_DISAGREEMENT");return method==="getCode"?view(a):a;})(),new Promise((_,reject)=>{timer=setTimeout(()=>reject(Error("RPC_TIMEOUT")),remaining);})]);}finally{clearTimeout(timer);}
   }
   need(await corroborate("getChainId")===chainId,"PROVIDER_CHAIN_MISMATCH");
   const block=await corroborate("getBlock",{blockTag:"latest"});need(typeof block.number==="bigint"&&block.number>0n&&hash(block.hash)&&typeof block.timestamp==="bigint","INVALID_CANONICAL_BLOCK");

@@ -60,8 +60,14 @@ export function createReadOnlySeaportWatcher({configuration,store,readState,disc
   try{
    const previous=await read(()=>store.load(bindingHash));need(previous&&previous.bindingHash===bindingHash&&Number.isSafeInteger(previous.revision)&&Array.isArray(previous.records)&&previous.records.length<=watcherLimits.maxRecords&&Number.isSafeInteger(previous.lastPollAtMs),"WATCH_STORE_UNAVAILABLE");
    if(!force&&started<previous.lastPollAtMs+interval)return outcome("IDLE","POLL_INTERVAL",{bindingHash});
-   const next={...previous,revision:previous.revision+1,lastPollAtMs:started,records:previous.records.map(x=>({...x}))};
-   const commit=async()=>{need(Buffer.byteLength(JSON.stringify(next))<=watcherLimits.maxStateBytes,"WATCH_STORE_CAPACITY");need(await read(()=>store.commit(previous.revision,next))===true,"WATCH_STORE_CONFLICT");};
+   // Persist the attempt before any provider/feed read so outages and process
+   // crashes cannot turn each indexer block into an unbounded retry. Retain any
+   // original request, but make its evidence pending until this cycle proves it.
+   const attempt={...previous,revision:previous.revision+1,lastPollAtMs:started,records:previous.records.map(x=>["PREPARED","PENDING_EVIDENCE"].includes(x.status)?{...x,status:"PENDING_EVIDENCE",invalidReason:"CURRENT_CYCLE_EVIDENCE_PENDING"}:{...x})};
+   need(Buffer.byteLength(JSON.stringify(attempt))<=watcherLimits.maxStateBytes,"WATCH_STORE_CAPACITY");
+   need(await read(()=>store.commit(previous.revision,attempt))===true,"WATCH_STORE_CONFLICT");
+   const next={...attempt,revision:attempt.revision+1,records:attempt.records.map(x=>({...x}))};
+   const commit=async()=>{need(Buffer.byteLength(JSON.stringify(next))<=watcherLimits.maxStateBytes,"WATCH_STORE_CAPACITY");need(await read(()=>store.commit(attempt.revision,next))===true,"WATCH_STORE_CONFLICT");};
    const initial=await read(signal=>readState({binding,signal}));assertSnapshot(initial,binding);
    if(initial.purchasesEnabled!==true){for(const r of next.records)if(["PREPARED","PENDING_EVIDENCE"].includes(r.status))r.status="INVALIDATED";await commit();return outcome("OFF","MINED_POLICY_OFF",{bindingHash});}
    const open=next.records.find(r=>["PREPARED","PENDING_EVIDENCE"].includes(r.status));

@@ -23,3 +23,31 @@ test("current state cancellation, fill, counter, owner, approval, code, domain, 
 test("independent witness disagreement, missing reads, proxy pins, signatures and exact review mismatches cannot admit",async()=>{for(const mutate of[f=>delete f.options.verifierOptions.witnessRpc,f=>f.options.verifierOptions.witnessRpc.getChainId=async()=>1,f=>f.options.verifierOptions.pins.collections[0].proxy=true,f=>f.envelope.order.signature="0x"+"01".repeat(65),f=>f.options.verifierOptions.review.quantity="2",f=>f.options.verifierOptions.review.expectedConsideration[0].amountWei="999",f=>f.options.verifierOptions.review.maxTotalWei="999",f=>f.options.verifierOptions.review.expectedOrderHash=v.zeroHash,f=>f.state.royalty=true]){const f=await fixture();mutate(f);assert.equal((await ingestOwnerSuppliedSignedOrder(f.bytes(),f.options)).status,"UNAVAILABLE");}});
 test("production ERC20 and unknown proxy WETH remain unadmitted regardless of symbol, caller flags or runtime pins",async()=>{const f=await fixture({token:true});f.options.productionPaymentAdmitted=true;f.options.verifierOptions.pins.currencies[0].symbol="WETH";assert.equal((await ingestOwnerSuppliedSignedOrder(f.bytes(),f.options)).reason,"PRODUCTION_ERC20_POLICY_UNADMITTED");const local=await fixture({local:true,token:true});local.state.allowance=1000n;assert.equal((await ingestOwnerSuppliedSignedOrder(local.bytes(),local.options)).reason,"NONZERO_PREEXISTING_PAYMENT_ALLOWANCE");});
 test("revalidation after an earlier success actually re-reads state and does not trust cached successful labels",async()=>{const f=await fixture(),first=await verifyCurrentOwnerSuppliedOrder(f.envelope,f.options);assert.equal(first.currentOrderIndependentlyVerified,true);const reads=f.state.reads;f.state.cancelled=true;const next=await verifyCurrentOwnerSuppliedOrder(f.envelope,f.options);assert.equal(next.currentOrderIndependentlyVerified,false);assert.ok(f.state.reads>reads);});
+
+
+// Exercise viem2's actual HTTP JSON-RPC/getCode decoder with mocked endpoint
+// responses. No server, external RPC request or transaction is created.
+async function viemCodeEndpoints(f,{primary="0x",witness="0x",rpcError=false}={}){
+ const calls=[];
+ function endpoint(name,sellerCode){
+  return v.createPublicClient({transport:v.http("https://mock-"+name+".invalid/owner-code",{retryCount:0,timeout:1000,fetchFn:async(url,init)=>{
+   assert.equal(String(url),"https://mock-"+name+".invalid/owner-code");const request=JSON.parse(init.body);assert.equal(request.method,"eth_getCode");assert.equal(request.params[1],"0x7b");calls.push({provider:name,address:request.params[0]});
+   const seller=request.params[0].toLowerCase()===f.envelope.order.parameters.offerer.toLowerCase();
+   return Response.json(rpcError&&seller?{jsonrpc:"2.0",id:request.id,error:{code:-32000,message:"MOCK_RPC_CODE_UNAVAILABLE"}}:{jsonrpc:"2.0",id:request.id,result:seller?sellerCode:f.state.code});
+  }})});
+ }
+ const a=endpoint("primary",primary),b=endpoint("witness",witness);
+ f.options.verifierOptions.rpc={...f.options.verifierOptions.rpc,getCode:args=>a.getCode(args)};
+ f.options.verifierOptions.witnessRpc={...f.options.verifierOptions.witnessRpc,getCode:args=>b.getCode(args)};
+ return{primary:a,witness:b,calls};
+}
+test("actual viem HTTP getCode decoder maps raw0x to undefined and admits the signed EOA order",async()=>{
+ const f=await fixture(),endpoints=await viemCodeEndpoints(f);assert.equal(await endpoints.primary.getCode({address:f.envelope.order.parameters.offerer,blockNumber:123n}),undefined);assert.equal(await endpoints.witness.getCode({address:f.envelope.order.parameters.offerer,blockNumber:123n}),undefined);
+ const r=await ingestOwnerSuppliedSignedOrder(f.bytes(),f.options);assert.equal(r.status,"OWNER_SUPPLIED_CURRENT_ORDER_VERIFIED",JSON.stringify(r));assert.equal(r.verified.signatureKind,"eoa");assert.equal(r.executionEnabled,false);assert.ok(endpoints.calls.some(c=>c.provider==="primary"));assert.ok(endpoints.calls.some(c=>c.provider==="witness"));
+});
+test("empty-code normalization preserves witness contradictions and rejects null/nonhex/nonempty/delegated/unavailable code",async()=>{
+ for(const config of[{primary:"0x",witness:"0x60016000"},{primary:null,witness:null},{primary:"not-hex",witness:"not-hex"},{primary:"0x60016000",witness:"0x60016000"},{primary:"0xef0100"+"11".repeat(20),witness:"0xef0100"+"11".repeat(20)},{rpcError:true}]){
+  const f=await fixture();await viemCodeEndpoints(f,config);const r=await ingestOwnerSuppliedSignedOrder(f.bytes(),f.options);assert.equal(r.status,"UNAVAILABLE",JSON.stringify(r));assert.equal(r.currentOrderIndependentlyVerified,false);assert.equal(r.executionEnabled,false);
+  if(config.primary==="0x"&&config.witness!=="0x")assert.equal(r.reason,"PROVIDER_DISAGREEMENT");
+ }
+});

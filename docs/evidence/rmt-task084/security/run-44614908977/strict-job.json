@@ -1,0 +1,180 @@
+{
+  "id": 135880860812,
+  "run_id": 44614908977,
+  "workflow_name": "Isolated Seaport acquisition V2 acceptance",
+  "head_branch": "rmt-launch-nft-autobuy-readiness",
+  "run_url": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/actions/runs/44614908977",
+  "run_attempt": 1,
+  "node_id": "CR_kwDOTUs5i88AAAAfoyFkjA",
+  "head_sha": "908f2a3a0359cafc13e5746ec1c80f838fb5fe0b",
+  "url": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/actions/jobs/135880860812",
+  "html_url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44614908977/job/135880860812",
+  "status": "completed",
+  "conclusion": "failure",
+  "created_at": "2026-11-19T21:03:33Z",
+  "started_at": "2026-11-19T21:03:35Z",
+  "completed_at": "2026-11-19T21:05:25Z",
+  "name": "seaport-vault-strict-security",
+  "steps": [
+    {
+      "name": "Set up job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 1,
+      "started_at": "2026-11-19T21:03:36Z",
+      "completed_at": "2026-11-19T21:03:37Z"
+    },
+    {
+      "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 2,
+      "started_at": "2026-11-19T21:03:37Z",
+      "completed_at": "2026-11-19T21:03:41Z"
+    },
+    {
+      "name": "Run pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 3,
+      "started_at": "2026-11-19T21:03:41Z",
+      "completed_at": "2026-11-19T21:03:42Z"
+    },
+    {
+      "name": "Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 4,
+      "started_at": "2026-11-19T21:03:42Z",
+      "completed_at": "2026-11-19T21:03:43Z"
+    },
+    {
+      "name": "Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 5,
+      "started_at": "2026-11-19T21:03:43Z",
+      "completed_at": "2026-11-19T21:03:48Z"
+    },
+    {
+      "name": "Run foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 6,
+      "started_at": "2026-11-19T21:03:48Z",
+      "completed_at": "2026-11-19T21:03:51Z"
+    },
+    {
+      "name": "Run pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 7,
+      "started_at": "2026-11-19T21:03:51Z",
+      "completed_at": "2026-11-19T21:04:00Z"
+    },
+    {
+      "name": "Prepare exact compiler and genuine upstream fixture artifacts",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 8,
+      "started_at": "2026-11-19T21:04:00Z",
+      "completed_at": "2026-11-19T21:04:08Z"
+    },
+    {
+      "name": "Verify genuine Seaport custody, authorization, callbacks and accounting invariants",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 9,
+      "started_at": "2026-11-19T21:04:08Z",
+      "completed_at": "2026-11-19T21:05:06Z"
+    },
+    {
+      "name": "Run python -m pip install --disable-pip-version-check slither-analyzer==0.11.5 crytic-compile==0.3.11",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 10,
+      "started_at": "2026-11-19T21:05:06Z",
+      "completed_at": "2026-11-19T21:05:14Z"
+    },
+    {
+      "name": "Analyze every new production root and reachable dependency with all 101 detectors",
+      "status": "completed",
+      "conclusion": "failure",
+      "number": 11,
+      "started_at": "2026-11-19T21:05:14Z",
+      "completed_at": "2026-11-19T21:05:22Z"
+    },
+    {
+      "name": "Bind all 23 Task084 observations to exact source and raw AST evidence",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 12,
+      "started_at": "2026-11-19T21:05:22Z",
+      "completed_at": "2026-11-19T21:05:22Z"
+    },
+    {
+      "name": "Run actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 13,
+      "started_at": "2026-11-19T21:05:22Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "name": "Post Run foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 22,
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "name": "Post Run actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 23,
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "name": "Post Run actions/setup-node@820762786026740c76f36085b0efc47a31fe5020",
+      "status": "completed",
+      "conclusion": "skipped",
+      "number": 24,
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "name": "Post Run pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 25,
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 26,
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    },
+    {
+      "name": "Complete job",
+      "status": "completed",
+      "conclusion": "success",
+      "number": 27,
+      "started_at": "2026-11-19T21:05:23Z",
+      "completed_at": "2026-11-19T21:05:23Z"
+    }
+  ],
+  "check_run_url": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/check-runs/135880860812",
+  "labels": [
+    "ubuntu-24.04"
+  ],
+  "runner_id": 1000026454,
+  "runner_name": "GitHub Actions 1000026454",
+  "runner_group_id": 0,
+  "runner_group_name": "GitHub Actions"
+}
