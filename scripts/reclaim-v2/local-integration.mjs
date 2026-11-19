@@ -6,7 +6,7 @@ import {gunzipSync} from "node:zlib";
 import {localFixtureClient} from "../../packages/contracts/scripts/deploy-fixed-supply-fixture.mjs";
 import {createReclaimBrowserSession} from "./browser-integration.mjs";
 const require=createRequire(new URL("../../apps/launch-website/package.json",import.meta.url));
-const {erc20Abi,keccak256,parseEventLogs,zeroAddress}=require("viem");
+const {encodeFunctionData,erc20Abi,keccak256,parseEventLogs,zeroAddress}=require("viem");
 const json=value=>JSON.stringify(value,(_,v)=>typeof v==="bigint"?v.toString():v,2)+"\n";
 const same=(a,b)=>typeof a==="string"&&typeof b==="string"&&a.toLowerCase()===b.toLowerCase();
 const units=n=>(BigInt(n)*10n**18n).toString();
@@ -14,7 +14,7 @@ const units=n=>(BigInt(n)*10n**18n).toString();
 /** Actual corrected website -> reviewed calldata -> synthetic signatures ->
  * receipts -> the existing single PostgreSQL writer. No real wallet is used. */
 export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompilation,reclaimDeployment,creatorAccount,
- sourceIdentity,site,workerOrigin,indexReadKey,out,pg,waitFor,mine,ready,restart,hideReceipt}){
+ sourceIdentity,site,workerOrigin,indexReadKey,out,pg,waitFor,mine,ready,restart,hideReceipt,administrationPolicyFile}){
  const client=await localFixtureClient(rpcUrl,31337),m=reclaimDeployment.module,creator=creatorAccount.address;
  assert.equal(await client.getChainId(),31337);assert.equal(new URL(site).hostname,"127.0.0.1");
  const campaignAbi=reclaimCompilation.artifacts.RMTReclaimCampaignV2.abi,factoryAbi=reclaimCompilation.artifacts.RMTReclaimFactoryV2.abi;
@@ -46,6 +46,7 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   await record(operation,submission,review,verified);return{review,submission,verified};
  }
  async function safeComplete(operation,fields={},decision="normal"){
+  await session.account(reclaimDeployment.owners[0].address);
   await session.configureSafe(reclaimDeployment.safe,creator);const inner=await session.action(operation,fields);assert.equal(inner.review.status,"needs-safe-approvals");assert.equal(inner.review.request,null);
   const proposal=await session.safePropose(),owners=proposal.owners;
   if(!evidence.checks.safeOwnerWalletRejectionNoSubmission){await session.safeApprove(owners[0],"reject");evidence.checks.safeOwnerWalletRejectionNoSubmission=true;save();}
@@ -115,7 +116,43 @@ export async function testReclaimJourney({browserEngine,rpcUrl,rpc,reclaimCompil
   const denied=await post({action:"prepare",operation:"propose-collection",account:creator,campaign,fields:{collection:reclaimDeployment.negative[0].address,collectionCap:"1",collectionWalletCap:"1",expiresAt:((await client.getBlock()).timestamp+3n*86400n).toString()}});assert.equal(denied.body.status,"unavailable");
   evidence.checks.unsupportedCollectionsAndAllOldReturnOperationsRejected=true;
   // Keep the original receipt and reward immutable through a future rate notice.
-  await complete("pause");await complete("propose-rate",{rewardPerUnit:units(7)});await advance();await complete("execute-rate");
+  await complete("pause");await complete("propose-rate",{rewardPerUnit:units(7)});await advance();
+  // A permissionless contract execute method does not grant dashboard authority.
+  // This is a read-only local eth_call, never an unauthorized transaction.
+  const outsider=reclaimDeployment.owners[2].address;
+  const allowedByContract=await rpc("eth_call",[{from:outsider,to:campaign,
+    data:encodeFunctionData({abi:campaignAbi,functionName:"executeRate"})},"latest"]);
+  assert.equal(allowedByContract,"0x");
+  const deniedAdmin=await post({action:"prepare",operation:"execute-rate",account:outsider,campaign,fields:{}});
+  assert.equal(deniedAdmin.status,200);assert.equal(deniedAdmin.body.status,"unavailable");
+  await session.account(outsider);await session.lookup(campaign);
+  await session.page.getByText("Campaign owner dashboard",{exact:true}).waitFor({state:"detached"});
+  assert.ok(await session.page.getByRole("button",{name:"Review permanent NFT surrender",exact:true}).count());
+  await session.capture("reclaim-unauthorized-administration");
+  await session.account(creator);await session.lookup(campaign);
+  assert.equal(administrationPolicyFile,join(out,"reclaim-administration-policy.json"));
+  const originalPolicy=readFileSync(administrationPolicyFile),beforePolicyTest=session.evidence.sends.length;
+  const pausedReview=await post({action:"prepare",operation:"pause",account:creator,campaign,fields:{}});
+  assert.equal(pausedReview.body.status,"prepared");
+  try{
+   writeFileSync(administrationPolicyFile,"{invalid synthetic policy");
+   const revalidation=await post({action:"revalidate",review:pausedReview.body});assert.equal(revalidation.body.status,"unavailable");
+   const noPolicy=await post({action:"prepare",operation:"execute-rate",account:creator,campaign,fields:{}});assert.equal(noPolicy.body.status,"unavailable");
+   const participant=await post({action:"prepare",operation:"approve-721",account:creator,campaign,
+    fields:{collection:burn721.address,tokenId:"2"}});assert.equal(participant.body.status,"prepared");
+   const history=await post({action:"verify",review:created.review,transactionHash:created.submission.receipt.transactionHash});
+   assert.equal(history.body.status,"confirmed");assert.equal(history.body.transactionHash,created.submission.receipt.transactionHash);
+   await session.page.reload();await session.connect();await session.lookup(campaign);
+   await session.page.getByRole("button",{name:"pause",exact:true,includeHidden:true}).waitFor({state:"detached"});
+   await session.page.getByText("Campaign owner dashboard",{exact:true}).waitFor({state:"detached"});
+   await session.capture("reclaim-admin-policy-unassigned");
+  }finally{writeFileSync(administrationPolicyFile,originalPolicy);}
+  assert.equal(session.evidence.sends.length,beforePolicyTest,"Policy rejection and canonical recovery never submit a wallet transaction");
+  evidence.administration={explicitSyntheticPolicy:true,productionControllerAssigned:false,
+   unrelatedWallet:outsider,permissionlessContractSimulation:allowedByContract,dashboardPreparationDenied:true,
+   unrelatedAdminControlsAbsent:true,participantPreparationWithoutPolicy:true,malformedPolicyBlocksRevalidation:true,
+   canonicalRecoveryWithoutPolicy:true,noWalletSubmission:true};save();
+  await session.page.reload();await session.connect();await session.lookup(campaign);await complete("execute-rate");
   assert.equal((await read(campaign,campaignAbi,"tradeIns",[1n]))[4],BigInt(units(5)));await complete("resume");
   await session.selectCollection(burn721.address);const lost=await session.action("approve-721",{collection:burn721.address,tokenId:"2"}),missing=await session.confirm("lose");await mine();
   await session.verify({review:lost.review,hash:created.submission.receipt.transactionHash,status:"unavailable"});

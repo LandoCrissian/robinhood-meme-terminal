@@ -25,6 +25,8 @@ jobs:
       - run: pnpm audit:production
       - run: pnpm check:repo
       - run: pnpm test:release-evidence
+      - run: node scripts/security/findings-register.mjs --check
+      - run: node --test scripts/security/findings-register.test.mjs
       - run: node --test scripts/treasury-v2/*.test.mjs
       - run: node --test scripts/reclaim/*.test.mjs
       - name: Fetch exact historical Reclaim source boundary

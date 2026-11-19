@@ -35,7 +35,11 @@ export async function testReclaimFixtureOrigins(){
   const header={number:10n,hash:blockHash,timestamp:1_800_000_000n,transactions:[hash]};
   const same=(a:string,b:string)=>a.toLowerCase()===b.toLowerCase();
   const rpc={getChainId:async()=>31337,
-    getTransaction:async()=>({chainId:31337,hash,blockNumber:10n,blockHash,transactionIndex:0,to:safe,from:payer,value:0n,nonce:4,input:outer()}),
+    getTransaction:async()=>({chainId:31337,type:knobs.mode==="legacy-format"?"legacy":knobs.mode==="delegation-format"?"eip7702":"eip1559",
+      ...(knobs.mode==="authorization-list"&&{authorizationList:[]}),
+      ...(knobs.mode==="access-list"&&{accessList:[{address:campaign,storageKeys:[]}]}),
+      ...(knobs.mode==="malformed-access-list"&&{accessList:"invalid-provider-shape"}),
+      hash,blockNumber:10n,blockHash,transactionIndex:0,to:safe,from:payer,value:0n,nonce:4,input:outer()}),
     getTransactionCount:async()=>knobs.mode==="payer-nonce"?5:4,
     getCode:async({address}:{address:Address})=>same(address,safe)?knobs.mode==="proxy"?"0x6000":proxy:same(address,reclaimCallerPins.singleton)?archive.contracts.safe_l2.code
       :same(address,reclaimCallerPins.handler)?archive.contracts.compatibility_fallback_handler.code:knobs.mode==="contract-owner"&&same(address,owners[0]!.address)?"0x6000":undefined,
@@ -51,7 +55,7 @@ export async function testReclaimFixtureOrigins(){
   }as unknown as PublicClient;
   const result=await verifyReclaimOrigin(rpc,receipt() as never,header as never,campaign,"fund",{controller:safe,amount:100n});
   assert.equal(result.profile,"safe-1.4.1");assert.equal(result.actor,safe);assert.equal(result.safeNonce,"21");assert.deepEqual(result.signers,sorted.map(s=>s.address));
-  for(const mode of["payer-nonce","redirect","delegatecall","duplicate","reverse","short","missing-success","failure","digest","payment","proxy","contract-owner","guard","handler","outsider","threshold","stale","module","nonindexed-outcome"]){
+  for(const mode of["delegation-format","legacy-format","authorization-list","access-list","malformed-access-list","payer-nonce","redirect","delegatecall","duplicate","reverse","short","missing-success","failure","digest","payment","proxy","contract-owner","guard","handler","outsider","threshold","stale","module","nonindexed-outcome"]){
     knobs.mode=mode;const observed=receipt();if(mode==="nonindexed-outcome"){observed.logs[0]!.topics=observed.logs[0]!.topics.slice(0,1)as never;observed.logs[0]!.data=encodeAbiParameters([{type:"bytes32"},{type:"uint256"}],[digest,0n]);}
     await assert.rejects(verifyReclaimOrigin(rpc,observed as never,header as never,campaign,"fund",{controller:safe,amount:100n}),/evidence|signature/i,mode);
   }

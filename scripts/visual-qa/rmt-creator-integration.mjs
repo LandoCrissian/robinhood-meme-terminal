@@ -322,6 +322,16 @@ try {
   assert.deepEqual(await rpc("eth_accounts"), []);
   if(reclaimCompilation)reclaimDeployment=await deployReclaimFixture({client:await localFixtureClient(rpcUrl,31337),rpc,
     compilation:reclaimCompilation,assetCompilation:reclaimAssets,core:deployed,coreArtifacts:artifacts,creator,out});
+  if(reclaimDeployment){
+    // Explicit synthetic operator policy, never inferred production authority.
+    // An admitted Safe remains a distinct controller from its outer gas payer.
+    const safeCode=await rpc("eth_getCode",[reclaimDeployment.safe,"latest"]);
+    await writeFile(join(out,"reclaim-administration-policy.json"),JSON.stringify({schemaVersion:1,
+      profile:"rmt-reclaim-administration-policy-v1",scope:"isolated-local",chainId:31337,
+      reclaimFactory:reclaimDeployment.module.reclaimFactory,factoryRuntimeHash:reclaimDeployment.module.factoryRuntimeHash,
+      authorizedControllers:[{address:creator.address,runtimeHash:keccak256("0x")},
+        {address:reclaimDeployment.safe,runtimeHash:keccak256(safeCode)}]},null,2)+"\n");
+  }
   assert.equal(deployed.chainId, 31337);
   assert.equal(deployed.creationFeeWei, feeWei.toString());
   assert.equal(deployed.terms.backingWei, backingWei.toString());
@@ -374,7 +384,8 @@ try {
     ...(args["profiles-only"] && { RMT_CLAIM_PROFILES_FIXTURE: "local-reviewed-claims-31337-v1" }),
     ...(args["treasury-only"] && { RMT_PROJECT_TREASURY_FIXTURE: "local-reviewed-project-treasury-v1",
       RMT_PROJECT_TREASURY_DEPLOYMENT: join(out, "project-treasury-deployment.json") }),
-    ...(args["reclaim-only"]&&{RMT_RECLAIM_FIXTURE:"local-reviewed-reclaim-v2-permanent",RMT_RECLAIM_DEPLOYMENT:join(out,"reclaim-deployment.json")}),
+    ...(args["reclaim-only"]&&{RMT_RECLAIM_FIXTURE:"local-reviewed-reclaim-v2-permanent",RMT_RECLAIM_DEPLOYMENT:join(out,"reclaim-deployment.json"),
+      RMT_RECLAIM_ADMIN_POLICY:join(out,"reclaim-administration-policy.json")}),
     ...(mobileCreator && { RMT_MOBILE_REVIEW_FIXTURE: "local-reviewed-31337",
       RMT_MOBILE_REVIEW_FIXTURE_ACCOUNT: mobileCreator.address, RMT_MOBILE_REVIEW_TEST_DELEGATION: "synthetic-7702-v1",
       RMT_MOBILE_REVIEW_PLAN: mobilePlan }) };
@@ -430,6 +441,7 @@ try {
     let worker=startWorker("worker-reclaim");await rpc("anvil_mine",["0x3"]);await workerReady(worker);
     browser=await({chromium,webkit})[args.browser].launch();
     await testReclaimJourney({browserEngine:browser,rpcUrl,rpc,reclaimCompilation,reclaimDeployment,creatorAccount:creator,
+      administrationPolicyFile:join(out,"reclaim-administration-policy.json"),
       sourceIdentity:{commit:candidateCommit,browser:args.browser,coreCompiler:manifest,anchor:{block:anchor.block,blockHash:anchor.blockHash},mode:"isolated-31337-reclaim"},
       site,workerOrigin,indexReadKey,out,pg,waitFor,mine:()=>rpc("anvil_mine",["0x3"]),ready:()=>workerReady(worker),restart:async()=>{
         await stop(web);await stop(worker);web=startWeb("website-reclaim-restart");worker=startWorker("worker-reclaim-restart");await webReady(web);await workerReady(worker);

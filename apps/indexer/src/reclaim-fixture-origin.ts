@@ -62,6 +62,11 @@ function reviewedCall(data:Hex,kind:"fund"|"recover"|"permanent-surrender",args:
 async function verifyBoundOrigin(rpc:PublicClient,receipt:Receipt,header:Header,campaign:Address,actor:Address|null,reviewed:(data:Hex)=>void):Promise<ReclaimOrigin>{
   must(receipt.blockNumber>0n&&header.transactions.length===1&&receipt.transactionIndex===0&&await rpc.getChainId()===31337);
   const tx=await rpc.getTransaction({hash:receipt.transactionHash}),before=receipt.blockNumber-1n;
+  // Match the reviewed wallet envelope. Stable before/after delegation code
+  // does not prove that a type-4 authorization list was absent. This profile
+  // admits only ordinary type-2 calls, including calls from a pinned 7702 EOA.
+  must(tx.type==="eip1559"&&tx.authorizationList==null
+    &&(tx.accessList==null||Array.isArray(tx.accessList)&&tx.accessList.length===0));
   must(tx.chainId===31337&&tx.to&&same(tx.hash,receipt.transactionHash)&&same(tx.blockHash??"",receipt.blockHash)
     &&tx.blockNumber===receipt.blockNumber&&tx.transactionIndex===0&&receipt.to&&same(tx.to,receipt.to)&&receipt.from&&same(tx.from,receipt.from)&&tx.value===0n
     &&/^0x(?:[0-9a-f]{2}){4,70000}$/i.test(tx.input));

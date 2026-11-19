@@ -317,7 +317,7 @@ export function ReclaimDashboard({ fixture = false, initialCampaign = "", adminC
   const completedCreation = journals.find(entry => entry.review.fields.intentId === creationIntent && sameReclaimHex(entry.review.actor, actor) && canStartAnotherReclaimCampaign(entry));
   const mayCreate=!!wallet&&sameReclaimHex(actor,wallet.account)&&adminCreators.some(address=>sameReclaimHex(address,wallet.account));
   const mayAdminister=!!wallet&&!stale&&snapshot?.administration?.status==="verified"&&reclaimAdministrationWallet(snapshot.administration.controller,actor,wallet.account);
-  const mayAcceptController=!!wallet&&!stale&&snapshot?.administration?.status==="verified"&&reclaimAdministrationWallet(snapshot.administration.incoming,actor,wallet.account);
+  const mayAcceptController=!!wallet&&!stale&&snapshot?.administration?.status==="verified"&&snapshot.administration.incoming?.ready===true&&reclaimAdministrationWallet(snapshot.administration.incoming,actor,wallet.account);
   return <>
     <header className="lpPageHeading"><div><h1>RMT Reclaim</h1><p>Permanent NFT surrender. Separate funding, verified retirement and exact rewards.</p></div></header>
     <MyLaunchesNav active="reclaim" />
