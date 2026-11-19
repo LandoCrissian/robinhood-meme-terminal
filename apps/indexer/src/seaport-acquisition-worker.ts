@@ -69,6 +69,7 @@ export async function startSeaportAcquisitionIndexer({db,rpc,manifest:m,readKey,
     if(status!=="ready")throw Error("Trace or canonical checkpoint pending");
     const stored=await readSeaportVaultStore(db,transaction);if(!stored.checkpoint)throw Error("Checkpoint pending");
     const h=await rpc.getBlock({blockNumber:BigInt(stored.checkpoint.blockNumber)});if(h.hash?.toLowerCase()!==stored.checkpoint.blockHash.toLowerCase())throw Error("Reorg pending");
+    if(status!=="ready")throw Error("Canonical verification advanced during read");
     const body=json({schemaVersion:1,profile:m.profile,chainId:31337,productionExecution:false,status:"ready",...stored});if(Buffer.byteLength(body)>131072)throw Error("Read bound exceeded");res.writeHead(200,{"Content-Type":"application/json","Cache-Control":"no-store","Content-Length":Buffer.byteLength(body)});res.end(body);
   }catch{res.writeHead(503,{"Content-Type":"application/json","Cache-Control":"no-store"});res.end(json({status:"pending",productionExecution:false}));}});
   try{await new Promise<void>((done,fail)=>{server.once("error",fail);server.listen(port,"127.0.0.1",done);});await sync();}
