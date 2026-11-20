@@ -1,0 +1,196 @@
+{
+  "schemaVersion": 1,
+  "workstream": "Task088 A: read-only production inspection",
+  "sourceBase": "62548d68cbdba8b206965fbbd238261a0b1d2af7",
+  "observedWindowUtc": {
+    "start": "2026-11-20T05:24:00Z",
+    "end": "2026-11-20T05:30:00Z",
+    "precision": "bounded collection window; exact request-start timestamps were not retained"
+  },
+  "authorization": "https://github.com/LandoCrissian/robinhood-meme-terminal/pull/681#issuecomment-7031268807",
+  "netlify": {
+    "provenance": [
+      "Netlify project_get_project",
+      "Netlify deploy_get_deploy"
+    ],
+    "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+    "site": "https://www.rmtlaunch.fun",
+    "deploymentId": "6afd4265956a469adeb55747",
+    "state": "ready",
+    "createdAt": "2026-11-18T06:15:01.017Z",
+    "publishedAt": "2026-11-18T06:15:09.934Z",
+    "title": "Task071 approved website-only PR666 a71b2dbd; Linux artifact 4fdfbecd",
+    "deploySource": "cli",
+    "commitRef": null,
+    "branch": null,
+    "sourceProvenanceLimit": "Deployment title asserts abbreviated source/artifact IDs; current provider metadata has no commit binding. No stronger exact deployed source claim is made."
+  },
+  "publicEndpoints": [
+    {
+      "url": "https://www.rmtlaunch.fun/api/launchpad/launches",
+      "method": "GET",
+      "status": 200,
+      "bodySummary": {
+        "coverage": "verified-snapshot",
+        "status": "stale",
+        "checkpoint": {
+          "blockNumber": "113899119",
+          "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+          "timestamp": "2026-11-14T04:26:14.000Z"
+        },
+        "observedAt": "2026-11-14T04:26:14.000Z",
+        "launchCount": 4,
+        "finality": "l1-unverified"
+      },
+      "headers": {
+        "cache-control": "no-store, private",
+        "age": "7",
+        "cache-status": "\"Netlify Durable\"; fwd=stale; ttl=-4869; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored"
+      }
+    },
+    {
+      "url": "https://www.rmtlaunch.fun/api/launchpad/new-engine",
+      "method": "GET",
+      "status": 404,
+      "body": {
+        "status": "unavailable"
+      }
+    },
+    {
+      "url": "https://robinhood-meme-terminal-production.up.railway.app/health",
+      "method": "GET",
+      "status": 200,
+      "headers": {
+        "cache-control": "no-store"
+      },
+      "bodySummary": {
+        "ok": true,
+        "protocolVersion": 6,
+        "chainId": 4663,
+        "factory": "0x8E75C57079a01ce2094bc4187B78710887547651",
+        "factoryStartBlock": "10248855",
+        "indexedThrough": "118811376",
+        "latestBlock": "118811396",
+        "confirmationDepth": 20,
+        "lagBlocks": "20",
+        "initialSyncComplete": true,
+        "lastSyncAt": "2026-11-20T05:25:32.816Z",
+        "curveLaunchpad": {
+          "status": "ready",
+          "checkpoint": {
+            "blockNumber": "118811400",
+            "blockHash": "0xd80045c6993808db752ead2a4864bc617943b7c1aa6b37dcb76221ebcf86572b",
+            "timestamp": "2026-11-20T05:25:31.000Z"
+          },
+          "revision": 11878,
+          "caughtUp": true
+        },
+        "error": null
+      }
+    }
+  ],
+  "railway": {
+    "provenance": [
+      "Railway describe_environment",
+      "Railway describe_service",
+      "Railway list_deployments",
+      "Railway get_logs"
+    ],
+    "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+    "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+    "serviceId": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+    "latestDeployment": {
+      "id": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+      "status": "SUCCESS",
+      "createdAt": "2026-11-17T20:21:40.444Z",
+      "reason": "redeploy",
+      "commitHash": null
+    },
+    "configSummary": {
+      "repo": "LandoCrissian/robinhood-meme-terminal",
+      "branch": "main",
+      "configFile": "/apps/indexer/railway.json",
+      "builder": "RAILPACK",
+      "sleepApplication": true,
+      "configuredRegions": [
+        "sfo"
+      ],
+      "deploymentReportedRegions": [
+        "iad"
+      ],
+      "tracingEnabled": false,
+      "noStagedChanges": true
+    },
+    "variableNamesOnly": [
+      "DATABASE_URL",
+      "RMT_ARCHIVE_RPC_URL",
+      "RMT_CURVE_PRODUCTION_BINDING",
+      "RMT_FACTORY_ADDRESS",
+      "RMT_FACTORY_START_BLOCK",
+      "RMT_INDEXER_CHUNK_SIZE",
+      "RMT_INDEXER_READ_TOKEN",
+      "RMT_RPC_URL"
+    ],
+    "runtimeSample": {
+      "first": {
+        "timestamp": "2026-11-20T05:07:47.714791288Z",
+        "event": "range_indexed",
+        "fromBlock": "118800703",
+        "toBlock": "118801028"
+      },
+      "last": {
+        "timestamp": "2026-11-20T05:24:59.148592036Z",
+        "event": "range_indexed",
+        "fromBlock": "118810716",
+        "toBlock": "118811033"
+      },
+      "sampleSize": 31,
+      "allSampledEventCountsZero": true
+    },
+    "httpQuery": {
+      "filter": "@path:/historical-launches",
+      "startDate": "2026-11-20T05:20:00Z",
+      "endDate": "2026-11-20T05:30:00Z",
+      "returnedRows": 0,
+      "note": "No matching proxy records does not prove no upstream read, or explain why the frontend fell back."
+    }
+  },
+  "sourceFindings": [
+    {
+      "path": "apps/launch-website/lib/server/launch-api.ts",
+      "finding": "edgeLifetime returns 15 seconds for verified-snapshot coverage before checking ready status; stale fallback is durable-cacheable.",
+      "classification": "source-proven; observed stale Durable cache behavior is consistent"
+    },
+    {
+      "path": "apps/launch-website/lib/server/launch-data.ts",
+      "finding": "fetchIndex returns null on absent/invalid configuration, non-2xx, transport/body/evidence failure; reader selects validated stale snapshot. Task071 source silently absorbs the reason.",
+      "classification": "source-proven; exact live failure category unknown"
+    },
+    {
+      "path": "apps/launch-website/lib/server/launch-data.ts",
+      "finding": "mergeEvidence requires a non-null indexed lifecycle block to be strictly newer than the archived lifecycle block, rejecting an unchanged same-block receipt.",
+      "classification": "source-proven regression candidate, not established as the production trigger"
+    },
+    {
+      "path": "docs/evidence/railway-073/current-discovery.json",
+      "finding": "Retained evidence reports Railway website source484f6bb7b431c2f9eff278c08c14d9d3e57eb11f serving ready v6-indexed checkpoint117481251 at2026-11-18T14:53:15.742Z.",
+      "classification": "retained historical evidence; not a current production claim"
+    }
+  ],
+  "limitations": [
+    "Netlify connector exposes deployment and edge observability but no server-function logs for the deployed Task071 handler.",
+    "No production credential values, credential-bearing environment lists or authenticated backend response bodies were read.",
+    "Current health proves advancing worker state; it does not establish authenticated frontend delivery.",
+    "The precise live transport/authentication/schema/merge failure remains unverified.",
+    "Source071 identity is reported from deployment title, not cryptographic provider source metadata."
+  ],
+  "safety": {
+    "productionMutations": false,
+    "deployed": false,
+    "credentialValuesRead": false,
+    "liveVulnerabilityTesting": false,
+    "authenticationBypass": false,
+    "signed": false,
+    "governanceActions": false
+  }
+}

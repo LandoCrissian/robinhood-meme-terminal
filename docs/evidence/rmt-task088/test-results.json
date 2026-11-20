@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "base": "62548d68cbdba8b206965fbbd238261a0b1d2af7",
+  "node": "22.16.0",
+  "postgres": "18.6",
+  "applicationDiffSha256": "2b1b2d5536872757cb823a5b1bb0efc070187a3cbf0270a1900fb191636dcc8a",
+  "sourceFileSha256": {
+    "apps/indexer/src/curve-production-postgres-smoke.ts": "fd2808da4bf446be9fc5289502b7149c9aa210b7c4bb22d5882b477a248fe87a",
+    "apps/indexer/src/curve-production-smoke.ts": "9c4bac9fde59338e55179d9d7023b111421a432b14282912ce0fe07e8d9386e2",
+    "apps/indexer/src/curve-production.ts": "b7a32e5f77cc46d6229109ad79872b8ef65fffd281d5e8e757477767be0b09ee",
+    "apps/launch-website/app/_components/new-engine-launches.tsx": "d1e05d6fe97fef8824eabf10090ecb9b2921a056a75fc8f71f56628dff203e3d",
+    "apps/launch-website/app/launches/[token]/page.tsx": "3123574df3efc21eadf8f5a252a778a7f7886c453881f02fac16c193a72fa987",
+    "apps/launch-website/lib/curve-lifecycle.ts": "b2df2055d5b623aea3c8ef81d3e4ca65e88fbf7d4628b784a8e4c6ab0aa31936",
+    "apps/launch-website/lib/server/launch-api.test.ts": "04e9616b6c88724c5f614c2638f63d559858522ab3d2f5656b81584d027ef61f",
+    "apps/launch-website/lib/server/launch-api.ts": "b69599c5513b6b2692a83a36b94b421f6f971c2ee2d21b34cced496fa2e32c73",
+    "apps/launch-website/lib/server/launch-data.test.ts": "dd91b99acb2eaba6ac5b8516726aa09d667a005509f4013a5baecaf3b62865ca",
+    "apps/launch-website/lib/server/launch-data.ts": "c34181e003287cdcc8aee4ef9191b2717a760dc8a9040936279e05f069c369e6",
+    "apps/launch-website/lib/server/production-discovery.test.ts": "5eee577c38c585e3a9d42e7fa1f1cd804d089cee06bf34d411dcb0edf5fc8fa9",
+    "apps/launch-website/lib/server/production-discovery.ts": "b46853c064f81a9af27668a2f8cca0746bc23d511e9ad9d477769e644c129833",
+    "knip.json": "c370e3aa0eb70ee706c5af824ebd9ce8c2a1ea2c8dc439722e4845f1116d5af0",
+    "scripts/visual-qa/rmt-polish.mjs": "94d19e7a32ba080beb2039f6188b39e6d03ecfd2a5cbebe92ad5fdab5183aeea",
+    "scripts/discovery/continuity.ts": "bcac212a54954a58908acb9ead82e45f9c515b2e366f6e74cf219d87e7213a69",
+    ".github/workflows/discovery-continuity.yml": "49a3ebef3ddb2f2191bc3c385018472681b892db789e040f9c2787e2d69f5f9b"
+  },
+  "results": [
+    {
+      "command": "pnpm --filter @rmt/launch-website test:history",
+      "exitCode": 0,
+      "passed": 315,
+      "failed": 0,
+      "skipped": 0
+    },
+    {
+      "command": "pnpm typecheck",
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm --filter indexer build && pnpm --filter indexer test:resilience",
+      "exitCode": 0
+    },
+    {
+      "command": "DATABASE_URL=<synthetic-loopback> pnpm --filter indexer test:curve-production",
+      "exitCode": 0,
+      "claim": "atomicity/replay/lease/monotonic cursor/reorg;53 earnings registrations;claims"
+    },
+    {
+      "command": "pg_ctl -D /tmp/rmt088-pg/data -m fast -w restart",
+      "exitCode": 0,
+      "claim": "byte-identical ordered pre/post state; clean restart only"
+    },
+    {
+      "command": "node --test scripts/release/website-preflight.test.mjs scripts/release/railway-website.test.mjs",
+      "exitCode": 0,
+      "passed": 8
+    },
+    {
+      "command": "python3 scripts/release/website-archive.test.py; python3 scripts/release/website-bundle.test.py",
+      "exitCode": 0,
+      "passed": 4
+    },
+    {
+      "command": "pnpm check:repo",
+      "exitCode": 0,
+      "hints": "2 unchanged redundant entry patterns"
+    },
+    {
+      "command": "pnpm --filter indexer exec tsx ../../scripts/discovery/continuity.ts",
+      "exitCode": 0,
+      "httpChecks": 19,
+      "browserCases": 26,
+      "externalRequests": 0,
+      "walletRequests": 0
+    },
+    {
+      "command": "RMT_POLISH_ARTIFACTS=/tmp/rmt088-polish node scripts/visual-qa/rmt-polish.mjs",
+      "exitCode": 0,
+      "browserLayoutCombinations": 8
+    },
+    {
+      "command": "netlify build --offline --context deploy-preview --filter @rmt/launch-website; node scripts/release/website-preflight.mjs --artifacts",
+      "exitCode": 0,
+      "tools": {
+        "netlify-cli": "27.14.2",
+        "@netlify/plugin-nextjs": "5.16.8",
+        "deno": "2.4.2 aarch64"
+      },
+      "claim": "Actual Linux server/edge build, native modules, archive, routes, two native rules and no synthetic marker in static publication",
+      "deployment": false
+    }
+  ],
+  "initialFailuresPreserved": [
+    "website-before.txt.gz",
+    "indexer-before.txt.gz",
+    "continuity-attempt1.json",
+    "netlify-initial-pnpm-failure.txt.gz",
+    "netlify-arm-deno-failure.txt.gz"
+  ],
+  "productionChanged": false,
+  "contractsChanged": false,
+  "scope": "website reliability; no live creation/trading/claims acceptance; no physical iPhone/crash testing",
+  "buildToolLockSha256": "fef08929c2416356eb81367fd9ca68a6a85752bf2880e05d5765bccdb65102f7",
+  "localProvenance": "Local tests/build ran on base HEAD plus the explicitly hashed application diff. Exact candidate SHA is checked independently by PR CI. Preflight sourceCommit is therefore the base, not a claimed clean candidate build.",
+  "ciWorkflowFollowup": "Initial candidate CI browser dependency install stalled. The new workflow now invokes the existing signed HTTPS Ubuntu archive setup already used by the repository browser jobs. Application tree is unchanged; original CI and Gitleaks failures remain visible."
+}

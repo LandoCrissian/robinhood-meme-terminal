@@ -29,6 +29,9 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
         : data.launches.length ? "Creation confirmed at the indexed checkpoint. Trading and claims remain separately gated." : "No registration at this verified checkpoint. A newly confirmed transaction may still be indexing."}</p>
       <code className="lpAddress">{address}</code>
       {directory.status === "ready" && directory.launches[0] && <LaunchProvenance launch={directory.launches[0]} />}
+      {directory.status === "stale" && directory.history[0] && <details className="lpFeedStatus">
+        <summary>Last-known creation history (stale)</summary><LaunchProvenance launch={directory.history[0]} />
+      </details>}
       {data.status !== "unavailable" && data.launches[0] && <dl className="lpFacts">
         <dt>Creator</dt><dd className="lpAddress"><CreatorLink wallet={data.launches[0].creator} label={data.launches[0].creator} /></dd>
         <dt>Project treasury</dt><dd className="lpAddress">{data.launches[0].treasury ?? "None"}</dd>

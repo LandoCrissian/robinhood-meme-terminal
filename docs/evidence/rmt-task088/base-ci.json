@@ -1,0 +1,46 @@
+{
+  "source": "62548d68cbdba8b206965fbbd238261a0b1d2af7",
+  "checks": [
+    {
+      "name": "indexer",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44677530613/job/136092824574",
+      "sha": "62548d68cbdba8b206965fbbd238261a0b1d2af7",
+      "completedAt": "2026-11-20T04:55:54Z"
+    },
+    {
+      "name": "contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44677530613/job/136092824418",
+      "sha": "62548d68cbdba8b206965fbbd238261a0b1d2af7",
+      "completedAt": "2026-11-20T04:59:25Z"
+    },
+    {
+      "name": "repository",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44677530613/job/136092824404",
+      "sha": "62548d68cbdba8b206965fbbd238261a0b1d2af7",
+      "completedAt": "2026-11-20T04:55:54Z"
+    },
+    {
+      "name": "gitleaks",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44677530594/job/136092824182",
+      "sha": "62548d68cbdba8b206965fbbd238261a0b1d2af7",
+      "completedAt": "2026-11-20T04:55:18Z"
+    },
+    {
+      "name": "operations-safe",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44677530613/job/136092824128",
+      "sha": "62548d68cbdba8b206965fbbd238261a0b1d2af7",
+      "completedAt": "2026-11-20T04:55:16Z"
+    }
+  ],
+  "scope": "Exposed checks for exact base only; retained strict failures on earlier base are not cleared"
+}

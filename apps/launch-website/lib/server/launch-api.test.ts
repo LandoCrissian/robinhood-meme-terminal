@@ -37,7 +37,7 @@ test("cache expires before uncertain freshness and serves the checked snapshot w
   const stale = await createLaunchHistoryHandler(async () => ({ ...evidence, status: "stale" }), () => now)(new Request(url));
   assert.equal(stale.headers.get("netlify-cdn-cache-control"), "no-store");
   const snapshot = await createLaunchHistoryHandler(async () => ({ ...evidence, coverage: "verified-snapshot", status: "stale" }), () => now)(new Request(url));
-  assert.match(snapshot.headers.get("netlify-cdn-cache-control")!, /s-maxage=15(?:,|$)/);
+  assert.equal(snapshot.headers.get("netlify-cdn-cache-control"), "no-store");
   assert.equal((await snapshot.json()).status, "stale");
 });
 
@@ -71,4 +71,22 @@ test("one native per-IP read rule covers history, draft review and public profil
     assert.equal(limited(rejected), false);
   }
   assert.deepEqual(edge.rateLimit, { windowSize: 60, windowLimit: 120, aggregateBy: ["ip", "domain"] });
+});
+
+test("stale historical absence remains unavailable instead of a definitive missing token", async () => {
+  const response = await createLaunchHistoryHandler(async () => ({ ...evidence, status: "stale" }), () => now)(new Request(url), token);
+  assert.equal(response.status, 503);
+  assert.equal(response.headers.get("netlify-cdn-cache-control"), "no-store");
+});
+
+
+test("historical HTTP publication rechecks expiry and clock rollback after the awaited read", async () => {
+  for (const offset of [-90_000, indexedFreshnessMs]) {
+    let at = now;
+    const respond = createLaunchHistoryHandler(async () => { at += offset; return evidence; }, () => at);
+    const response = await respond(new Request(url), token);
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).status, "stale");
+    assert.equal(response.headers.get("netlify-cdn-cache-control"), "no-store");
+  }
 });

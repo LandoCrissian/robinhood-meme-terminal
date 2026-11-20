@@ -1,0 +1,582 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "b02a0c2bb3b2814bfc9a0610dee79860b648cc08",
+  "recordedAt": "2026-11-20T12:59:38.218Z",
+  "source": {
+    "checks": {
+      "productionGuardRetained": true,
+      "pinnedPackageManager": true,
+      "approvedNextVersion": true,
+      "activationClosed": true,
+      "noPublicAdministrativeCredentials": true,
+      "readApiConfigurationConsistent": true
+    },
+    "activeNames": [],
+    "publicSensitiveNames": [],
+    "verification": "passed",
+    "readApi": {
+      "endpointPresent": true,
+      "readCredentialPresent": true,
+      "mode": "configured-not-authenticated-by-this-probe",
+      "publicationRequirement": "Explicitly preserve the existing deploy-scoped server-only Railway origin/read credential. Site-level enumeration does not prove runtime absence or continuity; do not print values."
+    },
+    "publication": "BLOCKED_OWNER_APPROVAL",
+    "execution": "BLOCKED_NO_BROADCAST",
+    "laterStages": {
+      "ownerCreation": "Separate approved-account adapter and canonical publication/operational acceptance required",
+      "generalTradingAndClaims": "No production adapter is enabled; fixture-only execution is not a production release switch"
+    },
+    "productionBuildBoundary": "Normal production builds remain guarded. Separate owner approval may authorize publication of the exact verified prebuilt Linux artifact; changing the production build command requires a reviewed configuration change and fresh build. Neither action enables application execution."
+  },
+  "artifacts": {
+    "functions": {
+      "generator": "@netlify/plugin-nextjs@5.16.8",
+      "runtime": "nodejs22.x",
+      "routes": [
+        {
+          "pattern": "/*",
+          "expression": "^(?:\\/(.*))\\/?$",
+          "methods": [],
+          "prefer_static": true
+        }
+      ],
+      "platform": "linux"
+    },
+    "edge": {
+      "functions": [
+        "___netlify-edge-handler-middleware",
+        "launch-creation-limit",
+        "launch-discovery-limit"
+      ],
+      "nativeRules": [
+        "launch-creation-limit",
+        "launch-discovery-limit"
+      ],
+      "enforcement": "Manifest verified; live Netlify enforcement remains a separate hosted acceptance"
+    },
+    "staticFiles": [
+      {
+        "path": "_next/static/Q3Uh5PIyYRryA-Zgqr_Pk/_buildManifest.js",
+        "bytes": 2468,
+        "sha256": "d1043d3c7434cfb0dbe8f612cd461b45c6c16a2ac94ba0bc573d45ec8b7ba7e5"
+      },
+      {
+        "path": "_next/static/Q3Uh5PIyYRryA-Zgqr_Pk/_ssgManifest.js",
+        "bytes": 80,
+        "sha256": "678f6ce2cb80b1fe72fc67e7412be6e2ab6ada083111b64f7c40d35e3cba5e00"
+      },
+      {
+        "path": "_next/static/chunks/1057.d8608f313451e256.js",
+        "bytes": 24108,
+        "sha256": "d38da066d9c974220281c1430b0af9ae98f517b9cd21308845eae246447b1a87"
+      },
+      {
+        "path": "_next/static/chunks/1229-674fbfa14b7508c1.js",
+        "bytes": 58229,
+        "sha256": "83b0571cba575381f536d86b19d221b1b595666c5b7c9c6969bc692a0e991ab9"
+      },
+      {
+        "path": "_next/static/chunks/1266-4c6537631ec2e514.js",
+        "bytes": 14687,
+        "sha256": "ae2221d9bbec1ad7a065610bdd8b83785c5d83df2e42c1828ba541784e616d5d"
+      },
+      {
+        "path": "_next/static/chunks/1376.13e2f85686d0e2fc.js",
+        "bytes": 14378,
+        "sha256": "6177bd32cf1eef5ab14ba85fb8c061597e75fb232b2d77a349277e8b643cd7a7"
+      },
+      {
+        "path": "_next/static/chunks/1383-0421f048ca807513.js",
+        "bytes": 9557,
+        "sha256": "1129b04130f08456ab242dafdd4abf7e3e606f59fd4fc41e361c14c8a08ff4c1"
+      },
+      {
+        "path": "_next/static/chunks/1804-c2d675aa16a3b866.js",
+        "bytes": 9273,
+        "sha256": "ea4b114f5e2787ce86d0072cdbb75995ff3dcbb1d0674895ddc60a9f4c7b79d0"
+      },
+      {
+        "path": "_next/static/chunks/1882-29235467aa3c85a1.js",
+        "bytes": 173743,
+        "sha256": "0fa1057c41dad1cc74fc1770f2330b2394043ce900956564845176137461d7f1"
+      },
+      {
+        "path": "_next/static/chunks/2250-5badeffdee724de1.js",
+        "bytes": 10811,
+        "sha256": "d4cb6540fe13f433cc837d7884711f20873bacc63c9af56b1e8891faacbbdafd"
+      },
+      {
+        "path": "_next/static/chunks/2524.8b4f6b05938e2190.js",
+        "bytes": 417,
+        "sha256": "6beff66e1bd012158f187c9c6aca3d3655f3bcad63584688878956e34742d49d"
+      },
+      {
+        "path": "_next/static/chunks/3171-89eafcdca55e1a35.js",
+        "bytes": 32136,
+        "sha256": "0dba32e364d738833c87d1070ca090644601b0a2ca8ab69836333e0d12876b81"
+      },
+      {
+        "path": "_next/static/chunks/322-a7e8cd4697076624.js",
+        "bytes": 18486,
+        "sha256": "71caac9e196776a8b51a527f39e8a66c54612b8c4bae313c1f5f303253bdb424"
+      },
+      {
+        "path": "_next/static/chunks/4423-43dee2f9a405ad0a.js",
+        "bytes": 21345,
+        "sha256": "ad787b02664886ecc3805cf3673838c164b16ad3b74829da6925637cec80a3cc"
+      },
+      {
+        "path": "_next/static/chunks/4456-78a801ae60c3ea59.js",
+        "bytes": 8532,
+        "sha256": "39e149b922d6b4215961a7c411c6e3c16810f60f0ab882aedba0f6eabba1938e"
+      },
+      {
+        "path": "_next/static/chunks/5074-0de8c25eba4ea3e8.js",
+        "bytes": 8955,
+        "sha256": "b209c78e4c99e3b03dabab407ae4b1a564890d5164bbac20aecf0bd3d90d307d"
+      },
+      {
+        "path": "_next/static/chunks/5858-1f87d6188aa9c5c6.js",
+        "bytes": 17556,
+        "sha256": "01cecc195eb2de2c306f2f29f2baf2d3a75c5432b2c41cb4540ac1628ef25018"
+      },
+      {
+        "path": "_next/static/chunks/5988.34101cd28cd7c878.js",
+        "bytes": 463,
+        "sha256": "9527140cfa80c167a0e77715763ffe97952863bde9c952412b2d637fe7df32e6"
+      },
+      {
+        "path": "_next/static/chunks/7427-be1ff91c7f348479.js",
+        "bytes": 33961,
+        "sha256": "d86b24f3501867bd9d8871fa929186a58cfffd5007a982f985fcfedb24fe7c01"
+      },
+      {
+        "path": "_next/static/chunks/7919.8fd940a055c9bda8.js",
+        "bytes": 1651,
+        "sha256": "142e08522b5e724a9b6a12e6b112779145764faddd7673ec425c56c769d398d5"
+      },
+      {
+        "path": "_next/static/chunks/804-16ce1c7c3cfca805.js",
+        "bytes": 55063,
+        "sha256": "cc40fb5c6c1623f37658b8638127f8b06e13cb9c0450b0f4124b61acce5240f2"
+      },
+      {
+        "path": "_next/static/chunks/8104.301ebd2977a0d3be.js",
+        "bytes": 15613,
+        "sha256": "0ca3ed0c62addda9ae1967ef8d41332d34c446fbf9f7df253510a1dc38f0411a"
+      },
+      {
+        "path": "_next/static/chunks/8603-700c53ddc2a44a88.js",
+        "bytes": 44074,
+        "sha256": "d631b8a46f18c7376609358905b81a0a3df431d649db76456986a7f508529917"
+      },
+      {
+        "path": "_next/static/chunks/9481-61b305d5712ec077.js",
+        "bytes": 264432,
+        "sha256": "b45b3d8bde998a45aa47a670ef4ebbaaa9a8315b98bbe4c355c9013cb5361e26"
+      },
+      {
+        "path": "_next/static/chunks/app/_not-found/page-d88d19693234820b.js",
+        "bytes": 2672,
+        "sha256": "37bdc3bd98c7a58db29ad841fbc1195281d884afdb3b6c614ff5fd0f066df285"
+      },
+      {
+        "path": "_next/static/chunks/app/account/profile/page-82bdc0a37301c498.js",
+        "bytes": 17284,
+        "sha256": "5a8d952657656bacd4b2a2a703257d0de074dac29b47561e2b9510d23d07e6fe"
+      },
+      {
+        "path": "_next/static/chunks/app/api/account/avatar/[wallet]/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/account/avatar/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/account/creator/[wallet]/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/account/logout/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/account/nonce/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/account/profile/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/account/public/[username]/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/account/session/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/account/verify/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/config/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/creation-review/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/earnings/[token]/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/earnings/factory/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/earnings/history/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/earnings/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/launches/[token]/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/launches/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/new-engine/[token]/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/new-engine/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/production-creation/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/production-earnings/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/project-treasury/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/reclaim/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/test-claim-profiles/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/test-creation/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/test-earnings/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/test-lifecycle/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/test-mobile-review/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/test-project-treasury/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/launchpad/test-reclaim/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/nft-acquisition/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/api/seaport-acquisition/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/create-token/page-71507ef05fd492d6.js",
+        "bytes": 51439,
+        "sha256": "c360746e710984b4422b312f67f9fac9c2175710b69c354faa10ca59758250e5"
+      },
+      {
+        "path": "_next/static/chunks/app/creator/[wallet]/page-cf9ee5da59782cd2.js",
+        "bytes": 153,
+        "sha256": "70bc0db5f52926c348fa0f1b064f6431e66e5e9d026fd5d8d05528d7425f52db"
+      },
+      {
+        "path": "_next/static/chunks/app/healthz/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/launches/[token]/not-found-894a2ca6cdc89ae2.js",
+        "bytes": 188,
+        "sha256": "bd4be19aaa73701a07bd5f20f48161731ed0f14fc9aa2935d240ec24429a27ae"
+      },
+      {
+        "path": "_next/static/chunks/app/launches/[token]/page-28dccf0a4fc964c2.js",
+        "bytes": 1889,
+        "sha256": "0d1e1d16adacc95e06037c8b006b6ca479f03900f38fe105b9122b1f4b818acb"
+      },
+      {
+        "path": "_next/static/chunks/app/layout-b6c59c397ac8943b.js",
+        "bytes": 9464,
+        "sha256": "73d8fe7d0faef374188496394039feec116b71c8627f14df86af9dd1d9482d79"
+      },
+      {
+        "path": "_next/static/chunks/app/my-launches/earnings/page-bbcada533fb9a012.js",
+        "bytes": 17667,
+        "sha256": "9843018a44c2d1ba81ce173054d9d9d65e32c21e57e524d91cd4be23a173fbae"
+      },
+      {
+        "path": "_next/static/chunks/app/my-launches/page-1e5a15c1f9061a4f.js",
+        "bytes": 10449,
+        "sha256": "c91ec0b97502acd0e954fbdd969f10138ce9f4819f0985624f4dd88f6948bb9e"
+      },
+      {
+        "path": "_next/static/chunks/app/my-launches/treasury/nft-purchases/page-29cafe89851cd11d.js",
+        "bytes": 43608,
+        "sha256": "4f4959b668db847eb463ffed35adb1a96d093bf28a11995f7f44a1fb19809aca"
+      },
+      {
+        "path": "_next/static/chunks/app/my-launches/treasury/page-7f18a3586caad508.js",
+        "bytes": 22620,
+        "sha256": "345b4dc9d409f4172757bca181689166e5286f873a19ad815d9cd7d495e80926"
+      },
+      {
+        "path": "_next/static/chunks/app/my-launches/treasury/seaport-purchases/page-3d47c72b912ba582.js",
+        "bytes": 69890,
+        "sha256": "45dffd0087b30a112d2cd14909fd06ff667147018e51c323a8090c89441ab2d9"
+      },
+      {
+        "path": "_next/static/chunks/app/page-c080f995e5146028.js",
+        "bytes": 305,
+        "sha256": "ce2f222415b6ceaa1c7cbf4662e412dca6ea162dbc6a327b3861d768f14ac29d"
+      },
+      {
+        "path": "_next/static/chunks/app/privacy/page-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/readyz/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/reclaim/page-bf77cc2f8364937b.js",
+        "bytes": 58098,
+        "sha256": "0669f44cf90d9ecbda867e0d4fa9cb2c4802f3f8e7bb4131127b41186ea682e0"
+      },
+      {
+        "path": "_next/static/chunks/app/risks/page-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/robots.txt/route-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/terms/page-b83903f4f268474d.js",
+        "bytes": 316,
+        "sha256": "d202f17b80c6f0355531c0feba6d039d397f9510ba6a57e8bbb6d2dabc6ab091"
+      },
+      {
+        "path": "_next/static/chunks/app/u/[username]/page-a4d419832006f6fa.js",
+        "bytes": 153,
+        "sha256": "81001875f7f3b41722de02453a6c2cb45cba58a145eaf37ef3862a7fc01ff2fc"
+      },
+      {
+        "path": "_next/static/chunks/app/wallet/mobile-review/page-539919288e555256.js",
+        "bytes": 28898,
+        "sha256": "06da48724d3cb217371fcc55ec2c741e6626249439d623c0b42c3d6aa1cdf95e"
+      },
+      {
+        "path": "_next/static/chunks/app/wallet/page-83325bd3f51ab1cc.js",
+        "bytes": 6580,
+        "sha256": "eb4cbc5ea49ad2aa3d9ee4ec1634305de7c7cf04d6fe4d7e63555d2d90790717"
+      },
+      {
+        "path": "_next/static/chunks/b74be1d7-9eeda1a73943edbf.js",
+        "bytes": 173020,
+        "sha256": "149a37d695169d00885939b64d1da926e12a9d5cce8cb4283cf08a95c48ba5e4"
+      },
+      {
+        "path": "_next/static/chunks/framework-95c9a5682f492943.js",
+        "bytes": 181562,
+        "sha256": "ecc1ce43216c1dbed47c557081eb113e25d65f08fe4a9009b1443e84e826acf1"
+      },
+      {
+        "path": "_next/static/chunks/main-5ec15321664e68e8.js",
+        "bytes": 128281,
+        "sha256": "077c360543d9faa9cbdc6fa594b6426f7d7723eed9991109baf7ee6e3a9bcff5"
+      },
+      {
+        "path": "_next/static/chunks/main-app-27ffb3f721d90575.js",
+        "bytes": 559,
+        "sha256": "e292b6f4c70748e49fcc88516a552609e1ad9012bdf147d5bef76aa9c52c0d25"
+      },
+      {
+        "path": "_next/static/chunks/pages/_app-be12ae8a5f72531b.js",
+        "bytes": 238,
+        "sha256": "db8096eca4601f2c7e30a78cbc0e338224cefb68f68f0e9711c884f8a09968bb"
+      },
+      {
+        "path": "_next/static/chunks/pages/_error-f900b5e2b819b4e1.js",
+        "bytes": 221,
+        "sha256": "a594e1418cf827e4d9d063444c694ca487c40cf64a6440df58fb355f66b44464"
+      },
+      {
+        "path": "_next/static/chunks/polyfills-42372ed130431b0a.js",
+        "bytes": 112594,
+        "sha256": "0973c1d64c88adc8e3c950410cb58b288f72118d5965b78049438deb8f2f9683"
+      },
+      {
+        "path": "_next/static/chunks/webpack-ceb2bf107b00ee6e.js",
+        "bytes": 3723,
+        "sha256": "cc099d426f881d2a4397eef922facbea08c367c66ca592c607e73f730f3d5368"
+      },
+      {
+        "path": "_next/static/css/995bd3f01c37f7e9.css",
+        "bytes": 56604,
+        "sha256": "3b5624d8bf2327b4b50bf51a0fbdc6fb9f17c31283dc12c16f6f948123738902"
+      },
+      {
+        "path": "_next/static/media/rmt-master-logo.e2264920.png",
+        "bytes": 768889,
+        "sha256": "ce3fadb3b71491577ab2dff5b2469c48048ebbe869e683d5e5d87333ae145ebe"
+      },
+      {
+        "path": "brand/rmt-master-logo.png",
+        "bytes": 768889,
+        "sha256": "ce3fadb3b71491577ab2dff5b2469c48048ebbe869e683d5e5d87333ae145ebe"
+      }
+    ],
+    "archive": {
+      "sha256": "78e2f8fd3f2810c6950be35066408b44bdc47132abd8638f7bac0b021caada88",
+      "bytes": 33738392,
+      "entries": 3240,
+      "relativeLinks": 218,
+      "bootstrap": "parsed without path rewriting",
+      "modules": {
+        "sharp": "native encode/decode passed",
+        "firebaseAdmin": "modules loaded; zero initialized apps",
+        "network": "passive imports with HTTP/TCP/DNS APIs blocked"
+      }
+    },
+    "appRoutes": [
+      "/_not-found/page",
+      "/account/profile/page",
+      "/api/account/avatar/[wallet]/route",
+      "/api/account/avatar/route",
+      "/api/account/creator/[wallet]/route",
+      "/api/account/logout/route",
+      "/api/account/nonce/route",
+      "/api/account/profile/route",
+      "/api/account/public/[username]/route",
+      "/api/account/session/route",
+      "/api/account/verify/route",
+      "/api/launchpad/config/route",
+      "/api/launchpad/creation-review/route",
+      "/api/launchpad/earnings/[token]/route",
+      "/api/launchpad/earnings/factory/route",
+      "/api/launchpad/earnings/history/route",
+      "/api/launchpad/earnings/route",
+      "/api/launchpad/launches/[token]/route",
+      "/api/launchpad/launches/route",
+      "/api/launchpad/new-engine/[token]/route",
+      "/api/launchpad/new-engine/route",
+      "/api/launchpad/production-creation/route",
+      "/api/launchpad/production-earnings/route",
+      "/api/launchpad/project-treasury/route",
+      "/api/launchpad/reclaim/route",
+      "/api/launchpad/test-claim-profiles/route",
+      "/api/launchpad/test-creation/route",
+      "/api/launchpad/test-earnings/route",
+      "/api/launchpad/test-lifecycle/route",
+      "/api/launchpad/test-mobile-review/route",
+      "/api/launchpad/test-project-treasury/route",
+      "/api/launchpad/test-reclaim/route",
+      "/api/nft-acquisition/route",
+      "/api/seaport-acquisition/route",
+      "/create-token/page",
+      "/creator/[wallet]/page",
+      "/healthz/route",
+      "/launches/[token]/page",
+      "/my-launches/earnings/page",
+      "/my-launches/page",
+      "/my-launches/treasury/nft-purchases/page",
+      "/my-launches/treasury/page",
+      "/my-launches/treasury/seaport-purchases/page",
+      "/page",
+      "/privacy/page",
+      "/readyz/route",
+      "/reclaim/page",
+      "/risks/page",
+      "/robots.txt/route",
+      "/terms/page",
+      "/u/[username]/page",
+      "/wallet/mobile-review/page",
+      "/wallet/page"
+    ],
+    "sourceArtifacts": {
+      "functionManifestSha256": "acb4287975180b91322c150592f33a37dd487f13ae2a12a15b7cba40304a12fc",
+      "edgeManifestSha256": "e62ad733cee1605d6aa96649d1d11d9279bbebece95a11b2612be4fff6a21b5a"
+    }
+  },
+  "deployment": "Not attempted; no Netlify authentication or deploy operation is part of this preflight"
+}

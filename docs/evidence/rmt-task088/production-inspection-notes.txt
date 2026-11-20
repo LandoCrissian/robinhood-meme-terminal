@@ -1,0 +1,7 @@
+Task088 A production inspection
+
+Ordinary public GETs and read-only provider metadata confirm that Netlify serves the November14 stale review snapshot while Railway reports current checkpoints. The separate new-engine route is unavailable on the older website artifact. Advancing health alone cannot prove authenticated frontend delivery.
+
+The source has two concrete repair targets: historical snapshots receive a durable cache TTL despite stale status, and unchanged lifecycle evidence can be rejected by the merge's strict block ordering. The latter is a reproducible source defect, not yet established as the production fallback trigger. Source071 silently catches several independent fallback causes, and the available provider tools do not expose its server-function logs.
+
+No production configuration, deploy, credential read, live vulnerability testing, wallet or governance action occurred. See production-inspection.json for bounded observations and exact limitations. Collection start times were not retained; the observation window is approximate and body/log timestamps are exact as returned.

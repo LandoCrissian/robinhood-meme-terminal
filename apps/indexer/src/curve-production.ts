@@ -162,9 +162,10 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     const before = state();
     if (before.status === "unavailable" || !before.checkpoint) throw new Error("Production curve evidence unavailable");
     const launches = await readProductionCurveLaunches(db, scope, before.checkpoint, query);
-    if (state().revision !== before.revision || state().status === "unavailable") throw new Error("Production evidence changed during read");
+    const after = state();
+    if (after.revision !== before.revision || after.status === "unavailable") throw new Error("Production evidence changed during read");
     return {
-      chainId: 4663, profile: binding.profile, status: before.status, observedAt: new Date(now()).toISOString(),
+      chainId: 4663, profile: binding.profile, status: after.status, observedAt: new Date(now()).toISOString(),
       deployment: { factory: binding.factory, registry: binding.projectRegistry, blockNumber: binding.deploymentBlock.toString(),
         blockHash: binding.deploymentBlockHash },
       checkpoint: { ...before.checkpoint, confirmations: binding.confirmations, finality: "l2-confirmed", l1Finality: "unverified" },
@@ -188,11 +189,12 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
       recipient: query.recipient, operatingRecipient: binding.creationFeeRecipient, reserveRecipient: config.reserveRecipient,
       cursor: cursor ?? undefined, limit: query.limit + 1, token: query.token,
     });
-    if (state().revision !== before.revision || state().status === "unavailable") throw new Error("Earnings evidence changed during read");
+    const after = state();
+    if (after.revision !== before.revision || after.status === "unavailable") throw new Error("Earnings evidence changed during read");
     const launches = data.launches.slice(0, query.limit).map(launch => ({ ...launch,
       beneficiaryRoles: earningsBeneficiaryRoles(launch, query.recipient, config), feeEvidence: "contract-read-required" as const }));
     const last = launches.at(-1);
-    const stale = before.status === "stale" || now() - Date.parse(data.checkpoint.timestamp) > maximumCheckpointAgeMs;
+    const stale = after.status === "stale" || now() - Date.parse(data.checkpoint.timestamp) > maximumCheckpointAgeMs;
     return {
       schemaVersion: 1 as const, chainId: 4663 as const, profile: creatorEarningsProfile,
       status: stale ? "stale" as const : "ready" as const, recipient: query.recipient, observedAt: new Date(now()).toISOString(),

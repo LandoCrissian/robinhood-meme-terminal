@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "scope": "FULL_HISTORY_RAW_SCAN_EXACT_PUBLIC_DATA_ADJUDICATION",
+  "status": "PASSED_EXACT_PUBLIC_DATA_ONLY",
+  "rawFindingCount": 7,
+  "classified": [
+    {
+      "fingerprint": "25e2a1f41b58b3f7b0b98f31aa1c61bf8e9cfce1:docs/evidence/rmt-task082/seaport-marketplace/source-manifest.json:generic-api-key:8",
+      "kind": "PUBLIC_SOURCE_RESPONSE_SHA256",
+      "commit": "25e2a1f41b58b3f7b0b98f31aa1c61bf8e9cfce1",
+      "gitBlobSha1": "434d54a114f8725344eacd6aa38bc6d7cc82c756",
+      "lineSha256": "ee30ca5cc4be0e398785a7960b1033eb05a0e602d6c16012f791b8215173c263",
+      "publicValueSha256": "8d460aefa35ecabbb98539a0680ec74a2e826a0911a256b5c464d0afce613eb4"
+    },
+    {
+      "fingerprint": "25e2a1f41b58b3f7b0b98f31aa1c61bf8e9cfce1:docs/evidence/rmt-task082/seaport-marketplace/source-manifest.json:generic-api-key:381",
+      "kind": "PUBLIC_SOURCE_RESPONSE_SHA256",
+      "commit": "25e2a1f41b58b3f7b0b98f31aa1c61bf8e9cfce1",
+      "gitBlobSha1": "434d54a114f8725344eacd6aa38bc6d7cc82c756",
+      "lineSha256": "90d55f9d4b27ccd50871d79d6e13aa2e1c8def21e4dfbc29bbcf52ab644325a2",
+      "publicValueSha256": "251dcb38a610603e24f3d1e2ac50c98e1c7be42a6c2ebb2a2f19e522bcc83540"
+    },
+    {
+      "fingerprint": "a744d5f614e749bda781027acd526699cd52f278:apps/launch-website/lib/server/nft-acquisition-snapshot.test.json:generic-api-key:10",
+      "kind": "PUBLIC_SYNTHETIC_ERC20_CONTRACT_ADDRESS",
+      "commit": "a744d5f614e749bda781027acd526699cd52f278",
+      "gitBlobSha1": "9c5a54e5f46b1ad5340cc457e2857310683e492c",
+      "lineSha256": "4bd54590308c534609138b9b12551d9080c23c21a5c4e09fb1492fef91d0088c",
+      "publicValueSha256": "0e92945784d1dd3aff094fad5cefccba2e7ded0aee6ebbe4b8ef9e65737437eb"
+    },
+    {
+      "fingerprint": "a744d5f614e749bda781027acd526699cd52f278:apps/launch-website/lib/server/nft-acquisition-snapshot.test.json:generic-api-key:18",
+      "kind": "PUBLIC_SYNTHETIC_ERC20_CONTRACT_ADDRESS",
+      "commit": "a744d5f614e749bda781027acd526699cd52f278",
+      "gitBlobSha1": "9c5a54e5f46b1ad5340cc457e2857310683e492c",
+      "lineSha256": "8af5908251e74571f1ba852fb8e77ce3ccbc713a443a44dbccb60ec75486d984",
+      "publicValueSha256": "07a72a6cccabff8611095e3f1454ce8d83cdd44a77d966c87eecbd2258fe5e4f"
+    },
+    {
+      "fingerprint": "1eec8bee33023db343bcd5ae1373f540f613d9a4:scripts/nft-marketplace/probe-4663.mjs:generic-api-key:12",
+      "kind": "OPENSEA_PUBLIC_CONDUIT_IDENTIFIER",
+      "commit": "1eec8bee33023db343bcd5ae1373f540f613d9a4",
+      "gitBlobSha1": "6021400052fb006b4869382364abbb37010fac36",
+      "lineSha256": "65cd838ea57d24e35a3b48527fa1951a778c0e60c5c3130c509182c5b1dfbd3c",
+      "publicValueSha256": "f5b60a9eb11dd7eedb44aecb68432cd85049734f59781612deef6d8e6137204a"
+    },
+    {
+      "fingerprint": "3ec076fdd77e6dd502061040698c998eadc81b7b:docs/evidence/rmt-task088/test-results.json:generic-api-key:14",
+      "kind": "PUBLIC_SOURCE_FILE_SHA256",
+      "commit": "3ec076fdd77e6dd502061040698c998eadc81b7b",
+      "gitBlobSha1": "6e0c5ae96bb1db742ce0bbe868b92aa127a54b58",
+      "lineSha256": "702526c454754bf4a40eae16880de91e98436771055da041779b86d58850e876",
+      "sourcePath": "apps/launch-website/lib/server/launch-api.test.ts",
+      "sourceGitBlobSha1": "23368125d6e5ae3ca3f1ffc579a6c537ba396452",
+      "sourceBlobSha256": "04e9616b6c88724c5f614c2638f63d559858522ab3d2f5656b81584d027ef61f",
+      "publicValueSha256": "bf30ff6af8f3ab89f7f3a223449a08cc88d4e3447a5da2f47e09d3844fadf7d3"
+    },
+    {
+      "fingerprint": "3ec076fdd77e6dd502061040698c998eadc81b7b:docs/evidence/rmt-task088/test-results.json:generic-api-key:15",
+      "kind": "PUBLIC_SOURCE_FILE_SHA256",
+      "commit": "3ec076fdd77e6dd502061040698c998eadc81b7b",
+      "gitBlobSha1": "6e0c5ae96bb1db742ce0bbe868b92aa127a54b58",
+      "lineSha256": "e014c8545cbfaa1f336c99cf4a9277c00a32eb060a523595e3c746cb84dcff01",
+      "sourcePath": "apps/launch-website/lib/server/launch-api.ts",
+      "sourceGitBlobSha1": "2c36f1745ce6a30d2aeb5689b6cfbec116dd8f32",
+      "sourceBlobSha256": "b69599c5513b6b2692a83a36b94b421f6f971c2ee2d21b34cced496fa2e32c73",
+      "publicValueSha256": "a3073306074bea0f3e3501d72bbbc2690ab717e796c1891ee976c081fe1c256b"
+    }
+  ],
+  "unclassified": [],
+  "missing": [],
+  "rawScanPassed": false,
+  "detectorsChanged": false,
+  "ignoreAdded": false,
+  "financialSecurityClearance": false,
+  "productionAuthorization": false,
+  "supplementalProof": "task088-exact-source-file-checksums-v1",
+  "scannerVersion": "8.30.1",
+  "rawExitCode": 1
+}

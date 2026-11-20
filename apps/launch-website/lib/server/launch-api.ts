@@ -1,11 +1,11 @@
 import { isLaunchAddress, type LaunchDirectoryData } from "../launch-data";
-import { indexedFreshnessMs, readLaunchDirectory } from "./launch-data";
+import { historicalFreshnessStatus, indexedFreshnessMs, readLaunchDirectory } from "./launch-data";
 
 const clientCache = "private, no-store";
 const maxEdgeSeconds = 15;
 
 function edgeLifetime(data: LaunchDirectoryData, now: number): number {
-  if (data.coverage === "verified-snapshot") return maxEdgeSeconds;
+  if (data.coverage === "verified-snapshot") return 0;
   if (data.status !== "ready" || !data.checkpoint) return 0;
   // Leave a buffer for upstream response time and CDN clock skew.
   const freshMs = indexedFreshnessMs + Date.parse(data.checkpoint.timestamp) - now - 5_000;
@@ -25,10 +25,12 @@ export function createLaunchHistoryHandler(read = readLaunchDirectory, now = Dat
     if (new URL(request.url).search || (token !== undefined && !isLaunchAddress(token))) {
       return Response.json({ error: "invalid_launch_history_request" }, { status: 400, headers });
     }
-    const data = await read(token);
-    const status = data.status === "unavailable" ? 503 : token && !data.launches.length ? 404 : 200;
+    const observed = await read(token);
+    const publishedAt = now();
+    const data = { ...observed, status: historicalFreshnessStatus(observed, publishedAt) };
+    const status = data.status === "unavailable" ? 503 : token && !data.launches.length ? (data.status === "stale" ? 503 : 404) : 200;
     if (status === 200 && request.method === "GET" && (!token || token === token.toLowerCase())) {
-      const lifetime = edgeLifetime(data, now());
+      const lifetime = edgeLifetime(data, publishedAt);
       if (lifetime > 0) headers.set("Netlify-CDN-Cache-Control", "public, durable, s-maxage=" + lifetime + ", must-revalidate");
     }
     return request.method === "HEAD"

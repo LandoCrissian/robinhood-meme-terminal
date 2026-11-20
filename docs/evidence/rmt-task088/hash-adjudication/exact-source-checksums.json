@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "scope": "EXACT_IMMUTABLE_PUBLIC_SOURCE_FILE_CHECKSUMS_NOT_CREDENTIAL_EXCEPTIONS",
+  "records": [
+    {
+      "fingerprint": "3ec076fdd77e6dd502061040698c998eadc81b7b:docs/evidence/rmt-task088/test-results.json:generic-api-key:14",
+      "commit": "3ec076fdd77e6dd502061040698c998eadc81b7b",
+      "path": "docs/evidence/rmt-task088/test-results.json",
+      "ruleId": "generic-api-key",
+      "line": 14,
+      "manifestGitBlobSha1": "6e0c5ae96bb1db742ce0bbe868b92aa127a54b58",
+      "manifestBlobSha256": "4c26e3561b64f2f02e67631522f79c966cb819088ba12161e3eef9d40f4633e1",
+      "lineSha256": "702526c454754bf4a40eae16880de91e98436771055da041779b86d58850e876",
+      "sourcePath": "apps/launch-website/lib/server/launch-api.test.ts",
+      "sourceGitBlobSha1": "23368125d6e5ae3ca3f1ffc579a6c537ba396452",
+      "sourceBlobSha256": "04e9616b6c88724c5f614c2638f63d559858522ab3d2f5656b81584d027ef61f",
+      "valueSha256": "bf30ff6af8f3ab89f7f3a223449a08cc88d4e3447a5da2f47e09d3844fadf7d3",
+      "redactedMatchSha256": "f9e8a06c651f99faafc04b1519c9045095aa7d14754da17833497577f1dedd3f",
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256"
+    },
+    {
+      "fingerprint": "3ec076fdd77e6dd502061040698c998eadc81b7b:docs/evidence/rmt-task088/test-results.json:generic-api-key:15",
+      "commit": "3ec076fdd77e6dd502061040698c998eadc81b7b",
+      "path": "docs/evidence/rmt-task088/test-results.json",
+      "ruleId": "generic-api-key",
+      "line": 15,
+      "manifestGitBlobSha1": "6e0c5ae96bb1db742ce0bbe868b92aa127a54b58",
+      "manifestBlobSha256": "4c26e3561b64f2f02e67631522f79c966cb819088ba12161e3eef9d40f4633e1",
+      "lineSha256": "e014c8545cbfaa1f336c99cf4a9277c00a32eb060a523595e3c746cb84dcff01",
+      "sourcePath": "apps/launch-website/lib/server/launch-api.ts",
+      "sourceGitBlobSha1": "2c36f1745ce6a30d2aeb5689b6cfbec116dd8f32",
+      "sourceBlobSha256": "b69599c5513b6b2692a83a36b94b421f6f971c2ee2d21b34cced496fa2e32c73",
+      "valueSha256": "a3073306074bea0f3e3501d72bbbc2690ab717e796c1891ee976c081fe1c256b",
+      "redactedMatchSha256": "edcec778bfb704bdc7fae056702ed28136885eec20acdff5a6cedf111b789c5e",
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256"
+    }
+  ],
+  "originalCi": {
+    "head": "3ec076fdd77e6dd502061040698c998eadc81b7b",
+    "jobId": 136108480341,
+    "artifactId": 14604263838,
+    "rawFindingCount": 7,
+    "rawExitCode": 1,
+    "archiveSha256": "5adb13820f92a28a6dd9ce15c6c8ff53c6cb34646e0cc282570b5a059310d51a",
+    "rawReportSha256": "df648a327e38d250d4b0ec663b37b8a8434c73fd0d84a4ab487384a4957f1cfa"
+  },
+  "originalFiveRecordPolicyUnchanged": true,
+  "scannerConfigurationChanged": false,
+  "ignoreAdded": false,
+  "historyRewritten": false,
+  "rawScannerCleared": false,
+  "financialSecurityClearance": false,
+  "productionAuthorization": false
+}
