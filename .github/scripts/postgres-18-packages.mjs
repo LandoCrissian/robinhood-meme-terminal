@@ -42,7 +42,8 @@ export function verifyPg18ArchiveIndex(release,index){
   verifyPackageIndex(release,index,"apt-archive.postgresql.org","noble-pgdg-archive",pg18Packages,pg18Version,{plain:true});
   return{schemaVersion:1,scope:"ISOLATED_CI_BINARIES_ONLY_NOT_PRODUCTION",mode:"PGDG_SIGNED_ARCHIVE_AND_PINNED_DEBS",version:pg18Version,
     repository:"https://apt-archive.postgresql.org/pub/repos/apt",suite:"noble-pgdg-archive",architecture:"amd64",signingFingerprint:pgdgFingerprint,
-    verifiedReleaseSha256:sha256(release),packagesIndexSha256:sha256(index),packages:pg18Packages};
+    verifiedReleaseSha256:sha256(release),packagesIndexSha256:sha256(index),packagesIndexFormat:"SIGNED_PLAIN_BYTES",
+    retainedPackagesGzip:"LOSSLESS_COPY_FOR_IMMUTABLE_ARTIFACT_SELECTORS_NOT_A_SECOND_TRUST_SOURCE",packages:pg18Packages};
 }
 export const ubuntuLiburing={name:"liburing2",filename:"pool/main/libu/liburing/liburing2_2.5-1build1_amd64.deb",size:21092,sha256:"c2aef62accee92a06263c3ad4ef46132c13e409b54296c44792a20491830a7b0"};
 export function verifyUbuntuLiburingIndex(release,gzip){

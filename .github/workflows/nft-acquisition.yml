@@ -220,7 +220,6 @@ jobs:
             ${{ env.RMT_PG18_EVIDENCE }}/InRelease
             ${{ env.RMT_PG18_EVIDENCE }}/Release
             ${{ env.RMT_PG18_EVIDENCE }}/Packages.gz
-            ${{ env.RMT_PG18_EVIDENCE }}/Packages
             ${{ env.RMT_PG18_EVIDENCE }}/ubuntu-*
             ${{ env.RMT_PG18_EVIDENCE }}/*.ldd
             ${{ runner.temp }}/rmt-nft-acquisition/*.png

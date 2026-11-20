@@ -25,7 +25,7 @@ exact_version() {
 pg_bin=/usr/lib/postgresql/18/bin
 mode=PREINSTALLED_EXACT_18_6
 if ! exact_version "$pg_bin"; then
-  for tool in curl gpg gpgv node dpkg-deb sha256sum ldd; do command -v "$tool" >/dev/null; done
+  for tool in curl gpg gpgv node dpkg-deb sha256sum ldd gzip; do command -v "$tool" >/dev/null; done
   mkdir -m 700 "$pg_home/gnupg" "$pg_home/root"
   download() { curl --fail --silent --show-error --retry 2 --max-time 60 --proto '=https' --tlsv1.2 --max-filesize "$3" "$1" --output "$2"; }
   download https://www.postgresql.org/media/keys/ACCC4CF8.asc "$pg_home/pgdg.asc" 65536
@@ -39,6 +39,9 @@ if ! exact_version "$pg_bin"; then
   # amd64 plain index is bounded independently; every package pin stays unchanged.
   download "$repository/dists/noble-pgdg-archive/main/binary-amd64/Packages" "$pg_home/Packages" 33554432
   node .github/scripts/postgres-18-packages.mjs "$pg_home/Release" "$pg_home/Packages" "$pg_home/provenance.json" pgdg-archive > "$pg_home/packages.tsv"
+  # Preserve compatibility with immutable older artifact selectors. This is a
+  # lossless retained copy only; trust is checked against the signed plain index.
+  gzip -n -c "$pg_home/Packages" > "$pg_home/Packages.gz"
   while IFS=$'\t' read -r name filename size checksum; do
     archive="$pg_home/${filename##*/}"
     download "$repository/$filename" "$archive" "$size"

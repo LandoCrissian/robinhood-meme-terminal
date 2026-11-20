@@ -3,7 +3,7 @@ import {mkdirSync,readFileSync,writeFileSync,appendFileSync} from "node:fs";
 import {isAbsolute,join,resolve,relative} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parseArgs} from "node:util";
-import {randomBytes} from "node:crypto";
+import {syntheticCanaryText} from "./synthetic-canary.mjs";
 import {verifyTask091SnapshotHistoryPublicData as verifyHistoryPublicData} from "./public-task091-snapshot-identities.mjs";
 
 const {values}=parseArgs({options:{scanner:{type:"string"},output:{type:"string"}}});
@@ -23,8 +23,11 @@ if(process.env.GITHUB_STEP_SUMMARY)appendFileSync(process.env.GITHUB_STEP_SUMMAR
 // detector and subsequent gate still reject an unrelated key-shaped value.
 // Its random bytes never authenticate to anything and are not uploaded.
 const canaryFolder=join(out,"ephemeral-canary");mkdirSync(canaryFolder,{recursive:true});
-writeFileSync(join(canaryFolder,"source.txt"),'api_key = "'+randomBytes(48).toString("base64url")+'"\n');
+writeFileSync(join(canaryFolder,"source.txt"),syntheticCanaryText());
 const canaryReport=join(out,"canary-redacted.json"),canary=spawnSync(values.scanner,["dir",canaryFolder,"--config",join(repository,".gitleaks.toml"),"--redact=100","--report-format","json","--report-path",canaryReport,"--no-banner"],{cwd:repository,encoding:"utf8",windowsHide:true,maxBuffer:1024*1024});
+writeFileSync(join(out,"canary-process.json"),JSON.stringify({schemaVersion:1,scope:"NONFUNCTIONAL_DETECTOR_CONTROL_REDACTED_PROCESS_DIAGNOSTICS",
+  status:canary.status,signal:canary.signal,error:canary.error?.message,stdout:canary.stdout??"",stderr:canary.stderr??"",
+  fixtureGrammar:"96_LOWERCASE_HEX_CHARACTERS",minimumEntropy:3.75,generatedBytesPublished:false},null,2)+"\n");
 if(canary.status!==1)throw Error("Unrelated synthetic canary was not rejected by the pinned detector");
 const canaryRaw=readFileSync(canaryReport);if(canaryRaw.length>1024*1024)throw Error("Canary report exceeds its bound");
 const canaryFindings=JSON.parse(canaryRaw);if(!Array.isArray(canaryFindings)||!canaryFindings.length||canaryFindings.some(f=>f.Secret!=="REDACTED"))throw Error("Canary detection evidence is invalid");
