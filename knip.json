@@ -3,6 +3,7 @@
   "workspaces": {
     ".": {
       "entry": [
+        "docs/evidence/rmt-task091/validation/classify-scan.mjs",
         "docs/evidence/rmt-task091/governance/capture-authority.mjs",
         "docs/evidence/rmt-task091/governance/capture.mjs",
         "docs/evidence/rmt-task091/governance/prepare-source-publication.mjs",
