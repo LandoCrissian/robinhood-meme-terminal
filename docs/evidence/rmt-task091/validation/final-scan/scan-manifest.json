@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "scope": "CHANGED_SOURCE_AND_ALL_TASK091_EVIDENCE_WITH_LOSSLESS_EXPANDED_GZIP",
   "base": "27f19787ed0a2d904ba4508d2adfab1773e82e67",
-  "capturedAt": "2026-11-20T21:21:09.871Z",
+  "capturedAt": "2026-11-20T21:24:01.550Z",
   "scanner": {
     "version": "8.30.1",
     "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
@@ -18,9 +18,9 @@
   },
   "rawExit": 1,
   "rawFindingCount": 288,
-  "sourceFileCount": 94,
+  "sourceFileCount": 93,
   "expandedGzipCount": 24,
-  "reportSha256": "a0426473a331cf580f53132cce9d57bbd03ec1a8e4ec3079a18e9a9a07e2fe97",
+  "reportSha256": "35d33bc25d16de5dffc4385ac32564883241cf8d308eb3151838214d1834ca35",
   "excludedGeneratedOutputs": [
     "docs/evidence/rmt-task091/validation/final-scan/scan-manifest.json",
     "docs/evidence/rmt-task091/validation/final-scan/gitleaks-redacted.json",
@@ -91,15 +91,6 @@
         "hex": "bc6528379082e22e67e5e3d69a8cb13d0873a191cc1d35abca0875a8f71ad909"
       },
       "scanPath": "source/.github/workflows/launch-website-review.yml"
-    },
-    {
-      "path": ".github/workflows/secret-scan.yml",
-      "bytes": 2256,
-      "contentDigest": {
-        "algorithm": "SHA-256",
-        "hex": "1def4983b53a5e96773fec03b2ccf4def3b8a556ad18525d827f20e968934b3a"
-      },
-      "scanPath": "source/.github/workflows/secret-scan.yml"
     },
     {
       "path": "apps/launch-website/lib/server/earnings-claims.ts",
@@ -979,10 +970,10 @@
     },
     {
       "path": "scripts/security/public-history-identities.test.mjs",
-      "bytes": 3188,
+      "bytes": 3226,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "1a4ac8ef26eceeb7b2c786e25a583944d5ca000e38cb783c1b10081abd789b3b"
+        "hex": "8f1a8f7b87eaf6bacf2bb38d5275fe9ee0703903569a0aa66c30c0709f634415"
       },
       "scanPath": "source/scripts/security/public-history-identities.test.mjs"
     },
@@ -1024,10 +1015,10 @@
     },
     {
       "path": "scripts/security/run-history-scan.mjs",
-      "bytes": 5232,
+      "bytes": 5605,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "c066d26056551c3db54405e290c1e7180c3ba92b721bfa80b506aa959358382d"
+        "hex": "aad25db1098c66609608efb41d3a227695e9e9f40d1670c249c897d586b79ebe"
       },
       "scanPath": "source/scripts/security/run-history-scan.mjs"
     },

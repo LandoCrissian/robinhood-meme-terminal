@@ -35,3 +35,4 @@ import "./public-source-checksums.test.mjs";
 import "./public-task090-identities.test.mjs";
 import "./public-task091-identities.test.mjs";
 import "./public-task091-snapshot-identities.test.mjs";
+import "./synthetic-canary.test.mjs";
