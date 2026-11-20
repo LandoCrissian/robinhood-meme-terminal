@@ -3,6 +3,8 @@
   "workspaces": {
     ".": {
       "entry": [
+        "docs/evidence/rmt-task089/archive-scan/scan-changed-source.mjs",
+        "scripts/discovery/backup-restore.mts",
         "scripts/discovery/continuity.ts",
         "docs/evidence/rmt-task087/operations/capture-public-reads.mjs",
         "docs/evidence/rmt-task087/bindings/capture.mjs",

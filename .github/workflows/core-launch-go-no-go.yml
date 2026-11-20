@@ -1,0 +1,149 @@
+name: Core launch go-no-go evidence
+
+on:
+  pull_request:
+    paths:
+      - "docs/RMT_CORE_LAUNCH_GO_NO_GO.md"
+      - "docs/evidence/rmt-task089/**"
+      - "apps/launch-website/lib/server/production-discovery*"
+      - "packages/contracts/scripts/fixed-supply-profile.mjs"
+      - "packages/contracts/scripts/pinned-solc*"
+      - "scripts/discovery/backup-restore.mts"
+      - "scripts/visual-qa/lifecycle-rsc-observation*"
+      - "scripts/visual-qa/rmt-creator-integration.mjs"
+      - ".github/workflows/core-launch-go-no-go.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  core-disposition-and-recovery:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
+        with:
+          python-version: "3.12"
+      - name: Install pinned repository dependencies
+        run: pnpm install --frozen-lockfile
+      - name: Install the exact hash-bound offline proof dependency
+        run: |
+          python -m venv "$RUNNER_TEMP/task089-proof"
+          "$RUNNER_TEMP/task089-proof/bin/python" -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r docs/evidence/rmt-task089/security/proof-requirements.txt
+      - name: Verify all 22 source-bound dispositions and independent expression proofs offline
+        run: |
+          set -euo pipefail
+          "$RUNNER_TEMP/task089-proof/bin/python" docs/evidence/rmt-task089/security/proof_test.py
+          "$RUNNER_TEMP/task089-proof/bin/python" docs/evidence/rmt-task089/security/verify-stage-dispositions.py
+      - name: Verify retained governance and discovery evidence offline
+        run: |
+          node --test docs/evidence/rmt-task089/governance/read-state.test.mjs
+          python docs/evidence/rmt-task089/discovery/verify-evidence.py
+      - name: Verify terminal-only lifecycle read draining and natural failure propagation
+        run: |
+          node --check scripts/visual-qa/rmt-creator-integration.mjs
+          node --test scripts/visual-qa/lifecycle-rsc-observation.test.mjs
+      - name: Verify compiler execution identity and cache rejection tests
+        run: node --test packages/contracts/scripts/pinned-solc.test.mjs
+      - name: Verify real pinned native compiler execution and cache behavior
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --max-time 60 --proto '=https' --tlsv1.2 'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' --output "$RUNNER_TEMP/solc-0.8.26"
+          chmod 700 "$RUNNER_TEMP/solc-0.8.26"
+          node packages/contracts/scripts/pinned-solc-smoke.mjs --solc "$RUNNER_TEMP/solc-0.8.26"
+      - name: Prepare the exact isolated PostgreSQL 18.6 fixture binaries
+        run: bash .github/scripts/prepare-postgres-18.sh
+      - name: Verify synthetic backup, independent restore, session writer lock, restart and reorg recovery
+        run: |
+          pnpm --filter indexer exec tsx ../../scripts/discovery/backup-restore.mts --pg-bin "$RMT_PG18_BIN" --output "$RUNNER_TEMP/task089-backup-restore"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: task089-core-recovery-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/task089-backup-restore/backup-restore.json
+            ${{ runner.temp }}/task089-backup-restore/archive-inventory.txt
+            ${{ runner.temp }}/task089-backup-restore/synthetic-database.backup
+            ${{ runner.temp }}/task089-backup-restore/postgres.log
+            ${{ env.RMT_PG18_EVIDENCE }}/provenance.json
+            ${{ env.RMT_PG18_EVIDENCE }}/versions-and-runtime.txt
+          retention-days: 7
+
+  core-creator-matrix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+        viewport: [mobile, desktop]
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+      HISTORICAL_ANCHOR_SHA: 8dca5773cbd4dc98f52a45616f420bce96b000f0
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - name: Build the existing website and isolated worker
+        run: |
+          bash .github/scripts/prepare-browser-apt.sh
+          pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter indexer --filter robinhood-meme-terminal
+          pnpm --filter @rmt/launch-website build
+          pnpm --filter indexer build
+          pnpm exec playwright install --with-deps chromium webkit
+      - name: Prepare the exact fixed-supply candidate and local compiler
+        run: |
+          set -euo pipefail
+          git fetch --no-tags --depth=1 origin "$HISTORICAL_ANCHOR_SHA"
+          (cd packages/contracts && bash scripts/install-v4-deps.sh)
+          curl --fail --silent --show-error --retry 2 --max-time 60 --proto '=https' --tlsv1.2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc-0.8.26"
+          chmod 700 "$RUNNER_TEMP/solc-0.8.26"
+          node packages/contracts/scripts/mobile-review-plan.mjs --solc "$RUNNER_TEMP/solc-0.8.26" \
+            --fixture-lifecycle --verify docs/evidence/mobile-signing/review-plan-4663.json
+      - name: Prepare exact PostgreSQL 18.6 isolated fixture binaries
+        run: bash .github/scripts/prepare-postgres-18.sh
+      - name: Verify complete synthetic creation, discovery, trading, claims and recovery
+        run: |
+          node --check scripts/visual-qa/rmt-creator-integration.mjs
+          node --test scripts/visual-qa/lifecycle-rsc-observation.test.mjs
+          node scripts/visual-qa/rmt-creator-integration.mjs \
+            --anvil "$(command -v anvil)" \
+            --solc "$RUNNER_TEMP/solc-0.8.26" --pg-bin "$RMT_PG18_BIN" \
+            --mobile-plan docs/evidence/mobile-signing/review-plan-4663.json \
+            --browser "${{ matrix.browser }}" --viewport "${{ matrix.viewport }}" \
+            --output "$RUNNER_TEMP/task089-creator"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: task089-creator-${{ matrix.browser }}-${{ matrix.viewport }}-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 7
+          path: |
+            ${{ runner.temp }}/task089-creator/*.json
+            ${{ runner.temp }}/task089-creator/*.png
+            ${{ runner.temp }}/task089-creator/*.log
+            ${{ runner.temp }}/task089-creator/failure-page.txt
+            ${{ env.RMT_PG18_EVIDENCE }}/provenance.json
+            ${{ env.RMT_PG18_EVIDENCE }}/versions-and-runtime.txt

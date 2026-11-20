@@ -1,0 +1,30 @@
+{
+  "compilerExit": 1,
+  "rscExit": 0,
+  "harnessSyntaxExit": 0,
+  "node": "v22.23.2",
+  "os": "Microsoft Windows NT 10.0.26200.0",
+  "website": {
+    "passed": 327,
+    "failed": 0,
+    "skipped": 0,
+    "exit": 0
+  },
+  "typecheckExit": 0,
+  "knip": {
+    "exit": 0,
+    "unchangedHints": 2
+  },
+  "rsc": {
+    "passed": 9,
+    "failed": 0,
+    "exit": 0
+  },
+  "compiler": {
+    "passed": 5,
+    "failed": 1,
+    "exit": 1,
+    "limitation": "Windows EPERM creating the symlink used by the unchanged cache-rejection test; Linux rerun required"
+  },
+  "scope": "recovered candidate worktree on exact Task088 base; these are not hosted CI results"
+}

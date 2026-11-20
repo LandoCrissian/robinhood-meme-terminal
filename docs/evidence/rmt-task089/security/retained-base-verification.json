@@ -1,0 +1,25 @@
+{
+  "scope": "IMMUTABLE_STARTING_CHECKOUT_ONLY_NOT_CHANGED_TASK089_HELPER",
+  "commit": "78a76feb592ac136dbf74d4823c21db64a6d0313",
+  "headVerified": "78a76feb592ac136dbf74d4823c21db64a6d0313",
+  "verifierSha256": "433202cf0e5ee9d12509f0ffdfa501210c7a23185e56a202d325b55c8e200ec8",
+  "profileHelperSha256": "a41b188fe25891824e82ae345d611c6935737a720b84a1a1513418ec91a5882f",
+  "expectedHelperSha256": "a41b188fe25891824e82ae345d611c6935737a720b84a1a1513418ec91a5882f",
+  "result": {
+    "result": "PASS",
+    "sources": 66,
+    "unchangedFirstPartySources": 16,
+    "allFindingIds": 233,
+    "unclearedHighIds": 22,
+    "detectors": 101,
+    "strictScannerExit": 1,
+    "foundry": {
+      "suites": 14,
+      "passed": 112,
+      "failed": 0,
+      "skipped": 0
+    },
+    "financialActivationAuthorized": false
+  },
+  "note": "Task089 changes compiler portability tooling separately. Original verifier assertions remain unchanged and must reject that changed helper when evaluated at the new head."
+}

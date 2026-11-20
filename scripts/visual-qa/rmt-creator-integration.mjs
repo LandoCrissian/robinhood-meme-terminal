@@ -32,6 +32,7 @@ import { postgresRuntimeEnvironment } from "../reclaim-v2/postgres-runtime-env.m
 import { observeOriginalReceipt } from "./receipt-observation.mjs";
 import { compileNftAcquisition, compileNftAcquisitionFixtures } from "../nft-acquisition/compiler.mjs";
 import { deployNftAcquisitionFixture } from "../nft-acquisition/deploy-fixture.mjs";
+import { observeLifecycleRsc } from "./lifecycle-rsc-observation.mjs";
 import { testNftAcquisitionJourney } from "../nft-acquisition/local-integration.mjs";
 
 const repository = fileURLToPath(new URL("../../", import.meta.url));
@@ -42,8 +43,10 @@ const { generatePrivateKey, privateKeyToAccount } = require("viem/accounts");
 const { Pool } = require("pg");
 const { values: args } = parseArgs({ options: {
   lib: { type: "string" }, anvil: { type: "string" }, solc: { type: "string" },
+  "solc-emulator": { type: "string" }, "solc-cache": { type: "string" },
   "pg-bin": { type: "string" }, output: { type: "string" }, "mobile-plan": { type: "string" },
   browser: { type: "string", default: "chromium" },
+  viewport: { type: "string", default: "mobile" },
   "successor-only": { type: "boolean", default: false },
   "profiles-only": { type: "boolean", default: false },
   "treasury-only": { type: "boolean", default: false },
@@ -53,6 +56,7 @@ const { values: args } = parseArgs({ options: {
 } });
 for (const option of ["anvil", "solc", "pg-bin", "output"]) assert.ok(args[option], `Supply --${option}`);
 assert.ok(["chromium", "webkit"].includes(args.browser), "Use --browser chromium or --browser webkit");
+assert.ok(["mobile", "desktop"].includes(args.viewport), "Use --viewport mobile or --viewport desktop");
 assert.ok([args["successor-only"], args["profiles-only"], args["treasury-only"],args["reclaim-only"],args["nft-acquisition-only"]].filter(Boolean).length <= 1, "Select one focused acceptance scope");
 assert.ok(!args["treasury-v2"] || args["treasury-only"], "V2 prototype acceptance requires the actual treasury journey");
 const out = resolve(args.output);
@@ -70,7 +74,7 @@ for (const item of ["apps/launch-website/.next/BUILD_ID", "apps/indexer/dist/cur
 
 const historical = "8dca5773cbd4dc98f52a45616f420bce96b000f0";
 const candidateCommit = execFileSync("git", ["rev-parse", "HEAD"], { cwd: repository, encoding: "utf8" }).trim();
-const { artifacts, manifest } = compileFixedSupplyProfile({ solc, lib: args.lib, chainId: 31337 });
+const { artifacts, manifest } = compileFixedSupplyProfile({ solc, solcEmulator: args["solc-emulator"], solcCache: args["solc-cache"], lib: args.lib, chainId: 31337 });
 const treasuryCompilation = args["treasury-only"] ? compileProjectTreasury({ solc }) : undefined;
 const purchaseV2Compilation = args["treasury-v2"] ? compileTreasuryPurchaseV2({ solc }) : undefined;
 const reclaimCompilation=args["reclaim-only"]?compileReclaim({solc}):undefined;
@@ -290,9 +294,10 @@ if (claimProofProxy) await new Promise((done, fail) => { claimProofProxy.once("e
 const claimRpcProxy = claimProofProxy ? loopback(claimProofProxy.address().port) + "/" : rpcProxy;
 
 let pgStarted = false;
+let lifecycleRscSnapshot;
 let browser;
 let page;
-const evidence = { candidateCommit, compilerProfile: manifest, browser: args.browser,
+const evidence = { candidateCommit, compilerProfile: manifest, browser: args.browser, viewport: args.viewport,
   anchor: { block: anchor.block, blockHash: anchor.blockHash }, chainId: 31337, project, receiptWaits: [] };
 try {
   const chain = start(anvil, ["--host", "127.0.0.1", "--port", new URL(rpcUrl).port, "--chain-id", "31337",
@@ -522,7 +527,7 @@ try {
     console.log("Focused synthetic successor earnings acceptance passed; browser acceptance was not selected.");
   } else {
   browser = await ({ chromium, webkit })[args.browser].launch();
-  const context = await browser.newContext(devices["iPhone 13"]);
+  const context = await browser.newContext(args.viewport === "desktop" ? {viewport: {width: 1440, height: 900}} : devices["iPhone 13"]);
   page = await context.newPage();
   page.setDefaultTimeout(20_000);
   const signatures = [];
@@ -534,7 +539,30 @@ try {
   const signerFor = new Map([creator, treasurySigner, operationsSigner, reserveSigner].map((account) => [account.address.toLowerCase(), account]));
   const pageErrors = [];
   const offOrigin = [];
-  page.on("pageerror", (error) => pageErrors.push(error.message));
+  const rsc = observeLifecycleRsc(page, {origin: site, token: () => currentToken});
+  lifecycleRscSnapshot = () => ({observations: rsc.snapshot()});
+  // Drain only requests already pending at this action. No new refresh is
+  // required: full-document lost-hash recovery is a valid product path.
+  const navigatePage = async (...params) => { await rsc.waitPending(waitFor); return page.goto(...params); };
+  const reloadPage = async (...params) => { await rsc.waitPending(waitFor); return page.reload(...params); };
+  let currentStep = "browser-start";
+  const pageErrorDetails = [], requestFailures = [];
+  const diagnosticPath = (url) => {
+    try { const parsed = new URL(url); return parsed.origin === site ? parsed.pathname.slice(0, 256) : "off-origin"; }
+    catch { return "invalid-url"; }
+  };
+  page.on("requestfailed", (request) => {
+    requestFailures.push({at: new Date().toISOString(), path: diagnosticPath(request.url()),
+      resourceType: request.resourceType(), failure: request.failure()?.errorText?.slice(0, 256)});
+    if (requestFailures.length > 20) requestFailures.shift();
+  });
+  page.on("pageerror", (error) => {
+    pageErrors.push(error.message);
+    if (pageErrorDetails.length < 20) pageErrorDetails.push({at: new Date().toISOString(), step: currentStep,
+      path: diagnosticPath(page.url()), message: error.message.slice(0, 512), stack: error.stack?.slice(0, 8192),
+      recentRequestFailures: [...requestFailures]});
+    void writeFile(join(out, "page-errors.json"), JSON.stringify(pageErrorDetails, null, 2)).catch(() => undefined);
+  });
   await context.route("**/*", async (route) => {
     if (new URL(route.request().url()).origin !== site) { offOrigin.push(route.request().url()); return route.abort(); }
     return route.continue();
@@ -664,7 +692,7 @@ try {
   }, { account: creator.address, substitute: alternate });
 
   const button = (name) => page.getByRole("button", { name, exact: true });
-  const capture = (name) => page.screenshot({ path: join(out, `${name}.png`), fullPage: true });
+  const capture = (name) => { currentStep = name; return page.screenshot({ path: join(out, `${name}.png`), fullPage: true }); };
   const reviewTreasuryCreation = async () => {
     await button("Review test creation").click();
     const acknowledgment = page.getByRole("checkbox", {
@@ -674,7 +702,7 @@ try {
     assert.equal(await button("Confirm test creation").isEnabled(), false);
     await acknowledgment.check();
   };
-  await page.goto(site + "/create-token");
+  await navigatePage(site + "/create-token");
   await page.getByLabel("Token name", { exact: true }).fill(project.name);
   await page.getByLabel("Ticker", { exact: true }).fill(project.symbol.toLowerCase());
   const fixedSupplyField = page.getByLabel("Fixed supply", { exact: true });
@@ -752,7 +780,7 @@ try {
   }
 
   await page.getByText("The wallet did not return a hash. Check the original request before continuing.", { exact: true }).waitFor();
-  await page.reload();
+  await reloadPage();
   await button("Check creation transaction").waitFor();
   await button("Check creation transaction").click();
   await waitFor("withheld receipt read during recovery", async () => missingReceiptReads > 0);
@@ -840,7 +868,7 @@ try {
   await page.getByRole("link", { name: "Open test token", exact: true }).click();
   await page.getByRole("heading", { name: project.name, exact: true }).waitFor();
   await capture("04-indexed-token");
-  await page.goto(site + "/");
+  await navigatePage(site + "/");
   await page.getByRole("region", { name: "New RMT Launch engine" }).getByRole("link", { name: `${project.name} · ${project.symbol}` }).waitFor();
   await capture("05-discovery");
 
@@ -879,8 +907,14 @@ try {
     await waitFor(label, async () => signatures.length === before + 1);
   };
   const openToken = async () => {
-    await page.goto(`${site}/launches/${token}`);
+    const expected = `${site}/launches/${token}`;
+    // The settled review can refresh this exact route. Waiting for commit
+    // avoids a competing same-URL refresh interrupting the old load event;
+    // the canonical URL, new document and project heading still must agree.
+    await navigatePage(expected, { waitUntil: "commit" });
+    await page.waitForURL(expected, { waitUntil: "domcontentloaded" });
     await page.getByRole("heading", { name: project.name, exact: true }).waitFor();
+    assert.equal(page.url(), expected);
   };
   const openTradeWallet = async () => {
     const connect = button("Connect test trading wallet");
@@ -902,6 +936,7 @@ try {
     const check = button("Check original transaction");
     let observed = false;
     await waitFor(`${description} confirmation from the original receipt`, async () => {
+      await rsc.waitPending(waitFor);
       if (await status.isVisible()) {
         observed = true;
         if (!continueJourney) return true;
@@ -990,7 +1025,7 @@ try {
   await mine();
   await waitFor("interrupted native trade proof", async () => hiddenTradeTraces > 0, worker);
   assert.equal((await fetchAt(site, path)).status, 503, "Missing exact native proof cannot publish a canonical trade");
-  await page.reload();
+  await reloadPage();
   await button("Check original transaction").waitFor();
   await button("Check original transaction").click();
   assert.equal(signatures.length, 2, "Loss and reload never repeat a transaction");
@@ -1052,7 +1087,7 @@ try {
   rows = (await sqlLaunches()).rows;
   assert.equal(rows.length, 1, "Restart and replay cannot duplicate a registration");
   assert.deepEqual(rows[0], row);
-  await page.goto(`${site}/launches/${token}`);
+  await navigatePage(`${site}/launches/${token}`);
   await page.getByRole("heading", { name: project.name, exact: true }).waitFor();
   await capture("06-rediscovered-after-restart");
 
@@ -1230,7 +1265,7 @@ try {
   await mine();
   await waitFor("v4 trace missing", async () => hiddenTradeTraces > v4TraceReads, worker);
   assert.equal((await fetchAt(site, path)).status, 503);
-  await page.reload();
+  await reloadPage();
   await button("Check original transaction").click();
   assert.equal(signatures.length, 7, "Missing v4 response hash never triggers a duplicate request");
   await capture("15-v4-recovery-pending");
@@ -1424,7 +1459,7 @@ try {
       web = startWeb("website-after-successor-earnings"); worker = startWorker("worker-after-successor-earnings");
       await webReady(web); await workerReady(worker);
     } });
-  Object.assign(evidence, { earnings, successorEarnings, reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,
+  Object.assign(evidence, { earnings, successorEarnings, browserErrors: pageErrors, externalRequests: offOrigin, reviewedTransaction: tx, receipt: { hash: receipt.transactionHash, blockNumber: receipt.blockNumber,
     blockHash: receipt.blockHash, status: receipt.status }, indexed, postgresRow: row,
     initial: { backingWei: "0", soldWei: "0", inventoryWei: project.supplyWei, creatorInitialTokensWei: "0" },
     lifecycle: { buy, approval, sell, threshold, graduation: { receipt: graduationReceipt, verified: v4 },
@@ -1450,6 +1485,7 @@ try {
   }
   throw error;
 } finally {
+  if (lifecycleRscSnapshot) await writeFile(join(out, "lifecycle-rsc-observations.json"), JSON.stringify(lifecycleRscSnapshot(), null, 2));
   await browser?.close();
   for (const job of processes.toReversed()) await stop(job);
   await pg.end();

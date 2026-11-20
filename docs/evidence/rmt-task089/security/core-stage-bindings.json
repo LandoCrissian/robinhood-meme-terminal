@@ -1,0 +1,97 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "78a76feb592ac136dbf74d4823c21db64a6d0313",
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "sourcePins": [
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+      "originalSha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531",
+      "review4663SourceSha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "originalSha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8",
+      "review4663SourceSha256": "98756c0a980876266d9acf69cc3d5a032961149e8de261dbfe2ee2c31a0a56d6"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+      "originalSha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c",
+      "review4663SourceSha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchBondingCurveV1.sol",
+      "originalSha256": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030",
+      "review4663SourceSha256": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030"
+    },
+    {
+      "path": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "originalSha256": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e",
+      "review4663SourceSha256": "9d513915a4d36f05e1d4114bbe4f727ac6e6a504ef35bb856c47307e14795009"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveRevenueLedgerV1.sol",
+      "originalSha256": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54",
+      "review4663SourceSha256": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "originalSha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19",
+      "review4663SourceSha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+      "originalSha256": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2",
+      "review4663SourceSha256": "0fabb8d5c6b9748c23c94c1917131273ee3137c7bf9775e49dc7d1335506588d"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "originalSha256": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5",
+      "review4663SourceSha256": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5"
+    }
+  ],
+  "directoryPublication": {
+    "directorySource": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+    "sourceLines": [
+      161,
+      182
+    ],
+    "directEffect": [
+      "Validate exact pending digest, current ordinary nonce/epoch and inclusive execution window",
+      "Validate adjacent factory version, exact factory runtime codehash and view engineVersion",
+      "Write latestVersion and factories[version], emit FactoryPublished, clear pending and consume ordinary nonce"
+    ],
+    "assetMovement": false,
+    "createsToken": false,
+    "runsGraduationOrMigration": false,
+    "suspendedIsPublishExecutionPredicate": false,
+    "noAuthorizationGiven": true
+  },
+  "factoryAdmission": {
+    "factorySource": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol:112",
+    "registrySource": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol:103",
+    "fact": "Factory create uses RegistryV3 registration, which requires !suspended and the exact published factory/runtime pin. Creation produces an active original curve; direct buy/sell, explicit buyAndGraduate and permissionless graduate are contract methods. Website flags do not revoke these permissions.",
+    "noWebsiteKillSwitch": true
+  },
+  "feeAndEconomics": {
+    "creationFeeWei": "400000000000000",
+    "fixedSupplyWhole": "1000000000",
+    "curveSaleWhole": "600000000",
+    "lpReserveWhole": "400000000",
+    "projectOperationsReserveBps": [
+      9000,
+      500,
+      500
+    ],
+    "curveGrossFeeBps": 100,
+    "graduationBackingWei": "2000000000000000000",
+    "virtualNativeWei": "4000000000000000000",
+    "originalLpPrincipalLocked": true,
+    "scope": "Exact retained4663 compiler profile; untransformed local source has separate1ETH/2ETH constants and must not be mislabeled production profile."
+  },
+  "separateRisks": [
+    "Directory/registry seven Medium observations remain outside these22High rows and uncleared.",
+    "Factory publication is not itself asset movement but may enable direct access to all later financial stages.",
+    "Missing independent whole-path/deployed-identity/finality evidence and owner approval prevent a publication/financial GO.",
+    "No confirmed exploit or defensible versioned patch was established by this finite review; no source operator is changed merely to silence a detector."
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "scope": "isolated primary development environment only",
+  "productionChanged": false,
+  "attempts": [
+    {
+      "step": "Python venv creation",
+      "outcome": "ensurepip unavailable in fresh Debian box",
+      "resolution": "signed Debian package indexes updated; python3.11-venv installed only inside ephemeral box"
+    },
+    {
+      "step": "first venv package install",
+      "outcome": "no installation candidate before apt index refresh",
+      "resolution": "normal signed apt-get update followed by package install; no trust checks disabled"
+    },
+    {
+      "step": "first Knip invocation",
+      "outcome": "indexer tsx appeared unused with a filtered installation; new smoke entry redundant after workflow discovery",
+      "resolution": "full frozen repository install, normal backup script entry registration; finalcheck passed with two unchanged historical hints"
+    }
+  ]
+}

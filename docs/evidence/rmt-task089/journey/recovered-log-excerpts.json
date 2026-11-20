@@ -1,0 +1,63 @@
+{
+  "schemaVersion": 1,
+  "kind": "RECOVERED_CONTROL_PLANE_LOG_EXCERPTS_NOT_ORIGINAL_FILES",
+  "boxId": "organic-macaw-35324",
+  "recoveryMethod": "Read-only mcp__codex_apps__upstash_redis_box_logs after automatic pause; no exec/resume/fork/key/billing change.",
+  "provenance": "Messages below are the provider-returned log text, retained verbatim. These excerpts are not exports of the original JSON, screenshots, compiler output, database archive or complete failure logs. Provider truncation remains literal and explicitly marked.",
+  "entries": [
+    {
+      "selection": "original unchanged zero-pageErrors assertion failure",
+      "timestamp": 1795185265,
+      "level": "info",
+      "source": "system",
+      "message": "postgres keys ['chain_id', 'factory', 'deployment_block_hash', 'token', 'block_number', 'block_hash', 'transaction_hash', 'log_index', 'payload']\nreceipt status 0x1\ntask089-final-webkit-mobile 1\nnode:internal/modules/run_main:123\n    triggerUncaughtException(\n    ^\n\nAssertionError [ERR_ASSERTION]: Expected values to be strictly deep-equal:\n+ actual - expected\n\n+ [\n+   'Load failed'\n+ ]\n- []\n\n    at file:///workspace/home/robinhood-meme-terminal/scripts/visual-qa/rmt-creator-integration.mjs:1427:10 {\n  generatedMessage: true,\n  code: 'ERR_ASSERTION',\n  actual: [ 'Load failed' ],\n  expected: [],\n  operator: 'deepStrictEqual'\n}\n\nNode.js v22.16.0\n\ntask089-final-webkit-desktop 0\nSame-app creation → curve trades → v4 swaps → fee collection and claims passed on 31337. /tmp/task089-final-webkit-desktop/creation-journey-evidence.json\n\n",
+      "isoTimestamp": "2026-11-20T14:34:25.000Z",
+      "truncationMarkerPresent": false
+    },
+    {
+      "selection": "bounded diagnostic stack prefix; original page-errors.json not exported",
+      "timestamp": 1795185507,
+      "level": "info",
+      "source": "system",
+      "message": "[\n  {\n    \"at\": \"2026-11-20T14:37:37.288Z\",\n    \"step\": \"10-reviewed-test-graduation\",\n    \"path\": \"/launches/0xf1c6796f33cbf4c0c00334d9bcc6536d0283932e\",\n    \"message\": \"Load failed\",\n    \"stack\": \"TypeError: Load failed\\n    at reportError ([native code]:0:0)\\n    at f (http://127.0.0.1:41833/_next/static/chunks/1882-29235467aa3c85a1.js:1:44320)\\n    at oh (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:67822)\\n    at unknown (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:68234)\\n    at lD (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:49524)\\n    at lO (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:49617)\\n    at o3 (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:89341)\\n    at ui (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:94307)\\n    at uk (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:104211)\\n    at ui (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:94023)\\n    at uk (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:104211)\\n    at ui (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:94023)\\n    at uk (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:104211)\\n    at ui (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:94640)\\n    at uk (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:104211)\\n    at ui (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:94640)\\n    at uk (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:104211)\\n    at ui (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:94640)\\n    at uk (http://127.0.0.1:41833/_next/static/chunks/b74be1d7-9eeda1a73943edbf.js:1:104211)\\n    at ui (http://127.0.0.1:41833/_next/static/chunks/b74... (truncated)",
+      "isoTimestamp": "2026-11-20T14:38:27.000Z",
+      "truncationMarkerPresent": true
+    },
+    {
+      "selection": "final source-captured Chromium mobile exit0 and remaining matrix status",
+      "timestamp": 1795187925,
+      "level": "info",
+      "source": "system",
+      "message": "15:18:45\ntask089-delivery-webkit-mobile 0 last mobile-wallet-confirmed.png Same-app creation → curve trades → v4 swaps → fee collection and claims passed on 31337. /tmp/task089-delivery-webkit-mobile/creation-journey-evidence.json\n\ntask089-delivery-webkit-desktop RUNNING/QUEUED last mobile-wallet-landscape.png \ntask089-quiescent-chromium-mobile 0 last mobile-wallet-confirmed.png Same-app creation → curve trades → v4 swaps → fee collection and claims passed on 31337. /tmp/task089-quiescent-chromium-mobile/creation-journey-evidence.json\n\ntask089-quiescent-chromium-desktop RUNNING/QUEUED last 15-v4-recovery-pending.png \ntask089-quiescent-webkit-mobile RUNNING/QUEUED last - \ntask089-quiescent-webkit-desktop RUNNING/QUEUED last - \n",
+      "isoTimestamp": "2026-11-20T15:18:45.000Z",
+      "truncationMarkerPresent": false
+    },
+    {
+      "selection": "printed inspection of completed final Chromium mobile report",
+      "timestamp": 1795187937,
+      "level": "info",
+      "source": "system",
+      "message": "v4keys ['owner', 'poolId', 'poolKey', 'logIndex', 'spotTick', 'blockHash', 'timestamp', 'blockNumber', 'poolManager', 'liquidityWei', 'sqrtPriceX96', 'tokenDustWei', 'tokenUsedWei', 'nativeDustWei', 'nativeUsedWei', 'positionManager', 'positionTokenId', 'transactionHash', 'poolLiquidityWei', 'spotSqrtPriceX96']\nchecks {'rejected': True, 'accountInvalidatedReview': True, 'chainInvalidatedReview': True, 'lostHashRefreshRecovered': True, 'insufficientFeeRejected': True, 'missingReceiptReads': 3, 'omittedCreationReads': 1, 'indexingDelay': True, 'restart': True, 'reorgRollback': True, 'interruptedLogReads': 3, 'mutatedRequestRejected': True, 'wrongBinding': True, 'duplicateWriterRejected': True, 'singleCreationBroadcast': True, 'totalWalletBroadcasts': 24, 'hiddenTradeTraces': 11, 'approvalConsumed': True, 'expiredAndSlippageRejected': True, 'indexedTradeRestart': True, 'indexedGraduationRestart': True, 'graduationRollback': True, 'postGraduationRestart': True, 'postGraduationReorg': True, 'rpcOutage': True, 'unauthorizedClaimRejected': True, 'wrongRouterAndPoolKeyRejected': True, 'excessiveApprovalRejected': True, 'exactCustodyPreserved': True}\nbrowser [] []\nmobile dict_keys(['chainId', 'attemptedWalletRequests', 'receipts', 'wrongAccountRejected', 'wrongChainRejected', 'walletAnchorMismatchRejected', 'staleGasRejected', 'nonceDriftRejected', 'walletDelegationMismatchRejected', 'revokedDelegationRejected', 'changedDelegateRuntimeRejected', 'unexpectedAuthorizationRejected', 'competingNonceReceipt', 'walletRejection', 'minedRevert', 'receiptMismatch', 'recoveredUnknownHashAfterReload', 'recoveredUnrelatedReturnedHash', 'duplicateBroadcast'])\nreceipts 23\nphase passed\ncreation True True\n",
+      "isoTimestamp": "2026-11-20T15:18:57.000Z",
+      "truncationMarkerPresent": false
+    },
+    {
+      "selection": "older WebKit desktop pass; not a substitute for source-captured final matrix",
+      "timestamp": 1795187957,
+      "level": "info",
+      "source": "system",
+      "message": "chromium-desktop-fresh.png 40285\nchromium-desktop-expired.png 48975\nchromium-desktop-stale.png 48868\nchromium-desktop-unauthorized.png 42157\nchromium-desktop-numeric-height.png 42157\nchromium-portrait-fresh.png 34823\nchromium-portrait-expired.png 41466\nchromium-portrait-stale.png 41374\nchromium-portrait-unauthorized.png 35273\nchromium-portrait-numeric-height.png 35273\nwebkit-desktop-fresh.png 48732\nwebkit-desktop-expired.png 59134\nwebkit-desktop-stale.png 59297\nwebkit-desktop-unauthorized.png 50592\nwebkit-desktop-numeric-height.png 50592\nwebkit-portrait-fresh.png 42408\nwebkit-portrait-expired.png 50385\nwebkit-portrait-stale.png 50493\nwebkit-portrait-unauthorized.png 42873\nwebkit-portrait-numeric-height.png 42873\n1795187941.7343726230 12-verified-v4-after-restart.png\n1795187941.8823676270 18-fee-and-custody-landscape.png\n1795187942.0383623610 19-fee-and-custody-desktop.png\nSame-app creation → curve trades → v4 swaps → fee collection and claims passed on 31337. /tmp/task089-delivery-webkit-desktop/creation-journey-evidence.json\n0\n",
+      "isoTimestamp": "2026-11-20T15:19:17.000Z",
+      "truncationMarkerPresent": false
+    },
+    {
+      "selection": "provider automatic pause cause",
+      "timestamp": 1795188011,
+      "level": "info",
+      "source": "system",
+      "message": "Monthly compute limit reached (5 CPU-hours). Please upgrade your plan by adding a payment method. Box auto-paused.",
+      "isoTimestamp": "2026-11-20T15:20:11.000Z",
+      "truncationMarkerPresent": false
+    }
+  ]
+}

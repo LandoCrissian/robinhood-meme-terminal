@@ -1,0 +1,32 @@
+test_changed_input_bytes_are_rejected (__main__.ProofNegativeTests.test_changed_input_bytes_are_rejected) ... ok
+test_complete_lsb_isolation (__main__.ProofNegativeTests.test_complete_lsb_isolation) ... ok
+test_complete_msb_partition (__main__.ProofNegativeTests.test_complete_msb_partition) ... ok
+test_each_distinct_inverse_source (__main__.ProofNegativeTests.test_each_distinct_inverse_source) ... ok
+test_evm_edge_semantics (__main__.ProofNegativeTests.test_evm_edge_semantics) ... ok
+test_exponentiation_is_not_admitted_as_inverse_seed (__main__.ProofNegativeTests.test_exponentiation_is_not_admitted_as_inverse_seed) ... ok
+test_lsb_wrong_isolation_is_rejected (__main__.ProofNegativeTests.test_lsb_wrong_isolation_is_rejected) ... ok
+test_lsb_wrong_lookup_is_rejected (__main__.ProofNegativeTests.test_lsb_wrong_lookup_is_rejected) ... ok
+test_missing_refinement_is_rejected (__main__.ProofNegativeTests.test_missing_refinement_is_rejected) ... ok
+test_msb_wrong_lookup_is_rejected (__main__.ProofNegativeTests.test_msb_wrong_lookup_is_rejected) ... ok
+test_msb_wrong_prefix_is_rejected (__main__.ProofNegativeTests.test_msb_wrong_prefix_is_rejected) ... ok
+test_unknown_yul_operations_rejected (__main__.ProofNegativeTests.test_unknown_yul_operations_rejected) ... ok
+test_added_or_missing_proof_field_is_rejected (__main__.ProofResultIdentityTests.test_added_or_missing_proof_field_is_rejected) ... ok
+test_capture_provenance_tamper_is_rejected (__main__.ProofResultIdentityTests.test_capture_provenance_tamper_is_rejected) ... ok
+test_complete_input_digest_tamper_is_rejected (__main__.ProofResultIdentityTests.test_complete_input_digest_tamper_is_rejected) ... ok
+test_environment_only_difference_is_recorded_and_accepted (__main__.ProofResultIdentityTests.test_environment_only_difference_is_recorded_and_accepted) ... ok
+test_fresh_version_must_match_actual_runtime (__main__.ProofResultIdentityTests.test_fresh_version_must_match_actual_runtime) ... ok
+test_identical_environment_is_accepted (__main__.ProofResultIdentityTests.test_identical_environment_is_accepted) ... ok
+test_malformed_python_provenance_is_rejected (__main__.ProofResultIdentityTests.test_malformed_python_provenance_is_rejected) ... ok
+test_proof_coverage_tamper_is_rejected (__main__.ProofResultIdentityTests.test_proof_coverage_tamper_is_rejected) ... ok
+test_script_identity_tamper_is_rejected (__main__.ProofResultIdentityTests.test_script_identity_tamper_is_rejected) ... ok
+test_semantic_json_type_change_is_rejected (__main__.ProofResultIdentityTests.test_semantic_json_type_change_is_rejected) ... ok
+test_smt_query_tamper_is_rejected (__main__.ProofResultIdentityTests.test_smt_query_tamper_is_rejected) ... ok
+test_solver_identity_drift_is_rejected (__main__.ProofResultIdentityTests.test_solver_identity_drift_is_rejected) ... ok
+test_solver_result_tamper_is_rejected (__main__.ProofResultIdentityTests.test_solver_result_tamper_is_rejected) ... ok
+test_source_digest_tamper_is_rejected_even_with_environment_difference (__main__.ProofResultIdentityTests.test_source_digest_tamper_is_rejected_even_with_environment_difference) ... ok
+test_unsupported_python_minor_is_rejected (__main__.ProofResultIdentityTests.test_unsupported_python_minor_is_rejected) ... ok
+
+----------------------------------------------------------------------
+Ran 27 tests in 0.063s
+
+OK

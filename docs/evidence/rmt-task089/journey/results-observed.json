@@ -1,0 +1,350 @@
+{
+  "schemaVersion": 1,
+  "recordedAt": "2026-11-20T15:29:14Z",
+  "status": "OBSERVED_PARTIAL_RESULTS_RAW_EXPORT_BLOCKED_CI_PENDING",
+  "ownerDecision": "NO_GO_BLOCKED_NO_BROADCAST",
+  "baseCommit": "78a76feb592ac136dbf74d4823c21db64a6d0313",
+  "baseWebsiteRepairCommit": "be44e7eaee34d2cdfad07cef736068ba008b9fd9",
+  "sourceBindings": [
+    {
+      "path": "packages/contracts/scripts/fixed-supply-profile.mjs",
+      "sha256": "d60596590749f4a01ae7afc3586118fc72086294be91c4bc8bf3e3d5dae8d673"
+    },
+    {
+      "path": "packages/contracts/scripts/pinned-solc.mjs",
+      "sha256": "62bc65365b8e28c4c23b9e9e20b79e2f3617e512e7855649708640c3466716ce"
+    },
+    {
+      "path": "packages/contracts/scripts/pinned-solc.test.mjs",
+      "sha256": "5c907043a51ecab08d7f18bac68af2a20169442f33c2ce35e7564decb0a66257"
+    },
+    {
+      "path": "packages/contracts/scripts/pinned-solc-smoke.mjs",
+      "sha256": "43f17c26aeca83521c870b3736a97c36b3d59bd04d441b248c70ce07d8acfbcc"
+    },
+    {
+      "path": "scripts/discovery/backup-restore.mts",
+      "sha256": "81765e180f4bf2c3adce65c46c1f380dca1ba3d854a6b0110d6abca433f2b47f"
+    },
+    {
+      "path": "scripts/visual-qa/rmt-creator-integration.mjs",
+      "sha256": "bcc7c12ac45140588a07116376d455b33c14f935128a0d41b8320dac38fbaa47"
+    },
+    {
+      "path": "scripts/visual-qa/lifecycle-rsc-observation.mjs",
+      "sha256": "385b1a1ee18eeb5120f782f0a1be0eaadb869c53407fe2e0ab43bead64c3b265"
+    },
+    {
+      "path": "scripts/visual-qa/lifecycle-rsc-observation.test.mjs",
+      "sha256": "98bf57e88c45eefd4fb10bb7e68276678d2031a0635c0ed2b0ed170d7760297d"
+    }
+  ],
+  "provenance": {
+    "kind": "Agent observations before provider auto-pause, recovered source bytes and selected read-only control-plane log excerpts",
+    "originalJourneyRawArtifactsCommitted": false,
+    "originalFullReportIntegrityVerifiedInThisCheckout": false,
+    "originalArtifactHashesDoNotImplyAvailability": true,
+    "recoveredLogExcerpts": "recovered-log-excerpts.json",
+    "recoveredLogEntryCount": 6,
+    "providerTruncatedEntryCount": 1,
+    "freshFinalHeadCi": "PENDING_AT_CAPTURE; record exact run/check/artifact identities separately once complete",
+    "unavailableArtifactNote": "The final full reports, backup archive, screenshots, complete failure logs and experimental source archives stayed in the paused ephemeral box. This checkout contains observations and recovered log excerpts, not those original files."
+  },
+  "restriction": {
+    "provider": "Upstash Box",
+    "boxId": "organic-macaw-35324",
+    "httpStatus": 403,
+    "message": "Monthly compute limit reached (5 CPU-hours). Please upgrade your plan by adding a payment method.",
+    "autoPausedAt": "2026-11-20T15:20:11Z",
+    "metadataStatus": "paused",
+    "ephemeralExpiresAt": "2026-11-20T18:05:31Z",
+    "allowedRecovery": "read-only control-plane logs and metadata",
+    "execResumeForkNewKeyBillingOrUpgradeAttemptedAfterRestriction": false,
+    "deletionPerformed": false,
+    "inFlightLifecycleCleanup": "UNCONFIRMED",
+    "productionAccess": false
+  },
+  "observedChecks": [
+    {
+      "suite": "website test:history",
+      "status": "PASS_OBSERVED",
+      "tests": 327,
+      "originalRawExported": false
+    },
+    {
+      "suite": "app and indexer builds/typechecks",
+      "status": "PASS_OBSERVED",
+      "originalRawExported": false
+    },
+    {
+      "suite": "pinned-solc unit tests",
+      "status": "PASS_OBSERVED",
+      "tests": 6,
+      "originalRawExported": false
+    },
+    {
+      "suite": "actual pinned compiler smoke",
+      "status": "PASS_OBSERVED",
+      "checks": [
+        "validCompilation",
+        "exactCacheReuse",
+        "compilerFailureRejected",
+        "failedOutputNotCached",
+        "corruptCacheRejected"
+      ],
+      "originalRawExported": false
+    },
+    {
+      "suite": "final pending-RSC quiescence helper",
+      "status": "PASS_OBSERVED",
+      "tests": 9,
+      "harnessSyntax": "PASS_OBSERVED",
+      "originalRawExported": false
+    },
+    {
+      "suite": "authenticated production-adapter continuity",
+      "status": "PASS_OBSERVED",
+      "httpChecks": 21,
+      "browserCases": 30,
+      "authorizedReads": 44,
+      "unauthorizedProbeStatuses": [
+        401,
+        401
+      ],
+      "browserExternalRequests": 0,
+      "browserWalletRequests": 0,
+      "originalRawExported": false
+    },
+    {
+      "suite": "isolated whole-database backup/restore and session advisory lock",
+      "status": "PASS_OBSERVED",
+      "checks": 15,
+      "postgresVersion": "18.6-1.pgdg12+2",
+      "completedDrillCleanupReported": {
+        "processStopped": true,
+        "privateTemporaryClusterRemoved": true
+      },
+      "originalRawExported": false
+    },
+    {
+      "suite": "existing findings-register check",
+      "status": "PASS_CHECK_REMAINS_BLOCKED_NO_BROADCAST",
+      "rawRows": 334,
+      "detailedRecords": 49,
+      "retainedHighs": 39,
+      "securityClearance": false,
+      "originalRawExported": false
+    }
+  ],
+  "fullLifecycle": {
+    "finalSourceCapturedRuns": [
+      {
+        "browser": "chromium",
+        "viewport": "mobile",
+        "status": "PASS_OBSERVED",
+        "exitCode": 0,
+        "walletBroadcasts": 24,
+        "receiptObservationsExcludingCreation": 23,
+        "successorMigrations": 2,
+        "browserErrors": [],
+        "externalRequests": [],
+        "originalReport": "/tmp/task089-quiescent-chromium-mobile/creation-journey-evidence.json",
+        "originalReportExported": false,
+        "prelaunchSourceHashesCaptured": true
+      },
+      {
+        "browser": "chromium",
+        "viewport": "desktop",
+        "status": "RUNNING_OR_QUEUED_UNVERIFIED_AT_AUTO_PAUSE",
+        "exitCode": null,
+        "originalReportExported": false
+      },
+      {
+        "browser": "webkit",
+        "viewport": "mobile",
+        "status": "RUNNING_OR_QUEUED_UNVERIFIED_AT_AUTO_PAUSE",
+        "exitCode": null,
+        "originalReportExported": false
+      },
+      {
+        "browser": "webkit",
+        "viewport": "desktop",
+        "status": "RUNNING_OR_QUEUED_UNVERIFIED_AT_AUTO_PAUSE",
+        "exitCode": null,
+        "originalReportExported": false
+      }
+    ],
+    "entireFinalFourLayoutMatrixPassed": false,
+    "knownHistoricalPasses": "Earlier full Chromium mobile/desktop and WebKit desktop runs passed; later experimental WebKit runs also passed. They are excluded from the final source-captured four-layout acceptance.",
+    "finalRunScope": [
+      "actual synthetic creation and canonical receipt",
+      "same-app fixture PostgreSQL discovery",
+      "curve buy/approval/sell and fee accounting",
+      "2 ETH graduation and locked original v4 principal",
+      "v4 swaps, collections and independent claims",
+      "funded V1/V2/V3 successor migration",
+      "missing-hash and withheld-receipt/log/trace recovery",
+      "worker/website restart, RPC outage and reorg rollback",
+      "separate synthetic mobile review and duplicate prevention"
+    ]
+  },
+  "walletProfiles": {
+    "status": "TWO_BROWSER_RUNS_PASS_OBSERVED_RAW_REPORTS_UNEXPORTED",
+    "browsers": [
+      "chromium",
+      "webkit"
+    ],
+    "perBrowser": {
+      "coreReceipts": 32,
+      "totalReceipts": 35,
+      "reviews": 9,
+      "coreChecks": 11,
+      "layouts": 3
+    },
+    "creates": "Direct synthetic EOA and actual pinned MetaMask delegated-EOA type-2 local profile",
+    "pinnedDelegateRuntimeKeccak256": "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0",
+    "safe": "Official Safe1.4.1 two-of-three beneficiary claim execution and one-owner refusal",
+    "safeWebsiteCreateSupported": false,
+    "separateFullJourneyMobileReview": "Deliberately synthetic reverting delegate; not the actual MetaMask runtime profile",
+    "fullPerRunHarnessHashAtProfileExecution": "NOT_RECORDED; actual compiler manifest/source/input hashes were recorded in unexported reports",
+    "laterRscHelperBranchUsedByProfilesOnly": false,
+    "physicalDeviceOrProductionWalletAcceptance": false,
+    "originalReports": [
+      "/tmp/task089-profiles-chromium/claim-wallet-acceptance.json",
+      "/tmp/task089-profiles-chromium/claim-wallet-browser-evidence.json",
+      "/tmp/task089-profiles-chromium/claim-wallet-profile-manifest.json",
+      "/tmp/task089-profiles-webkit/claim-wallet-acceptance.json",
+      "/tmp/task089-profiles-webkit/claim-wallet-browser-evidence.json",
+      "/tmp/task089-profiles-webkit/claim-wallet-profile-manifest.json"
+    ],
+    "productionCreateBoundary": {
+      "firstOwner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+      "requiresExistingExactDesignatorAndRuntime": true,
+      "otherAccountsRefusedBeforeRpc": true,
+      "releaseOwnerPublicationDiscoveryGatesStillRequired": true
+    }
+  },
+  "dataPaths": {
+    "actual31337": "Actual synthetic receipts flow through the fixture worker/PostgreSQL namespace to the same Next app's fixture discovery.",
+    "authenticated4663": "Separate synthetic4663-shaped rows/pinned configuration flow through the real production PostgreSQL adapter, synthetic authenticated HTTPS and actual Next routes.",
+    "actualReceiptToProductionNamespaceBridge": false,
+    "chain31337ReceiptsRelabeled4663": false,
+    "authenticationWeakened": false,
+    "productionCredentialsUsed": false
+  },
+  "compiler": {
+    "version": "0.8.26+commit.8a97fa7a",
+    "host": "linux-arm64",
+    "actualCompilerPlatform": "linux-x64",
+    "compilerSha256": "d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef",
+    "emulator": "Debian qemu-user1:7.2+dfsg-7+deb12u18+b3 (arm64); QEMU7.2.22",
+    "emulatorSha256": "ca7b4d72cb2a1a36dd63e31ae989ec909d4c4a711981bc318ae64ed191e96167",
+    "runtimePrefix": "/usr/x86_64-linux-gnu",
+    "profile4663InputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "profile4663FullByteEqualityToRetainedInput": "PASS_OBSERVED",
+    "profile4663Sources": 66,
+    "actuallyCompiledAndExecuted31337InputSha256": "437fb783d7dce558a05317e8b15877f6d08b9571bc12aefec360382469d53648",
+    "actualCompiledOutputSha256": "590e63a640def5792fe6317c478e1cd76e6fc202472162350c8e25504279f19f",
+    "nativeCompilerPinsSourceAssertionsAndTimeoutPreserved": true,
+    "emulationExplicit": true,
+    "cache": "Explicit private current-user test cache; full input/compiler/executor/arguments identity, ownership/mode/symlink and output/error checks. No default release cache, no attestation against a malicious local cache owner.",
+    "standaloneFixedSupplyCliAcceptsEmulatorFlags": false
+  },
+  "economics": {
+    "creationFeeWei": "400000000000000",
+    "fixedSupplyWei": "1000000000000000000000000000",
+    "decimals": 18,
+    "curveInventoryWei": "600000000000000000000000000",
+    "initialLiquidityInventoryWei": "400000000000000000000000000",
+    "projectBps": 9000,
+    "operationsBps": 500,
+    "reserveBps": 500,
+    "tradingFeeBps": 100,
+    "graduationBackingWei": "2000000000000000000",
+    "originalV4LpPrincipal": "PERMANENTLY_LOCKED"
+  },
+  "upstreamFork": {
+    "url": "https://sepolia.base.org",
+    "blockNumber": 57648300,
+    "blockHash": "0x5bb29976ce80ddede79f192c61eba8fe9d96f499f8bfa11e0820d11820e91d20",
+    "upstreamReadOnly": true,
+    "allTransactionsSignaturesBalanceCodeAndTimeWrites": "loopback Anvil31337 only",
+    "archiveAvailabilityRequired": true,
+    "localVmNoticeAdvancementIsCurrentGovernanceEvidence": false
+  },
+  "backupAndWriter": {
+    "syntheticProcedureOnly": true,
+    "originalRailwayVolumeTouched": false,
+    "productionSqlOrBackupAccess": false,
+    "backupOriginalPath": "/tmp/task089-backup-restore-final/synthetic-database.backup",
+    "observedArchiveSizeBytes": 8724,
+    "observedArchiveSha256": "922b1d64f923a6f549c83494f4b027c91f48291e4a8c86a6ef2e519b07373362",
+    "archiveExported": false,
+    "parity": "Logical row JSON bytes, not physical database-page/WAL parity",
+    "testScope": "Whole custom-format pg_dump preserving source session/lock/data; fresh separate restore destination; historical sentinel and exact creation/checkpoint continuity; independent writer exclusion; actual PostgreSQL restart/reacquisition; reorg replay and unchanged source.",
+    "writerMechanism": "PostgreSQL session advisory lock",
+    "namespace": 1380805961,
+    "chainId": 4663,
+    "expiresAt": null,
+    "renewal": null,
+    "productionCurrentLockOwner": "UNKNOWN_NOT_DIRECTLY_OBSERVED",
+    "deployedSourceCommit": "1ba67b6fdb1ebfe927876893e0fc086d7fab939a",
+    "relevantSourceSpansMatch": "AGENT_OBSERVED for lockIndexWriter, run startup prefix and initializeProductionCurveStore; whole candidate files differ",
+    "transport": "Git LF transformed explicitly to CRLF reproduces retained Task066 hosted digests; raw LF digest equality was not claimed",
+    "checkpointInference": "Corresponding startup source and advancing checkpoints are consistent with initial acquisition/reuse, not current storage-level owner proof.",
+    "productionBackupAvailabilityOffDeviceCopyKeyRpoRetentionOperator": "UNVERIFIED"
+  },
+  "failedAttempts": [
+    {
+      "kind": "orchestration",
+      "observation": "Concurrent Next rebuild removed .next production output before a later restart; corrected by completed rebuild before tests.",
+      "countedAsFinalAcceptance": false,
+      "originalCompleteLogExported": false
+    },
+    {
+      "kind": "WebKit navigation race",
+      "observation": "Same-URL manual navigation interrupted after graduation; exact URL/new-document/heading synchronization added.",
+      "countedAsFinalAcceptance": false,
+      "originalCompleteLogExported": false
+    },
+    {
+      "kind": "unchanged pageErrors assertion",
+      "observation": "WebKit mobile retained ['Load failed']; diagnostic at14:37:37.288UTC showed React reportError at graduation and a same-token RSC cancellation before explicit navigation. Bounded evidence supports a harness navigation race, not a blanket product/network clearance.",
+      "recoveredExcerpt": "recovered-log-excerpts.json",
+      "diagnosticPrefixProviderTruncated": true,
+      "countedAsFinalAcceptance": false,
+      "originalCompleteLogExported": false
+    },
+    {
+      "kind": "experimental observer overconstraint",
+      "observation": "Mandatory new post-transaction refresh/successful replacement blocked legitimate recovery, including an already canonical confirmed approval. These criteria were removed; final helper waits only for termination of captured pending streams.",
+      "countedAsFinalAcceptance": false,
+      "originalCompleteLogExported": false
+    },
+    {
+      "kind": "instrumentation parse error",
+      "observation": "Duplicate observed binding prevented parsing before browser launch. Corrected; not counted as browser execution.",
+      "countedAsFinalAcceptance": false,
+      "originalCompleteLogExported": false
+    }
+  ],
+  "currentGaps": [
+    "fresh final-head four-layout lifecycle CI and immutable artifacts pending",
+    "original raw journey outputs/backups/screenshots/full failure logs unavailable after quota",
+    "current production authenticated binding/fallback cause not established by synthetic data",
+    "actual-created-receipt to production namespace continuous witness absent",
+    "physical iPhone/MetaMask/Rabby/Safe acceptance absent",
+    "current production advisory-lock owner and usable off-device backup/key/operator unverified",
+    "in-flight sandbox lifecycle cleanup unconfirmed",
+    "security/governance/finality/publication/financial approvals remain independent blockers"
+  ],
+  "productionActions": {
+    "deploy": false,
+    "productionChange": false,
+    "governanceExecution": false,
+    "sign": false,
+    "spendFunds": false,
+    "createRmt": false,
+    "productionFinancialTransactionsEnabled": false
+  }
+}
