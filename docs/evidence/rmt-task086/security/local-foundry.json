@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL_SYNTHETIC_GENUINE_SEAPORT_FULL_SUITE_NOT_PRODUCTION_OR_AUDIT",
+  "status": "PASS",
+  "exitCode": 0,
+  "recordedAtUtc": "2026-11-20T02:40:50.3144216Z",
+  "base": "91e7c1914d2fd87287b3b4b0f243c982c1faf36f",
+  "sourceState": "UNCOMMITTED_TASK086_TEST_ADDITION",
+  "command": "forge test --use C:/Users/RMT/Documents/Codex/2026-11-11/rmt-task083-evidence/solc.exe --threads 1",
+  "cwd": "packages/contracts/seaport-acquisition",
+  "environment": {
+    "RAYON_NUM_THREADS": "1",
+    "TOKIO_WORKER_THREADS": "1"
+  },
+  "forgeVersion": "forge Version: 1.7.1\nCommit SHA: 4072e48705af9d93e3c0f6e29e93b5e9a40caed8\nBuild Timestamp: 2026-05-08T07:54:39.315067700Z (1778226879)\nBuild Profile: dist",
+  "forgeSha256": "6df26c16a6e53519abdd09fcdacf9af1ecdb50e216ee1816fa8012b5a553ef48",
+  "compilerVersion": "solc, the solidity compiler commandline interface\nVersion: 0.8.26+commit.8a97fa7a.Windows.msvc",
+  "compilerSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "logPath": "docs/evidence/rmt-task086/security/local-foundry.log.gz",
+  "logSha256": "c12dd30f48aa5579da80d02402626baa361b4503436eb26ccc150a1fad8ca96e",
+  "testSourceSha256": "9225e9e70b91fd94b0c5e5bb8de75ea517a34005c785dafd8a5b11cba0d136fb",
+  "foundryConfigSha256": "ad8aa457643a4bd00070073f8c3622d0624c36b7bcf10d374bc9e54cbaf156bf",
+  "result": {
+    "suites": 7,
+    "passed": 57,
+    "failed": 0,
+    "skipped": 0,
+    "newTask086Tests": 3,
+    "fuzzRunsPerFuzzTest": 512,
+    "invariantRuns": 128,
+    "invariantCalls": 4096,
+    "invariantReverts": 0,
+    "compileSeconds": 131.3
+  },
+  "productionCompilerInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+  "productionSourceSha256": [
+    [
+      "nft-acquisition/src/NftAcquisitionAccounts.sol",
+      "3aa7822061e9f6347dbba1db3625347270c1a905a43ccc5ac20acaa86a056e3f"
+    ],
+    [
+      "seaport-acquisition/src/RMTSeaportAcquisitionVaultV2.sol",
+      "f48907ea5f030c02b6ae17488f8d23ac0bd919b6f870e382c62a2d15e651987b"
+    ],
+    [
+      "seaport-acquisition/src/SeaportAcquisitionChecksV2.sol",
+      "164c110271d6d34ef08cac6c945e8de338139595cf151b1447799893a4e44461"
+    ],
+    [
+      "seaport-acquisition/src/SeaportAcquisitionTypes.sol",
+      "f928c9a60af0ea630427ca229805f5a008a809cb60de88c06e971beb19bf55c0"
+    ]
+  ],
+  "testSources": [
+    {
+      "path": "packages/contracts/seaport-acquisition/test/SeaportAcquisition.t.sol",
+      "sha256": "79608bdcdab9fb5c550d4cc0a24289660b1c81c63bdf1a8d6568b0f959b2158c"
+    },
+    {
+      "path": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionHostile.t.sol",
+      "sha256": "e95ec514d532805e0be5fcfbef235658c392077b3f403fb79ee27f442158686d"
+    },
+    {
+      "path": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionInvariant.t.sol",
+      "sha256": "d94a4f578d052ff25e81d05af9f667786396cbb5ebab5b60f66d6e0341530c01"
+    },
+    {
+      "path": "packages/contracts/seaport-acquisition/test/SeaportAcquisitionSafe.t.sol",
+      "sha256": "1ba043c16ee4ce513ed1d19a4110b27e75279c171677730fe0f78bf26dd62c8c"
+    },
+    {
+      "path": "packages/contracts/seaport-acquisition/test/SeaportTask084Security.t.sol",
+      "sha256": "d1d18f0f906467dce01fd043adcdc075462989077e1b229aac15760f773867de"
+    },
+    {
+      "path": "packages/contracts/seaport-acquisition/test/Task086CollectionPolicy.t.sol",
+      "sha256": "9225e9e70b91fd94b0c5e5bb8de75ea517a34005c785dafd8a5b11cba0d136fb"
+    }
+  ],
+  "fixture": {
+    "generatedLocalArtifactPath": "packages/contracts/seaport-acquisition/official-artifacts.json",
+    "generatedArtifactCommitted": false,
+    "generatedLocalArtifactSha256": "fccd6a6dd720b14f19ba8286d7b1e3a8f62a430872df46eb75b54434372d0e12",
+    "scope": "LOCAL_SYNTHETIC_SEAPORT_FIXTURE_NOT_RELEASE_ARTIFACT",
+    "seaportSourceApi": "https://sourcify.dev/server/v2/contract/4663/0x0000000000000068F116a894984e2DB1123eB395?fields=all",
+    "seaportRawSourceSha256": "de24d38618d36b27f65cf79e28b9cd487a3780999bb3fe01eb881ef6ccb409f8",
+    "seaportCompilerInputSha256": "700287b2fa852e65e8fc92c842257af24dd60a0052c6dd2b068106b748145250",
+    "seaportCompiledSha256": "fd5410b449d7e45c07b217ccfb0eaeda9c1ae2bf0e8076a27cb035eacefb3d0b",
+    "seaportCompilerVersion": "0.8.24+commit.e11b9ed9",
+    "safeRuntimeFixturePath": "packages/contracts/test/fixtures/safe-1.4.1/runtime.json",
+    "safeRuntimeFixtureSha256": "eaf1dc33f150e0a69d1d4a522dc1b51a95cc34ec11b2c4026c7894486a2bdfde"
+  },
+  "diagnostics": [
+    "Four existing relative import source-display diagnostics follow successful compilation; all 57 tests execute and exit is zero.",
+    "Foundry optional invariant selector queries revert; retained in log, configured handler ran 4096 calls with zero reverts."
+  ],
+  "productionChanged": false,
+  "freshStaticAnalysis": false,
+  "upstreamBroadcast": false,
+  "realSellerSignatures": false,
+  "productionFunding": false,
+  "productionCollectionCatalog": "EMPTY_UNAPPROVED",
+  "logEncoding": "gzip of original Windows CRLF bytes",
+  "storedLogSha256": "d177ecb5c0a6b281f07f7f4492e3b47cabc836ec261362631ca9b280d8716633",
+  "privacy": {
+    "tool": "Gitleaks8.30.1",
+    "unchangedConfiguration": true,
+    "exitCode": 0,
+    "findings": 0
+  }
+}

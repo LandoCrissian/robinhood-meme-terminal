@@ -1,0 +1,1230 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "productionStatus": "NO_GO",
+  "corroborated": false,
+  "anchor": {
+    "number": "118715542",
+    "hash": "0x7d1b0cd49e3ef0eab841af0579691509d1f81728f995cddc56b52c3308df7a0f",
+    "timestamp": "1795142366"
+  },
+  "canonicalWitness": {
+    "official": true,
+    "pocket": false
+  },
+  "authorityClosure": "UNRESOLVED",
+  "roles": [
+    {
+      "role": "collection",
+      "address": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "runtimeHash": "0xe3e252831cdd0c11e1327d04a57ddd9bfa11ef49d50edb524040d98bfb228bc4",
+      "codeBytes": 45,
+      "source": {
+        "status": "SOURCE_UNAVAILABLE",
+        "url": "https://sourcify.dev/server/v2/contract/4663/0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf?fields=all",
+        "responseSha256": "6b508c7f0631a52470182b8ec3997c70d973ac0ce07615e3ca925ef250154df3",
+        "fullRuntimeMatch": false,
+        "executableOutsideImmutablesEqual": false,
+        "immutableBindings": {},
+        "immutableBindingsVerified": false,
+        "independentlyRecompiled": false
+      }
+    },
+    {
+      "role": "implementation",
+      "address": "0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a",
+      "runtimeHash": "0xda60742d810ae5de9c087af2e82b05fb84e9112cfade927fca0db6490ea52519",
+      "codeBytes": 21257,
+      "source": {
+        "status": "HOSTED_4663_SOURCE",
+        "url": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+        "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+        "fullRuntimeMatch": true,
+        "executableOutsideImmutablesEqual": true,
+        "immutableBindings": {},
+        "immutableBindingsVerified": false,
+        "independentlyRecompiled": false
+      }
+    },
+    {
+      "role": "validator",
+      "address": "0x721c008fdff27bf06e7e123956e2fe03b63342e3",
+      "runtimeHash": "0xcf4eb611d0a4264a3cca483100d883e21545581c69b80e9d0cc29606d4b93dcc",
+      "codeBytes": 24012,
+      "source": {
+        "status": "REFERENCE_CHAIN1_SOURCE",
+        "url": "https://sourcify.dev/server/v2/contract/1/0x721C008fdff27BF06E7E123956E2Fe03B63342e3?fields=all",
+        "responseSha256": "f52a3735d2350c81f97193510415fa5c8b003a4e71ca3d77a1a4db044c1f57d2",
+        "fullRuntimeMatch": false,
+        "executableOutsideImmutablesEqual": true,
+        "immutableBindings": {
+          "1959": [
+            "0x000000000000000000000000000000000000000000000000002386f26fc0ffff"
+          ],
+          "1969": [
+            "0x000000000000000000000000000000000000000000000000000004b6000029ee"
+          ],
+          "5834": [
+            "0x483558bb3370d22f0ea3b5c603e45ebc1c7710173e253dfc06990d6dac01763a"
+          ],
+          "5836": [
+            "0x0000000000000000000000000000000000000000000000000000000000001237"
+          ],
+          "5838": [
+            "0x12900c1b40e87470816fa5cb16069bf5b3df9cf052332bf21440c4318ccddcfe"
+          ],
+          "5840": [
+            "0xceebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1"
+          ],
+          "6123": [
+            "0x00000000000000000000000079a95940c17a9a8148633a11ff9d0ddcffd9c00d"
+          ],
+          "6125": [
+            "0x0000000000000000000000000000000000000000000000000000000000000001"
+          ],
+          "6133": [
+            "0x000000000000000000000000000000000000000000000000000003e40000293a"
+          ],
+          "6141": [
+            "0x000000000000000000000000000000000000000000000000000003eb00002941"
+          ],
+          "7284": [
+            "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+          ],
+          "7287": [
+            "0x000000000000000000000000721c002d2cae3522602b93a0c48e11dc573a15e3"
+          ],
+          "7290": [
+            "0x000000000000000000000000721c0086cc4f335407cc84a38ce7dcb1560476b0"
+          ]
+        },
+        "immutableBindingsVerified": false,
+        "independentlyRecompiled": false
+      }
+    },
+    {
+      "role": "seaport",
+      "address": "0x0000000000000068f116a894984e2db1123eb395",
+      "runtimeHash": "0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00",
+      "codeBytes": 23981,
+      "source": {
+        "status": "PREVIOUSLY_PINNED_GENUINE_SEAPORT_RUNTIME",
+        "url": null,
+        "responseSha256": null,
+        "fullRuntimeMatch": true,
+        "executableOutsideImmutablesEqual": false,
+        "immutableBindings": {},
+        "immutableBindingsVerified": false,
+        "independentlyRecompiled": false
+      }
+    },
+    {
+      "role": "eoaRegistry",
+      "address": "0xe0a0004dfa318fc38298ae81a666710eadceba5c",
+      "runtimeHash": "0xfe3fbfc8531306c13a0f0ad06d65e5b2e88371c58cea45e043ad0551b764e27e",
+      "codeBytes": 1695,
+      "source": {
+        "status": "REFERENCE_CHAIN1_SOURCE",
+        "url": "https://sourcify.dev/server/v2/contract/1/0xe0a0004dfa318fc38298ae81a666710eadceba5c?fields=all",
+        "responseSha256": "30f2c6a2051759e08ffd647158e9ab550f54890bdd18b2c8ee86530c57c046f3",
+        "fullRuntimeMatch": true,
+        "executableOutsideImmutablesEqual": true,
+        "immutableBindings": {
+          "1462": [
+            "0xd3f5cd7a1487f8f0a2a12cf6e95545173640e44a3a845c5f2c9d00175aab4294"
+          ]
+        },
+        "immutableBindingsVerified": false,
+        "independentlyRecompiled": false
+      }
+    },
+    {
+      "role": "managementModule",
+      "address": "0x721c002d2cae3522602b93a0c48e11dc573a15e3",
+      "runtimeHash": "0x73c94f7afb0ba50e2a3af6f5438eb23eff5bf1bac9291ffc41340ff67c8aa541",
+      "codeBytes": 8863,
+      "source": {
+        "status": "REFERENCE_CHAIN1_SOURCE",
+        "url": "https://sourcify.dev/server/v2/contract/1/0x721c002d2cae3522602b93a0c48e11dc573a15e3?fields=all",
+        "responseSha256": "887a6c8ed4c608a8d48a22dae3ec7220736425d443be26edba72c2187312429e",
+        "fullRuntimeMatch": true,
+        "executableOutsideImmutablesEqual": true,
+        "immutableBindings": {},
+        "immutableBindingsVerified": false,
+        "independentlyRecompiled": false
+      }
+    },
+    {
+      "role": "safeDelegateModule",
+      "address": "0x721c0086cc4f335407cc84a38ce7dcb1560476b0",
+      "runtimeHash": "0x19638ae5f6bd6151d4d1098d703843151428ba0b58fa414dc98571b88b950eaa",
+      "codeBytes": 1360,
+      "source": {
+        "status": "REFERENCE_CHAIN1_SOURCE",
+        "url": "https://sourcify.dev/server/v2/contract/1/0x721c0086cc4f335407cc84a38ce7dcb1560476b0?fields=all",
+        "responseSha256": "3c5e4cc3810c4612c0d08ed1a297ec7f079c8c2c6a2508b4276856f1718a6f3a",
+        "fullRuntimeMatch": true,
+        "executableOutsideImmutablesEqual": true,
+        "immutableBindings": {},
+        "immutableBindingsVerified": false,
+        "independentlyRecompiled": false
+      }
+    },
+    {
+      "role": "ruleset",
+      "address": "0x00721ce73fde1e57a9048e0e19b7ee7c8d3f10e3",
+      "runtimeHash": "0x8815ac6b412bff918dbb4fb3d1d5c358418b3e4dcac0bac971dc2285a03ae09a",
+      "codeBytes": 3851,
+      "source": {
+        "status": "REFERENCE_CHAIN1_SOURCE",
+        "url": "https://sourcify.dev/server/v2/contract/1/0x00721ce73fde1e57a9048e0e19b7ee7c8d3f10e3?fields=all",
+        "responseSha256": "6fe13e3d6cff7853fd34bca8a00d94bc6731c03d9f03cb610c986aadb5a71457",
+        "fullRuntimeMatch": true,
+        "executableOutsideImmutablesEqual": true,
+        "immutableBindings": {
+          "57": [
+            "0x000000000000000000000000000000000000000000000000000001a200000277"
+          ],
+          "1523": [
+            "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+          ]
+        },
+        "immutableBindingsVerified": false,
+        "independentlyRecompiled": false
+      }
+    }
+  ],
+  "validatorModuleBinding": {
+    "referenceChainId": 1,
+    "actualDeploymentConstructorVerified": false,
+    "overallImmutableBindingsVerified": false,
+    "modules": {
+      "eoaRegistry": {
+        "address": "0xe0a0004dfa318fc38298ae81a666710eadceba5c",
+        "referenceImmutableId": "7284",
+        "actualValues": [
+          "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+        ],
+        "currentCodeBindingVerified": true
+      },
+      "managementModule": {
+        "address": "0x721c002d2cae3522602b93a0c48e11dc573a15e3",
+        "referenceImmutableId": "7287",
+        "actualValues": [
+          "0x000000000000000000000000721c002d2cae3522602b93a0c48e11dc573a15e3"
+        ],
+        "currentCodeBindingVerified": true
+      },
+      "safeDelegateModule": {
+        "address": "0x721c0086cc4f335407cc84a38ce7dcb1560476b0",
+        "referenceImmutableId": "7290",
+        "actualValues": [
+          "0x000000000000000000000000721c0086cc4f335407cc84a38ce7dcb1560476b0"
+        ],
+        "currentCodeBindingVerified": true
+      }
+    }
+  },
+  "authorityAccounts": [
+    {
+      "role": "collectionOwner",
+      "address": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+      "codeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+      "codeBytes": 23,
+      "accountKind": "EIP7702_DELEGATED",
+      "signerIndependenceOrKeyControlVerified": false
+    },
+    {
+      "role": "validatorOwner",
+      "address": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+      "codeHash": "0xa8c88f963781240d1488a5daa469fefc49f2b373f9ee70fa7e360618f3ce92e0",
+      "codeBytes": 12878,
+      "accountKind": "CONTRACT_OR_UNKNOWN",
+      "signerIndependenceOrKeyControlVerified": false
+    },
+    {
+      "role": "listOwner",
+      "address": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+      "codeHash": "0xa8c88f963781240d1488a5daa469fefc49f2b373f9ee70fa7e360618f3ce92e0",
+      "codeBytes": 12878,
+      "accountKind": "CONTRACT_OR_UNKNOWN",
+      "signerIndependenceOrKeyControlVerified": false
+    }
+  ],
+  "publicSources": [
+    {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+      "compilation": {
+        "language": "Solidity",
+        "compiler": "solc",
+        "compilerVersion": "0.8.17+commit.8df45f5f",
+        "compilerSettings": {
+          "metadata": {
+            "bytecodeHash": "none"
+          },
+          "libraries": {},
+          "optimizer": {
+            "runs": 1000000,
+            "enabled": true
+          },
+          "evmVersion": "london",
+          "remappings": [
+            ":@openzeppelin/=lib/seaport/lib/openzeppelin-contracts/",
+            ":@rari-capital/solmate/=lib/seaport/lib/solmate/",
+            ":ERC721A-Upgradeable/=lib/ERC721A-Upgradeable/contracts/",
+            ":ERC721A/=lib/ERC721A/contracts/",
+            ":create2-helpers/=lib/create2-helpers/",
+            ":create2-scripts/=lib/create2-helpers/script/",
+            ":ds-test/=lib/ds-test/src/",
+            ":erc4626-tests/=lib/openzeppelin-contracts-upgradeable/lib/erc4626-tests/",
+            ":forge-std/=lib/forge-std/src/",
+            ":murky/=lib/murky/src/",
+            ":openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+            ":openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/",
+            ":operator-filter-registry/=lib/operator-filter-registry/src/",
+            ":seadrop/=src/",
+            ":seaport-core/=lib/seaport/lib/seaport-core/",
+            ":seaport-sol/=lib/seaport/lib/seaport-sol/",
+            ":seaport-types/=lib/seaport/lib/seaport-types/",
+            ":seaport/=lib/seaport/",
+            ":solady/=lib/solady/",
+            ":solarray/=lib/seaport/lib/solarray/src/",
+            ":solmate/=lib/solmate/src/",
+            ":utility-contracts/=lib/utility-contracts/src/"
+          ]
+        },
+        "name": "ERC721SeaDropCloneable",
+        "fullyQualifiedName": "src/clones/ERC721SeaDropCloneable.sol:ERC721SeaDropCloneable"
+      },
+      "files": [
+        {
+          "path": "src/lib/SeaDropStructs.sol",
+          "sha256": "b2ba6712b9100c98b445fa47bb0926499440039fe606b2dbfb1ff2ad6f75460d",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/ISeaDrop.sol",
+          "sha256": "cbf430bf51097fc644eb12a5a0d652a9c2af5de9a8d9bd4e8b8421334c7dbd08",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/clones/ERC721ACloneable.sol",
+          "sha256": "5ac545ace84a51ea70cf2cab24b33cafc101636e177a019f0ddd3acec330e0a9",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/ICreatorToken.sol",
+          "sha256": "2253afe2692907d47c24b0c70f704b0ef725aaa88a5e83979abde7ebc6f1f59b",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/ERC721A/contracts/IERC721A.sol",
+          "sha256": "79ea8c523822d92432969a516209b64bcd83f5c83eb3e4e8f56b52a793919c55",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/lib/SeaDropErrorsAndEvents.sol",
+          "sha256": "ee26382de61e7fb930ca4f2b3759a3aa05d1adcee817d76386b609a3f11e9891",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/lib/ERC721TransferValidator.sol",
+          "sha256": "2184793353499a4889ae38947ccde06d287e9df94afe7b8b97f869bb196f5668",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/clones/ERC721SeaDropCloneable.sol",
+          "sha256": "e896987709784c93316c8c648b17c5c9996e8c5c3b7658f3a51ffa537e93d5f1",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/ITransferValidator.sol",
+          "sha256": "352ab04890ff160b5b2bb882e0b74b3b49a609750c62a7e3c004ba9007d88897",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/INonFungibleSeaDropToken.sol",
+          "sha256": "9a6c8267278c9e2c33841d24a1f1036e42d2dc5aeeffab809e90e736cd150cf5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/utility-contracts/src/TwoStepOwnable.sol",
+          "sha256": "add0e03c480974b8fcdda464d25178236909e3623088e5609bb1a1b49b0ba75e",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/clones/ERC721ContractMetadataCloneable.sol",
+          "sha256": "ab524e31e9c77dc3df6dbd46107ba5ffe046600aaa0b297f913edd91bd0fe078",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/lib/ERC721SeaDropStructsErrorsAndEvents.sol",
+          "sha256": "00105352c8d0368b4b1a3a1b1300cbfa43ef0d4411b51a18abda4a62e2a5e62c",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/ISeaDropTokenContractMetadata.sol",
+          "sha256": "29a462bb15010647b0fe3f8313f141cfe864fef8c968d1a91f212308375a0958",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/clones/ERC721AConduitPreapprovedCloneable.sol",
+          "sha256": "a1e326436a47a577c11fc0b0faa1cdf1fbc6ed4de1d615acbcd1f3fe6530294b",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/utility-contracts/src/ConstructorInitializable.sol",
+          "sha256": "08f744fcf2733135bb83897cd79d3c7c41ff32ed86708f047129a53840017eeb",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts/contracts/interfaces/IERC2981.sol",
+          "sha256": "a8d1ed2cf4ae5718b5c1e8e148e7f5817e934e8d933729eb5c3ac389046041b1",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol",
+          "sha256": "701e025d13ec6be09ae892eb029cd83b3064325801d73654847a5fb11c58b1e5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol",
+          "sha256": "52311afabaadb20bd2528b0f6f2d35a153385f6a2dc87e3b3da058f72d86dabe",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol",
+          "sha256": "e46d306f2283b7569d1564564e76bf07ba7c7a955588d5f82cc93b2f7b836a8d",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol",
+          "sha256": "3dd20bee24c55f012a406d97cbe1704a0fd9d01d0f8559d5ee61f522e3eeac82",
+          "spdx": "MIT"
+        }
+      ]
+    },
+    {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "responseSha256": "b834f076bda6b12e11b7d068196031fea486bab9450b64f931e79e874983fcf7",
+      "compilation": {
+        "language": "Solidity",
+        "compiler": "solc",
+        "compilerVersion": "0.8.17+commit.8df45f5f",
+        "compilerSettings": {
+          "metadata": {
+            "bytecodeHash": "none"
+          },
+          "libraries": {},
+          "optimizer": {
+            "runs": 1000000,
+            "enabled": true
+          },
+          "evmVersion": "london",
+          "remappings": [
+            ":@openzeppelin/=lib/seaport/lib/openzeppelin-contracts/",
+            ":@rari-capital/solmate/=lib/seaport/lib/solmate/",
+            ":ERC721A-Upgradeable/=lib/ERC721A-Upgradeable/contracts/",
+            ":ERC721A/=lib/ERC721A/contracts/",
+            ":create2-helpers/=lib/create2-helpers/",
+            ":create2-scripts/=lib/create2-helpers/script/",
+            ":ds-test/=lib/ds-test/src/",
+            ":erc4626-tests/=lib/openzeppelin-contracts-upgradeable/lib/erc4626-tests/",
+            ":forge-std/=lib/forge-std/src/",
+            ":murky/=lib/murky/src/",
+            ":openzeppelin-contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts/",
+            ":openzeppelin-contracts/=lib/openzeppelin-contracts/contracts/",
+            ":operator-filter-registry/=lib/operator-filter-registry/src/",
+            ":seadrop/=src/",
+            ":seaport-core/=lib/seaport/lib/seaport-core/",
+            ":seaport-sol/=lib/seaport/lib/seaport-sol/",
+            ":seaport-types/=lib/seaport/lib/seaport-types/",
+            ":seaport/=lib/seaport/",
+            ":solady/=lib/solady/",
+            ":solarray/=lib/seaport/lib/solarray/src/",
+            ":solmate/=lib/solmate/src/",
+            ":utility-contracts/=lib/utility-contracts/src/"
+          ]
+        },
+        "name": "ERC721SeaDropCloneable",
+        "fullyQualifiedName": "src/clones/ERC721SeaDropCloneable.sol:ERC721SeaDropCloneable"
+      },
+      "files": [
+        {
+          "path": "src/lib/SeaDropStructs.sol",
+          "sha256": "b2ba6712b9100c98b445fa47bb0926499440039fe606b2dbfb1ff2ad6f75460d",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/ISeaDrop.sol",
+          "sha256": "cbf430bf51097fc644eb12a5a0d652a9c2af5de9a8d9bd4e8b8421334c7dbd08",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/clones/ERC721ACloneable.sol",
+          "sha256": "5ac545ace84a51ea70cf2cab24b33cafc101636e177a019f0ddd3acec330e0a9",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/ICreatorToken.sol",
+          "sha256": "2253afe2692907d47c24b0c70f704b0ef725aaa88a5e83979abde7ebc6f1f59b",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/ERC721A/contracts/IERC721A.sol",
+          "sha256": "79ea8c523822d92432969a516209b64bcd83f5c83eb3e4e8f56b52a793919c55",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/lib/SeaDropErrorsAndEvents.sol",
+          "sha256": "ee26382de61e7fb930ca4f2b3759a3aa05d1adcee817d76386b609a3f11e9891",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/lib/ERC721TransferValidator.sol",
+          "sha256": "2184793353499a4889ae38947ccde06d287e9df94afe7b8b97f869bb196f5668",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/clones/ERC721SeaDropCloneable.sol",
+          "sha256": "e896987709784c93316c8c648b17c5c9996e8c5c3b7658f3a51ffa537e93d5f1",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/ITransferValidator.sol",
+          "sha256": "352ab04890ff160b5b2bb882e0b74b3b49a609750c62a7e3c004ba9007d88897",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/INonFungibleSeaDropToken.sol",
+          "sha256": "9a6c8267278c9e2c33841d24a1f1036e42d2dc5aeeffab809e90e736cd150cf5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/utility-contracts/src/TwoStepOwnable.sol",
+          "sha256": "add0e03c480974b8fcdda464d25178236909e3623088e5609bb1a1b49b0ba75e",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/clones/ERC721ContractMetadataCloneable.sol",
+          "sha256": "ab524e31e9c77dc3df6dbd46107ba5ffe046600aaa0b297f913edd91bd0fe078",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/lib/ERC721SeaDropStructsErrorsAndEvents.sol",
+          "sha256": "00105352c8d0368b4b1a3a1b1300cbfa43ef0d4411b51a18abda4a62e2a5e62c",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/ISeaDropTokenContractMetadata.sol",
+          "sha256": "29a462bb15010647b0fe3f8313f141cfe864fef8c968d1a91f212308375a0958",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/clones/ERC721AConduitPreapprovedCloneable.sol",
+          "sha256": "a1e326436a47a577c11fc0b0faa1cdf1fbc6ed4de1d615acbcd1f3fe6530294b",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/utility-contracts/src/ConstructorInitializable.sol",
+          "sha256": "08f744fcf2733135bb83897cd79d3c7c41ff32ed86708f047129a53840017eeb",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts/contracts/interfaces/IERC2981.sol",
+          "sha256": "a8d1ed2cf4ae5718b5c1e8e148e7f5817e934e8d933729eb5c3ac389046041b1",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol",
+          "sha256": "701e025d13ec6be09ae892eb029cd83b3064325801d73654847a5fb11c58b1e5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts-upgradeable/contracts/utils/AddressUpgradeable.sol",
+          "sha256": "52311afabaadb20bd2528b0f6f2d35a153385f6a2dc87e3b3da058f72d86dabe",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts-upgradeable/contracts/proxy/utils/Initializable.sol",
+          "sha256": "e46d306f2283b7569d1564564e76bf07ba7c7a955588d5f82cc93b2f7b836a8d",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts-upgradeable/contracts/security/ReentrancyGuardUpgradeable.sol",
+          "sha256": "3dd20bee24c55f012a406d97cbe1704a0fd9d01d0f8559d5ee61f522e3eeac82",
+          "spdx": "MIT"
+        }
+      ]
+    },
+    {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x721C008fdff27BF06E7E123956E2Fe03B63342e3?fields=all",
+      "responseSha256": "f52a3735d2350c81f97193510415fa5c8b003a4e71ca3d77a1a4db044c1f57d2",
+      "compilation": {
+        "language": "Solidity",
+        "compiler": "solc",
+        "compilerVersion": "0.8.24+commit.e11b9ed9",
+        "compilerSettings": {
+          "viaIR": false,
+          "metadata": {
+            "appendCBOR": true,
+            "bytecodeHash": "ipfs",
+            "useLiteralContent": false
+          },
+          "libraries": {},
+          "optimizer": {
+            "runs": 1000000,
+            "enabled": true
+          },
+          "evmVersion": "cancun",
+          "remappings": [
+            "ds-test/=lib/forge-std/lib/ds-test/src/",
+            "forge-std/=lib/forge-std/src/",
+            "@limitbreak/tm-core-lib/=lib/tm-core-lib/",
+            "@limitbreak/permit-c/=lib/PermitC/src/",
+            "@openzeppelin/=lib/PermitC/lib/openzeppelin-contracts/",
+            "@rari-capital/solmate/=lib/PermitC/lib/solmate/",
+            "PermitC/=lib/PermitC/",
+            "erc4626-tests/=lib/PermitC/lib/openzeppelin-contracts/lib/erc4626-tests/",
+            "forge-gas-metering/=lib/PermitC/lib/forge-gas-metering/",
+            "openzeppelin-contracts/=lib/PermitC/lib/openzeppelin-contracts/",
+            "openzeppelin/=lib/PermitC/lib/openzeppelin-contracts/contracts/",
+            "solady/=lib/PermitC/lib/forge-gas-metering/lib/solady/",
+            "solmate/=lib/PermitC/lib/solmate/src/",
+            "tm-core-lib/=lib/tm-core-lib/src/"
+          ]
+        },
+        "name": "CreatorTokenTransferValidator",
+        "fullyQualifiedName": "src/CreatorTokenTransferValidator.sol:CreatorTokenTransferValidator"
+      },
+      "files": [
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/interfaces/IERC1155.sol",
+          "sha256": "645b7169a60557aa32183effbb8ba1b5513669edb08ff8979235524ab999ce9b",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/interfaces/IERC1271.sol",
+          "sha256": "c981ecaf1c2ec77e3e47f146306d7e99c669b5e733b0adcfd3436c7f6a7a46b6",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/interfaces/IERC20.sol",
+          "sha256": "1e78c90db4e4838c0a603bfbd2bafa2c38ba997769043e2a6045ad9e73764b60",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/interfaces/IERC721.sol",
+          "sha256": "e3bcee0ce85a310031fcef279f963e73c12c676a66c5c562ab3945ccf10aecff",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/token/ERC1155/IERC1155.sol",
+          "sha256": "11a1673048905dbd7703b3e23c22d612484db9c0b5a629c303ed609c04850f3b",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol",
+          "sha256": "7ebde70853ccafcf1876900dad458f46eb9444d591d39bfc58e952e2582f5587",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/token/ERC721/IERC721.sol",
+          "sha256": "c8d867eda0fd764890040a3644f5ccf5db92f852779879f321ab3ad8b799bf97",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/utils/Context.sol",
+          "sha256": "1458c260d010a08e4c20a4a517882259a23a4baa0b5bd9add9fb6d6a1549814a",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/utils/Strings.sol",
+          "sha256": "cb2df477077a5963ab50a52768cb74ec6f32177177a78611ddbbe2c07e2d36de",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol",
+          "sha256": "445963619903cee339e49aa2d7a0b07cfad90959529fff136394429c4a92d554",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol",
+          "sha256": "701e025d13ec6be09ae892eb029cd83b3064325801d73654847a5fb11c58b1e5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/utils/math/Math.sol",
+          "sha256": "85a2caf3bd06579fb55236398c1321e15fd524a8fe140dff748c0f73d7a52345",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol",
+          "sha256": "420a5a5d8d94611a04b39d6cf5f02492552ed4257ea82aba3c765b1ad52f77f6",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/src/CollateralizedPausableFlags.sol",
+          "sha256": "17a78978863052c71763f6c8b9fcf458e2e24e1392294c3f08e155eb2ff53746",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/src/Constants.sol",
+          "sha256": "df1e266179cecdba3950acc3a37500437e39547573cc8c4878ead90d5d1580dd",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/src/DataTypes.sol",
+          "sha256": "66df60a380fd315303c1322fea0c563d67a518a60d40b4ee38f00d8dfca52c32",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/src/Errors.sol",
+          "sha256": "c368e8c24401f429a6be864d6cb1c53028619d158c17c9f596f56920faef74db",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/src/PermitC.sol",
+          "sha256": "756a46d63db3cf995d0ec809c37a893ed61bc78a4b7f555a563dd01f3bc5f182",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/src/interfaces/IPermitC.sol",
+          "sha256": "ce6cedbe853248dc527c91d2f8546110682ac442011e28fe25cafa24ff483315",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/src/libraries/PermitHash.sol",
+          "sha256": "d74d3f29030e321230bb2ac5b4c03f2c189f960cfb225ca98a7c0f7708d19fd1",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/src/openzeppelin-optimized/EIP712.sol",
+          "sha256": "9559dccad93b8ff63dc3837164cadc169ce84a7c915619fc9b639366bc16ae77",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/PermitC/src/openzeppelin-optimized/Ownable.sol",
+          "sha256": "c1137484f7b8e5e0b7d1764eb6560749a55287cebffeb48e0442af78fb11b101",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/introspection/ERC165.sol",
+          "sha256": "ee60f208126a5b135ddd05c17aba0732c26790eb174514186abc4a11f6ffcaaa",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/introspection/IERC165.sol",
+          "sha256": "cc79263b5c449f7b83699f557e57cae07fa50397469f6d6c527d406ecf9897fd",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/misc/StorageTstorish.sol",
+          "sha256": "37f42eb2fac92cdb614e81a397bfe27243aa566251df0475b00daf299450dfc5",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/misc/Tstorish.sol",
+          "sha256": "de2b51319cf19d35e85974f91f4a6d3d0c91e6a5bc3d43165d76e00236287f80",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/structs/EnumerableSet.sol",
+          "sha256": "80b0cd37797a0571a27f4ab5935daf7cfd367577e06a70061141a56da5054920",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/token/IEOARegistry.sol",
+          "sha256": "724d4f53052487eb1747d6959b58fdaa4528d8596b367b7394c8e441b2906144",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/token/ITransferValidator.sol",
+          "sha256": "3d94a437bbeb5c6737209b25476897ab4f44fa73701e26a505cff6d1cb93192f",
+          "spdx": null
+        },
+        {
+          "path": "src/Constants.sol",
+          "sha256": "9a677917cb424643c866779b99f3a798d1bbd8c5e500f569c53337596f6ba7f5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/DataTypes.sol",
+          "sha256": "e7b2aeffbcc02ffc93929c99a1a919a1c8c0aa249cbaf50e3ec5131e31d917b2",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/Errors.sol",
+          "sha256": "d37cb8ae703ae21bda04c070cf2051240d0e4016e4460e957b5aa38bfaa2c98a",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/ValidatorBase.sol",
+          "sha256": "d028845a96ef10e6a29ec06daab99fd97b942e375e8b751ed730d1158bef44ff",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/IRuleset.sol",
+          "sha256": "4624eecdfcf39c7dc0c2f2c69ec81e5f6b805e0292a0ec086011755882472dfc",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/IRulesetDelegateCall.sol",
+          "sha256": "266b8aae685a882b157884ff33ac894d4c999a3079d7154e66b69f948e117f84",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/CreatorTokenTransferValidator.sol",
+          "sha256": "63d6c07dc6ccd8c310c2254e1b58484ec69b5a1f304b321458cfefae6e4c1288",
+          "spdx": "MIT"
+        }
+      ]
+    },
+    {
+      "url": "https://sourcify.dev/server/v2/contract/1/0xe0a0004dfa318fc38298ae81a666710eadceba5c?fields=all",
+      "responseSha256": "30f2c6a2051759e08ffd647158e9ab550f54890bdd18b2c8ee86530c57c046f3",
+      "compilation": {
+        "language": "Solidity",
+        "compiler": "solc",
+        "compilerVersion": "0.8.24+commit.e11b9ed9",
+        "compilerSettings": {
+          "viaIR": false,
+          "metadata": {
+            "appendCBOR": true,
+            "bytecodeHash": "ipfs",
+            "useLiteralContent": false
+          },
+          "libraries": {},
+          "optimizer": {
+            "runs": 777,
+            "enabled": true
+          },
+          "evmVersion": "cancun",
+          "remappings": [
+            "@openzeppelin/=lib/openzeppelin-contracts/",
+            "ds-test/=lib/forge-std/lib/ds-test/src/",
+            "forge-std/=lib/forge-std/src/",
+            "murky/=lib/murky/src/",
+            "erc721a/=lib/ERC721A/",
+            "@limitbreak/permit-c/=lib/PermitC/src/",
+            "@opensea/tstorish/=lib/tstorish/src/",
+            "@rari-capital/solmate/=lib/PermitC/lib/solmate/",
+            "ERC721A/=lib/ERC721A/contracts/",
+            "PermitC/=lib/PermitC/",
+            "erc4626-tests/=lib/PermitC/lib/openzeppelin-contracts/lib/erc4626-tests/",
+            "forge-gas-metering/=lib/PermitC/lib/forge-gas-metering/",
+            "openzeppelin-contracts/=lib/openzeppelin-contracts/",
+            "openzeppelin/=lib/PermitC/lib/openzeppelin-contracts/contracts/",
+            "solady/=lib/PermitC/lib/forge-gas-metering/lib/solady/",
+            "solmate/=lib/PermitC/lib/solmate/src/",
+            "tstorish/=lib/tstorish/src/"
+          ]
+        },
+        "name": "EOARegistry",
+        "fullyQualifiedName": "src/utils/EOARegistry.sol:EOARegistry"
+      },
+      "files": [
+        {
+          "path": "lib/openzeppelin-contracts/contracts/utils/Strings.sol",
+          "sha256": "f81f11dca62dcd3e0895e680559676f4ba4f2e12a36bb0291d7ecbb6b983141f",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol",
+          "sha256": "d18195404f37ee86b44cfb01858b76ac0d4d17b77328fa82895ee893718cb0c2",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts/contracts/utils/introspection/ERC165.sol",
+          "sha256": "8806a632d7b656cadb8133ff8f2acae4405b3a64d8709d93b0fa6a216a8a6154",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts/contracts/utils/introspection/IERC165.sol",
+          "sha256": "701e025d13ec6be09ae892eb029cd83b3064325801d73654847a5fb11c58b1e5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/openzeppelin-contracts/contracts/utils/math/Math.sol",
+          "sha256": "8059d642ec219d0b9b62fbc76912079529cf494cac988abe5e371f1168b29b0f",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/IEOARegistry.sol",
+          "sha256": "5ecbf468bd90659ade4c3edee6e6417902593a6647b5dfc1490473ffb1d44eb7",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/utils/EOARegistry.sol",
+          "sha256": "4be7c8ed90d7c9db77b38dffa1a343878619d3acc6565b06a72a63655fd3cd70",
+          "spdx": "MIT"
+        },
+        {
+          "path": "@openzeppelin/contracts/utils/Strings.sol",
+          "sha256": "f81f11dca62dcd3e0895e680559676f4ba4f2e12a36bb0291d7ecbb6b983141f",
+          "spdx": "MIT"
+        },
+        {
+          "path": "@openzeppelin/contracts/utils/cryptography/ECDSA.sol",
+          "sha256": "d18195404f37ee86b44cfb01858b76ac0d4d17b77328fa82895ee893718cb0c2",
+          "spdx": "MIT"
+        },
+        {
+          "path": "@openzeppelin/contracts/utils/introspection/ERC165.sol",
+          "sha256": "8806a632d7b656cadb8133ff8f2acae4405b3a64d8709d93b0fa6a216a8a6154",
+          "spdx": "MIT"
+        },
+        {
+          "path": "@openzeppelin/contracts/utils/introspection/IERC165.sol",
+          "sha256": "701e025d13ec6be09ae892eb029cd83b3064325801d73654847a5fb11c58b1e5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "@openzeppelin/contracts/utils/math/Math.sol",
+          "sha256": "8059d642ec219d0b9b62fbc76912079529cf494cac988abe5e371f1168b29b0f",
+          "spdx": "MIT"
+        }
+      ]
+    },
+    {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x721c002d2cae3522602b93a0c48e11dc573a15e3?fields=all",
+      "responseSha256": "887a6c8ed4c608a8d48a22dae3ec7220736425d443be26edba72c2187312429e",
+      "compilation": {
+        "language": "Solidity",
+        "compiler": "solc",
+        "compilerVersion": "0.8.24+commit.e11b9ed9",
+        "compilerSettings": {
+          "viaIR": false,
+          "metadata": {
+            "appendCBOR": true,
+            "bytecodeHash": "ipfs",
+            "useLiteralContent": false
+          },
+          "libraries": {},
+          "optimizer": {
+            "runs": 1000000,
+            "enabled": true
+          },
+          "evmVersion": "cancun",
+          "remappings": [
+            "ds-test/=lib/forge-std/lib/ds-test/src/",
+            "forge-std/=lib/forge-std/src/",
+            "@limitbreak/tm-core-lib/=lib/tm-core-lib/",
+            "@limitbreak/permit-c/=lib/PermitC/src/",
+            "@openzeppelin/=lib/PermitC/lib/openzeppelin-contracts/",
+            "@rari-capital/solmate/=lib/PermitC/lib/solmate/",
+            "PermitC/=lib/PermitC/",
+            "erc4626-tests/=lib/PermitC/lib/openzeppelin-contracts/lib/erc4626-tests/",
+            "forge-gas-metering/=lib/PermitC/lib/forge-gas-metering/",
+            "openzeppelin-contracts/=lib/PermitC/lib/openzeppelin-contracts/",
+            "openzeppelin/=lib/PermitC/lib/openzeppelin-contracts/contracts/",
+            "solady/=lib/PermitC/lib/forge-gas-metering/lib/solady/",
+            "solmate/=lib/PermitC/lib/solmate/src/",
+            "tm-core-lib/=lib/tm-core-lib/src/"
+          ]
+        },
+        "name": "ModuleCollectionAndListManagement",
+        "fullyQualifiedName": "src/modules/ModuleCollectionAndListManagement.sol:ModuleCollectionAndListManagement"
+      },
+      "files": [
+        {
+          "path": "lib/tm-core-lib/src/utils/introspection/ERC165.sol",
+          "sha256": "ee60f208126a5b135ddd05c17aba0732c26790eb174514186abc4a11f6ffcaaa",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/introspection/IERC165.sol",
+          "sha256": "cc79263b5c449f7b83699f557e57cae07fa50397469f6d6c527d406ecf9897fd",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/misc/StorageTstorish.sol",
+          "sha256": "37f42eb2fac92cdb614e81a397bfe27243aa566251df0475b00daf299450dfc5",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/misc/Tstorish.sol",
+          "sha256": "de2b51319cf19d35e85974f91f4a6d3d0c91e6a5bc3d43165d76e00236287f80",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/structs/EnumerableSet.sol",
+          "sha256": "80b0cd37797a0571a27f4ab5935daf7cfd367577e06a70061141a56da5054920",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/token/IEOARegistry.sol",
+          "sha256": "724d4f53052487eb1747d6959b58fdaa4528d8596b367b7394c8e441b2906144",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/token/ITransferValidator.sol",
+          "sha256": "3d94a437bbeb5c6737209b25476897ab4f44fa73701e26a505cff6d1cb93192f",
+          "spdx": null
+        },
+        {
+          "path": "src/Constants.sol",
+          "sha256": "9a677917cb424643c866779b99f3a798d1bbd8c5e500f569c53337596f6ba7f5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/DataTypes.sol",
+          "sha256": "e7b2aeffbcc02ffc93929c99a1a919a1c8c0aa249cbaf50e3ec5131e31d917b2",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/Errors.sol",
+          "sha256": "d37cb8ae703ae21bda04c070cf2051240d0e4016e4460e957b5aa38bfaa2c98a",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/ValidatorBase.sol",
+          "sha256": "d028845a96ef10e6a29ec06daab99fd97b942e375e8b751ed730d1158bef44ff",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/IRuleset.sol",
+          "sha256": "4624eecdfcf39c7dc0c2f2c69ec81e5f6b805e0292a0ec086011755882472dfc",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/modules/ModuleCollectionAndListManagement.sol",
+          "sha256": "e15eab5c3832bbdc2e7853db788055e04ff7b4d7d0bab2d3b3419758998b8648",
+          "spdx": "MIT"
+        },
+        {
+          "path": "@limitbreak/tm-core-lib/src/utils/introspection/ERC165.sol",
+          "sha256": "ee60f208126a5b135ddd05c17aba0732c26790eb174514186abc4a11f6ffcaaa",
+          "spdx": null
+        },
+        {
+          "path": "@limitbreak/tm-core-lib/src/utils/misc/Tstorish.sol",
+          "sha256": "de2b51319cf19d35e85974f91f4a6d3d0c91e6a5bc3d43165d76e00236287f80",
+          "spdx": "MIT"
+        },
+        {
+          "path": "@limitbreak/tm-core-lib/src/utils/structs/EnumerableSet.sol",
+          "sha256": "80b0cd37797a0571a27f4ab5935daf7cfd367577e06a70061141a56da5054920",
+          "spdx": null
+        },
+        {
+          "path": "@limitbreak/tm-core-lib/src/utils/token/IEOARegistry.sol",
+          "sha256": "724d4f53052487eb1747d6959b58fdaa4528d8596b367b7394c8e441b2906144",
+          "spdx": null
+        },
+        {
+          "path": "@limitbreak/tm-core-lib/src/utils/token/ITransferValidator.sol",
+          "sha256": "3d94a437bbeb5c6737209b25476897ab4f44fa73701e26a505cff6d1cb93192f",
+          "spdx": null
+        }
+      ]
+    },
+    {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x721c0086cc4f335407cc84a38ce7dcb1560476b0?fields=all",
+      "responseSha256": "3c5e4cc3810c4612c0d08ed1a297ec7f079c8c2c6a2508b4276856f1718a6f3a",
+      "compilation": {
+        "language": "Solidity",
+        "compiler": "solc",
+        "compilerVersion": "0.8.24+commit.e11b9ed9",
+        "compilerSettings": {
+          "viaIR": false,
+          "metadata": {
+            "appendCBOR": true,
+            "bytecodeHash": "ipfs",
+            "useLiteralContent": false
+          },
+          "optimizer": {
+            "runs": 1000000,
+            "enabled": true
+          },
+          "evmVersion": "cancun",
+          "remappings": [
+            "ds-test/=lib/forge-std/lib/ds-test/src/",
+            "forge-std/=lib/forge-std/src/",
+            "@limitbreak/tm-core-lib/=lib/tm-core-lib/",
+            "@limitbreak/permit-c/=lib/PermitC/src/",
+            "@openzeppelin/=lib/PermitC/lib/openzeppelin-contracts/",
+            "@rari-capital/solmate/=lib/PermitC/lib/solmate/",
+            "PermitC/=lib/PermitC/",
+            "erc4626-tests/=lib/PermitC/lib/openzeppelin-contracts/lib/erc4626-tests/",
+            "forge-gas-metering/=lib/PermitC/lib/forge-gas-metering/",
+            "openzeppelin-contracts/=lib/PermitC/lib/openzeppelin-contracts/",
+            "openzeppelin/=lib/PermitC/lib/openzeppelin-contracts/contracts/",
+            "solady/=lib/PermitC/lib/forge-gas-metering/lib/solady/",
+            "solmate/=lib/PermitC/lib/solmate/src/",
+            "tm-core-lib/=lib/tm-core-lib/src/"
+          ]
+        },
+        "name": "ModuleRulesetBindings",
+        "fullyQualifiedName": "src/modules/ModuleRulesetBindings.sol:ModuleRulesetBindings"
+      },
+      "files": [
+        {
+          "path": "src/modules/ModuleRulesetBindings.sol",
+          "sha256": "2df8e31354dc46050203bfedb0be591d19eabea44ec5d304e2aa8c0c154d7bdb",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/structs/EnumerableSet.sol",
+          "sha256": "80b0cd37797a0571a27f4ab5935daf7cfd367577e06a70061141a56da5054920",
+          "spdx": null
+        },
+        {
+          "path": "src/Constants.sol",
+          "sha256": "9a677917cb424643c866779b99f3a798d1bbd8c5e500f569c53337596f6ba7f5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/DataTypes.sol",
+          "sha256": "e7b2aeffbcc02ffc93929c99a1a919a1c8c0aa249cbaf50e3ec5131e31d917b2",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/Errors.sol",
+          "sha256": "d37cb8ae703ae21bda04c070cf2051240d0e4016e4460e957b5aa38bfaa2c98a",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/ValidatorBase.sol",
+          "sha256": "d028845a96ef10e6a29ec06daab99fd97b942e375e8b751ed730d1158bef44ff",
+          "spdx": "MIT"
+        }
+      ]
+    },
+    {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x00721ce73fde1e57a9048e0e19b7ee7c8d3f10e3?fields=all",
+      "responseSha256": "6fe13e3d6cff7853fd34bca8a00d94bc6731c03d9f03cb610c986aadb5a71457",
+      "compilation": {
+        "language": "Solidity",
+        "compiler": "solc",
+        "compilerVersion": "0.8.24+commit.e11b9ed9",
+        "compilerSettings": {
+          "viaIR": false,
+          "metadata": {
+            "appendCBOR": false,
+            "bytecodeHash": "none",
+            "useLiteralContent": false
+          },
+          "libraries": {},
+          "optimizer": {
+            "runs": 1000000,
+            "enabled": true
+          },
+          "evmVersion": "cancun",
+          "remappings": [
+            "ds-test/=lib/forge-std/lib/ds-test/src/",
+            "forge-std/=lib/forge-std/src/",
+            "@limitbreak/tm-core-lib/=lib/tm-core-lib/",
+            "@limitbreak/permit-c/=lib/PermitC/src/",
+            "@openzeppelin/=lib/PermitC/lib/openzeppelin-contracts/",
+            "@rari-capital/solmate/=lib/PermitC/lib/solmate/",
+            "PermitC/=lib/PermitC/",
+            "erc4626-tests/=lib/PermitC/lib/openzeppelin-contracts/lib/erc4626-tests/",
+            "forge-gas-metering/=lib/PermitC/lib/forge-gas-metering/",
+            "openzeppelin-contracts/=lib/PermitC/lib/openzeppelin-contracts/",
+            "openzeppelin/=lib/PermitC/lib/openzeppelin-contracts/contracts/",
+            "solady/=lib/PermitC/lib/forge-gas-metering/lib/solady/",
+            "solmate/=lib/PermitC/lib/solmate/src/",
+            "tm-core-lib/=lib/tm-core-lib/src/"
+          ]
+        },
+        "name": "RulesetWhitelist",
+        "fullyQualifiedName": "src/rulesets/RulesetWhitelist.sol:RulesetWhitelist"
+      },
+      "files": [
+        {
+          "path": "lib/tm-core-lib/src/utils/introspection/IERC165.sol",
+          "sha256": "cc79263b5c449f7b83699f557e57cae07fa50397469f6d6c527d406ecf9897fd",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/misc/StorageTstorish.sol",
+          "sha256": "37f42eb2fac92cdb614e81a397bfe27243aa566251df0475b00daf299450dfc5",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/misc/Tloadish.sol",
+          "sha256": "80979f7bff0ed2e52372b9cc1eb5a81922db9fc2f428f7a8181a11ea581beae0",
+          "spdx": "MIT"
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/structs/EnumerableSet.sol",
+          "sha256": "80b0cd37797a0571a27f4ab5935daf7cfd367577e06a70061141a56da5054920",
+          "spdx": null
+        },
+        {
+          "path": "lib/tm-core-lib/src/utils/token/IEOARegistry.sol",
+          "sha256": "724d4f53052487eb1747d6959b58fdaa4528d8596b367b7394c8e441b2906144",
+          "spdx": null
+        },
+        {
+          "path": "src/Constants.sol",
+          "sha256": "9a677917cb424643c866779b99f3a798d1bbd8c5e500f569c53337596f6ba7f5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/DataTypes.sol",
+          "sha256": "e7b2aeffbcc02ffc93929c99a1a919a1c8c0aa249cbaf50e3ec5131e31d917b2",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/Errors.sol",
+          "sha256": "d37cb8ae703ae21bda04c070cf2051240d0e4016e4460e957b5aa38bfaa2c98a",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/ValidatorBase.sol",
+          "sha256": "d028845a96ef10e6a29ec06daab99fd97b942e375e8b751ed730d1158bef44ff",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/IRuleset.sol",
+          "sha256": "4624eecdfcf39c7dc0c2f2c69ec81e5f6b805e0292a0ec086011755882472dfc",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/interfaces/IWhitelistExtension.sol",
+          "sha256": "af69e5dd06f682039e438bd52e9ad2816671527c3c4755d1237cfa8f5cfea2c5",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/rulesets/RulesetBase.sol",
+          "sha256": "ce5698f9adc304a67e8527bc743cdbafb178377aff370e10b8be8955853a79ef",
+          "spdx": "MIT"
+        },
+        {
+          "path": "src/rulesets/RulesetWhitelist.sol",
+          "sha256": "2929c1906e7cf9b6c7ecfe57dc710f6593d012f88bb03c6f32784b59b943ff68",
+          "spdx": "MIT"
+        },
+        {
+          "path": "@limitbreak/tm-core-lib/src/utils/misc/Tloadish.sol",
+          "sha256": "80979f7bff0ed2e52372b9cc1eb5a81922db9fc2f428f7a8181a11ea581beae0",
+          "spdx": "MIT"
+        },
+        {
+          "path": "@limitbreak/tm-core-lib/src/utils/structs/EnumerableSet.sol",
+          "sha256": "80b0cd37797a0571a27f4ab5935daf7cfd367577e06a70061141a56da5054920",
+          "spdx": null
+        },
+        {
+          "path": "@limitbreak/tm-core-lib/src/utils/token/IEOARegistry.sol",
+          "sha256": "724d4f53052487eb1747d6959b58fdaa4528d8596b367b7394c8e441b2906144",
+          "spdx": null
+        }
+      ]
+    }
+  ],
+  "unresolved": [
+    "Exact chain4663 validator deployment constructor and every immutable/domain binding are not independently verified.",
+    "Source correspondence is not independent recompilation or deployment admission.",
+    "The collection owner is EIP7702-delegated; its delegation target, signer independence, privileged call scope and key control remain unreviewed.",
+    "Validator/list owner contract code is captured; its implementation, signer set, upgrades and privileged authority are unreviewed. Eight-role source exploration bound was reached.",
+    "Four linked module runtimes match public chain1 reference code, but that does not settle mutable issuer/validator/list powers.",
+    "Mutable transfer validator/list/ruleset, royalty and supply authority are not atomically bound by the existing vault.",
+    "Missing final Pocket canonical witness prevents qualification; previous successful capture is development-only.",
+    "Missing complete current signed order prevents fee/royalty/counter/status/final-custody qualification.",
+    "Public source archives retain unheadered tm-core-lib dependencies; file-level license/provenance is not inferred."
+  ]
+}

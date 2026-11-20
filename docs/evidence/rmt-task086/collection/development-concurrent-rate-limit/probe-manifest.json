@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "producerSha256": "7f489f37e24048e0fa14bc8cb608e5d3d730942039d0bd683f6dab8a1f72a3bf",
+  "reportSha256": "6599f104a2b0769deac631f17da6242b7fb00e011912e49121fc2173c9a16a92",
+  "rawSha256": "9a4128a1b7f1ae8b0b5425ec22268a726f0b6f46856db64a1a13a809d2a10e73",
+  "rawBytes": 6211768,
+  "responses": 68,
+  "scannerStatus": "RAW_ENVELOPE_AND_UNESCAPED_HTTP_BODIES_SCANNED_NO_FINDINGS",
+  "scanner": {
+    "name": "Gitleaks",
+    "version": "8.30.1",
+    "configurationSha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+    "suppressionsAdded": false,
+    "envelopeSha256": "9a4128a1b7f1ae8b0b5425ec22268a726f0b6f46856db64a1a13a809d2a10e73",
+    "httpBodiesSha256": "e5d4cbe048d5760fd1e94120a376adff14574485b8e2f5c79e15aeab4a78dd6e",
+    "httpBodiesBytes": 5901432,
+    "envelopeExitCode": 0,
+    "envelopeFindings": 0,
+    "httpBodiesExitCode": 0,
+    "httpBodiesFindings": 0
+  },
+  "compressedSha256": "4f348c7e0baca9dd14b5d2154b94f4479fddc31c98f182f7c88679dce1c138de"
+}

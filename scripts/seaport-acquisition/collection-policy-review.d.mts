@@ -1,0 +1,10 @@
+export type CollectionAnchor={number:string;hash:string;timestamp:string};
+export type CollectionRole={role:string;address:string;runtimeHash:string;codeBytes:number;source:Record<string,unknown>&{fullRuntimeMatch?:boolean;immutableBindingsVerified?:boolean}};
+export type CollectionTransferCheck=Record<string,unknown>&{kind:string;success?:boolean;approvalPresent?:boolean};
+export type CollectionSnapshot={chainId:4663;anchor:CollectionAnchor;roles:CollectionRole[];state:Record<string,unknown>;transferChecks:CollectionTransferCheck[];canonicalRechecked:true};
+export type CollectionObservation={schemaVersion:1;chainId:4663;collection:string;tokenId:string;anchor:CollectionAnchor;roles:CollectionRole[];state:Record<string,unknown>;transferChecks:CollectionTransferCheck[];providers:{official:CollectionSnapshot;pocket:CollectionSnapshot};authorityClosure:{status:"COMPLETE"|"UNRESOLVED";mutableBoundaries:string[];unknowns:string[]};[key:string]:unknown};
+export type CollectionReview=Record<string,unknown>&{schemaVersion:1;status:"REVIEW_RECORDED"|"UNAVAILABLE";productionStatus:"NO_GO";executionApproved:false;executionEnabled:false;ownerApprovalRecorded:false;productionCatalogEntry:false;policyFingerprint?:string;codeBindingFingerprint?:string;currentStateFingerprint?:string};
+export const collectionReviewLimits:Readonly<{maxBytes:131072;maxRoles:8;maxChecks:12;maxIssues:24;maxAgeMs:60000;maxDepth:16;maxNodes:4096}>;
+export const collectionReviewSeaportPins:Readonly<{chainId:4663;address:string;runtimeHash:string}>;
+export function createCollectionPolicyReview(observation:CollectionObservation,options?:{nowMs?:number}):CollectionReview;
+export function revalidateCollectionPolicyReview(previous:CollectionReview,current:CollectionObservation,options:{previousAnchorCanonical:boolean;nowMs?:number}):CollectionReview;
