@@ -1,0 +1,91 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-11-20T03:03:42.172Z",
+  "command": "node --test docs/evidence/rmt-task086/browser/replay.test.mjs",
+  "exitCode": 0,
+  "replaySourceSha256": "fd935d0b050a3baf1126a5700191ba70318369f7ecd2f2957bc22f5beae0bb01",
+  "stdoutSha256": "92a3784d010c8dd6d542ba6e0271aaa19b49d6fc6d074197d55a042a53e80c25",
+  "results": [
+    {
+      "schemaVersion": 1,
+      "status": "PASS",
+      "source": "f027a1829b3f44200224ee1ba838de5689957560",
+      "runId": 44663675748,
+      "production": false,
+      "localViemVersion": "2.55.1",
+      "collection": {
+        "negativeRollbackCases": 21,
+        "verifiedSyntheticSellerSignatures": 3,
+        "retainedRealTransferValidatorCallPairs": 6
+      },
+      "native": {
+        "bundles": 3,
+        "fills": 6,
+        "verifiedSyntheticSellerSignatureUses": 6,
+        "traceFrames": 399,
+        "tamperRejections": 6,
+        "pgSnapshots": 12,
+        "matchedPgRows": 24,
+        "watcherPolls": 15
+      },
+      "safe": {
+        "status": "PASS",
+        "bundles": 3,
+        "executions": 45,
+        "verifiedSignatureUses": 90,
+        "reverted": 3,
+        "traceFrames": 1497,
+        "tamperRejections": 90,
+        "production": false
+      },
+      "modes": [
+        {
+          "mode": "default-chromium",
+          "nativeFills": 2,
+          "rejections": 16,
+          "indexedSnapshots": 4,
+          "indexedRows": 8,
+          "watcherPolls": 5
+        },
+        {
+          "mode": "robinhood-fork-chromium",
+          "nativeFills": 2,
+          "rejections": 16,
+          "indexedSnapshots": 4,
+          "indexedRows": 8,
+          "watcherPolls": 5
+        },
+        {
+          "mode": "robinhood-fork-webkit",
+          "nativeFills": 2,
+          "rejections": 16,
+          "indexedSnapshots": 4,
+          "indexedRows": 8,
+          "watcherPolls": 5
+        }
+      ],
+      "limitations": [
+        "No retained direct native after-state query snapshot; custody/balances were live fixture/indexer assertions and receipt/trace/DB are retained.",
+        "Intermediate watcher PENDING_EVIDENCE/recovered record snapshots are live assertions, not separate retained record snapshots.",
+        "Native fills occur before browser launch; no native import UI control was added.",
+        "Offline checks verify retained evidence, not a fresh chain replay or production admission.",
+        "Real transfer/validator pair counts exclude additional read-only state/header/code queries."
+      ]
+    },
+    {
+      "status": "PASS",
+      "scope": "OFFLINE_VERIFICATION_OF_FAILED_RUN_PARTIAL_EVIDENCE",
+      "archiveConclusion": "failure",
+      "source": "f027a1829b3f44200224ee1ba838de5689957560",
+      "runId": 44663675748,
+      "jobId": 136047693278,
+      "production": false,
+      "completedCollectionRollbackCases": 7,
+      "nativePgSnapshots": 4,
+      "completedSafeExecutions": 8,
+      "verifiedSyntheticSignatureUses": 16,
+      "traceFrames": 265,
+      "limitation": "Ninth submission error/status/journal was not retained; the connected browser run failed and is not complete acceptance."
+    }
+  ]
+}

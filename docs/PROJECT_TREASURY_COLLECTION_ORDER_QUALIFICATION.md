@@ -8,6 +8,8 @@
 
 Exactly one collection was investigated: **chain4663, `0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf`, ERC721 token478**. This is a read-only feasibility candidate, not an approved collection, seller, order or treasury purchase. No additional marketplace exploration or candidate substitution is needed to explain the actual blockers.
 
+The owner confirmed this same address as their LAMMBs contract during the task. That confirms the intended collection identity. NFT-holder order authorization, source-policy admission and any live permission changes remain separate decisions; none was inferred from collection ownership.
+
 **`CURRENT_ORDER_UNAVAILABLE`.** The documented public OpenSea order endpoint returns HTTP401. Its lawful public collection page exposes a timestamped asking-price summary, without the complete OrderParameters, signature, current order hash/counter/status, full fees/royalties, zone or conduit. A UI listing ID is not asserted to be a Seaport hash. No synthetic signature, bid, old fill or validation event is substituted for the missing current payload. No account, private endpoint, authenticated session, API purchase or access-control bypass was attempted.
 
 | Predicate | Evidence-based verdict |
@@ -52,7 +54,17 @@ node scripts/seaport-acquisition/browser-run.mjs --anvil /path/anvil \
   --browser chromium --fork-robinhood --output /isolated/task086-rh-chromium
 ```
 
-Actual results and source-bound CI evidence are added at closeout. Pending jobs are not passed. Local Windows memory/provider interruptions are separate from source defects and preserved as such; no failed test is replaced with synthetic success. Browser emulation is not physical-wallet acceptance.
+### Executed evidence and remaining CI boundary
+
+Initial source `f027a1829b3f44200224ee1ba838de5689957560` completed all21 checks:14 passed, six unchanged strict security jobs failed, and default WebKit failed during the ninth synthetic Safe administration submission. Default Chromium and both Robinhood-fork Chromium/WebKit modes passed. The original failed job, partial receipts and screenshots are retained separately under [browser/failures/f027a182](evidence/rmt-task086/browser/failures/f027a182/README.md); it is not counted as passed acceptance. The callback stopped after the synthetic fault configuration mined and before a ninth submission record was retained. The original evidence cannot identify the exact callback error or establish a product defect.
+
+Test-only diagnostics now retain bounded phase/error categories, prepared-request equality and selected recovery identity before existing assertions. They exclude raw signed transactions and SDK messages. Assertions, timeouts, signing/submission behavior and retry policy are unchanged. This is observability for a fresh source run, not a claimed correction of the original failure.
+
+Local verification passed123 Node tests,57 Foundry tests across seven suites (512 fuzz runs;128 invariant runs with4,096 calls), and three security-evidence integrity tests. The standalone local Robinhood fork retained86 receipts,11 baseline cases and seven new reverted policy cases. First-source CI retained21 new rollback cases across the three passed modes,45 Safe executions with90 synthetic signature uses,12 PostgreSQL snapshots and24 matched row observations. [Offline replays](evidence/rmt-task086/browser/replay.test.mjs) verify the retained signatures, receipts, traces, database evidence and tamper rejection; they are not fresh chain execution. Additional diagnostic/replay tests pass separately.
+
+The final two-provider collection capture remains **UNAVAILABLE**: Pocket returned37 matching anchored responses, then returned null for the concluding canonical block check. The earlier successful development capture is preserved without promotion to current evidence. No usable current-order payload or production collection policy is established.
+
+Fresh-source CI results are recorded separately at closeout. Pending jobs are not passed. Local Windows memory/provider interruptions are separate from source defects and preserved as such; no failed test is replaced with synthetic success. Browser emulation is not physical-wallet acceptance.
 
 ## Minimum external input and next decision
 
