@@ -9,4 +9,3 @@ export function createSyntheticNativeCollectionPolicy(pin:{address:string;standa
 export function parseNativeOwnerSuppliedOrder(rawUtf8:string|Uint8Array,options?:Pick<OwnerOrderOptions,"profile"|"nowMs">):{envelope:OwnerSuppliedOrderEnvelope;provenance:NonNullable<CurrentOwnerOrderResult["provenance"]>};
 export function ingestNativeOwnerSuppliedSignedOrder(rawUtf8:string|Uint8Array,options:NativeOwnerOrderOptions):Promise<NativeOwnerOrderResult>;
 export function verifyNativeOwnerOrderEntry(entry:{sourceKind:"OWNER_SUPPLIED";sourceId:"owner-supplied";rawUtf8:string},options:Omit<NativeOwnerOrderOptions,"sourceId">&{sourceId?:"owner-supplied"}):Promise<NativeOwnerOrderResult>;
-

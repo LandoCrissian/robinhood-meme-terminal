@@ -81,4 +81,3 @@ export async function verifyNativeOwnerOrderEntry(entry,options={}){
  if(!exact(entry,["sourceKind","sourceId","rawUtf8"])||entry.sourceKind!=="OWNER_SUPPLIED"||entry.sourceId!=="owner-supplied"||typeof entry.rawUtf8!=="string")return unavailable("SOURCE_ENTRY_UNADMITTED");
  return ingestNativeOwnerSuppliedSignedOrder(entry.rawUtf8,{...options,sourceId:entry.sourceId});
 }
-

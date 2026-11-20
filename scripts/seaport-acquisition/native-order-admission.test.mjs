@@ -128,5 +128,3 @@ test("actual native chain4663 import remains blocked by empty production policy 
  assert.equal(r.reason,"NO_ADMITTED_NEW_ORDER",JSON.stringify(r));assert.equal(f.counters.prepare,0);assert.equal(f.saved().records.length,0);assert.equal(r.executionEnabled,false);assert.equal(r.broadcast,false);assert.equal(r.signatureRequested,false);
  const options={...f.nativeOptions};delete options.collectionPolicies;const proof=await verifyNativeOwnerOrderEntry(f.entry(),options);assert.equal(proof.reason,"COLLECTION_POLICY_UNAVAILABLE");assert.equal(proof.currentOrderIndependentlyVerified,false);
 });
-
-
