@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "scope": "DECOMPRESSED_PUBLIC_EVIDENCE_SCAN",
+  "scannerVersion": "8.30.1",
+  "unchangedRepositoryConfig": true,
+  "rawScannerExit": 1,
+  "rawFindingCount": 1,
+  "rule": "generic-api-key",
+  "publicIdentifier": "RMTLaunchCurveLpFeeLedgerV1",
+  "publicSourceBindings": [
+    {
+      "path": "src/RMTV4CurveGraduationV1.sol",
+      "line": 114,
+      "sourceSha256": "9d513915a4d36f05e1d4114bbe4f727ac6e6a504ef35bb856c47307e14795009"
+    }
+  ],
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "redactedReportSha256": "d3db2b92716ad6ed10694c2b967dae3c5c27a92ede4c69b1df63cca8b72191a3",
+  "disposition": "PUBLIC_SOLIDITY_TYPE_NAME_NOT_CREDENTIAL",
+  "scannerPolicyChanged": false,
+  "financialGateCleared": false
+}

@@ -1,0 +1,1 @@
+{"result": "PASS", "sources": 66, "unchangedFirstPartySources": 16, "allFindingIds": 233, "unclearedHighIds": 22, "detectors": 101, "strictScannerExit": 1, "foundry": {"suites": 14, "passed": 112, "failed": 0, "skipped": 0}, "financialActivationAuthorized": false}
