@@ -20,7 +20,7 @@
     "knip.json": "c370e3aa0eb70ee706c5af824ebd9ce8c2a1ea2c8dc439722e4845f1116d5af0",
     "scripts/visual-qa/rmt-polish.mjs": "94d19e7a32ba080beb2039f6188b39e6d03ecfd2a5cbebe92ad5fdab5183aeea",
     "scripts/discovery/continuity.ts": "bcac212a54954a58908acb9ead82e45f9c515b2e366f6e74cf219d87e7213a69",
-    ".github/workflows/discovery-continuity.yml": "5bd4b4c0c8ca39a0c7186e588fa2263a6bbc8abc95d6f1df2a2448beeb5ec050"
+    ".github/workflows/discovery-continuity.yml": "49a3ebef3ddb2f2191bc3c385018472681b892db789e040f9c2787e2d69f5f9b"
   },
   "results": [
     {
@@ -99,5 +99,6 @@
   "contractsChanged": false,
   "scope": "website reliability; no live creation/trading/claims acceptance; no physical iPhone/crash testing",
   "buildToolLockSha256": "fef08929c2416356eb81367fd9ca68a6a85752bf2880e05d5765bccdb65102f7",
-  "localProvenance": "Local tests/build ran on base HEAD plus the explicitly hashed application diff. Exact candidate SHA is checked independently by PR CI. Preflight sourceCommit is therefore the base, not a claimed clean candidate build."
+  "localProvenance": "Local tests/build ran on base HEAD plus the explicitly hashed application diff. Exact candidate SHA is checked independently by PR CI. Preflight sourceCommit is therefore the base, not a claimed clean candidate build.",
+  "ciWorkflowFollowup": "Initial candidate CI browser dependency install stalled. The new workflow now invokes the existing signed HTTPS Ubuntu archive setup already used by the repository browser jobs. Application tree is unchanged; original CI and Gitleaks failures remain visible."
 }

@@ -49,6 +49,12 @@ Fresh creation evidence and the expired page are independent test states. Neithe
 
 ![Expired discovery with collapsed history on WebKit portrait](evidence/rmt-task088/screenshots/webkit-portrait-expired.png)
 
+## CI follow-up
+
+The first published candidate `3ec076fdd77e6dd502061040698c998eadc81b7b` passed repository/indexer, actual Netlify packaging, Railway container and all 112 core Foundry tests. Its new browser dependency install stalled; the workflow now uses the same signed HTTPS Ubuntu archive preparation as the existing browser jobs. No application source changed in this follow-up.
+
+The unchanged full-history Gitleaks gate reported two new unclassified matches at `test-results.json:14-15`: the recorded SHA-256 digests of `launch-api.test.ts` and `launch-api.ts`. All 16 source digests were recomputed and match. These are public file digests, not credential values. The raw failure remains retained in CI; no scanner rule, ignore, classifier or gate was changed. Original [redacted artifact](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44682350976/artifacts/14604263838).
+
 ## Production application proposal and recovery
 
 No production application is authorized by this PR. Preserve the original Railway writer, PostgreSQL volume and backups.

@@ -44,6 +44,8 @@ jobs:
           version: 10.12.1
       - name: Install pinned dependencies
         run: pnpm install --frozen-lockfile
+      - name: Use the signed Ubuntu archive over HTTPS for browser dependencies
+        run: bash .github/scripts/prepare-browser-apt.sh
       - name: Install Chromium and WebKit
         run: pnpm exec playwright install --with-deps chromium webkit
       - name: Build actual website with financial gates closed
