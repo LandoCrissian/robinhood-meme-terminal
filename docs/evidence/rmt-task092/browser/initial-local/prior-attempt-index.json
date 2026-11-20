@@ -1,0 +1,191 @@
+[
+  {
+    "attempt": ".task092-browser-chromium-desktop-01",
+    "status": "passed",
+    "browser": "chromium",
+    "viewport": "desktop",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "a2a7f89782800c8cc2e481315bacbd43b75966f94929a800f998922afb04d861"
+  },
+  {
+    "attempt": ".task092-browser-chromium-desktop-02",
+    "status": "passed",
+    "browser": "chromium",
+    "viewport": "desktop",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "4e50c3eba66a17219aa4debc5f0ee06a226b9ac4c99dd6bfc84ed6b732784994"
+  },
+  {
+    "attempt": ".task092-browser-chromium-desktop-03",
+    "status": "passed",
+    "browser": "chromium",
+    "viewport": "desktop",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "2605627bfddadd42b3932c4f236bd76038d0142454aa0ff46fc6c97531c35109"
+  },
+  {
+    "attempt": ".task092-browser-chromium-desktop-04",
+    "status": "passed",
+    "browser": "chromium",
+    "viewport": "desktop",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "95a946bf7764241ae0a547718a2796867de975301f51f1c6493044edec2cd3f7"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-01",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "disabled",
+    "reason": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Connect trading wallet', exact: true })\u001b[22m\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:129:50)",
+    "sha256": "c20245b740844390a4f99444da4800d80490b3d8debb76183bd6f3b6a3e4fab3"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-02",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "trading",
+    "reason": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('Trade amount', { exact: true })\u001b[22m\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:138:66)",
+    "sha256": "60b96f3ad4abcfbea47cd4b5f5c93793b435a68a296e20048a93b315693e2ac7"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-03",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "eoa",
+    "reason": "locator.waitFor: Error: strict mode violation: getByText(/Wallet request rejected/) resolved to 2 elements:\n    1) <p role=\"status\">Wallet request rejected. No retry or signature wi…</p> aka getByText('Wallet request rejected. No')\n    2) <p role=\"status\" class=\"lpInlineNotice\">Wallet request rejected. The reviewed request is …</p> aka getByText('Wallet request rejected. The')\n\nCall log:\n\u001b[2m  - waiting for getByText(/Wallet request rejected/) to be visible\u001b[22m\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:162:131)",
+    "sha256": "ad85380be96d5c5c835d665c5d0a8c32ccca006b4f63006964a5f1d1b798bb57"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-04",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "eoa",
+    "reason": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 2\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:165:18)",
+    "sha256": "d55779abcce16081877118e2a916c21f96598f74844cee577f903eeddc7fd221"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-05",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "metamask-7702",
+    "reason": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Recover profiled claim receipt', exact: true }) to be visible\u001b[22m\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:165:117)",
+    "sha256": "f4101b380b0b4e9b01af32ef351feb6443bc671caca18b8e8c9fadcb7b60a128"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-06",
+    "status": "passed",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "899e7b9af09cbb708f1a369878b28d0796762d3162076dae3af680772bcc97c9"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-07",
+    "status": "passed",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "b88715ec0b80774c1b76f94e3b600e3ff95fc566e5bbb0b7fc973db144beb512"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-08",
+    "status": "passed",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "f6ca886ed324cfbd88fe9929e2889ab3e53169513b789ea1b2075db6983ec28b"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-09",
+    "status": "passed",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "18c4969d2a6d4d5a7ecd10b04b0bb63e47189d20cea096b080edf5a45cc8eec5"
+  },
+  {
+    "attempt": ".task092-browser-webkit-desktop-01",
+    "status": "incomplete",
+    "browser": "webkit",
+    "viewport": "desktop",
+    "failedMode": "eoa",
+    "reason": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 0\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:158:95)",
+    "sha256": "8c668d3f55182c8b6967fbc9872dff9d52e0ee4c4dc09313364236b451fa4f20"
+  },
+  {
+    "attempt": ".task092-browser-webkit-desktop-02",
+    "status": "passed",
+    "browser": "webkit",
+    "viewport": "desktop",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "fa75685748dd84c3de14364b8186b46c68683287a59b245cdfec56985ccedff6"
+  },
+  {
+    "attempt": ".task092-browser-webkit-desktop-03",
+    "status": "passed",
+    "browser": "webkit",
+    "viewport": "desktop",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "151be0f23927f87780d8a6263b2be990bab668edc797dbfdd2e3fead68c225df"
+  },
+  {
+    "attempt": ".task092-browser-webkit-desktop-04",
+    "status": "passed",
+    "browser": "webkit",
+    "viewport": "desktop",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "50c51b4adc73c36fc323bac280f042bc33aa0989f5270bc032037e0d51406bfe"
+  },
+  {
+    "attempt": ".task092-browser-webkit-mobile-01",
+    "status": "incomplete",
+    "browser": "webkit",
+    "viewport": "mobile",
+    "failedMode": "eoa",
+    "reason": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 0\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:158:95)",
+    "sha256": "d08f428b026676ea0990cbbca5060d0f31882cc587cc16065fe1f9679879653c"
+  },
+  {
+    "attempt": ".task092-browser-webkit-mobile-02",
+    "status": "passed",
+    "browser": "webkit",
+    "viewport": "mobile",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "1cd80b9440e0301e3ccf42c0cc8df780117f316fdcae96d9b6af8aa04ce1990d"
+  },
+  {
+    "attempt": ".task092-browser-webkit-mobile-03",
+    "status": "passed",
+    "browser": "webkit",
+    "viewport": "mobile",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "c4d8255578108e8241f6945d8f2806a4bc6385507536802dec84dbdf3c685839"
+  },
+  {
+    "attempt": ".task092-browser-webkit-mobile-04",
+    "status": "passed",
+    "browser": "webkit",
+    "viewport": "mobile",
+    "failedMode": "",
+    "reason": null,
+    "sha256": "667b84df0c6e5bd436b11f16ddbec21e13bfd0f5ce15757372649779ee32e1e9"
+  }
+]

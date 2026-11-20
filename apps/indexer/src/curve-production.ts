@@ -10,6 +10,9 @@ import { commitProductionCurveRange, initializeProductionCurveStore, productionC
   productionCurveCursor, productionCurveScope, readProductionCurveLaunches, readProductionCurveEarnings, rollbackProductionCurve } from "./curve-production-store.js";
 import { creatorEarningsProfile, decodeEarningsDiscoveryCursor, earningsBeneficiaryRoles, encodeEarningsDiscoveryCursor,
   type EarningsDiscoveryQuery } from "./creator-earnings.js";
+import { createProductionActivityIndexer, productionActivityProfile, readProductionActivity,
+  type ActivityQuery } from "./curve-production-activity.js";
+import { productionCurveBirthRpc } from "./curve-production-birth.js";
 
 type Database = Pick<Client, "query">;
 const maximumRange = 2_000n;
@@ -42,6 +45,7 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
   let caughtUp = false;
   let busy = false;
   let revision = 0;
+  const activity = createProductionActivityIndexer(config, writer, primary, archive);
 
   async function canonicalBlock(height: bigint) {
     if (!archive) throw new Error("Production curve indexing requires a distinct corroborating RPC");
@@ -51,9 +55,9 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     return checked[0]!;
   }
 
-  async function verifyDeployment() {
+  async function verifyDeployment(readers: PublicClient[]) {
     if (!archive) throw new Error("Production curve indexing requires a distinct corroborating RPC");
-    for (const rpc of [primary, archive]) {
+    for (const rpc of readers) {
       await verifyCurveDeployment(binding, rpc);
       const [receipt, reserve] = await Promise.all([
         rpc.getTransactionReceipt({ hash: config.deploymentTransactionHash }),
@@ -88,8 +92,13 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     busy = true;
     revision++;
     try {
+      if (!archive) throw new Error("Production curve indexing requires a distinct corroborating RPC");
+      const heads = await Promise.all([primary, archive].map((rpc) => rpc.getBlockNumber({ cacheTime: 0 })));
+      const safeHead = (heads[0]! < heads[1]! ? heads[0]! : heads[1]!) - BigInt(binding.confirmations);
+      if (safeHead < binding.deploymentBlock) throw new Error("Production deployment confirmations are pending");
+      const readers = [primary, archive].map(rpc => productionCurveBirthRpc(config, rpc, safeHead));
       if (!initialized) {
-        await verifyDeployment();
+        await verifyDeployment(readers);
         await initializeProductionCurveStore(writer, config);
         initialized = true;
       }
@@ -98,9 +107,6 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
         throw new Error("Production curve deployment was invalidated by a reorg");
       }
       await reconcile();
-      const heads = await Promise.all([primary, archive!].map((rpc) => rpc.getBlockNumber({ cacheTime: 0 })));
-      const safeHead = (heads[0]! < heads[1]! ? heads[0]! : heads[1]!) - BigInt(binding.confirmations);
-      if (safeHead < binding.deploymentBlock) throw new Error("Production deployment confirmations are pending");
       const cursor = await productionCurveCursor(writer, scope);
       if (cursor - 1n > safeHead) throw new Error("Production checkpoint is ahead of corroborated state");
       if (cursor <= safeHead) {
@@ -125,8 +131,8 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
         assert.deepEqual(references[0], references[1], "Production providers disagree on factory registration logs");
         const launches: CurveLaunchRegistration[] = [];
         for (const ref of references[0]!) {
-          const registration = await readWithArchive(() => readCurveLaunchRegistration(binding, primary, ref),
-            () => readCurveLaunchRegistration(binding, archive!, ref));
+          const registration = await readWithArchive(() => readCurveLaunchRegistration(binding, readers[0]!, ref),
+            () => readCurveLaunchRegistration(binding, readers[1]!, ref));
           if (!registration) throw new Error("Production registration evidence unavailable");
           launches.push(registration);
         }
@@ -136,6 +142,9 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
       checkpoint = (await productionCurveCheckpoints(writer, scope, 1))[0] ?? null;
       if (!checkpoint) throw new Error("Production canonical checkpoint unavailable");
       caughtUp = BigInt(checkpoint.blockNumber) === safeHead;
+      // Optional explicitly installed activity schema backfills independently.
+      // Missing/invalid activity never makes creation-only evidence unavailable.
+      try { await activity.sync(checkpoint, safeHead); } catch { activity.invalidate(); }
       verifiedAt = now();
       failed = false;
       failureInvalidatesEvidence = false;
@@ -207,5 +216,17 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     };
   }
 
-  return { syncOnce, state, read, readEarnings };
+  async function readActivity(db: Database, query: ActivityQuery) {
+    const before = state();
+    if (before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new Error("Canonical activity evidence unavailable");
+    const events = await readProductionActivity(db, scope, before.checkpoint, query);
+    const after = state();
+    if (after.revision !== before.revision || after.status !== "ready" || !activity.ready(before.checkpoint)) throw new Error("Canonical activity changed during read");
+    return { schemaVersion: 1 as const, chainId: 4663 as const, profile: productionActivityProfile, status: "ready" as const,
+      token: query.token ?? null, transactionHash: query.transactionHash, observedAt: new Date(now()).toISOString(),
+      deployment: { factory: binding.factory, registry: binding.projectRegistry, blockNumber: binding.deploymentBlock.toString(), blockHash: binding.deploymentBlockHash },
+      checkpoint: { ...before.checkpoint, confirmations: binding.confirmations, finality: "l2-confirmed" as const, l1Finality: "unverified" as const }, events };
+  }
+
+  return { syncOnce, state, read, readEarnings, readActivity };
 }

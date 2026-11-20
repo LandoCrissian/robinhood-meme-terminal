@@ -8,6 +8,8 @@ import { readFixtureLaunches } from "../../../lib/server/fixture-discovery";
 import { configuredProductionDiscovery, productionDirectory, readProductionDiscovery } from "../../../lib/server/production-discovery";
 import { LaunchProvenance } from "../../_components/launch-provenance";
 import { CreatorLink } from "../../_components/creator-link";
+import { availableProductionFinancial } from "../../../lib/server/production-financial";
+import { ProductionLifecycleWallet } from "../../_components/production-lifecycle-wallet";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +23,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
     if (!configuredProductionDiscovery(requestHeaders)) notFound();
     const data = await readProductionDiscovery(address);
     const directory = productionDirectory(data);
+    const trading = data.status === "ready" && data.launches[0] && await availableProductionFinancial(requestHeaders, "trading");
     return <>
       <Link className="lpBack" href="/" prefetch={false}>← Launches</Link>
       <header className="lpPageHeading"><div><h1>{data.status === "unavailable" ? "New-engine evidence unavailable" : data.launches[0]?.name ?? "Indexing pending"}</h1><p>Robinhood Chain 4663 · verified creation evidence</p></div></header>
@@ -39,6 +42,8 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
         <dt>Submitted project URI</dt><dd>{data.launches[0].projectURI || "None"}</dd>
         <dt>Checkpoint</dt><dd>{data.checkpoint.blockNumber} · {data.checkpoint.timestamp}</dd>
       </dl>}
+      {trading && data.status === "ready" && data.launches[0] && <ProductionLifecycleWallet token={data.launches[0].token}
+        curve={data.launches[0].initialCurve} symbol={data.launches[0].symbol} />}
     </>;
   }
   const directory = await readFixtureLaunches(fixture, address);

@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_PUBLIC_NITRO_ABI_AVAILABILITY_NOT_TRANSACTION_ACCEPTANCE",
+  "observedAt": "2026-11-20T22:18:05.565Z",
+  "rpcMethods": [
+    "eth_chainId",
+    "eth_getBlockByNumber",
+    "eth_call"
+  ],
+  "financialAuthorization": false,
+  "signing": false,
+  "broadcast": false,
+  "observations": [],
+  "status": "UNAVAILABLE",
+  "reason": "HTTP request failed.\n\nStatus: 429\nURL: https://robinhood.api.pocket.network/\nRequest body: {\"method\":\"eth_getBlockByNumber\",\"params\":[\"latest\",false]}\n\nDetails: \"too many requests from this address\"\nVersion: viem@2.55.5"
+}

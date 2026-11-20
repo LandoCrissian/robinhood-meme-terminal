@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "scope": "EXISTING_PRODUCTION_PROVIDER_METADATA_READ_ONLY",
+  "startedAt": "2026-11-20T21:52:07.836Z",
+  "finishedAt": "2026-11-20T21:52:10.824Z",
+  "cliVersion": "railway 5.43.1",
+  "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+  "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+  "databaseServiceId": "a1ef7853-e21a-401e-87c9-c99002228507",
+  "volume": {
+    "createdAt": "2026-07-15T21:42:04.122Z",
+    "currentSizeMB": 277.405696,
+    "id": "8f64e859-fc3c-445a-8569-1e4bfab021a6",
+    "mountPath": "/var/lib/postgresql/data",
+    "serviceId": "a1ef7853-e21a-401e-87c9-c99002228507",
+    "sizeMB": 500,
+    "state": "READY",
+    "volumeId": "bf6e7ddc-3be6-4ba7-ad53-8e7010e76c86"
+  },
+  "volumeUsagePercent": 55.481139199999994,
+  "backups": [],
+  "schedules": [],
+  "backupCount": 0,
+  "newestProviderBackupAt": null,
+  "pitr": {
+    "enabled": false,
+    "bucketWired": false,
+    "isHaCluster": false
+  },
+  "noRegisteredSshKeys": true,
+  "status": "CURRENT_PROVIDER_BACKUPS_ABSENT",
+  "currentProductionBackupRestored": false,
+  "ownerControlledOffDeviceCopyAndKeyVerified": false,
+  "currentWriterLeaseDirectlyObserved": false,
+  "limitations": [
+    "No backup was triggered or enabled; backup metadata is not a successful restore.",
+    "The earlier Task066 encrypted owner-local backup is not proved absent; its current existence, readability, age and off-device recovery remain unverified.",
+    "No SSH keys were added, no SSH session opened and no public database network path created.",
+    "No secret values, database data, wallet signatures, token creation or financial configuration were read or changed."
+  ]
+}

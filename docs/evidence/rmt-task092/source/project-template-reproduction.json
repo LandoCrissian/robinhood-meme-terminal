@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "status": "CANONICAL_TOKEN_AND_REVENUE_LEDGER_TEMPLATES_REPRODUCED",
+  "compiler": {
+    "command": "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task090-tools\\solc-0.8.26.exe",
+    "prefix": [],
+    "executablePlatform": "win32-x64",
+    "executableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67"
+  },
+  "canonicalInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "auxiliaryInputSha256": "fcf4980678723481f9dd34fdaf47839e9a539b59ce9e561a21e6304b384bdb64",
+  "changes": "AST/output selection only; creation/runtime bytes and immutable offsets equal original canonical compilation",
+  "artifactSha256": "92fffd07d2ec029920d6d7a30e4597286b8dcf61b9f338fe208090c4cbefdd36",
+  "artifactBytes": 14257,
+  "networkRequests": 0,
+  "productionWrites": false
+}

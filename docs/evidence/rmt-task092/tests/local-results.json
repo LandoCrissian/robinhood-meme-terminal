@@ -1,0 +1,170 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK092_LOCAL_COMMAND_EVIDENCE",
+  "capturedAt": "2026-11-20T23:17:59.219Z",
+  "logs": [
+    {
+      "file": "governance-final-authority.txt.gz",
+      "rawBytes": 2691,
+      "rawSha256": "ca523dfbeeaa9bef3961a309cae66a2f263d8a59f9ebcb2da0bc0145709324f7",
+      "gzipSha256": "4a474c66ef975977300ab7634c2a0ec80b5976bdc32b3c84cb75e4754ca621d0"
+    },
+    {
+      "file": "governance-final-capture.txt.gz",
+      "rawBytes": 1787,
+      "rawSha256": "b7e0fbdc7c6cdabe1e69d07f713c898cdd291604c9bdec0fdc6f64997d3844e7",
+      "gzipSha256": "890d20dba3ebe19510b18c9a6f9ff5bf5c639cae46cecfc9e5319ea3061cfb02"
+    },
+    {
+      "file": "governance-final-tests.txt.gz",
+      "rawBytes": 659,
+      "rawSha256": "a0f20149dcbe508f4198b3d509437c564840fa07ef4ffeee9ff0d788edb43d5d",
+      "gzipSha256": "60d171b305253f4575fc7866f39c01ad07bb0c64314bf4a3ef3393baa360290a",
+      "counts": {
+        "tests": 2,
+        "pass": 2,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "history-control-tests.txt.gz",
+      "rawBytes": 56224,
+      "rawSha256": "6934a0d91b278376b565737a1252a274679d184955efaf2d46552e684cb88c5f",
+      "gzipSha256": "2682e5fc581ed08dccf31bbee87b4ad53c3acdc359222c195cad5c86bf336f86",
+      "counts": {
+        "tests": 302,
+        "pass": 302,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "release-tests-current.txt.gz",
+      "rawBytes": 78146,
+      "rawSha256": "7b580a45a355ecaba186fde2ab34f671dfe287f576966377c379e54616bc9d18",
+      "gzipSha256": "d52b0c7961d9f5062516d616fdcac05de546e2622fbd2cd957d1271c00177f18",
+      "counts": {
+        "tests": 273,
+        "pass": 273,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "release-tests-final-serial.txt.gz",
+      "rawBytes": 77807,
+      "rawSha256": "e46579e6d8902a4777fb4e26b5632860c0a8fc129c8f636a5b716189a58a884f",
+      "gzipSha256": "26d77ff9b9f95bb690f6158ac38230417df9babebb0b5c5e3efb69de373b9bda",
+      "counts": {
+        "tests": 273,
+        "pass": 273,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "release-tests-final.txt.gz",
+      "rawBytes": 79391,
+      "rawSha256": "92617df8dcd71a0efd3d1bb638411e11e51548db3bfe1b74d4b2035ad1e05499",
+      "gzipSha256": "7d09f84aeb2caf8d53368e5f7cd1a3dd79adebafc02c949bf5447c243c8137d7",
+      "counts": {
+        "tests": 273,
+        "pass": 270,
+        "fail": 3,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "repo-check-final.txt.gz",
+      "rawBytes": 425,
+      "rawSha256": "9a5ec15aa589cd47fba6d32f5013a63430058279a2ed2282db772358f9d4d34b",
+      "gzipSha256": "10e509bb945f001bcade6456708647321a658f2a1a91cdf99fe49012ff8fd95e"
+    },
+    {
+      "file": "typecheck-final.txt.gz",
+      "rawBytes": 391,
+      "rawSha256": "87027db348560215785b44f13d25d44ee08e25571cfb7c77461d9f89e725612e",
+      "gzipSha256": "33c5914b3dc87002f352338818e17397af8ce2a3bef841d421d71611a1eadb13"
+    },
+    {
+      "file": "website-build-current.txt.gz",
+      "rawBytes": 4940,
+      "rawSha256": "fc7c19cd951410691f7b8bab090fd8f1d77cd8b032ad3332f8c5d9ed305030db",
+      "gzipSha256": "c41603603dbb2af17fbd314d21608718f8c31e5ed99d18668b4b76cb78a5f964"
+    },
+    {
+      "file": "website-build-final.txt.gz",
+      "rawBytes": 4940,
+      "rawSha256": "347033265b7793f530e93f1bd1f2c596b895782c16ee7142aba85efe645cdfdb",
+      "gzipSha256": "a549c4861edfc0b41a8f99aeb959b44dc1449d6148016f46177c86e4410ac044"
+    },
+    {
+      "file": "website-tests-current.txt.gz",
+      "rawBytes": 110831,
+      "rawSha256": "91cd8b8208af08dcec7863a02eab991d8722f022d05d2ef31e3bbd42e1b2cc9e",
+      "gzipSha256": "98e6a14807d806d84e402a27835f75476f07140fbf185a3d24baa2987a0a8262",
+      "counts": {
+        "tests": 415,
+        "pass": 415,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    },
+    {
+      "file": "website-tests-final.txt.gz",
+      "rawBytes": 112782,
+      "rawSha256": "793c15ae03c5b953de7878c9befd780787d3ac6cf3a2d71091125a05d2108665",
+      "gzipSha256": "48825f07c0b992f6e8444cedf38d993a5ab8537a98c9729cb5a6a551640e59af",
+      "counts": {
+        "tests": 431,
+        "pass": 431,
+        "fail": 0,
+        "cancelled": 0,
+        "skipped": 0
+      }
+    }
+  ],
+  "finalResults": {
+    "website": {
+      "passed": 431,
+      "failed": 0,
+      "skipped": 0
+    },
+    "releaseEvidence": {
+      "serialPassed": 273,
+      "additionalFinalGovernancePassed": 2,
+      "failed": 0
+    },
+    "historyAndControl": {
+      "passed": 302,
+      "failed": 0
+    },
+    "foundry": {
+      "passed": 142,
+      "suites": 18,
+      "fuzzRuns": 512,
+      "sourceUnchanged": true,
+      "rawSha256": "bc3673d2235e9afc1aedfedecbfe1cb0a2d07f1a688b7f36b19ad8831bb1b2be"
+    },
+    "websiteProductionBuild": "PASS",
+    "bothApplicationTypechecks": "PASS",
+    "repositoryCheck": "PASS_WITH_TWO_PREEXISTING_HINTS"
+  },
+  "retainedFailure": {
+    "file": "release-tests-final.txt.gz",
+    "passed": 270,
+    "failed": 3,
+    "detail": "The three unchanged Task041/044 CLI subprocess assertions returned null process status at their original 5000ms bound while four local suites ran concurrently. No tests or timeout limits changed. Re-running the full 273-test release suite with Node test-concurrency=1 passed; both raw logs are retained."
+  },
+  "limits": [
+    "Actual hosted Linux bundle, exact-head CI and all eight browser matrix jobs are separate subsequent evidence.",
+    "No production deployment, financial flag activation, signing, broadcast or token creation."
+  ]
+}

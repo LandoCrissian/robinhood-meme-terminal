@@ -1,0 +1,51 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK092_BOUNDED_TYPED_PUBLIC_SOURCE_METADATA",
+  "startedAt": "2026-11-20T21:52:52.6398796Z",
+  "status": "STOPPED_AT_RESTRICTION_OR_FAILURE",
+  "requests": [
+    {
+      "id": "RMTLaunchCurveDeploymentV2",
+      "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+      "url": "https://robinhoodchain.blockscout.com/api/v2/smart-contracts/0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+      "method": "GET",
+      "requestedAt": "2026-11-20T21:52:52.6504901Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 98251,
+      "responseSha256": "a61561659dc6d460457674d6f679e1e3bb3270c6cdbec7c30b8171333e7d0cbf",
+      "finishedAt": "2026-11-20T21:52:53.4752383Z",
+      "file": "RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "fileSha256": "eaf114858539427d8c97967ebf1947cbbecf15b00888a351ddb057c11cae9b9a",
+      "isFullyVerified": null,
+      "isPartiallyVerified": null,
+      "name": null,
+      "compilerVersion": null,
+      "verifiedAt": null
+    },
+    {
+      "id": "RMTV4CurveInitializationGuardV1",
+      "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+      "url": "https://robinhoodchain.blockscout.com/api/v2/smart-contracts/0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+      "method": "GET",
+      "requestedAt": "2026-11-20T21:52:53.5421228Z",
+      "status": "UNAVAILABLE_NO_RETRY",
+      "httpStatus": 200,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 85080,
+      "responseSha256": "bdf24d0e6c627088a7850b37bfbb20fc16ef210d9072bda8647a2b571615dd00",
+      "finishedAt": "2026-11-20T21:52:53.9237062Z",
+      "file": "RMTV4CurveInitializationGuardV1.metadata.json.gz",
+      "fileSha256": "9899ce2c2d2edcd1d08f655dca344c1c5dc5bb118e67ea12a949c2f63f826913",
+      "failure": "The provided JSON includes a property whose name is an empty string, this is only supported using the -AsHashTable switch."
+    }
+  ],
+  "requestLimit": 4,
+  "retries": 0,
+  "posts": 0,
+  "signing": false,
+  "broadcast": false,
+  "productionConfigurationChanges": false,
+  "finishedAt": "2026-11-20T21:52:53.9542665Z"
+}

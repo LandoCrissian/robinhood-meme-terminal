@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK092_BOUNDED_TYPED_PUBLIC_SOURCE_METADATA",
+  "startedAt": "2026-11-20T22:16:29.2339660Z",
+  "status": "BOUNDED_PUBLIC_METADATA_OBSERVED",
+  "requests": [
+    {
+      "id": "RMTLaunchCurveDeploymentV2",
+      "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+      "url": "https://robinhoodchain.blockscout.com/api/v2/smart-contracts/0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+      "method": "GET",
+      "requestedAt": "2026-11-20T22:16:29.2502271Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 98251,
+      "responseSha256": "a61561659dc6d460457674d6f679e1e3bb3270c6cdbec7c30b8171333e7d0cbf",
+      "finishedAt": "2026-11-20T22:16:30.1050036Z",
+      "file": "RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "fileSha256": "eaf114858539427d8c97967ebf1947cbbecf15b00888a351ddb057c11cae9b9a",
+      "isFullyVerified": null,
+      "isPartiallyVerified": null,
+      "name": null,
+      "compilerVersion": null,
+      "verifiedAt": null
+    }
+  ],
+  "startIndex": 0,
+  "requestLimit": 1,
+  "retries": 0,
+  "posts": 0,
+  "signing": false,
+  "broadcast": false,
+  "productionConfigurationChanges": false,
+  "finishedAt": "2026-11-20T22:16:30.1725936Z"
+}

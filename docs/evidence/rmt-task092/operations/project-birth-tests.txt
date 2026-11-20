@@ -1,0 +1,112 @@
+TAP version 13
+# Subtest: curve earnings use exact contract credits and beneficiary-specific cumulative paid amounts
+ok 1 - curve earnings use exact contract credits and beneficiary-specific cumulative paid amounts
+  ---
+  duration_ms: 19.4754
+  type: 'test'
+  ...
+# Subtest: overlapping immutable roles are summed without allocating another wallet's credits
+ok 2 - overlapping immutable roles are summed without allocating another wallet's credits
+  ---
+  duration_ms: 2.9786
+  type: 'test'
+  ...
+# Subtest: independent treasury credits are read from their own ledger address, including contract wallets
+ok 3 - independent treasury credits are read from their own ledger address, including contract wallets
+  ---
+  duration_ms: 1.7913
+  type: 'test'
+  ...
+# Subtest: V2 and V3 routing preserve discovery and the original curve ledger rights
+ok 4 - V2 and V3 routing preserve discovery and the original curve ledger rights
+  ---
+  duration_ms: 2.3
+  type: 'test'
+  ...
+# Subtest: LP earnings distinguish gross uncollected position fees from beneficiary credits and principal
+ok 5 - LP earnings distinguish gross uncollected position fees from beneficiary credits and principal
+  ---
+  duration_ms: 2.8042
+  type: 'test'
+  ...
+# Subtest: missing or conflicting provider, policy, runtime, asset and custody evidence never fabricates zero earnings
+ok 6 - missing or conflicting provider, policy, runtime, asset and custody evidence never fabricates zero earnings
+  ---
+  duration_ms: 9.9286
+  type: 'test'
+  ...
+# Subtest: creation fees are one factory-global amount and are readable with zero indexed projects
+ok 7 - creation fees are one factory-global amount and are readable with zero indexed projects
+  ---
+  duration_ms: 1.2133
+  type: 'test'
+  ...
+# Subtest: wrong chain and reorged canonical checkpoint return unavailable
+ok 8 - wrong chain and reorged canonical checkpoint return unavailable
+  ---
+  duration_ms: 0.5675
+  type: 'test'
+  ...
+# Subtest: EIP-7702 code designators are disclosed as delegated EOAs rather than Safe accounts
+ok 9 - EIP-7702 code designators are disclosed as delegated EOAs rather than Safe accounts
+  ---
+  duration_ms: 1.3408
+  type: 'test'
+  ...
+# Subtest: exact on-chain one-shot constructor proves factory birth when historical state is explicitly pruned
+ok 10 - exact on-chain one-shot constructor proves factory birth when historical state is explicitly pruned
+  ---
+  duration_ms: 29.8493
+  type: 'test'
+  ...
+# Subtest: wrong/empty historical code remains a rejected code witness; no alternative proof silently replaces it
+ok 11 - wrong/empty historical code remains a rejected code witness; no alternative proof silently replaces it
+  ---
+  duration_ms: 0.5826
+  type: 'test'
+  ...
+# Subtest: canonical initcode, direct CREATE identity, receipt, membership, immutables and all child pins are indispensable
+ok 12 - canonical initcode, direct CREATE identity, receipt, membership, immutables and all child pins are indispensable
+  ---
+  duration_ms: 40.1301
+  type: 'test'
+  ...
+# Subtest: only the observed typed historical-state condition is admitted, never auth, quota, timeout or unknown failures
+ok 13 - only the observed typed historical-state condition is admitted, never auth, quota, timeout or unknown failures
+  ---
+  duration_ms: 0.3243
+  type: 'test'
+  ...
+# Subtest: compiler-derived public templates retain exact canonical bytecode and only six revenue immutable fields
+ok 14 - compiler-derived public templates retain exact canonical bytecode and only six revenue immutable fields
+  ---
+  duration_ms: 1.8216
+  type: 'test'
+  ...
+# Subtest: only exact typed pruning selects project proof; empty/wrong code and outages are not substituted
+ok 15 - only exact typed pruning selects project proof; empty/wrong code and outages are not substituted
+  ---
+  duration_ms: 13.9884
+  type: 'test'
+  ...
+# Subtest: canonical original direct creation, CREATE2 token, CREATE1 ledger and current exact immutable runtimes prove aged project birth
+ok 16 - canonical original direct creation, CREATE2 token, CREATE1 ledger and current exact immutable runtimes prove aged project birth
+  ---
+  duration_ms: 17.6714
+  type: 'test'
+  ...
+# Subtest: reject changed transaction, receipt, source policy, deterministic addresses, code and canonicality
+ok 17 - reject changed transaction, receipt, source policy, deterministic addresses, code and canonicality
+  ---
+  duration_ms: 170.6742
+  type: 'test'
+  ...
+1..17
+# tests 17
+# suites 0
+# pass 17
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1570.3669

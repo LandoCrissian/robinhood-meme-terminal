@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "task": "092",
+  "reviewer": "independent defensive source review",
+  "generatedAtUtc": "2026-11-20T23:15:29.6155625Z",
+  "baseCommit": "86b7953ca2cdd74de87e2ceb89d93623c2194e89",
+  "sourceState": "Current working-tree source and tests, SHA-256 bound below",
+  "scope": "New production adapters, fee evidence, authentication/runtime/wallet pins, financial journals/locks and indexer birth/activity proofs",
+  "finding": {
+    "id": "production-consumed-nonce-reuse",
+    "status": "corrected and independently reproduced before/after",
+    "trigger": "Stored canonical/indexed receipt remains after an EOA nonce rewinds to the original consumed nonce",
+    "impact": "A different financial route could request another transaction using an old still-authorized nonce without reconciling the original",
+    "before": {
+      "setup": "Local synthetic productionTradingFixture -> prepareProductionLifecycle -> store confirmed/indexed nonce-0 journal -> actual clearProductionTradeJournal -> actual submitProductionCreation",
+      "provider": "Mock EIP-1193 provider reports the original reviewed block and rewound pending nonce 0",
+      "consumedNonce": "0x0",
+      "candidateNonce": "0x0",
+      "activeJournalGuard": "allowed",
+      "archivedJournalGuard": "allowed",
+      "archivedTradeToCreationMockWalletSends": 1
+    },
+    "after": {
+      "sameFixture": "Actual production creation sender with consumed nonce 0 and candidate nonce 0",
+      "rejected": true,
+      "mockWalletCalls": 0,
+      "mockWalletSends": 0,
+      "rejection": "The original production transaction needs fresh canonical reconciliation before this nonce can be reused.",
+      "nextNonceControl": {
+        "consumedNonce": "0x0",
+        "candidateAndProviderNonce": "0x1",
+        "mockWalletSends": 1
+      }
+    },
+    "correction": "All production senders enforce active/archived consumed-nonce floors; unknown requests stay blocking; definite wallet rejection remains retryable; floor persistence precedes receipt release/eviction",
+    "relatedStorageCorrection": "Different accounts share one production financial storage mutex, protecting the shared floor map and bounded journal indexes from cross-tab lost updates"
+  },
+  "lockAudit": {
+    "uncoveredProductionFloorWriters": 0,
+    "nestedCommonLockAcquisitions": 0,
+    "tradeSend": "Library acquires common mutex once; UI confirm does not reacquire",
+    "tradeRecoveryAndArchive": "UI locked() holds common mutex for verification, floor update and archive",
+    "creationSendAndContinue": "Common mutex then creation journal lock; sender/archive do not reacquire",
+    "claimSendRecoveryAndSafeReconciliation": "UI withLock includes common mutex and payer/Safe resources; direct recover and applyClaimSettlement run inside it",
+    "isolatedClaims": "Chain 31337 never writes the production floor",
+    "contention": "ifAvailable prevents waiting cycles; contention fails closed"
+  },
+  "browserLockEvidence": {
+    "environment": "Actual installed Playwright Chromium and WebKit; local 127.0.0.1 HTTP server; two pages in one same-origin browser context; lock keys imported from current production-wallet.ts",
+    "results": [
+      {
+        "engine": "Chromium",
+        "differentAccountsSameMutex": true,
+        "secondTabDeniedWhileHeld": true,
+        "secondTabAdmittedAfterRelease": true
+      },
+      {
+        "engine": "WebKit",
+        "differentAccountsSameMutex": true,
+        "secondTabDeniedWhileHeld": true,
+        "secondTabAdmittedAfterRelease": true
+      }
+    ]
+  },
+  "targetedTests": {
+    "workingDirectory": "apps/launch-website",
+    "command": "node --import tsx --test lib/server/production-nonce.test.ts lib/server/production-trading-wallet.test.ts lib/server/production-claim-wallet.test.ts lib/server/production-financial-boundary.test.ts",
+    "tests": 37,
+    "passed": 37,
+    "failed": 0,
+    "cancelled": 0,
+    "skipped": 0,
+    "exitCode": 0
+  },
+  "disposition": "No remaining demonstrated material blocker in the reviewed source after these corrections. This is bounded defensive review, not a full audit or production financial acceptance.",
+  "restrictionsPreserved": [
+    "All prior security findings, scanner severities and tests remain unchanged",
+    "Financial flags remain disabled",
+    "No live vulnerability testing, production write, deployment, signature, broadcast or governance action"
+  ],
+  "sourceSha256": {
+    "apps/launch-website/lib/production-nonce.ts": "29d208bf2d46c2938566301ef84db1c2ab0056d1e7f3e2dd8cb492e6f38db003",
+    "apps/launch-website/lib/production-wallet.ts": "101ffc05a37a85c21a7cf8153e761f012334793b1170ca161cd9eadb0d0e830e",
+    "apps/launch-website/lib/production-trading-wallet.ts": "6ec2a1c3f1ccd1b45441ee7e4c9cde0a93aae3b1b980c5baaaee8f57158f9b19",
+    "apps/launch-website/lib/production-creation.ts": "9525332988c977996e7002097fd20bdd0a3247814c4b509388d16951f22aaa8f",
+    "apps/launch-website/lib/claim-recovery.ts": "c7042fa1d5404b54ea1748f76d703c0b52e8b636bd2a65495cfa6762dab4593b",
+    "apps/launch-website/app/_components/production-lifecycle-wallet.tsx": "6dc8fa751820a21a2db6b81bfa8b5e0d5d2644e7453117a7bf2c7971218251cd",
+    "apps/launch-website/app/_components/production-creation-wallet.tsx": "a686dbe684d5cf23452f04ddc2035091225e519fa4f668b102935f547e563988",
+    "apps/launch-website/app/_components/earnings-profile-wallet.tsx": "e4d58ee1a44842d1abb5c8117ab304840e669c3bb2392ea3d1d0e45ac88d8200",
+    "apps/launch-website/lib/production-lifecycle.ts": "ece2cb28c2beb2ef4a3da6ddec0b7fb719ddd4134c6371d0ff812f95b768f387",
+    "apps/launch-website/lib/claim-profiles.ts": "a1599a5945ee06dde26de135d206c292bdabc764457286fb6c09c2a691edd5ba",
+    "apps/launch-website/lib/server/production-financial.ts": "8d5cee3d4bd4735bb6aa096dbc01804df4ed211813266da296b78c002040346a",
+    "apps/launch-website/lib/server/production-lifecycle.ts": "93d0fe0de694c8a7dae304baf4082f5be5125a092693f07fc705f67dac4ec697",
+    "apps/launch-website/lib/server/production-earnings.ts": "c4f410746b150ea5227a697305ddd4e1921c5657d5cb63ced3f11f6b5376a6b2",
+    "apps/launch-website/lib/server/claim-profiles.ts": "3508fd0d7a2b358606b4ad9d207c215fa6b2196a614c60a4009313482401056a",
+    "apps/launch-website/lib/server/nitro-zero-poster.ts": "fa968f8d089b26aa8415c73f8131c309df610f8e707a407d2ca616d04a532867",
+    "apps/indexer/src/curve-production-birth.ts": "a05bb5213020f13a8fabc88b8be9454ab9e8cd5104458eb76feb7fc5bd866830",
+    "apps/indexer/src/curve-production-activity.ts": "aa23318a07209a311c61af04ec43d3271f80804c54a02de3059cac3524dff663",
+    "apps/indexer/src/curve-production.ts": "3a0a22ae10b465b04b99b1f8afbfa59a26df7702a762934c78a34ba30b411e64",
+    "apps/launch-website/lib/server/production-nonce.test.ts": "0c3829d667d856241a508ae0972ad495d7f0da2f442b677e34177f8ad970f684",
+    "apps/launch-website/lib/server/production-trading-wallet.test.ts": "a25bff8ec2322cd15dd30023c4bbbca787826a039a20c995928e7b5ff38bd9b0",
+    "apps/launch-website/lib/server/production-claim-wallet.test.ts": "fa0eac41fa15a4aff0be114d06ffbe444d9a8376e243881bdc599c337c393fea",
+    "apps/launch-website/lib/server/production-financial-boundary.test.ts": "32f9f50af7d69b62703d50f2aba33e4f35b415324f94e1444bc695c8179cd5ba"
+  }
+}

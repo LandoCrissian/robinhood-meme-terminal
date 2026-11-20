@@ -1,6 +1,8 @@
 import { decodeFunctionData, encodeFunctionData, getAddress, parseAbi, zeroAddress, type Address, type Hex } from "viem";
-import { isTransactionHash, testCreationFeeWei, testCreationSignature, type TestCreationFields } from "./test-creation";
+import { isTransactionHash, testCreationFeeWei, testCreationSignature, type TestCreationFields, type TestCreationVerification } from "./test-creation";
 import { type TestWallet, testWalletErrorCode } from "./test-wallet";
+import { assertProductionNonceAvailable, recordProductionConsumedNonce } from "./production-nonce";
+import { isLaunchAddress } from "./launch-data";
 
 export const productionCreationPath = "/api/launchpad/production-creation";
 export const productionCreationChain = "0x1237";
@@ -9,6 +11,7 @@ export const productionCreationOrigin = "https://www.rmtlaunch.fun";
 export const productionCreationOperating = "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b";
 export const productionCreationReserve = "0x8D44078642ce938Fd799b23087BcdD6114A302e5";
 export const productionCreationJournalKey = "rmt:creation:4663:7281e1f9:v1";
+export const completedProductionCreationsKey = "rmt:creation:4663:7281e1f9:completed:v1";
 export const productionCreationAbi = parseAbi([testCreationSignature]);
 export const sameProductionHex = (a: string | null | undefined, b: string) => a?.toLowerCase() === b.toLowerCase();
 export type ProductionCreationRequest = {
@@ -51,6 +54,65 @@ export function readProductionCreationJournal(storage: Pick<Storage, "getItem">)
   if (!value || !isProductionCreationRequest(value.request) || Object.keys(value).some((key) => !["request", "transactionHash"].includes(key))
       || (value.transactionHash !== undefined && !isTransactionHash(value.transactionHash))) throw new Error("Invalid creation recovery record");
   return value as ProductionCreationJournal;
+}
+
+export type CompletedProductionCreation = { schemaVersion: 1; request: ProductionCreationRequest; transactionHash: Hex;
+  verification: TestCreationVerification; archivedAt: number };
+function completeCreationEvidence(value: TestCreationVerification) {
+  return value && isTransactionHash(value.transactionHash) && (value.status === "confirmed" && value.indexed === true
+    && isLaunchAddress(value.token) && !/^0x0{40}$/i.test(value.token)
+    || value.status === "reverted" && value.token === undefined && value.indexed !== true);
+}
+export function readCompletedProductionCreations(storage: Pick<Storage, "getItem">): CompletedProductionCreation[] {
+  const raw = storage.getItem(completedProductionCreationsKey); if (raw === null) return [];
+  if (raw.length > 65_536) throw new Error("Completed production creation history exceeds its bound");
+  const value = JSON.parse(raw);
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length !== 2 || value.schemaVersion !== 1
+    || !Array.isArray(value.entries) || value.entries.length > 16) throw new Error("Invalid completed creation history");
+  const seen = new Set<string>();
+  for (const record of value.entries) {
+    if (!record || Object.keys(record).length !== 5 || record.schemaVersion !== 1 || !isProductionCreationRequest(record.request)
+      || !isTransactionHash(record.transactionHash) || !completeCreationEvidence(record.verification)
+      || !sameProductionHex(record.transactionHash, record.verification.transactionHash)
+      || !Number.isSafeInteger(record.archivedAt) || record.archivedAt <= 0 || seen.has(record.transactionHash.toLowerCase())) throw new Error("Invalid completed creation identity");
+    seen.add(record.transactionHash.toLowerCase());
+  }
+  return value.entries;
+}
+export function assertNoPendingProductionCreation(storage: Pick<Storage, "getItem">, account: string, candidateNonce?: string) {
+  const active = readProductionCreationJournal(storage);
+  if (active && sameProductionHex(active.request.from, account)) throw new Error("Recover the original creation transaction before another financial request");
+  assertProductionNonceAvailable(storage, account, candidateNonce);
+  for (const record of readCompletedProductionCreations(storage)) {
+    if (sameProductionHex(record.request.from, account) && (candidateNonce === undefined || BigInt(candidateNonce) <= BigInt(record.request.nonce))) {
+      throw new Error("Wallet nonce rewound. Reconcile the original completed creation before another financial request");
+    }
+  }
+}
+/** Explicit fresh canonical verification under the shared account/journal locks
+ * is mandatory. Preserve complete history and the monotonic nonce floor before
+ * clearing the active slot; interruption can never erase an uncertain send. */
+export function archiveCompletedProductionCreation(storage: Pick<Storage, "getItem" | "setItem" | "removeItem">,
+  original: ProductionCreationJournal, verification: TestCreationVerification, now = Date.now()) {
+  const active = readProductionCreationJournal(storage);
+  if (!active || !sameProductionCreationRequest(active.request, original.request) || active.transactionHash !== original.transactionHash
+    || !completeCreationEvidence(verification) || original.transactionHash && !sameProductionHex(original.transactionHash, verification.transactionHash!)) {
+    throw new Error("Original creation is not canonically complete");
+  }
+  const entries = readCompletedProductionCreations(storage), existing = entries.find(record => sameProductionCreationRequest(record.request, original.request));
+  if (existing && !sameProductionHex(existing.transactionHash, verification.transactionHash!)) throw new Error("Archived creation identity changed");
+  if (!existing && entries.length >= 16) throw new Error("Completed creation history is full. Preserve existing receipts before another creation");
+  const record: CompletedProductionCreation = existing ?? { schemaVersion: 1, request: original.request, transactionHash: verification.transactionHash!, verification, archivedAt: now };
+  const raw = JSON.stringify({ schemaVersion: 1, entries: existing ? entries : [...entries, record] });
+  if (raw.length > 65_536) throw new Error("Completed creation history exceeds its bound");
+  storage.setItem(completedProductionCreationsKey, raw);
+  if (storage.getItem(completedProductionCreationsKey) !== raw || !readCompletedProductionCreations(storage).some(entry => entry.transactionHash === record.transactionHash)) {
+    throw new Error("Completed creation could not be preserved");
+  }
+  recordProductionConsumedNonce(storage, original.request.from, original.request.nonce, record.transactionHash);
+  storage.removeItem(productionCreationJournalKey);
+  if (storage.getItem(productionCreationJournalKey) !== null) throw new Error("Original creation remains recoverable; archive release was interrupted");
+  return record;
 }
 
 export type ProductionWallet = { account: Address; provider: TestWallet["provider"]; request: TestWallet["request"] };
@@ -99,11 +161,21 @@ export async function submitProductionCreation(wallet: ProductionWallet, request
   storage: Pick<Storage, "getItem" | "setItem" | "removeItem">, assertReviewCurrent: () => void) {
   if (!isProductionCreationRequest(request)) throw new Error("Invalid creation request");
   if (readProductionCreationJournal(storage)) throw new Error("An original creation request requires recovery");
+  assertNoPendingProductionCreation(storage, wallet.account, request.nonce);
+  const [{ assertNoPendingProductionClaim }, { assertNoPendingProductionTrade }] = await Promise.all([
+    import("./claim-recovery"), import("./production-trading-wallet"),
+  ]);
+  assertNoPendingProductionClaim(storage, wallet.account, request.nonce); assertNoPendingProductionTrade(storage, wallet.account, request.nonce);
   await assertProductionWallet(wallet, request);
   assertReviewCurrent();
   if (readProductionCreationJournal(storage)) throw new Error("An original creation request requires recovery");
+  assertNoPendingProductionCreation(storage, wallet.account, request.nonce);
+  assertNoPendingProductionClaim(storage, wallet.account, request.nonce); assertNoPendingProductionTrade(storage, wallet.account, request.nonce);
   const journal: ProductionCreationJournal = { request };
   storage.setItem(productionCreationJournalKey, JSON.stringify(journal));
+  const persisted = readProductionCreationJournal(storage);
+  if (!persisted || !sameProductionCreationRequest(persisted.request, request) || persisted.transactionHash) throw new Error("Creation intent could not be durably recorded");
+  assertReviewCurrent();
   try {
     const { from, to, data, value, chainId, nonce } = request;
     const result = await wallet.request.call(wallet.provider, { method: "eth_sendTransaction", params: [{ from, to, data, value, chainId, nonce }] });
