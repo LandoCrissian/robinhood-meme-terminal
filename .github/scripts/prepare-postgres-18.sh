@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Official PGDG Ubuntu packages; fixture binaries only. No sudo, apt install,
+# Official signed PGDG Ubuntu archive; fixture binaries only. No sudo, apt install,
 # maintainer script, system service or existing database is touched.
 # https://www.postgresql.org/download/linux/ubuntu/
 # https://wiki.postgresql.org/wiki/Apt/FAQ#Where_are_older_versions_of_the_packages.3F
@@ -32,11 +32,13 @@ if ! exact_version "$pg_bin"; then
   fingerprint="$(gpg --batch --homedir "$pg_home/gnupg" --show-keys --with-colons "$pg_home/pgdg.asc" | awk -F: '$1=="fpr" {print $10; exit}')"
   [[ "$fingerprint" == B97B0AFCAA1A47F044F244A07FCC7D46ACCC4CF8 ]]
   gpg --batch --homedir "$pg_home/gnupg" --dearmor --output "$pg_home/pgdg.gpg" "$pg_home/pgdg.asc"
-  repository=https://apt.postgresql.org/pub/repos/apt
-  download "$repository/dists/noble-pgdg/InRelease" "$pg_home/InRelease" 4194304
+  repository=https://apt-archive.postgresql.org/pub/repos/apt
+  download "$repository/dists/noble-pgdg-archive/InRelease" "$pg_home/InRelease" 4194304
   gpgv --homedir "$pg_home/gnupg" --keyring "$pg_home/pgdg.gpg" --output "$pg_home/Release" "$pg_home/InRelease"
-  download "$repository/dists/noble-pgdg/main/binary-amd64/Packages.gz" "$pg_home/Packages.gz" 16777216
-  node .github/scripts/postgres-18-packages.mjs "$pg_home/Release" "$pg_home/Packages.gz" "$pg_home/provenance.json" > "$pg_home/packages.tsv"
+  # The archive publishes signed plain/bzip2 indexes, not Packages.gz. Its exact
+  # amd64 plain index is bounded independently; every package pin stays unchanged.
+  download "$repository/dists/noble-pgdg-archive/main/binary-amd64/Packages" "$pg_home/Packages" 33554432
+  node .github/scripts/postgres-18-packages.mjs "$pg_home/Release" "$pg_home/Packages" "$pg_home/provenance.json" pgdg-archive > "$pg_home/packages.tsv"
   while IFS=$'\t' read -r name filename size checksum; do
     archive="$pg_home/${filename##*/}"
     download "$repository/$filename" "$archive" "$size"
@@ -74,7 +76,7 @@ if ! exact_version "$pg_bin"; then
   fi
   ldd "$pg_bin/postgres" > "$pg_home/postgres-after-runtime.ldd"
   if grep -q 'not found' "$pg_home/postgres-after-runtime.ldd"; then cat "$pg_home/postgres-after-runtime.ldd" >&2; exit 1; fi
-  mode=PGDG_SIGNED_INDEX_AND_PINNED_DEBS
+  mode=PGDG_SIGNED_ARCHIVE_AND_PINNED_DEBS
   exact_version "$pg_bin"
   printf 'LD_LIBRARY_PATH=%s\n' "$LD_LIBRARY_PATH" >> "$GITHUB_ENV"
 fi

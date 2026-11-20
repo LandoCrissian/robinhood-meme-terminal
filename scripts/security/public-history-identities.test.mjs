@@ -34,3 +34,4 @@ test("proof, configuration, policy and ignore tampering fail closed",()=>{
 import "./public-source-checksums.test.mjs";
 import "./public-task090-identities.test.mjs";
 import "./public-task091-identities.test.mjs";
+import "./public-task091-snapshot-identities.test.mjs";

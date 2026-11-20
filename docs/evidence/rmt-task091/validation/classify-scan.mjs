@@ -148,7 +148,12 @@ export function classifyScan(directory) {
     manifestSha256: hash(manifestBytes), reportSha256: hash(reportBytes), rawExit: 1, rawFindings: expectedRawCount,
     unknownFindings: 0, classificationCounts: counts, admittedSyntheticTokenCount: tokens.size,
     indexSha256: indexSha, compilerInputSha256: inputSha, unknownTokenCanary: "REJECTED",
-    detectorOrIgnoreChanges: false, rawGateCleared: false, financialActivationAuthorized: false, findings: classified};
+    detectorOrIgnoreChanges: false, rawGateCleared: false, financialActivationAuthorized: false,
+    // Raw findings and the original immutable report remain intact. A derived
+    // summary needs only an identity digest plus the exact creation reference;
+    // copying the same address into nested records adds no new evidence.
+    findings: classified.map(row => row.category === "PUBLIC_SYNTHETIC_TOKEN_CREATION" ? {...row,
+      proof: {identityDigest: hash(row.proof.token.toLowerCase()), origin: row.proof.origin, creation: row.proof.creation}} : row)};
 }
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) {
   const {values} = parseArgs({options: {scan: {type: "string"}, output: {type: "string"}}});

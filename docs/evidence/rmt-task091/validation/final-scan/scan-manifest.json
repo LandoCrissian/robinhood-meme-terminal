@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "scope": "CHANGED_SOURCE_AND_ALL_TASK091_EVIDENCE_WITH_LOSSLESS_EXPANDED_GZIP",
   "base": "27f19787ed0a2d904ba4508d2adfab1773e82e67",
-  "capturedAt": "2026-11-20T21:00:13.697Z",
+  "capturedAt": "2026-11-20T21:13:12.714Z",
   "scanner": {
     "version": "8.30.1",
     "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
@@ -18,9 +18,9 @@
   },
   "rawExit": 1,
   "rawFindingCount": 288,
-  "sourceFileCount": 83,
+  "sourceFileCount": 92,
   "expandedGzipCount": 24,
-  "reportSha256": "609f85e118474c3d37e58a892d627c02f27787dcf7efc3b4b9d82e05d21ac17c",
+  "reportSha256": "6cd861cda92f1149e98261d9b58e856341cc00827b7a7f874e50d0ef9e5a8bd0",
   "excludedGeneratedOutputs": [
     "docs/evidence/rmt-task091/validation/final-scan/scan-manifest.json",
     "docs/evidence/rmt-task091/validation/final-scan/gitleaks-redacted.json",
@@ -29,6 +29,33 @@
     "docs/evidence/rmt-task091/validation/final-scan/public-classification.json"
   ],
   "inventory": [
+    {
+      "path": ".github/scripts/postgres-18-archive.test.mjs",
+      "bytes": 4094,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d8a4ad9371e7f691509ebe8b456f166d27e566cb99a3bf13bcabb8f9daa3d931"
+      },
+      "scanPath": "source/.github/scripts/postgres-18-archive.test.mjs"
+    },
+    {
+      "path": ".github/scripts/postgres-18-packages.mjs",
+      "bytes": 5457,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ddcbbaf168fb79edf2ffb6cb5f125db86ca2d853947c66f9d3f4323acf7ef21f"
+      },
+      "scanPath": "source/.github/scripts/postgres-18-packages.mjs"
+    },
+    {
+      "path": ".github/scripts/prepare-postgres-18.sh",
+      "bytes": 5779,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "84ee37a62d5497c415e0844d857134ecaee71e8f96b94d1317e2c93a8ccbc792"
+      },
+      "scanPath": "source/.github/scripts/prepare-postgres-18.sh"
+    },
     {
       "path": ".github/scripts/run-core-stateful-proofs.mjs",
       "bytes": 5078,
@@ -40,10 +67,10 @@
     },
     {
       "path": ".github/workflows/core-launch-go-no-go.yml",
-      "bytes": 7692,
+      "bytes": 8427,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "a9a148e416b05dbd89265bcd1a2bc86ced6be1bae3e35aeb26ef04ba3a51f316"
+        "hex": "ace9a63e2e61f5c3a242014352bdd4f28eae2a7b68ddd78f00020e67375c84fb"
       },
       "scanPath": "source/.github/workflows/core-launch-go-no-go.yml"
     },
@@ -55,6 +82,24 @@
         "hex": "23ee9dc98e38fe6511e205f71f6fd2ef0012acbc1222877200cb851710932d45"
       },
       "scanPath": "source/.github/workflows/core-stateful-proofs.yml"
+    },
+    {
+      "path": ".github/workflows/launch-website-review.yml",
+      "bytes": 15535,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "bc6528379082e22e67e5e3d69a8cb13d0873a191cc1d35abca0875a8f71ad909"
+      },
+      "scanPath": "source/.github/workflows/launch-website-review.yml"
+    },
+    {
+      "path": ".github/workflows/nft-acquisition.yml",
+      "bytes": 12468,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ad71837b0676440fe49fb926f87f60420a7f40962f0b2d3266aaaa01f97abb92"
+      },
+      "scanPath": "source/.github/workflows/nft-acquisition.yml"
     },
     {
       "path": "apps/launch-website/lib/server/earnings-claims.ts",
@@ -440,6 +485,15 @@
         "hex": "c2853f6f2bd24cad6d72a24d5d4cebdbc1d8fc15cd01243f01e358c2cd0d199e"
       },
       "scanPath": "source/docs/evidence/rmt-task091/history-adjudication/README.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/history-adjudication/derived-report-proof.json",
+      "bytes": 779708,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "80eb09a30465c9493d2033fdafdafd504887b7c1d1344a44f6037936f32cb209"
+      },
+      "scanPath": "source/docs/evidence/rmt-task091/history-adjudication/derived-report-proof.json"
     },
     {
       "path": "docs/evidence/rmt-task091/history-adjudication/exact-public-identities.json",
@@ -870,11 +924,20 @@
       "scanPath": "source/docs/evidence/rmt-task091/validation/README.md"
     },
     {
-      "path": "docs/evidence/rmt-task091/validation/classify-scan.mjs",
-      "bytes": 12915,
+      "path": "docs/evidence/rmt-task091/validation/ci-repairs.md",
+      "bytes": 2285,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "7c642d2975638d09a2a3d94fdd95d98b961f7f73c0f99b02109168b604affdad"
+        "hex": "5db18970043adc5a60e0c442b78fe76d468680efc99e1d8fd93c20f419cb376b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task091/validation/ci-repairs.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/validation/classify-scan.mjs",
+      "bytes": 13356,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9e8604d39068f500fd2a51af893e717b27d87531d8c32ad60e4a99b14fecc008"
       },
       "scanPath": "source/docs/evidence/rmt-task091/validation/classify-scan.mjs"
     },
@@ -916,10 +979,10 @@
     },
     {
       "path": "scripts/security/public-history-identities.test.mjs",
-      "bytes": 3132,
+      "bytes": 3188,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "08eb0cd369898b8d3565f1aa6b895d036557e6258fd2e8891cb8905836b9d3a8"
+        "hex": "1a4ac8ef26eceeb7b2c786e25a583944d5ca000e38cb783c1b10081abd789b3b"
       },
       "scanPath": "source/scripts/security/public-history-identities.test.mjs"
     },
@@ -942,11 +1005,29 @@
       "scanPath": "source/scripts/security/public-task091-identities.test.mjs"
     },
     {
-      "path": "scripts/security/run-history-scan.mjs",
-      "bytes": 4849,
+      "path": "scripts/security/public-task091-snapshot-identities.mjs",
+      "bytes": 11398,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "07fe0613374160296710d00a262d22c40ed193ebcca9e9b8fbcb57c07b7ac07a"
+        "hex": "a2697c99f3c452996471ee725827b76eec6516d45023a45e59304733d9baa99e"
+      },
+      "scanPath": "source/scripts/security/public-task091-snapshot-identities.mjs"
+    },
+    {
+      "path": "scripts/security/public-task091-snapshot-identities.test.mjs",
+      "bytes": 6576,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ce225ec67d9dcb407452ca30890436e762ba14814c614a2f610c04bc28831bcc"
+      },
+      "scanPath": "source/scripts/security/public-task091-snapshot-identities.test.mjs"
+    },
+    {
+      "path": "scripts/security/run-history-scan.mjs",
+      "bytes": 4866,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "15fcbe63e27a6bb1776326973a0df51b51b11947bb379e02f643bcb7092a4b05"
       },
       "scanPath": "source/scripts/security/run-history-scan.mjs"
     },
