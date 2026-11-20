@@ -1,0 +1,174 @@
+{
+  "schemaVersion": 1,
+  "scope": "EXACT_PUBLIC_VALUE_PRIVACY_REVIEW_NOT_SECURITY_GATE_WAIVER",
+  "scanner": "Gitleaks 8.30.1",
+  "scanCommand": "gitleaks dir docs/evidence/rmt-task087/operations --config .gitleaks.toml --redact --no-banner --report-format json --report-path <private-temporary-report>",
+  "scanExit": 1,
+  "rawFindings": 8,
+  "classifiedFindings": 8,
+  "unknown": 0,
+  "rawReportSha256": "741a5a46f21336bb1a507c0bf4676ace7c3229322ac1a1ecf1baffe269eb02b6",
+  "configRawSha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+  "configSha256Lf": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+  "snapshotGitBlobSha256": "31d267fa9cbbfbe995f5d0ef9a542f901534c2933f3cdb5abfa42f85122d69ab",
+  "reviewedAtUtc": "2026-11-20T04:11:32.831Z",
+  "rows": [
+    {
+      "fingerprint": "docs/evidence/rmt-task087/operations/continuity-public-reads.json:generic-api-key:51",
+      "rule": "generic-api-key",
+      "file": "docs/evidence/rmt-task087/operations/continuity-public-reads.json",
+      "line": 51,
+      "startColumnAsReported": 15,
+      "endColumnAsReported": 66,
+      "lineSha256": "1481adc5f8b9c428d68793cc43fa520460af9f038880c3beca1c5860c3fbc3d8",
+      "fileRawSha256": "46a18c0fc2f92c8b26b319e9563a0d034767784479cfd3923809e03dff2df558",
+      "value": "0xfe7e1595c757ce5f034ba3e3e002c7184df6075e",
+      "classification": "EXACT_PINNED_PUBLIC_ERC20_CONTRACT_ADDRESS_NOT_AUTHENTICATION_SECRET",
+      "reference": {
+        "path": "apps/launch-website/data/historical-launches-4663.json",
+        "chainId": 4663,
+        "version": 6,
+        "launchId": "1",
+        "classification": "historical"
+      }
+    },
+    {
+      "fingerprint": "docs/evidence/rmt-task087/operations/continuity-public-reads.json:generic-api-key:77",
+      "rule": "generic-api-key",
+      "file": "docs/evidence/rmt-task087/operations/continuity-public-reads.json",
+      "line": 77,
+      "startColumnAsReported": 15,
+      "endColumnAsReported": 66,
+      "lineSha256": "9dbb357d130ba22cf03daf29d74bd408fe47d04ddb6bb3b5d488fa2a5db306eb",
+      "fileRawSha256": "46a18c0fc2f92c8b26b319e9563a0d034767784479cfd3923809e03dff2df558",
+      "value": "0xdba33be56c89cc9fc014c4459028d7e5c7878671",
+      "classification": "EXACT_PINNED_PUBLIC_ERC20_CONTRACT_ADDRESS_NOT_AUTHENTICATION_SECRET",
+      "reference": {
+        "path": "apps/launch-website/data/historical-launches-4663.json",
+        "chainId": 4663,
+        "version": 6,
+        "launchId": "0",
+        "classification": "retired"
+      }
+    },
+    {
+      "fingerprint": "docs/evidence/rmt-task087/operations/continuity-public-reads.json:generic-api-key:103",
+      "rule": "generic-api-key",
+      "file": "docs/evidence/rmt-task087/operations/continuity-public-reads.json",
+      "line": 103,
+      "startColumnAsReported": 15,
+      "endColumnAsReported": 66,
+      "lineSha256": "46016edb1271d534ede7f2843aa53ec2b7a40d2079bb693f09eff7e96d19aa70",
+      "fileRawSha256": "46a18c0fc2f92c8b26b319e9563a0d034767784479cfd3923809e03dff2df558",
+      "value": "0xab374d24afbd943a134adb381d9646e71c6f6c0c",
+      "classification": "EXACT_PINNED_PUBLIC_ERC20_CONTRACT_ADDRESS_NOT_AUTHENTICATION_SECRET",
+      "reference": {
+        "path": "apps/launch-website/data/historical-launches-4663.json",
+        "chainId": 4663,
+        "version": 4,
+        "launchId": "1",
+        "classification": "historical"
+      }
+    },
+    {
+      "fingerprint": "docs/evidence/rmt-task087/operations/continuity-public-reads.json:generic-api-key:129",
+      "rule": "generic-api-key",
+      "file": "docs/evidence/rmt-task087/operations/continuity-public-reads.json",
+      "line": 129,
+      "startColumnAsReported": 15,
+      "endColumnAsReported": 66,
+      "lineSha256": "6c098de0ddff4b8aa6d40c671a98ed9f3af6cdd50c2d0b0913aedb013c8ee6a3",
+      "fileRawSha256": "46a18c0fc2f92c8b26b319e9563a0d034767784479cfd3923809e03dff2df558",
+      "value": "0xbde596366551aacae3e7c397b72f53f2a524582a",
+      "classification": "EXACT_PINNED_PUBLIC_ERC20_CONTRACT_ADDRESS_NOT_AUTHENTICATION_SECRET",
+      "reference": {
+        "path": "apps/launch-website/data/historical-launches-4663.json",
+        "chainId": 4663,
+        "version": 4,
+        "launchId": "0",
+        "classification": "deployment-test"
+      }
+    },
+    {
+      "fingerprint": "docs/evidence/rmt-task087/operations/initial-public-reads.json:generic-api-key:97",
+      "rule": "generic-api-key",
+      "file": "docs/evidence/rmt-task087/operations/initial-public-reads.json",
+      "line": 97,
+      "startColumnAsReported": 15,
+      "endColumnAsReported": 66,
+      "lineSha256": "1481adc5f8b9c428d68793cc43fa520460af9f038880c3beca1c5860c3fbc3d8",
+      "fileRawSha256": "63f928723026b9e96119b7260ccf25a8740bfde7ffa19bdc444b7eeb0af5ed4f",
+      "value": "0xfe7e1595c757ce5f034ba3e3e002c7184df6075e",
+      "classification": "EXACT_PINNED_PUBLIC_ERC20_CONTRACT_ADDRESS_NOT_AUTHENTICATION_SECRET",
+      "reference": {
+        "path": "apps/launch-website/data/historical-launches-4663.json",
+        "chainId": 4663,
+        "version": 6,
+        "launchId": "1",
+        "classification": "historical"
+      }
+    },
+    {
+      "fingerprint": "docs/evidence/rmt-task087/operations/initial-public-reads.json:generic-api-key:123",
+      "rule": "generic-api-key",
+      "file": "docs/evidence/rmt-task087/operations/initial-public-reads.json",
+      "line": 123,
+      "startColumnAsReported": 15,
+      "endColumnAsReported": 66,
+      "lineSha256": "9dbb357d130ba22cf03daf29d74bd408fe47d04ddb6bb3b5d488fa2a5db306eb",
+      "fileRawSha256": "63f928723026b9e96119b7260ccf25a8740bfde7ffa19bdc444b7eeb0af5ed4f",
+      "value": "0xdba33be56c89cc9fc014c4459028d7e5c7878671",
+      "classification": "EXACT_PINNED_PUBLIC_ERC20_CONTRACT_ADDRESS_NOT_AUTHENTICATION_SECRET",
+      "reference": {
+        "path": "apps/launch-website/data/historical-launches-4663.json",
+        "chainId": 4663,
+        "version": 6,
+        "launchId": "0",
+        "classification": "retired"
+      }
+    },
+    {
+      "fingerprint": "docs/evidence/rmt-task087/operations/initial-public-reads.json:generic-api-key:149",
+      "rule": "generic-api-key",
+      "file": "docs/evidence/rmt-task087/operations/initial-public-reads.json",
+      "line": 149,
+      "startColumnAsReported": 15,
+      "endColumnAsReported": 66,
+      "lineSha256": "46016edb1271d534ede7f2843aa53ec2b7a40d2079bb693f09eff7e96d19aa70",
+      "fileRawSha256": "63f928723026b9e96119b7260ccf25a8740bfde7ffa19bdc444b7eeb0af5ed4f",
+      "value": "0xab374d24afbd943a134adb381d9646e71c6f6c0c",
+      "classification": "EXACT_PINNED_PUBLIC_ERC20_CONTRACT_ADDRESS_NOT_AUTHENTICATION_SECRET",
+      "reference": {
+        "path": "apps/launch-website/data/historical-launches-4663.json",
+        "chainId": 4663,
+        "version": 4,
+        "launchId": "1",
+        "classification": "historical"
+      }
+    },
+    {
+      "fingerprint": "docs/evidence/rmt-task087/operations/initial-public-reads.json:generic-api-key:175",
+      "rule": "generic-api-key",
+      "file": "docs/evidence/rmt-task087/operations/initial-public-reads.json",
+      "line": 175,
+      "startColumnAsReported": 15,
+      "endColumnAsReported": 66,
+      "lineSha256": "6c098de0ddff4b8aa6d40c671a98ed9f3af6cdd50c2d0b0913aedb013c8ee6a3",
+      "fileRawSha256": "63f928723026b9e96119b7260ccf25a8740bfde7ffa19bdc444b7eeb0af5ed4f",
+      "value": "0xbde596366551aacae3e7c397b72f53f2a524582a",
+      "classification": "EXACT_PINNED_PUBLIC_ERC20_CONTRACT_ADDRESS_NOT_AUTHENTICATION_SECRET",
+      "reference": {
+        "path": "apps/launch-website/data/historical-launches-4663.json",
+        "chainId": 4663,
+        "version": 4,
+        "launchId": "0",
+        "classification": "deployment-test"
+      }
+    }
+  ],
+  "limitations": [
+    "These exact recorded public contract addresses do not justify ignoring any other value, detector, source path or future report.",
+    "No raw-zero scanner pass is claimed; all original findings and redacted report remain retained.",
+    "Line and column coordinates are retained as reported; review binds the exact original full line and snapshot field, not inferred substring offsets."
+  ]
+}

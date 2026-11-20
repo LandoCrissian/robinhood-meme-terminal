@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "sourceBase": "1f7160f5db5d67de348e041a84ccc2889786217e",
+  "purpose": "Preserve exact executed/captured bytes; only two fixed inherited JSON paths may compare by CRLF/LF equivalence.",
+  "entries": [
+    {
+      "path": "docs/evidence/fixed-supply-release/l1-batches.json",
+      "kind": "JSON_EOL_ONLY",
+      "capturedSha256": "8c9d3f889cba30e31ce5ce399ac014e79be4a4b80c2074e5f8fe10f51853e5f1",
+      "canonicalLfSha256": "288771e200dc52566a783bcee63f06eba4ec5b713d8d1a78f436203746964fd3",
+      "storedPath": "source-capsules/l1-batches.json.gz",
+      "storedSha256": "3a3b3fe57ce566e76cd1ad1cd46847e47846d6894006c3cfb69d1655199a481f",
+      "rawBytes": 5359,
+      "storedBytes": 1417
+    },
+    {
+      "path": "docs/evidence/mobile-signing/factory-publication-scheduled.json",
+      "kind": "JSON_EOL_ONLY",
+      "capturedSha256": "82a9f6cef8144fdecdcb3873ab58d028b88bca99248d805bd0c8456401c420aa",
+      "canonicalLfSha256": "6f0e016fcff52bdb589abd1b917edf9c1f24b12b95cc804288c4a30116673c15",
+      "storedPath": "source-capsules/factory-publication-scheduled.json.gz",
+      "storedSha256": "49b58fe07470ccf9d4d7ccef510d18a095b875faa592e5f3fecef64e5e26f8b3",
+      "rawBytes": 9556,
+      "storedBytes": 2825
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/corroborate-exact-receipt.mjs",
+      "kind": "EXECUTED_PRODUCER",
+      "capturedSha256": "b3fcb1f80ed27a3b812b109190271dc07bf25a3b317c0beef973227994594f20",
+      "canonicalLfSha256": "b3fcb1f80ed27a3b812b109190271dc07bf25a3b317c0beef973227994594f20",
+      "storedPath": "source-capsules/executed-corroborate-exact-receipt.mjs.gz",
+      "storedSha256": "41f10f0b87c48a34c3fd1c59ed71737df588b921a3f232b8a9178b794c5507a2",
+      "rawBytes": 13256,
+      "storedBytes": 4670
+    }
+  ]
+}

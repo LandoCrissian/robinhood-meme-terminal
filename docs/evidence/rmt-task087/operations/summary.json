@@ -1,0 +1,81 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_OPERATIONAL_OBSERVATIONS_NOT_RELEASE_APPROVAL",
+  "firstObservedAt": "2026-11-20T04:03:34.776Z",
+  "lastObservedAt": "2026-11-20T04:04:16.731Z",
+  "website": {
+    "coverage": "verified-snapshot",
+    "status": "stale",
+    "checkpoint": {
+      "blockNumber": "113899119",
+      "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+      "timestamp": "2026-11-14T04:26:14.000Z"
+    },
+    "launchCount": 4,
+    "execution": {
+      "status": "disabled",
+      "reason": "Wallet signing and transactions are disabled in this read-only preview."
+    },
+    "newEngineHttp": 404,
+    "creationHttp": 404,
+    "earningsHttp": 404,
+    "backendCredentialAndPrivateReadPath": "UNVERIFIED_WITHOUT_SECRET_ACCESS",
+    "snapshotCause": "UNVERIFIED; observed fallback is not evidence worker is unavailable"
+  },
+  "worker": {
+    "http": [
+      200,
+      200,
+      200,
+      200
+    ],
+    "v6": {
+      "firstIndexedThrough": "118764044",
+      "lastIndexedThrough": "118764369",
+      "advancedBy": "325"
+    },
+    "newEngine": {
+      "first": {
+        "status": "ready",
+        "checkpoint": {
+          "blockNumber": "118764056",
+          "blockHash": "0x3857b3cfdfaa475506f481f5a9d01da6841a546c61ce8b30c2da64a419ea3028",
+          "timestamp": "2026-11-20T04:03:20.000Z"
+        },
+        "revision": 11592,
+        "verifiedAt": 1795147404874,
+        "caughtUp": true
+      },
+      "last": {
+        "status": "ready",
+        "checkpoint": {
+          "blockNumber": "118764393",
+          "blockHash": "0x6813bc6d5166fe1f9b256a78c31de6f14691deecfc194d220d4de5409fa3e27b",
+          "timestamp": "2026-11-20T04:03:55.000Z"
+        },
+        "revision": 11594,
+        "verifiedAt": 1795147442959,
+        "caughtUp": true
+      },
+      "advancedBy": "337",
+      "independentCanonicalWitness": "NOT_PERFORMED_BY_OPERATIONS_PROBE; root chain evidence is separate"
+    },
+    "authenticationDenials": [
+      401,
+      401,
+      401
+    ],
+    "singleWriterLease": "NOT_READ; one replica is not a database lock proof"
+  },
+  "backup": "HISTORICAL_VERIFIED_ISOLATED_RESTORE; OFF_DEVICE_COPY_UNVERIFIED",
+  "l1Finality": "NOT_ESTABLISHED_BY_HTTP_OR_CONTROL_PLANE",
+  "financialExecution": "DISABLED_ON_OBSERVED_WEBSITE; GOVERNANCE_PUBLICATION_HAS_SEPARATE_ONCHAIN_EFFECTS",
+  "remainingHolds": [
+    "Production website is serving stale snapshot despite advancing worker checkpoints; exact server-side cause not determined.",
+    "Authenticated current new-engine read response and production lifecycle/reorg/recovery acceptance remain unverified.",
+    "Current Railway billing allowance is unavailable from available connected read tools; historical Free figures cannot guarantee continuity.",
+    "Historical backup has no verified off-device copy.",
+    "Physical creator/trading/claims recovery and actual Safe claim acceptance are not proved by these observations."
+  ],
+  "mutations": false
+}

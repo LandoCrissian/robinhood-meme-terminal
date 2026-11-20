@@ -3,6 +3,10 @@
   "workspaces": {
     ".": {
       "entry": [
+        "docs/evidence/rmt-task087/operations/capture-public-reads.mjs",
+        "docs/evidence/rmt-task087/bindings/capture.mjs",
+        "docs/evidence/rmt-task087/bindings/initial-attempt/capture.mjs",
+        "docs/evidence/rmt-task087/bindings/privacy-scan.mjs",
         "scripts/reclaim-v2/probe-revert-transport.mjs",
         "scripts/seaport-verification/provenance-proxy.mjs",
         "scripts/seaport-verification/replay-historical.mjs",

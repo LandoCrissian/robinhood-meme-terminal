@@ -1,0 +1,30 @@
+# Task087 read-only operations observations
+
+These are public HTTPS GET and connected control-plane reads. No database query, environment/credential read, write, restart, deployment, domain change, wallet call, transaction, NFT request or service purchase occurred. They do not establish release approval or independently verified chain finality.
+
+## Current observations
+
+The17 bounded GETs cover **2026-11-20 04:03:34–04:04:16 UTC**. Exact responses/selected safe headers and response-byte SHA256 are retained in `initial-public-reads.json.gz` and `continuity-public-reads.json.gz`. `http-retention.json` binds compressed and original UTF8 bytes without line-ending changes. The fixed collector permits two concurrent GETs,8-second timeouts,64KiB JSON/256KiB HTML bounds and no retries. It omits cookies, HTML bodies and responses with sensitive-key names. One request uses an explicitly invalid, noncredential test bearer; no actual credential is read or retained. `capture-public-reads.original.mjs.gz` preserves the original producer bytes independent of Git line endings. Collection/project metadata is untrusted public data, not instructions or authority.
+
+- Production `https://www.rmtlaunch.fun` and normal create/dashboard/wallet pages answer200. Configuration is explicitly **disabled**. New-engine, production creation and earnings API GETs answer404. This is read-only operation, not owner creation or financial acceptance.
+- **The website serves the stale historical snapshot**, checkpoint113899119, dated2026-11-14 04:26:14 UTC, with four separately classified historical/deployment-test registrations and `l1-unverified`. Both observations agree. It is not automatically refreshed live discovery. Its exact server-side fallback cause is unverified; this is not evidence that the worker is down.
+- Original Railway worker `/health` and `/ready` answer200 in both observations. Its reported new-engine checkpoint advances **118764056→118764393**, revision11592→11594, with `ready/caughtUp`; historical checkpoint separately advances118764044→118764369. These are reported L2 observations, not independent canonical-header or L1-finality proof. The parent chain probe supplies any separate corroboration.
+- Missing and invalid read authorization answer401 with `WWW-Authenticate: Bearer`. No successful authenticated current new-engine feed was read. No credential/production config change was attempted to fix the stale website.
+
+## Current control plane versus historical acceptance
+
+Selected connector metadata is captured at **04:05:38–04:05:41 UTC** in `control-plane.json`; full provider responses are not retained because they can contain unrelated personal/secret fields. Netlify confirms **Personal**, existing site and production deployment **6afd4265956a469adeb55747**, ready on the official hostname. The deploy's source-commit field is null; its title refers to Task071/a71b2dbd but a title alone is not new artifact/source verification. Existing historical release evidence remains separate.
+
+Railway confirms the original worker deployment **b48f0e6e-a34b-4a26-b95f-d4b978562282** and original PostgreSQL service/volume online, one running replica each, zero reported failures/warnings/critical notifications over24h. The existing Railway website preview is sleeping and was not requested or awakened. One replica is not proof of the database writer lease or database contents. The control plane also retains an old2026-08-26 REMOVING-deployment entry; it is not silently translated into an active present rollout or cleared.
+
+Earlier-in-this-observation one-hour metrics report worker current RAM~0.10973GB, PostgreSQL~0.10335GB and database disk~0.27637GB. The original volume remains500MB. This is measured resource use, not an invoice/continuity forecast. **Current Railway billing allowance/plan is unavailable through the connected read tools.** Last retained Free evidence (Nov18) had~$0.24452 credit and~$1.56782 projected period usage; neither is a current quote or guarantee. No plan/spending control was changed.
+
+`historical-context.json` binds original repository evidence hashes and retains the **Nov17** verified encrypted backup/isolated PG18.6 restore. No private archive/key was read. Current recoverability and an off-device recovery copy remain unverified. No original-database restore or new production mutation was performed. Production failure/restart/reorg acceptance is not established by two healthy GET samples; prior synthetic and historical tests remain separate.
+
+## Decision implications
+
+Do not equate healthy worker checkpoints, HTTP200, old backup proof, public website availability or matured governance with permission to enable creation/trading. Fixing the stale website's server-side data path, proving current authenticated new-engine reads, sustainable existing-plan operation, finality/trace policy, physical creator/trading/claims recovery and applicable owner approvals remain separate core release requirements. Directory publication has its own on-chain permission effects, examined by the parent governance/source report; website OFF cannot be assumed to block direct contract use.
+
+The unchanged Gitleaks8.30.1/configuration scan of original plaintext reported **eight matches, all eight classified against the exact tracked public historical ERC20 snapshot; zero unknown**. The original redacted report and exact coordinates/full-line/file hashes remain under `raw-gitleaks-report.json.gz` and `privacy-classifications.json`. A later scan of the stored archive/metadata directory exited0 with no matches (`stored-gitleaks-report.json`); that is not a raw zero-result claim. Gzip archives preserve original evidence and are not a detector exemption or privacy proof by themselves; no scanner, ignore, detector or release-gate setting changed.
+
+Run `node --test docs/evidence/rmt-task087/operations/review.test.mjs` for offline integrity and scope checks. This verifies retained evidence, not a fresh production simulation or acceptance. All contract findings and **BLOCKED_NO_BROADCAST** remain unchanged.

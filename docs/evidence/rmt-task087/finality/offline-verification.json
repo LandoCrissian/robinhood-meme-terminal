@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-11-20T04:40:09.976Z",
+  "command": [
+    "node",
+    "--max-old-space-size=256",
+    "--test",
+    "docs/evidence/rmt-task087/finality/corroborate-exact-receipt.test.mjs",
+    "docs/evidence/rmt-task087/finality/probe-schedule-posting.test.mjs",
+    "docs/evidence/rmt-task087/finality/source-bytes.test.mjs",
+    "docs/evidence/rmt-task087/finality/verify-retained.test.mjs"
+  ],
+  "exitCode": 0,
+  "tests": 14,
+  "passed": 14,
+  "failed": 0,
+  "testSourceFiles": [
+    {
+      "path": "docs/evidence/rmt-task087/finality/corroborate-exact-receipt.test.mjs",
+      "sha256": "e6c31bab04fab5ba0ae7573108317b0ab528621382dd455a24ec08d733a1fa9d"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/probe-schedule-posting.test.mjs",
+      "sha256": "e1710fae3a7f4e1c8195b08dea5de1f1efbe35599e1cea8ef0d959863962f038"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/source-bytes.test.mjs",
+      "sha256": "0b6dee2d5c3220f7493186d084090eacce19d0f75271fbba8e5e06350605e8f1"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/verify-retained.test.mjs",
+      "sha256": "c0ea3d1d67ea31aaf212efda3c2d4260375f57402cf7a698a0fbedcc57a13e75"
+    }
+  ],
+  "stdoutSha256": "dbe45a6e14cb4ff0db7933e08b5544bc1563ee813388354325f3e84931055f64",
+  "evidenceRecords": [
+    {
+      "status": "PASS_OFFLINE_RETAINED_EVIDENCE",
+      "discoveryStatus": "UNVERIFIED",
+      "receiptStatus": "CORROBORATED_FINALIZED_L1_POSTING",
+      "requests": {
+        "original": 31,
+        "exactReceipt": 8,
+        "total": 39
+      },
+      "batch": "399324",
+      "postingBlock": "26438078",
+      "commonFinalizedBlock": "26453807",
+      "sourceIdentities": [
+        {
+          "path": "docs/evidence/rmt-task087/finality/probe-schedule-posting.mjs",
+          "identity": "CURRENT_EXACT_BYTES",
+          "sha256": "4ff3bf3b28dbedcbe2fe5bd21a6635809d3b9d66743f17e12c7e2042fee6c8b0"
+        },
+        {
+          "path": "docs/evidence/rmt-task087/finality/probe-schedule-posting.test.mjs",
+          "identity": "CURRENT_EXACT_BYTES",
+          "sha256": "e1710fae3a7f4e1c8195b08dea5de1f1efbe35599e1cea8ef0d959863962f038"
+        },
+        {
+          "path": "scripts/production-readiness/rpc.mjs",
+          "identity": "CURRENT_EXACT_BYTES",
+          "sha256": "456e51835601c802032be78d9e0346d98260ca851376d3825c008b077c55ac67"
+        },
+        {
+          "path": "docs/evidence/fixed-supply-release/l1-batches.json",
+          "identity": "CURRENT_EXACT_BYTES",
+          "sha256": "8c9d3f889cba30e31ce5ce399ac014e79be4a4b80c2074e5f8fe10f51853e5f1"
+        },
+        {
+          "path": "docs/evidence/mobile-signing/factory-publication-scheduled.json",
+          "identity": "CURRENT_EXACT_BYTES",
+          "sha256": "82a9f6cef8144fdecdcb3873ab58d028b88bca99248d805bd0c8456401c420aa"
+        },
+        {
+          "path": "docs/evidence/rmt-task087/finality/corroborate-exact-receipt.mjs",
+          "identity": "RETAINED_EXACT_EXECUTED_PRODUCER",
+          "sha256": "b3fcb1f80ed27a3b812b109190271dc07bf25a3b317c0beef973227994594f20",
+          "currentFileDiffers": true
+        },
+        {
+          "path": "docs/evidence/rmt-task087/finality/corroborate-exact-receipt.test.mjs",
+          "identity": "CURRENT_EXACT_BYTES",
+          "sha256": "e6c31bab04fab5ba0ae7573108317b0ab528621382dd455a24ec08d733a1fa9d"
+        },
+        {
+          "path": "docs/evidence/rmt-task087/finality/schedule-116966133/report.json",
+          "identity": "CURRENT_EXACT_BYTES",
+          "sha256": "37a261770b1e6307ee40a2a6c25f3d36458a00123c3c04ffbe74bd62d25071b6"
+        },
+        {
+          "path": "docs/evidence/rmt-task087/finality/schedule-116966133/integrity-manifest.json",
+          "identity": "CURRENT_EXACT_BYTES",
+          "sha256": "d13507607efaaa7730a0db077f8108bbcdffa65e6b3d583bde373bdc23aa592b"
+        },
+        {
+          "path": "docs/evidence/rmt-task087/finality/schedule-116966133/raw-responses.json.gz",
+          "identity": "CURRENT_EXACT_BYTES",
+          "sha256": "ba8b01abd804a425d1fdfdf344383b39ca08a57373be18585eeb006e531e29a9"
+        }
+      ],
+      "networkCalls": 0,
+      "scope": "HISTORICAL_SCHEDULE_BATCH_POSTING_ONLY_NOT_CURRENT_GOV_OR_ROLLUP_CHALLENGE_PROOF"
+    }
+  ],
+  "networkCalls": 0
+}

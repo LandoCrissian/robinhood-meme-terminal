@@ -1,0 +1,357 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK087_READ_ONLY_CONNECTED_CONTROL_PLANE_SELECTED_PUBLIC_OPERATIONAL_FIELDS_NO_SECRETS",
+  "startedAtUtc": "2026-11-20T04:05:38.962Z",
+  "completedAtUtc": "2026-11-20T04:05:41.321Z",
+  "queries": [
+    "Railway describe_environment",
+    "Railway environment_status",
+    "Netlify get_project",
+    "Netlify get_deploy",
+    "Netlify get_team"
+  ],
+  "railway": {
+    "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+    "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+    "stagedChanges": null,
+    "services": [
+      {
+        "id": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+        "name": "robinhood-meme-terminal",
+        "state": "live",
+        "numReplicas": 1,
+        "cronSchedule": null,
+        "regions": [
+          "sfo"
+        ],
+        "source": {
+          "image": null,
+          "repo": "LandoCrissian/robinhood-meme-terminal",
+          "branch": "main"
+        },
+        "volumeMounts": [],
+        "latestDeployment": {
+          "id": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+          "status": "SUCCESS",
+          "createdAt": "2026-11-17T20:21:40.444Z",
+          "url": null
+        },
+        "stagedChangeCount": 0
+      },
+      {
+        "id": "8e9c1c15-74b5-4262-8851-72603a3dfc98",
+        "name": "rmt-launch-website",
+        "state": "live",
+        "numReplicas": 1,
+        "cronSchedule": null,
+        "regions": [
+          "sfo"
+        ],
+        "source": null,
+        "volumeMounts": [],
+        "latestDeployment": {
+          "id": "6d7863ad-02a0-4ef0-a7be-b3b645a450fa",
+          "status": "SLEEPING",
+          "createdAt": "2026-11-18T14:44:51.311Z",
+          "url": null
+        },
+        "stagedChangeCount": 0
+      },
+      {
+        "id": "a1ef7853-e21a-401e-87c9-c99002228507",
+        "name": "Postgres",
+        "state": "live",
+        "numReplicas": 1,
+        "cronSchedule": null,
+        "regions": [
+          "sfo"
+        ],
+        "source": {
+          "image": "ghcr.io/railwayapp-templates/postgres-ssl:18",
+          "repo": null,
+          "branch": null
+        },
+        "volumeMounts": [
+          {
+            "volumeId": "bf6e7ddc-3be6-4ba7-ad53-8e7010e76c86",
+            "volumeName": "postgres-volume",
+            "mountPath": "/var/lib/postgresql/data"
+          }
+        ],
+        "latestDeployment": {
+          "id": "c91c8f93-2812-4837-9aa2-94c3fc2d351a",
+          "status": "SUCCESS",
+          "createdAt": "2026-11-14T06:40:39.751Z",
+          "url": null
+        },
+        "stagedChangeCount": 0
+      }
+    ],
+    "volumes": [
+      {
+        "id": "bf6e7ddc-3be6-4ba7-ad53-8e7010e76c86",
+        "name": "postgres-volume",
+        "state": "live",
+        "region": "sfo",
+        "sizeMB": 500,
+        "mountedOn": {
+          "serviceId": "a1ef7853-e21a-401e-87c9-c99002228507",
+          "serviceName": "Postgres",
+          "mountPath": "/var/lib/postgresql/data"
+        },
+        "stagedChangeCount": 0
+      }
+    ],
+    "runtimeHealth": {
+      "environment": {
+        "id": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+        "name": "production"
+      },
+      "services": [
+        {
+          "serviceId": "8e9c1c15-74b5-4262-8851-72603a3dfc98",
+          "serviceName": "rmt-launch-website",
+          "state": "sleeping",
+          "statusText": "Sleeping",
+          "activeDeployments": [
+            {
+              "id": "6d7863ad-02a0-4ef0-a7be-b3b645a450fa",
+              "status": "SLEEPING",
+              "createdAt": "2026-11-18T14:44:51.311Z",
+              "statusUpdatedAt": "2026-11-18T17:46:53.621Z"
+            }
+          ],
+          "replicaStatus": null,
+          "cronJob": null,
+          "issues": {
+            "warningCount": 0,
+            "criticalCount": 0
+          },
+          "recentFailures": 0,
+          "recentFailedDeployments": [],
+          "hasIssues": false,
+          "isCronJob": false,
+          "hasVolume": false
+        },
+        {
+          "serviceId": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+          "serviceName": "robinhood-meme-terminal",
+          "state": "online",
+          "statusText": "Online",
+          "activeDeployments": [
+            {
+              "id": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+              "status": "SUCCESS",
+              "createdAt": "2026-11-17T20:21:40.444Z",
+              "statusUpdatedAt": "2026-11-17T20:24:30.173Z"
+            }
+          ],
+          "replicaStatus": {
+            "running": 1,
+            "crashed": 0,
+            "total": 1
+          },
+          "cronJob": null,
+          "issues": {
+            "warningCount": 0,
+            "criticalCount": 0
+          },
+          "recentFailures": 0,
+          "recentFailedDeployments": [],
+          "hasIssues": false,
+          "isCronJob": false,
+          "hasVolume": false
+        },
+        {
+          "serviceId": "a1ef7853-e21a-401e-87c9-c99002228507",
+          "serviceName": "Postgres",
+          "state": "online",
+          "statusText": "Online",
+          "activeDeployments": [
+            {
+              "id": "c91c8f93-2812-4837-9aa2-94c3fc2d351a",
+              "status": "SUCCESS",
+              "createdAt": "2026-11-14T06:40:39.751Z",
+              "statusUpdatedAt": "2026-11-14T06:40:46.260Z"
+            }
+          ],
+          "replicaStatus": {
+            "running": 1,
+            "crashed": 0,
+            "total": 1
+          },
+          "cronJob": null,
+          "issues": {
+            "warningCount": 0,
+            "criticalCount": 0
+          },
+          "recentFailures": 0,
+          "recentFailedDeployments": [],
+          "hasIssues": false,
+          "isCronJob": false,
+          "hasVolume": true
+        }
+      ],
+      "pendingWork": [
+        {
+          "id": "deploy:99de2e4b-39a5-42a0-bb72-a446e731c8d0",
+          "kind": "Deployment",
+          "status": "applying",
+          "changes": [
+            {
+              "kind": "deployment",
+              "serviceId": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+              "status": "REMOVING",
+              "reason": "deploy"
+            }
+          ],
+          "startedAt": "2026-08-26T21:52:19.719Z",
+          "workflowId": "deploy/99de2e4b-39a5-42a0-bb72-a446e731c8d0"
+        }
+      ],
+      "summary": {
+        "totalServices": 3,
+        "servicesWithIssues": 0,
+        "totalFailures": 0
+      }
+    },
+    "metrics": {
+      "window": "Last hour at connector reads immediately preceding initial public observations; original exact query wall clock not separately recorded",
+      "worker": {
+        "service": {
+          "id": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+          "name": "robinhood-meme-terminal"
+        },
+        "environment": {
+          "id": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+          "name": "production"
+        },
+        "metrics": [
+          {
+            "measurement": "CPU_USAGE",
+            "current": 0,
+            "average": 0.0018279136612021863,
+            "min": 0,
+            "max": 0.003358383333333333,
+            "sampleCount": 61
+          },
+          {
+            "measurement": "MEMORY_USAGE_GB",
+            "current": 0.109727744,
+            "average": 0.10973398872131152,
+            "min": 0.109694976,
+            "max": 0.110221312,
+            "sampleCount": 61
+          }
+        ]
+      },
+      "postgres": {
+        "service": {
+          "id": "a1ef7853-e21a-401e-87c9-c99002228507",
+          "name": "Postgres"
+        },
+        "environment": {
+          "id": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+          "name": "production"
+        },
+        "metrics": [
+          {
+            "measurement": "CPU_USAGE",
+            "current": 0,
+            "average": 0.0012587319672131144,
+            "min": 0,
+            "max": 0.0022465333333333334,
+            "sampleCount": 61
+          },
+          {
+            "measurement": "MEMORY_USAGE_GB",
+            "current": 0.103348224,
+            "average": 0.10280943213114752,
+            "min": 0.102252544,
+            "max": 0.103448576,
+            "sampleCount": 61
+          },
+          {
+            "measurement": "DISK_USAGE_GB",
+            "current": 0.276373504,
+            "average": 0.2763494651803279,
+            "min": 0.276324352,
+            "max": 0.276373504,
+            "sampleCount": 61
+          }
+        ]
+      }
+    },
+    "billing": {
+      "currentPlan": "UNAVAILABLE_FROM_CURRENT_CONNECTOR",
+      "currentRemainingCredit": "UNAVAILABLE_FROM_CURRENT_CONNECTOR",
+      "priorFreeObservation": {
+        "observedAt": "2026-11-18T14:52:36.1Z",
+        "remainingUsageCreditDollars": 0.2445182554533334,
+        "providerProjectionDollars": 1.5678161117480907,
+        "source": "docs/evidence/railway-073/acceptance.json"
+      },
+      "noPlanOrSpendingChange": true
+    }
+  },
+  "netlify": {
+    "site": {
+      "id": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+      "name": "eclectic-valkyrie-16cb92",
+      "planCode": "nf_team_dev",
+      "urls": {
+        "primarySiteUrl": "https://www.rmtlaunch.fun",
+        "branchVersionOfSite": "http://6afd4265956a469adeb55747--eclectic-valkyrie-16cb92.netlify.app"
+      },
+      "accessControls": {
+        "requiresPassword": false,
+        "whichProjectsRequirePassword": null,
+        "requiresSSOTeamLogin": false,
+        "whichProjectsRequireSSOTeamLogin": null
+      },
+      "published": {
+        "state": "current",
+        "currentDeploy": {
+          "id": "6afd4265956a469adeb55747",
+          "state": "ready"
+        }
+      }
+    },
+    "deploy": {
+      "id": "6afd4265956a469adeb55747",
+      "site_id": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+      "state": "ready",
+      "url": "https://www.rmtlaunch.fun",
+      "ssl_url": "https://www.rmtlaunch.fun",
+      "created_at": "2026-11-18T06:15:01.017Z",
+      "updated_at": "2026-11-18T06:22:46.439Z",
+      "published_at": "2026-11-18T06:15:09.934Z",
+      "title": "Task071 approved website-only PR666 a71b2dbd; Linux artifact 4fdfbecd",
+      "context": "production",
+      "commit_ref": null,
+      "branch": null,
+      "manual_deploy": false,
+      "deploy_source": "cli",
+      "functions_region": "cmh",
+      "expires_at": null
+    },
+    "team": {
+      "id": "679021997d24399b38980446",
+      "type": "Personal"
+    }
+  },
+  "privacy": {
+    "environmentVariablesRead": false,
+    "readCredentials": false,
+    "secretOrPasswordFieldsRetained": false,
+    "personalProfileFieldsRetained": false
+  },
+  "mutations": false,
+  "limitations": [
+    "Control-plane metadata and public health endpoints do not prove database contents or single-writer lock ownership.",
+    "Current Railway billing allowance is unavailable through the connected read tools; prior figures are historical, not a current quote.",
+    "Sleeping preview was observed but not requested or awakened.",
+    "No authenticated curve feed was read because that would require secret access not authorized for this task.",
+    "Metadata response fields are explicitly selected; full Netlify provider responses may contain nonpublic tokens and are not retained."
+  ]
+}

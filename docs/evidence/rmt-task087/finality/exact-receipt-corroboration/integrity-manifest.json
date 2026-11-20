@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "target": {
+    "number": "116966133",
+    "hash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+    "transactionHash": "0x96bd234e49d766c73c66f9787f26736040b4fc64d91ed2ae888eca3f4c8afb65"
+  },
+  "status": "CORROBORATED_FINALIZED_L1_POSTING",
+  "requests": 8,
+  "originalDiscoveryRequests": 31,
+  "totalRequests": 39,
+  "reportSha256": "b2424ac7c2bf9b17f278659311cedbe41a8f240c5a2ed0ab15f4a400c7d595bc",
+  "rawBytes": 178133,
+  "rawSha256": "7c9fcb647115fdb318d24a27a9cdbb475c05fd95181aa656a50042ede183f84f",
+  "storedBytes": 42834,
+  "storedSha256": "14f6bb9b9d133798c3ec5878feeba53d2570a5c4b0510b4fe68b83fc3b68e54d",
+  "sourceFiles": [
+    {
+      "path": "docs/evidence/rmt-task087/finality/corroborate-exact-receipt.mjs",
+      "sha256": "b3fcb1f80ed27a3b812b109190271dc07bf25a3b317c0beef973227994594f20"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/corroborate-exact-receipt.test.mjs",
+      "sha256": "e6c31bab04fab5ba0ae7573108317b0ab528621382dd455a24ec08d733a1fa9d"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/schedule-116966133/report.json",
+      "sha256": "37a261770b1e6307ee40a2a6c25f3d36458a00123c3c04ffbe74bd62d25071b6"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/schedule-116966133/integrity-manifest.json",
+      "sha256": "d13507607efaaa7730a0db077f8108bbcdffa65e6b3d583bde373bdc23aa592b"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/schedule-116966133/raw-responses.json.gz",
+      "sha256": "ba8b01abd804a425d1fdfdf344383b39ca08a57373be18585eeb006e531e29a9"
+    }
+  ]
+}

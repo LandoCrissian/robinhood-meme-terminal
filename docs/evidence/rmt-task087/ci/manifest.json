@@ -1,0 +1,69 @@
+{
+  "schemaVersion": 1,
+  "retainedAtUtc": "2026-11-20T04:03:08.391Z",
+  "repository": "LandoCrissian/robinhood-meme-terminal",
+  "pullRequest": 680,
+  "scope": "PUBLIC_GITHUB_CHECK_METADATA_ONLY",
+  "apiMethod": "GET",
+  "selectedFields": [
+    "id",
+    "name",
+    "head_sha",
+    "status",
+    "conclusion",
+    "started_at",
+    "completed_at",
+    "details_url"
+  ],
+  "records": [
+    {
+      "source": "1f7160f5db5d67de348e041a84ccc2889786217e",
+      "file": "pr680-final-1f7160f5.json",
+      "sha256": "6013409b6c642dddbbfd10d8cb55d03f4427e60904fb6cb2b7472896ad10c13c",
+      "bytes": 7119,
+      "total": 21,
+      "counts": {
+        "success": 15,
+        "failure": 6
+      },
+      "apiUrl": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/commits/1f7160f5db5d67de348e041a84ccc2889786217e/check-runs?per_page=100",
+      "lastCompletedAt": "2026-11-20T03:59:50Z",
+      "archive": "pr680-final-1f7160f5.json.gz",
+      "archiveSha256": "b144567a5da206491b576771cbcb809df1e9f9a8dfa309341ca1bc1f2e54e41c",
+      "archiveBytes": 804
+    },
+    {
+      "source": "fe4ee367f3af005eb5766a512b9571d913e0063d",
+      "file": "pr680-prior-fe4ee367.json",
+      "sha256": "1429bd33ec5397844ec4d70748c3d99632e1aac2b226e73171a31ecdf6ed0d7b",
+      "bytes": 7119,
+      "total": 21,
+      "counts": {
+        "success": 14,
+        "failure": 7
+      },
+      "apiUrl": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/commits/fe4ee367f3af005eb5766a512b9571d913e0063d/check-runs?per_page=100",
+      "lastCompletedAt": "2026-11-20T03:37:17Z",
+      "archive": "pr680-prior-fe4ee367.json.gz",
+      "archiveSha256": "8067e307bfccee50738695891026a1d5c99464b1e4305f3c196ed1e2b9fa5272",
+      "archiveBytes": 823
+    },
+    {
+      "source": "b651635db2d5186ba8b2b47c9b67e339ba5ce4d1",
+      "file": "pr680-prior-b651635d.json",
+      "sha256": "d0271225aa38fd83e1034011362ee953544cbf0c45183a6b9bba43b299837bb1",
+      "bytes": 7119,
+      "total": 21,
+      "counts": {
+        "success": 14,
+        "failure": 7
+      },
+      "apiUrl": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/commits/b651635db2d5186ba8b2b47c9b67e339ba5ce4d1/check-runs?per_page=100",
+      "lastCompletedAt": "2026-11-20T03:42:40Z",
+      "archive": "pr680-prior-b651635d.json.gz",
+      "archiveSha256": "e80f870e06e4a7325524b91f4c296bb4642145f1a83fcd4690afe5b09bec66bb",
+      "archiveBytes": 820
+    }
+  ],
+  "retention": "Original response bytes preserved in gzip; plain JSON is an LF/CRLF-only convenient view, not original-byte hash authority"
+}

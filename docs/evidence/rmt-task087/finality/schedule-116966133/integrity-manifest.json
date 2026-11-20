@@ -1,0 +1,39 @@
+{
+  "schemaVersion": 1,
+  "target": {
+    "number": "116966133",
+    "hash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+    "transactionHash": "0x96bd234e49d766c73c66f9787f26736040b4fc64d91ed2ae888eca3f4c8afb65"
+  },
+  "status": "UNVERIFIED",
+  "requests": 31,
+  "nodeVersion": "v22.23.2",
+  "rawBytes": 274532,
+  "rawSha256": "5e8cbffeb29c399d976282bb2d78723482ba12399596b37f6249a6a350a88af2",
+  "storedBytes": 67003,
+  "storedSha256": "ba8b01abd804a425d1fdfdf344383b39ca08a57373be18585eeb006e531e29a9",
+  "encoding": "gzip mtime0 original captured public request/response records",
+  "reportSha256": "37a261770b1e6307ee40a2a6c25f3d36458a00123c3c04ffbe74bd62d25071b6",
+  "sourceFiles": [
+    {
+      "path": "docs/evidence/rmt-task087/finality/probe-schedule-posting.mjs",
+      "sha256": "4ff3bf3b28dbedcbe2fe5bd21a6635809d3b9d66743f17e12c7e2042fee6c8b0"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/probe-schedule-posting.test.mjs",
+      "sha256": "e1710fae3a7f4e1c8195b08dea5de1f1efbe35599e1cea8ef0d959863962f038"
+    },
+    {
+      "path": "scripts/production-readiness/rpc.mjs",
+      "sha256": "456e51835601c802032be78d9e0346d98260ca851376d3825c008b077c55ac67"
+    },
+    {
+      "path": "docs/evidence/fixed-supply-release/l1-batches.json",
+      "sha256": "8c9d3f889cba30e31ce5ce399ac014e79be4a4b80c2074e5f8fe10f51853e5f1"
+    },
+    {
+      "path": "docs/evidence/mobile-signing/factory-publication-scheduled.json",
+      "sha256": "82a9f6cef8144fdecdcb3873ab58d028b88bca99248d805bd0c8456401c420aa"
+    }
+  ]
+}
