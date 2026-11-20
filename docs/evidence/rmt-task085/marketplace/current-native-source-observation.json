@@ -1,0 +1,1543 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_CURRENT_SOURCE_AND_COLLECTION_QUALIFICATION",
+  "status": "BLOCKED_NO_BROADCAST",
+  "observedAt": "2026-11-20T00:05:41.252Z",
+  "broadcast": false,
+  "ownerSignatures": false,
+  "executionApproved": false,
+  "currentExecutableListingVerified": false,
+  "collectionPurchaseAdmitted": false,
+  "publicSources": {
+    "listingApi": {
+      "url": "https://api.opensea.io/api/v2/listings/collection/lammbs-59693791/best?limit=1",
+      "method": "GET",
+      "credentials": "omit",
+      "redirect": "error",
+      "apiCredentialUsed": false,
+      "observedAt": "2026-11-20T00:05:41.442Z",
+      "httpStatus": 401,
+      "responseDate": "Fri, 20 Nov 2026 00:05:41 GMT",
+      "contentType": "application/json;charset=ISO-8859-1",
+      "bytes": 70,
+      "sha256": "e7435fbb1c5ad5f3795889b78db8f659dff6d30c6b8b48d4369204d05b353f74",
+      "ok": false
+    },
+    "collectionUi": {
+      "url": "https://opensea.io/collection/lammbs-59693791",
+      "method": "GET",
+      "credentials": "omit",
+      "redirect": "error",
+      "apiCredentialUsed": false,
+      "observedAt": "2026-11-20T00:05:42.215Z",
+      "httpStatus": 200,
+      "responseDate": "Fri, 20 Nov 2026 00:05:41 GMT",
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 1215253,
+      "sha256": "fe977247825155daa7824fbc324600de2d2f8171601706f28f3c3031b2a8ab3a",
+      "ok": true
+    },
+    "collectionSource": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf?fields=all",
+      "method": "GET",
+      "credentials": "omit",
+      "redirect": "error",
+      "apiCredentialUsed": false,
+      "observedAt": "2026-11-20T00:05:42.736Z",
+      "httpStatus": 404,
+      "responseDate": "Fri, 20 Nov 2026 00:05:42 GMT",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 127,
+      "sha256": "6b508c7f0631a52470182b8ec3997c70d973ac0ce07615e3ca925ef250154df3",
+      "ok": false
+    },
+    "implementationSource": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "method": "GET",
+      "credentials": "omit",
+      "redirect": "error",
+      "apiCredentialUsed": false,
+      "observedAt": "2026-11-20T00:05:42.882Z",
+      "httpStatus": 200,
+      "responseDate": "Thu, 19 Nov 2026 23:58:10 GMT",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 869066,
+      "sha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+      "ok": true
+    },
+    "validatorSource4663": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x721C008fdff27BF06E7E123956E2Fe03B63342e3?fields=all",
+      "method": "GET",
+      "credentials": "omit",
+      "redirect": "error",
+      "apiCredentialUsed": false,
+      "observedAt": "2026-11-20T00:05:43.063Z",
+      "httpStatus": 404,
+      "responseDate": "Fri, 20 Nov 2026 00:05:43 GMT",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 127,
+      "sha256": "1b4163f1e95d7e06aacc8da3592dd5ec915c7a8212f30adeb6ee1d4d250286ba",
+      "ok": false
+    },
+    "validatorReferenceSource1": {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x721C008fdff27BF06E7E123956E2Fe03B63342e3?fields=all",
+      "method": "GET",
+      "credentials": "omit",
+      "redirect": "error",
+      "apiCredentialUsed": false,
+      "observedAt": "2026-11-20T00:05:43.143Z",
+      "httpStatus": 200,
+      "responseDate": "Thu, 19 Nov 2026 23:59:09 GMT",
+      "contentType": "application/json; charset=utf-8",
+      "bytes": 1467824,
+      "sha256": "f52a3735d2350c81f97193510415fa5c8b003a4e71ca3d77a1a4db044c1f57d2",
+      "ok": true
+    },
+    "alternativeRhinoMarket": {
+      "url": "https://www.robinhoodnfts.com/marketplace/",
+      "method": "GET",
+      "observedAt": "2026-11-20T00:05:53.154Z",
+      "status": "UNAVAILABLE",
+      "reason": "The operation was aborted due to timeout"
+    },
+    "alternativeHoodMarketDocs": {
+      "url": "https://docs.hoodmarket.io/",
+      "method": "GET",
+      "observedAt": "2026-11-20T00:05:53.177Z",
+      "status": "UNAVAILABLE",
+      "reason": "fetch failed"
+    },
+    "alternativeAggregateUi": {
+      "url": "https://radar.radiorelic.fun/",
+      "method": "GET",
+      "credentials": "omit",
+      "redirect": "error",
+      "apiCredentialUsed": false,
+      "observedAt": "2026-11-20T00:05:53.679Z",
+      "httpStatus": 200,
+      "responseDate": "Fri, 20 Nov 2026 00:05:53 GMT",
+      "contentType": "text/html; charset=utf-8",
+      "bytes": 47126,
+      "sha256": "b39742f0ca950fbab953be69b53b701660c2a18a905afe9b4470ecec3819e2bc",
+      "ok": true
+    }
+  },
+  "providers": {
+    "official": {
+      "block": {
+        "baseFeePerGas": "0x132b3a0",
+        "difficulty": "0x1",
+        "extraData": "0x402609f71c6e71bae8b04541f76f3e0da7bbc9db44e6ed66093d0e3f95b9237b",
+        "gasLimit": "0x4000000000000",
+        "gasUsed": "0x58486",
+        "hash": "0x0325a0a27de7e9c9d465086b6c422d30d5d19791a52222c0f063813cf813fda7",
+        "l1BlockNumber": "0x193a27d",
+        "logsBloom": "0x04000000000000000000000000000000000000000000000000000000000000010000010000000000000000200004000000000000000000000000000400000000000000000000000000002000000000000000000000000000000000000000000000000000021008000080080000000800000000400000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000102000000000000000000000000000000000000022000000000000000000000000000000000000000000000000000000000000620008000000000000000000000000004000000000001008000000000000002000000",
+        "miner": "0xa4b000000000000000000073657175656e636572",
+        "mixHash": "0x0000000000000f4d000000000193a27d000000000000003d0000000000000000",
+        "nonce": "0x000000000006fbfc",
+        "number": "0x712158a",
+        "parentHash": "0x74d18f6de13fd31be33dc89921482425d5fa3f0c96883d626755fb336ceec31b",
+        "receiptsRoot": "0x7d3d5337121a69cce77353017aa87a6ba72690fc64830bb8f38a202282847915",
+        "sendCount": "0xf4d",
+        "sendRoot": "0x402609f71c6e71bae8b04541f76f3e0da7bbc9db44e6ed66093d0e3f95b9237b",
+        "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+        "size": "0xbd5",
+        "stateRoot": "0x5eaf96fa1b2a7b6e5d6dded68a3c29bb205df523152c6a2a454356ee4700d82d",
+        "timestamp": "0x6aff8edf",
+        "transactions": [
+          "0x01869d9ba93b2caa77a617539dbcc4b6ed990d2775818272584a067713805406",
+          "0x9e06129a3c355e4eb8eb7d9330150f138416427d2747e2dfa648c51d59fa1be9",
+          "0xc32506c2a4b9f2682b8b76200675a3de5146a4c74027a7544d8fa0f01b1b6b01",
+          "0xca60efc9ef1cd0f71de4a6257b1d2dfdabdda2b4997816f26a03da8c71749553",
+          "0x1789a969aeec87118a0931b0bb9c41d790eb88ebcace3042a44a73e9b81aba1c",
+          "0x7b06f18b050c62ce58e257bac6cd1021bc148c7da2cf7970aabaea85e1bfd41a",
+          "0xcd30afb09d7eec27c0c4707ab175e16a14d1a852687431df18f98ae0121c0d3e"
+        ],
+        "transactionsRoot": "0xec5cb311118bde72403b2787bbc5e813a8965f4b7bc6f95467aae06b4706beaf",
+        "uncles": []
+      },
+      "code": {
+        "collection": {
+          "address": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "runtimeHash": "0xe3e252831cdd0c11e1327d04a57ddd9bfa11ef49d50edb524040d98bfb228bc4",
+          "bytes": 45,
+          "runtime": "0x363d3d373d3d3d363d7309a26fc8fcef18192e267d7a6da9dfb4be81dd6a5af43d82803e903d91602b57fd5bf3"
+        },
+        "implementation": {
+          "address": "0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a",
+          "runtimeHash": "0xda60742d810ae5de9c087af2e82b05fb84e9112cfade927fca0db6490ea52519",
+          "bytes": 21257,
+          "sourceCorrespondence": {
+            "fullRuntimeEqualsHostedSource": true,
+            "executableOutsideImmutablesEqual": true,
+            "differencesOutsideImmutables": [],
+            "immutableValues": {},
+            "independentlyRecompiled": false,
+            "limitation": "Hosted source/runtime correspondence is not independent recompilation or acceptance of immutable bindings, management modules or policy."
+          }
+        },
+        "validator": {
+          "address": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "runtimeHash": "0xcf4eb611d0a4264a3cca483100d883e21545581c69b80e9d0cc29606d4b93dcc",
+          "bytes": 24012,
+          "ethereumReferenceCorrespondence": {
+            "fullRuntimeEqualsHostedSource": false,
+            "executableOutsideImmutablesEqual": true,
+            "differencesOutsideImmutables": [],
+            "immutableValues": {
+              "1959": [
+                "0x000000000000000000000000000000000000000000000000002386f26fc0ffff"
+              ],
+              "1969": [
+                "0x000000000000000000000000000000000000000000000000000004b6000029ee"
+              ],
+              "5834": [
+                "0x483558bb3370d22f0ea3b5c603e45ebc1c7710173e253dfc06990d6dac01763a"
+              ],
+              "5836": [
+                "0x0000000000000000000000000000000000000000000000000000000000001237"
+              ],
+              "5838": [
+                "0x12900c1b40e87470816fa5cb16069bf5b3df9cf052332bf21440c4318ccddcfe"
+              ],
+              "5840": [
+                "0xceebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1"
+              ],
+              "6123": [
+                "0x00000000000000000000000079a95940c17a9a8148633a11ff9d0ddcffd9c00d"
+              ],
+              "6125": [
+                "0x0000000000000000000000000000000000000000000000000000000000000001"
+              ],
+              "6133": [
+                "0x000000000000000000000000000000000000000000000000000003e40000293a"
+              ],
+              "6141": [
+                "0x000000000000000000000000000000000000000000000000000003eb00002941"
+              ],
+              "7284": [
+                "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+              ],
+              "7287": [
+                "0x000000000000000000000000721c002d2cae3522602b93a0c48e11dc573a15e3"
+              ],
+              "7290": [
+                "0x000000000000000000000000721c0086cc4f335407cc84a38ce7dcb1560476b0"
+              ]
+            },
+            "independentlyRecompiled": false,
+            "limitation": "Hosted source/runtime correspondence is not independent recompilation or acceptance of immutable bindings, management modules or policy."
+          }
+        },
+        "seaport": {
+          "address": "0x0000000000000068F116a894984e2DB1123eB395",
+          "runtimeHash": "0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00",
+          "bytes": 23981
+        }
+      },
+      "reads": [
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "name",
+          "args": [],
+          "value": "LAMMBs"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "owner",
+          "args": [],
+          "value": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "getTransferValidator",
+          "args": [],
+          "value": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "supportsInterface",
+          "args": [
+            "0x80ac58cd"
+          ],
+          "value": true
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "supportsInterface",
+          "args": [
+            "0xd9b67a26"
+          ],
+          "value": false
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "royaltyInfo",
+          "args": [
+            "478",
+            "1000000000000000000"
+          ],
+          "value": [
+            "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+            "100000000000000000"
+          ]
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "maxSupply",
+          "args": [],
+          "value": "720"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "totalSupply",
+          "args": [],
+          "value": "720"
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "owner",
+          "args": [],
+          "value": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd"
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "getCollectionSecurityPolicy",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf"
+          ],
+          "value": {
+            "rulesetId": 0,
+            "listId": 0,
+            "customRuleset": "0x0000000000000000000000000000000000000000",
+            "globalOptions": 0,
+            "rulesetOptions": 2,
+            "tokenType": 0
+          }
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "boundRuleset",
+          "args": [
+            0
+          ],
+          "value": "0x00721CE73fDE1e57A9048E0e19B7ee7c8D3F10E3"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "ownerOf",
+          "args": [
+            "478"
+          ],
+          "value": "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "getApproved",
+          "args": [
+            "478"
+          ],
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "isApprovedForAll",
+          "args": [
+            "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+            "0x0000000000000068F116a894984e2DB1123eB395"
+          ],
+          "value": false
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "validateTransfer",
+          "args": [
+            "0x0000000000000068F116a894984e2DB1123eB395",
+            "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "value": {
+            "error": {
+              "code": 3,
+              "message": "execution reverted",
+              "data": "0xe1f1d02e"
+            }
+          }
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "isApprovedForAll",
+          "args": [
+            "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+            "0x963f00d3ff000064ffcba824b800c0000000c300"
+          ],
+          "value": true
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "validateTransfer",
+          "args": [
+            "0x963f00d3ff000064ffcba824b800c0000000c300",
+            "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "value": {
+            "error": {
+              "code": 3,
+              "message": "execution reverted",
+              "data": "0xe1f1d02e"
+            }
+          }
+        }
+      ],
+      "recentOrderValidated": {
+        "filter": {
+          "address": "0x0000000000000068F116a894984e2DB1123eB395",
+          "fromBlock": "0x711ee7b",
+          "toBlock": "0x712158a",
+          "topics": [
+            "0xf280791efe782edcf06ce15c8f4dff17601db3b88eb3805a0db7d77faf757f04"
+          ]
+        },
+        "maxLogs": 100,
+        "count": 0,
+        "logs": [],
+        "verdict": "NO_VALIDATED_ORDER_IN_BOUNDED_RECENT_WINDOW"
+      },
+      "canonicalRechecked": true
+    },
+    "pocket": {
+      "block": {
+        "baseFeePerGas": "0x132b3a0",
+        "difficulty": "0x1",
+        "extraData": "0x402609f71c6e71bae8b04541f76f3e0da7bbc9db44e6ed66093d0e3f95b9237b",
+        "gasLimit": "0x4000000000000",
+        "gasUsed": "0x58486",
+        "hash": "0x0325a0a27de7e9c9d465086b6c422d30d5d19791a52222c0f063813cf813fda7",
+        "l1BlockNumber": "0x193a27d",
+        "logsBloom": "0x04000000000000000000000000000000000000000000000000000000000000010000010000000000000000200004000000000000000000000000000400000000000000000000000000002000000000000000000000000000000000000000000000000000021008000080080000000800000000400000000000000000000000000000000000000000000000000000000000000000080000000000000000000000000000000000000000000102000000000000000000000000000000000000022000000000000000000000000000000000000000000000000000000000000620008000000000000000000000000004000000000001008000000000000002000000",
+        "miner": "0xa4b000000000000000000073657175656e636572",
+        "mixHash": "0x0000000000000f4d000000000193a27d000000000000003d0000000000000000",
+        "nonce": "0x000000000006fbfc",
+        "number": "0x712158a",
+        "parentHash": "0x74d18f6de13fd31be33dc89921482425d5fa3f0c96883d626755fb336ceec31b",
+        "receiptsRoot": "0x7d3d5337121a69cce77353017aa87a6ba72690fc64830bb8f38a202282847915",
+        "sendCount": "0xf4d",
+        "sendRoot": "0x402609f71c6e71bae8b04541f76f3e0da7bbc9db44e6ed66093d0e3f95b9237b",
+        "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+        "size": "0xbd5",
+        "stateRoot": "0x5eaf96fa1b2a7b6e5d6dded68a3c29bb205df523152c6a2a454356ee4700d82d",
+        "timestamp": "0x6aff8edf",
+        "transactions": [
+          "0x01869d9ba93b2caa77a617539dbcc4b6ed990d2775818272584a067713805406",
+          "0x9e06129a3c355e4eb8eb7d9330150f138416427d2747e2dfa648c51d59fa1be9",
+          "0xc32506c2a4b9f2682b8b76200675a3de5146a4c74027a7544d8fa0f01b1b6b01",
+          "0xca60efc9ef1cd0f71de4a6257b1d2dfdabdda2b4997816f26a03da8c71749553",
+          "0x1789a969aeec87118a0931b0bb9c41d790eb88ebcace3042a44a73e9b81aba1c",
+          "0x7b06f18b050c62ce58e257bac6cd1021bc148c7da2cf7970aabaea85e1bfd41a",
+          "0xcd30afb09d7eec27c0c4707ab175e16a14d1a852687431df18f98ae0121c0d3e"
+        ],
+        "transactionsRoot": "0xec5cb311118bde72403b2787bbc5e813a8965f4b7bc6f95467aae06b4706beaf",
+        "uncles": []
+      },
+      "code": {
+        "collection": {
+          "address": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "runtimeHash": "0xe3e252831cdd0c11e1327d04a57ddd9bfa11ef49d50edb524040d98bfb228bc4",
+          "bytes": 45,
+          "runtime": "0x363d3d373d3d3d363d7309a26fc8fcef18192e267d7a6da9dfb4be81dd6a5af43d82803e903d91602b57fd5bf3"
+        },
+        "implementation": {
+          "address": "0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a",
+          "runtimeHash": "0xda60742d810ae5de9c087af2e82b05fb84e9112cfade927fca0db6490ea52519",
+          "bytes": 21257,
+          "sourceCorrespondence": {
+            "fullRuntimeEqualsHostedSource": true,
+            "executableOutsideImmutablesEqual": true,
+            "differencesOutsideImmutables": [],
+            "immutableValues": {},
+            "independentlyRecompiled": false,
+            "limitation": "Hosted source/runtime correspondence is not independent recompilation or acceptance of immutable bindings, management modules or policy."
+          }
+        },
+        "validator": {
+          "address": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "runtimeHash": "0xcf4eb611d0a4264a3cca483100d883e21545581c69b80e9d0cc29606d4b93dcc",
+          "bytes": 24012,
+          "ethereumReferenceCorrespondence": {
+            "fullRuntimeEqualsHostedSource": false,
+            "executableOutsideImmutablesEqual": true,
+            "differencesOutsideImmutables": [],
+            "immutableValues": {
+              "1959": [
+                "0x000000000000000000000000000000000000000000000000002386f26fc0ffff"
+              ],
+              "1969": [
+                "0x000000000000000000000000000000000000000000000000000004b6000029ee"
+              ],
+              "5834": [
+                "0x483558bb3370d22f0ea3b5c603e45ebc1c7710173e253dfc06990d6dac01763a"
+              ],
+              "5836": [
+                "0x0000000000000000000000000000000000000000000000000000000000001237"
+              ],
+              "5838": [
+                "0x12900c1b40e87470816fa5cb16069bf5b3df9cf052332bf21440c4318ccddcfe"
+              ],
+              "5840": [
+                "0xceebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1"
+              ],
+              "6123": [
+                "0x00000000000000000000000079a95940c17a9a8148633a11ff9d0ddcffd9c00d"
+              ],
+              "6125": [
+                "0x0000000000000000000000000000000000000000000000000000000000000001"
+              ],
+              "6133": [
+                "0x000000000000000000000000000000000000000000000000000003e40000293a"
+              ],
+              "6141": [
+                "0x000000000000000000000000000000000000000000000000000003eb00002941"
+              ],
+              "7284": [
+                "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+              ],
+              "7287": [
+                "0x000000000000000000000000721c002d2cae3522602b93a0c48e11dc573a15e3"
+              ],
+              "7290": [
+                "0x000000000000000000000000721c0086cc4f335407cc84a38ce7dcb1560476b0"
+              ]
+            },
+            "independentlyRecompiled": false,
+            "limitation": "Hosted source/runtime correspondence is not independent recompilation or acceptance of immutable bindings, management modules or policy."
+          }
+        },
+        "seaport": {
+          "address": "0x0000000000000068F116a894984e2DB1123eB395",
+          "runtimeHash": "0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00",
+          "bytes": 23981
+        }
+      },
+      "reads": [
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "name",
+          "args": [],
+          "value": "LAMMBs"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "owner",
+          "args": [],
+          "value": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "getTransferValidator",
+          "args": [],
+          "value": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "supportsInterface",
+          "args": [
+            "0x80ac58cd"
+          ],
+          "value": true
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "supportsInterface",
+          "args": [
+            "0xd9b67a26"
+          ],
+          "value": false
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "royaltyInfo",
+          "args": [
+            "478",
+            "1000000000000000000"
+          ],
+          "value": [
+            "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+            "100000000000000000"
+          ]
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "maxSupply",
+          "args": [],
+          "value": "720"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "totalSupply",
+          "args": [],
+          "value": "720"
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "owner",
+          "args": [],
+          "value": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd"
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "getCollectionSecurityPolicy",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf"
+          ],
+          "value": {
+            "rulesetId": 0,
+            "listId": 0,
+            "customRuleset": "0x0000000000000000000000000000000000000000",
+            "globalOptions": 0,
+            "rulesetOptions": 2,
+            "tokenType": 0
+          }
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "boundRuleset",
+          "args": [
+            0
+          ],
+          "value": "0x00721CE73fDE1e57A9048E0e19B7ee7c8D3F10E3"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "ownerOf",
+          "args": [
+            "478"
+          ],
+          "value": "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "getApproved",
+          "args": [
+            "478"
+          ],
+          "value": "0x0000000000000000000000000000000000000000"
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "isApprovedForAll",
+          "args": [
+            "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+            "0x0000000000000068F116a894984e2DB1123eB395"
+          ],
+          "value": false
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "validateTransfer",
+          "args": [
+            "0x0000000000000068F116a894984e2DB1123eB395",
+            "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "value": {
+            "error": {
+              "code": 3,
+              "message": "execution reverted",
+              "data": "0xe1f1d02e"
+            }
+          }
+        },
+        {
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "isApprovedForAll",
+          "args": [
+            "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+            "0x963f00d3ff000064ffcba824b800c0000000c300"
+          ],
+          "value": true
+        },
+        {
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "validateTransfer",
+          "args": [
+            "0x963f00d3ff000064ffcba824b800c0000000c300",
+            "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "value": {
+            "error": {
+              "code": 3,
+              "message": "execution reverted",
+              "data": "0xe1f1d02e"
+            }
+          }
+        }
+      ],
+      "recentOrderValidated": {
+        "filter": {
+          "address": "0x0000000000000068F116a894984e2DB1123eB395",
+          "fromBlock": "0x711ee7b",
+          "toBlock": "0x712158a",
+          "topics": [
+            "0xf280791efe782edcf06ce15c8f4dff17601db3b88eb3805a0db7d77faf757f04"
+          ]
+        },
+        "maxLogs": 100,
+        "count": 0,
+        "logs": [],
+        "verdict": "NO_VALIDATED_ORDER_IN_BOUNDED_RECENT_WINDOW"
+      },
+      "canonicalRechecked": true
+    }
+  },
+  "limitations": [
+    "Public UI native-ETH listing summaries were observed where available; they omit full signed consideration, Seaport parameters and seller signature. Never treat display prices as exact payment amounts.",
+    "The documented OpenSea API401 boundary is final: no key, account, authenticated backend, cookie reuse, private GraphQL or bypass was attempted.",
+    "A bounded recent OrderValidated query is not an exhaustive history scan, and a log alone is not current seller authority. No historical fill is relabeled as a current listing.",
+    "The collection clone has fixed implementation routing but mutable transfer-validator and royalty settings. Hosted source matching is not an independent audit or owner collection approval.",
+    "No real listing execution, wallet signature, transaction, production admission, finality verification or purchase was performed. The existing vault remains31337-only and production NO_GO."
+  ],
+  "publicUiListingClaims": [
+    {
+      "tokenId": "169",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "aa1fde0e050b3846b2d8cf6a29bb3407",
+      "seller": "0x8867c6c4d50eab3f3aacf1d1e8076243bc6ef709",
+      "displayPriceEth": "0.000684419999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-20T00:05:31.000Z",
+      "endTime": "2026-11-20T00:20:31.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "478",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "0e7dbbe77e683649800eef790c5aa9cd",
+      "seller": "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+      "displayPriceEth": "0.00068442",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-20T00:05:29.000Z",
+      "endTime": "2026-11-27T00:05:29.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "286",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "bee60c89fd193771917f435a26b2413b",
+      "seller": "0x8867c6c4d50eab3f3aacf1d1e8076243bc6ef709",
+      "displayPriceEth": "0.000756589999999999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-19T23:53:29.000Z",
+      "endTime": "2026-11-20T00:08:29.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "51",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "d201d51fa5b73bbc9bbb20f26eedeeae",
+      "seller": "0x234628c22f88567101051520789b390c26be72f2",
+      "displayPriceEth": "0.0009129",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-20T00:05:35.000Z",
+      "endTime": "2026-11-20T00:16:35.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "171",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "3566ce11ee52331e87f7186c14138cbc",
+      "seller": "0x234628c22f88567101051520789b390c26be72f2",
+      "displayPriceEth": "0.0009129",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-20T00:05:35.000Z",
+      "endTime": "2026-11-20T00:16:35.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "186",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "1f025231967f3674b64c7efc072ade23",
+      "seller": "0x234628c22f88567101051520789b390c26be72f2",
+      "displayPriceEth": "0.0009129",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-20T00:05:34.000Z",
+      "endTime": "2026-11-20T00:16:34.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "288",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "3242acbaf5b8312b874b21da8ce363e0",
+      "seller": "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+      "displayPriceEth": "0.00091301",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-20T00:05:32.000Z",
+      "endTime": "2026-11-27T00:05:32.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "159",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "b9394557332c3d3c90e8b595bfd36c13",
+      "seller": "0x9baa922cb5ae3699352248dbd8eda6f5ea3ef947",
+      "displayPriceEth": "0.00092",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-18T23:33:33.000Z",
+      "endTime": "2027-02-16T23:33:33.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "671",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "df11e84df0683e269cd58d494a961541",
+      "seller": "0x80b14af1ef612ce5ec2c17c9d7ad2cee21104b6d",
+      "displayPriceEth": "0.00093",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-18T18:36:00.000Z",
+      "endTime": "2027-02-16T18:36:00.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "180",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "2a00587c996835a085e8c7dbfe6edc91",
+      "seller": "0x32f0647428da1c4dfd8896b11d11c5106eb22355",
+      "displayPriceEth": "0.0011715",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-18T08:17:37.000Z",
+      "endTime": "2027-02-16T08:17:37.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "179",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "9992c010304a34cbbee1f9cfb0381845",
+      "seller": "0x32f0647428da1c4dfd8896b11d11c5106eb22355",
+      "displayPriceEth": "0.0011715",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-18T08:17:37.000Z",
+      "endTime": "2027-02-16T08:17:37.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "439",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "1e8c501081b33bee93a8df4913a90b29",
+      "seller": "0xb1332c484da666a2b90291317498cf10aca3a087",
+      "displayPriceEth": "0.00121458",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-18T02:31:49.000Z",
+      "endTime": "2027-05-17T02:31:49.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "227",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "917f838116273545a3dea3848c6c8fa8",
+      "seller": "0x9680ca29575e88a741119e0ae17f21d8bc729eda",
+      "displayPriceEth": "0.00122069",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-18T02:24:50.000Z",
+      "endTime": "2027-05-17T02:24:50.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "429",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "9d0f1001b0ff3f8691c3a46308ab4ddd",
+      "seller": "0x8053a9981f57e2a1e3babbca52546e8c959a33c2",
+      "displayPriceEth": "0.001258328999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-17T17:58:29.000Z",
+      "endTime": "2027-02-15T17:58:29.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "660",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "699f3f7ae99730519a93f93c6ac4cef4",
+      "seller": "0x8053a9981f57e2a1e3babbca52546e8c959a33c2",
+      "displayPriceEth": "0.001258328999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-17T17:58:29.000Z",
+      "endTime": "2027-02-15T17:58:29.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "474",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "68d98756fcf533cbab9fa1d5868c0d96",
+      "seller": "0x8053a9981f57e2a1e3babbca52546e8c959a33c2",
+      "displayPriceEth": "0.001258328999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-17T17:58:29.000Z",
+      "endTime": "2027-02-15T17:58:29.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "176",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "cc32a16960ca3dbf92c93f5b979a7af8",
+      "seller": "0x56f38104a917c0bc02dc45be2e506c9d48ce5629",
+      "displayPriceEth": "0.00134307",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-19T20:00:20.000Z",
+      "endTime": "2026-11-26T20:00:19.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "363",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "fd6d182a3b3c3f7bbab54dee4bff3f9b",
+      "seller": "0x1014a36194c74394ab7c1d0200262db7ceebdfd5",
+      "displayPriceEth": "0.0013498239999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-16T23:25:48.000Z",
+      "endTime": "2027-02-14T23:25:48.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "383",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "f0e7fc382db83f0091d49a8eb99f9c8e",
+      "seller": "0x8e5ce1207114de33c49f237782e4b215dae05368",
+      "displayPriceEth": "0.0015965",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-15T15:50:05.000Z",
+      "endTime": "2027-02-13T15:50:05.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "72",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "f57bae297b9c31b38d7a456542429944",
+      "seller": "0x8e5ce1207114de33c49f237782e4b215dae05368",
+      "displayPriceEth": "0.0015967",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-15T15:49:48.000Z",
+      "endTime": "2027-02-13T15:49:48.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "430",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "3909eee8b3723b008708aea5054860b7",
+      "seller": "0x9680ca29575e88a741119e0ae17f21d8bc729eda",
+      "displayPriceEth": "0.00199",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-17T02:24:04.000Z",
+      "endTime": "2027-05-16T02:24:04.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "198",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "ec269cd08f153dcfbb1d3413bd11f680",
+      "seller": "0xd6a55bc2c508b38cf3e1e86f2a7a2f96bb29b6b6",
+      "displayPriceEth": "0.002",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-15T07:14:47.000Z",
+      "endTime": "2027-02-13T07:14:47.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "613",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "4dc2429e0cd73360a9a4a9beac082463",
+      "seller": "0xb1332c484da666a2b90291317498cf10aca3a087",
+      "displayPriceEth": "0.002",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-19T17:13:41.000Z",
+      "endTime": "2027-05-18T17:13:41.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "612",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "ec5218f982503af8ac85cb3cda7dd78f",
+      "seller": "0xb1332c484da666a2b90291317498cf10aca3a087",
+      "displayPriceEth": "0.002",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-19T17:13:41.000Z",
+      "endTime": "2027-05-18T17:13:41.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "78",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "b67af45b057c31cd8e821f6335b1a952",
+      "seller": "0x13c3c791ad2a83375656c44f66683cc38864e00b",
+      "displayPriceEth": "0.0022961",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-14T07:19:39.000Z",
+      "endTime": "2027-05-13T07:19:39.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "64",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "76da5e6df4b83595abfc7d384e86b2d1",
+      "seller": "0x3118437f487248a8c34885480246344dadaee98a",
+      "displayPriceEth": "0.002418199997",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-07T05:15:56.000Z",
+      "endTime": "2027-01-06T05:15:56.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "693",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "0fca28e205403ecfbc04621b3311b729",
+      "seller": "0xc4962d1d85e2e9ca3d5380390fbf2382a87b32d4",
+      "displayPriceEth": "0.0025",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-11T17:01:37.000Z",
+      "endTime": "2027-02-09T17:01:37.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "697",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "7f8fe4b2a8c33bef8f76f9173a7889e9",
+      "seller": "0x17773c5780d48295c20ee29f3f2180fa44633c99",
+      "displayPriceEth": "0.00268420199667",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-14T01:15:41.000Z",
+      "endTime": "2027-02-12T01:15:41.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "364",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "329add9a10bd39b2b4aff6ce0b5e9956",
+      "seller": "0xb1332c484da666a2b90291317498cf10aca3a087",
+      "displayPriceEth": "0.00288",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-17T19:44:07.000Z",
+      "endTime": "2027-05-16T19:44:07.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "425",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "511e4c2cd7d93e72a9d060648b05a340",
+      "seller": "0xb1332c484da666a2b90291317498cf10aca3a087",
+      "displayPriceEth": "0.00288",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-17T19:44:07.000Z",
+      "endTime": "2027-05-16T19:44:07.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "491",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "5e3c759b473c3e74855418093a2a5bae",
+      "seller": "0xb1332c484da666a2b90291317498cf10aca3a087",
+      "displayPriceEth": "0.00288",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-17T19:44:07.000Z",
+      "endTime": "2027-05-16T19:44:07.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "90",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "017a532f996a3d99ab1be8f2a5919111",
+      "seller": "0x9b001359fba9f7db7ad8ec8b24c562565d3f1256",
+      "displayPriceEth": "0.0029",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-15T12:54:09.000Z",
+      "endTime": "2026-11-22T12:54:06.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "215",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "748be2efe4723f5daa47034f3e5e00a2",
+      "seller": "0x1c458243217468a52fe6389c57370b6ac075e166",
+      "displayPriceEth": "0.003",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-06T17:22:28.000Z",
+      "endTime": "2027-02-04T17:22:28.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "394",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "9a4ea869d13a3326a0d15fd1f21046b8",
+      "seller": "0x9680ca29575e88a741119e0ae17f21d8bc729eda",
+      "displayPriceEth": "0.0031",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-17T02:21:52.000Z",
+      "endTime": "2027-05-16T02:21:52.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "449",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "055c8439b2f83589beececb39fbbae94",
+      "seller": "0x02d3051f8e85a45add1edae6f64471f6d003d1ab",
+      "displayPriceEth": "0.003215799998",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-05T13:04:09.000Z",
+      "endTime": "2027-02-03T13:04:09.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "548",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "79c68a0937f2334eb0f3453c668bcc86",
+      "seller": "0xce975b761378ed4c09d67a5a62bc1526c2b105c0",
+      "displayPriceEth": "0.0033",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-17T15:14:46.000Z",
+      "endTime": "2026-12-17T15:14:46.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "507",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "e33a1e7307973012b4e999715cd47898",
+      "seller": "0xd02a8522fd452a50b7ef8b0c493f02b4bc5fe5a8",
+      "displayPriceEth": "0.0034286",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-05T05:02:04.000Z",
+      "endTime": "2027-02-03T05:02:04.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "228",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "0367bddd7ee23a43b11e9f5c15394ffb",
+      "seller": "0x6e53e8380dc25cc9359e7150b619f51821f6d966",
+      "displayPriceEth": "0.003899999998",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-19T23:57:49.000Z",
+      "endTime": "2026-11-20T00:12:49.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "74",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "26596b09e47e310788a3e499e0598d7b",
+      "seller": "0x7d0d4312ade311c9d2cfb220cd25a12eb186b764",
+      "displayPriceEth": "0.003899999999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-19T23:54:15.000Z",
+      "endTime": "2026-11-20T00:09:12.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "360",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "efcc1e7f7e033c8397cf529e147d0750",
+      "seller": "0x7d0d4312ade311c9d2cfb220cd25a12eb186b764",
+      "displayPriceEth": "0.003899999999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-19T23:59:51.000Z",
+      "endTime": "2026-11-20T00:14:51.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "245",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "0dd40a790e1235548e88f3de3d3be59a",
+      "seller": "0x446ab8db67ea43fabc3b20e3836d35965169b012",
+      "displayPriceEth": "0.0039",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-15T19:29:25.000Z",
+      "endTime": "2026-11-22T19:29:25.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "269",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "cfc9f9ec84bb35558ca012e601eeeeed",
+      "seller": "0x1c458243217468a52fe6389c57370b6ac075e166",
+      "displayPriceEth": "0.0039",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-03T09:06:44.000Z",
+      "endTime": "2027-02-01T09:06:44.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "501",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "272ec88e22733c889581177406fef1a9",
+      "seller": "0x1993e45ae40d48ddb4ca94932fd4b7c24f028b03",
+      "displayPriceEth": "0.0039",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-03T07:00:43.000Z",
+      "endTime": "2027-02-01T07:00:43.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "386",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "e2b1ce90c1403eb7ba1a986efe2acfb5",
+      "seller": "0x1c458243217468a52fe6389c57370b6ac075e166",
+      "displayPriceEth": "0.0039",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-03T09:06:44.000Z",
+      "endTime": "2027-02-01T09:06:44.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "270",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "bfebabf9d6403fb8b697ceb6fde5b8b6",
+      "seller": "0x1c458243217468a52fe6389c57370b6ac075e166",
+      "displayPriceEth": "0.0039",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-03T09:06:44.000Z",
+      "endTime": "2027-02-01T09:06:44.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "271",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "e501ed5574cb3d778b9a4f8df8f8106e",
+      "seller": "0x1c458243217468a52fe6389c57370b6ac075e166",
+      "displayPriceEth": "0.0039",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-03T09:06:44.000Z",
+      "endTime": "2027-02-01T09:06:44.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "508",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "f207ed0b510b3303ac0d3841cd31d18f",
+      "seller": "0x6e53e8380dc25cc9359e7150b619f51821f6d966",
+      "displayPriceEth": "0.003999989999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-19T23:59:53.000Z",
+      "endTime": "2026-11-20T00:14:52.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "170",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "776727c77e9230bc816ccdd351f2f2f8",
+      "seller": "0x6e53e8380dc25cc9359e7150b619f51821f6d966",
+      "displayPriceEth": "0.003999989999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-19T23:53:06.000Z",
+      "endTime": "2026-11-20T00:08:06.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "264",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "ab0f8794b6e13883937c98e0a2453ac6",
+      "seller": "0x65408a4be8244cd5f87d602bdeba1c528d15b312",
+      "displayPriceEth": "0.00399999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-16T07:00:05.000Z",
+      "endTime": "2027-05-15T07:00:05.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    },
+    {
+      "tokenId": "427",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "1ea30f33ff8d32aba8fb6b80320d6a4e",
+      "seller": "0x65408a4be8244cd5f87d602bdeba1c528d15b312",
+      "displayPriceEth": "0.00399999",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-16T07:00:05.000Z",
+      "endTime": "2027-05-15T07:00:05.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    }
+  ],
+  "publicUiVerdict": "NATIVE_LISTING_SUMMARIES_OBSERVED_FULL_SIGNED_ORDER_UNAVAILABLE",
+  "anchor": "118625674",
+  "corroborated": true,
+  "collectionVerdict": "NO_GO_MUTABLE_TRANSFER_POLICY_AND_UNADMITTED_VALIDATOR_CLOSURE_NO_OWNER_COLLECTION_APPROVAL",
+  "candidateListingClaim": {
+    "tokenId": "478",
+    "standard": "ERC721",
+    "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+    "listingId": "0e7dbbe77e683649800eef790c5aa9cd",
+    "seller": "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+    "displayPriceEth": "0.00068442",
+    "quantityRemaining": "1",
+    "startTime": "2026-11-20T00:05:29.000Z",
+    "endTime": "2026-11-27T00:05:29.000Z",
+    "reportedCurrentAtObservation": true,
+    "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+    "fullOrderParametersAvailable": false,
+    "signatureAvailable": false,
+    "executionApproved": false
+  },
+  "sourcePolicy": {
+    "implementationName": "ERC721SeaDropCloneable",
+    "compilerVersion": "0.8.17+commit.8df45f5f",
+    "independentCompilationPerformed": false,
+    "ownerMutableTransferValidator": true,
+    "ownerMutableRoyalty": true,
+    "ownerMutableMaxSupply": true,
+    "custodySeizureEntrypointFoundInReviewedCollectionSource": false,
+    "reviewBoundary": "Source inspection is limited to hosted implementation source; validator/module/issuer authority and actual signed-order custody require separate admission. This is purchase eligibility, not Reclaim burn eligibility."
+  },
+  "verdict": "NO_CURRENT_EXECUTABLE_SIGNED_NATIVE_ORDER_ADMITTED"
+}

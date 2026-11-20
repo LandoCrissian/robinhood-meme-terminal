@@ -1,0 +1,89 @@
+
+import A from"node:assert/strict";import{test}from"node:test";import *as safe from"../../../../../packages/launchpad-common/seaport-vault-safe.mjs";import{readFileSync}from"node:fs";import{gunzipSync}from"node:zlib";import{createRequire}from"node:module";import{createHash}from"node:crypto";
+import{createSeaportVerifier}from"../../../../../packages/launchpad-common/seaport-order-verifier.mjs";
+import{assertSeaportVaultTrace}from"../../../../../packages/launchpad-common/seaport-vault-proof.mjs";
+import *as rt from"../../../../../packages/launchpad-common/seaport-vault-runtime.mjs";
+test("Task085 retained native signatures, traces, canonical PG rows and Safe executions",async()=>{
+const r=createRequire(new URL("../../../../../apps/indexer/package.json",import.meta.url)),v=r("viem"),verifier=createSeaportVerifier(v),root=new URL(".",import.meta.url).pathname.replace(/^\/([A-Za-z]:\/)/,"$1"),manifest=JSON.parse(readFileSync(root+"integrity-manifest.json")),bundles=[];
+const same=(a,b)=>typeof a==="string"&&typeof b==="string"&&a.toLowerCase()===b.toLowerCase(),canon=x=>typeof x==="string"&&x.startsWith("0x")?x.toLowerCase():Array.isArray(x)?x.map(canon):x&&typeof x==="object"?Object.fromEntries(Object.keys(x).sort().map(k=>[k,canon(x[k])])):x,eq=(a,b)=>A.deepEqual(canon(a),canon(b)),sha=b=>createHash("sha256").update(b).digest("hex"),V=v.parseAbi(rt.seaportVaultSignatures),S=v.parseAbi(rt.seaportVaultSeaportSignatures),N=v.parseAbi(rt.seaportVaultNftSignatures),PRICE=1000000000000000n;
+for(const ar of manifest.artifacts)for(const m of ar.members){const b=readFileSync(root+m.path);A.equal(sha(b),m.storedSha256);A.equal(sha(m.encoding.startsWith("gzip")?gunzipSync(b):b),m.rawSha256);}
+const compiler=JSON.parse(gunzipSync(readFileSync(root+"strict-security/seaport-acquisition-manifest.json.gz")));A.equal(sha(gunzipSync(readFileSync(root+"strict-security/seaport-acquisition.json.gz"))),compiler.inputSha256);A.equal(compiler.status,"BLOCKED_NO_BROADCAST");
+let nativeFills=0,dbSnapshots=0,dbRows=0,watcherPolls=0,signatureUses=0,traceFrames=0,tamper=0;const modes=[];
+for(const ar of manifest.artifacts.filter(a=>a.mode!=="strict-security")){
+ const read=name=>{const m=ar.members.find(m=>m.originalMember===name),stored=readFileSync(root+m.path);A.equal(sha(stored),m.storedSha256);const raw=gunzipSync(stored);A.equal(sha(raw),m.rawSha256);return JSON.parse(raw);};
+ const d=read("chain/seaport-acquisition-deployment.json"),n=read("native-order-admission-evidence.json"),w=read("seaport-listing-watcher-evidence.json"),safe=read("seaport-safe-admin-evidence.json"),chain=read("chain/seaport-acquisition-fixture-evidence.json");bundles.push({safe,deployment:d});
+ A.equal(n.status,"PASS");A.equal(w.status,"PASS");A.equal(n.production,false);A.equal(n.publicCurrentListing,false);A.equal(n.broadcastsToUpstream,0);A.equal(n.ownerSignatures,false);A.equal(n.accepted.length,2);A.equal(n.rejections.length,16);A.equal(Object.keys(n.checks).length,10);for(const b of Object.values(n.checks))A.equal(b,true);
+ const hashObject=x=>"0x"+sha(JSON.stringify(canon(x))),policies=d.collections.map(pin=>{A.equal(pin.sourceVerified,true);A.equal(pin.proxy,false);A.ok(same(pin.sourceInputSha256,"0x"+chain.sourceInputs.synthetic.inputSha256.replace(/^0x/,"")));const p={schemaVersion:1,scope:"SYNTHETIC_LOCAL_FIXTURE_ONLY",chainId:31337,address:pin.address.toLowerCase(),standard:pin.standard,runtimeHash:pin.runtimeHash.toLowerCase(),sourceInputSha256:pin.sourceInputSha256.toLowerCase(),sourceReview:"LOCAL_COMPILER_FIXTURE_NOT_PRODUCTION_REVIEW",proxy:"NONE_IN_PINNED_FIXTURE",issuerPolicy:"LOCAL_MINT_AND_HOSTILE_FAULT_CONTROLS",upgradePolicy:"NO_PRODUCTION_AUTHORITY_ADMISSION",transferPolicy:"STANDARD_INTERFACE_WITH_HOSTILE_FIXTURE_CONTROLS",royaltyPolicy:"LOCAL_CONFIGURABLE_FIXTURE_ONLY"};return{...p,policyHash:hashObject(p)};}),catalogHash=hashObject(policies.sort((a,b)=>(a.chainId+":"+a.address).localeCompare(b.chainId+":"+b.address)));
+ const accepted=new Map();
+ for(const a of n.accepted){
+  const p=a.proof,s=a.settled,o=JSON.parse(a.entry.rawUtf8).order,D=verifier.seaportOrderDigest(o),normal=verifier.normalizeSeaportOrder(o),item=o.parameters.offer[0],qty=BigInt(item.startAmount);
+  A.equal(a.entry.sourceKind,"OWNER_SUPPLIED");A.equal(a.entry.sourceId,"owner-supplied");eq(o,p.order);A.equal(p.nativeAdmission.rawSha256,"0x"+sha(a.entry.rawUtf8));A.ok(same(D.orderHash,p.orderHash));A.ok(same(await v.recoverAddress({hash:D.digest,signature:o.signature}),o.parameters.offerer));signatureUses++;
+  A.ok(same(p.nativeAdmission.policyCatalogHash,catalogHash));const collectionPolicy=policies.find(x=>same(x.address,item.token));A.ok(collectionPolicy);A.ok(same(p.nativeAdmission.collectionPolicyHash,collectionPolicy.policyHash));A.ok(same(p.nativeAdmission.collection.runtimeHash,collectionPolicy.runtimeHash));A.equal(p.nativeAdmission.productionApproved,false);A.equal(p.nativeAdmission.scope,"SYNTHETIC_LOCAL_FIXTURE_ONLY");A.equal(p.nativeAdmission.chainId,31337);A.equal(p.executionApproved,false);A.equal(p.executionEnabled,false);
+  A.equal(p.nativeAdmission.totalWei,String(PRICE));A.equal(a.considerationWei,String(PRICE));A.equal(a.perNftConsiderationWei,String(PRICE/qty));A.equal(p.nativeAdmission.payment.networkFeeIncluded,false);
+  const payments=o.parameters.consideration.map(c=>({recipient:c.recipient,amount:BigInt(c.startAmount)}));eq(payments.map(x=>String(x.amount)),["925000000000000","25000000000000","50000000000000"]);A.equal(payments.reduce((s,x)=>s+x.amount,0n),PRICE);
+  const adv={parameters:normal.parameters,numerator:1n,denominator:1n,signature:o.signature,extraData:"0x"},request={...s.request,counter:BigInt(s.request.counter),policyEpoch:BigInt(s.request.policyEpoch),controllerEpoch:BigInt(s.request.controllerEpoch),deadline:Number(s.request.deadline)},input=v.encodeFunctionData({abi:V,functionName:"purchase",args:[adv,request]}),fulfill=v.encodeFunctionData({abi:S,functionName:"fulfillAdvancedOrder",args:[adv,[],v.zeroHash,d.vault]}),transfer=v.encodeFunctionData({abi:N,functionName:a.standard===721?"transferFrom":"safeTransferFrom",args:a.standard===721?[o.parameters.offerer,d.vault,BigInt(item.identifierOrCriteria)]:[o.parameters.offerer,d.vault,BigInt(item.identifierOrCriteria),qty,"0x"]});
+  A.ok(same(input,s.receipt.input));A.equal(s.receipt.status,"success");A.ok(same(s.receipt.from,a.gasPayer));A.ok(same(s.receipt.to,d.vault));const expected={vault:d.vault,seaport:d.seaport,collection:item.token,purchaseInput:input,fulfillInput:fulfill,nftTransferInput:transfer,total:PRICE,native:true,currency:v.zeroAddress,payments,admittedSafeDelegates:[]},origin={from:s.receipt.from,to:s.receipt.to,input,value:0n},proof=assertSeaportVaultTrace(s.trace,origin,expected);A.equal(proof.nativeTransfers,4);traceFrames+=proof.frames;
+  const bad=structuredClone(s.trace);bad.calls??=[];bad.calls.push({type:"CALL",from:d.vault,to:d.fee,value:"0x1",input:"0x"});A.throws(()=>assertSeaportVaultTrace(bad,origin,expected));tamper++;
+  const events=v.parseEventLogs({abi:V,eventName:"PurchaseExecuted",strict:true,logs:s.receipt.logs.filter(l=>same(l.address,d.vault))});A.equal(events.length,1);const e={...events[0],...s.receipt.logs.find(l=>same(l.address,d.vault)&&same(l.topics[0],v.toEventSelector("PurchaseExecuted(bytes32,address,address,uint256,uint256,address,uint256,bytes32,uint256,uint64,uint64)"))),args:events[0].args};A.ok(same(e.args.orderHash,p.orderHash));A.equal(e.args.totalCost,PRICE);A.equal(e.args.quantity,qty);A.equal(e.args.tokenId,BigInt(item.identifierOrCriteria));A.ok(same(e.args.collection,item.token));
+  A.equal(BigInt(a.syntheticExecutionNetworkFeeWei),BigInt(s.receipt.gasUsed)*BigInt(a.syntheticExecutionGasPriceWei));A.equal(BigInt(a.syntheticCombinedOutlayWei),PRICE+BigInt(a.syntheticExecutionNetworkFeeWei));A.equal(a.l1DataFeesModeled,false);
+  A.equal(chain.receipts.filter(r=>same(r.transactionHash,s.receipt.transactionHash)).length,1);
+  accepted.set(s.receipt.transactionHash.toLowerCase(),{a,item,qty,payments,event:e});nativeFills++;
+ }
+ A.equal(BigInt(n.openingNative.availableWei)-BigInt(n.closingNative.availableWei),2n*PRICE);A.equal(BigInt(n.closingNative.totalSpentWei)-BigInt(n.openingNative.totalSpentWei),2n*PRICE);
+ eq(n.indexedChecks.map(x=>x.phase),["INITIAL_CANONICAL_INDEX","POSTGRES_SERVER_RESTART","POSTGRES_SERVER_RESTART","POSTGRES_SERVER_RESTART"]);
+ for(const snapshot of n.indexedChecks){
+  A.equal(snapshot.status,"PASS");A.equal(snapshot.rows.length,2);A.equal(snapshot.actualReceiptAndTraceAccounting,true);
+  for(const row of snapshot.rows){const x=accepted.get(row.transactionHash.toLowerCase());A.ok(x);const r=x.a.settled.receipt;
+   for(const[k,expected]of Object.entries({input:r.input,blockHash:r.blockHash,orderHash:x.a.proof.orderHash,vault:d.vault,custody:d.vault,account:r.from,collection:x.item.token,currency:v.zeroAddress,projectToken:d.projectToken}))A.ok(same(row[k],expected),k);
+   for(const[k,expected]of Object.entries({nonce:r.nonce,blockNumber:r.blockNumber,tokenId:x.item.identifierOrCriteria,quantity:x.qty,total:PRICE,logIndex:x.event.logIndex,transactionIndex:x.event.transactionIndex}))A.equal(BigInt(row[k]),BigInt(expected),k);
+   eq(row.payments.map(x=>({recipient:x.recipient,amount:String(x.amount)})),x.payments.map(x=>({recipient:x.recipient,amount:String(x.amount)})));dbRows++;
+  }
+  eq([...snapshot.rows].sort((a,b)=>a.transactionHash.localeCompare(b.transactionHash)),[...n.indexedChecks[0].rows].sort((a,b)=>a.transactionHash.localeCompare(b.transactionHash)));dbSnapshots++;
+ }
+ A.equal(w.profile,"seaport-watch-native-31337-v1");A.equal(w.sourceKind,"OWNER_SUPPLIED");A.equal(w.broadcasts,0);A.equal(w.signatureRequests,0);A.equal(w.publicFeedAuthenticated,false);eq(w.polls.map(p=>p.result.status),["PREPARED","IDLE","UNAVAILABLE","IDLE","OFF"]);
+ for(const poll of w.polls){A.equal(poll.broadcast,false);A.equal(poll.signatureRequested,false);A.equal(poll.unsignedSimulations,1);watcherPolls++;}
+ eq(w.polls.slice(0,4).map(p=>p.gasPayerNonce),Array(4).fill(w.polls[0].gasPayerNonce));A.equal(w.finalState.records.length,1);A.equal(w.finalState.records[0].status,"INVALIDATED");eq(w.finalState.records[0].request,w.candidate.request);eq(w.finalState.records[0].sourceEntry,w.candidate.sourceEntry);A.equal(w.candidate.simulated,true);A.equal(w.candidate.executionApproved,false);
+ for(const b of Object.values(w.checks))A.equal(b,true);modes.push({mode:ar.mode,nativeFills:2,rejections:16,indexedSnapshots:4,indexedRows:8,watcherPolls:5});
+}
+const assert=A,json=x=>JSON.stringify(x,(_,a)=>typeof a==="bigint"?String(a):a);
+async function verifyRawSafeBundles(bundles){
+ let executions=0,signatures=0,reverted=0,traceFrames=0;
+ for(const bundle of bundles){const s=bundle.safe,m=bundle.deployment,reviews=new Map(s.outerReviews.map(r=>[r.reviewHash,r]));
+  assert.equal(s.status,"PASS");assert.equal(s.production,false);assert.equal(s.creatorCreate,"UNAVAILABLE");assert.equal(s.canonicalExecutions.length,s.submissions.length);
+  for(const e of s.canonicalExecutions){
+   const r=reviews.get(e.reviewHash),p=r.proposal,pre=e.beforeState,post=e.afterState,tx=e.rawTransaction,receipt=e.rawReceipt;
+   assert.equal(v.hashTypedData(safe.seaportSafeTypedData(p.safe,p.safeTx)),p.digest);
+   assert.equal(await safe.verifySeaportSafeApprovals(p.safe,p.safeTx,pre.owners,r.approvals,v),true);
+   assert.deepEqual(pre.owners.map(a=>a.toLowerCase()).sort(),p.owners.map(a=>a.toLowerCase()).sort());
+   assert.equal(pre.nonce,p.safeNonce);assert.equal(pre.threshold,2);assert.equal(post.threshold,2);
+   assert.equal(same(pre.runtimeHash,safe.seaportSafePins.proxyHash),true);assert.equal(same(post.runtimeHash,safe.seaportSafePins.proxyHash),true);
+   assert.equal(same(pre.singleton,safe.seaportSafePins.singleton),true);assert.equal(same(pre.handler,safe.seaportSafePins.handler),true);
+   const compiled=safe.compileSeaportSafeCall(m,p.operation,p.fields,v);
+   assert.equal(same(compiled.to,p.call.to),true);assert.equal(same(compiled.data,p.call.data),true);assert.equal(compiled.value,p.call.value);
+   const decoded=safe.decodeSeaportSafeCall(m,compiled.to,compiled.data,BigInt(compiled.value),v);assert.equal(decoded.operation,p.operation);
+   const abi=v.parseAbi(safe.seaportSafeSignatures),outer=v.decodeFunctionData({abi,data:tx.input}),a=outer.args;
+   assert.equal(outer.functionName,"execTransaction");assert.equal(v.encodeFunctionData({abi,functionName:"execTransaction",args:a}),tx.input);
+   assert.equal(same(a[0],compiled.to),true);assert.equal(a[1],BigInt(compiled.value));assert.equal(a[2],compiled.data);assert.equal(a[3],0);
+   for(const i of[4,5,6])assert.equal(a[i],0n);assert.equal(a[7],v.zeroAddress);assert.equal(a[8],v.zeroAddress);assert.equal(a[9],v.concatHex(r.approvals.map(x=>x.signature)));
+   assert.equal(same(tx.from,p.gasPayer),true);assert.equal(same(tx.to,p.safe),true);assert.equal(tx.input,r.request.data);assert.equal(tx.value,"0x0");assert.equal(Number(BigInt(tx.chainId)),31337);
+   for(const k of["gas","maxFeePerGas","maxPriorityFeePerGas","nonce"])assert.equal(BigInt(tx[k]),BigInt(r.request[k]));
+   assert.equal(e.rawBlock.hash,receipt.blockHash);assert.deepEqual(e.rawBlock.transactions,[e.transactionHash]);assert.equal(receipt.transactionHash,e.transactionHash);
+   const origin={from:p.gasPayer,to:p.safe,input:tx.input,value:0n},inner={safe:p.safe,target:compiled.to,data:compiled.data,value:BigInt(compiled.value)};
+   const success=BigInt(receipt.status)===1n,proof=(success?safe.assertSeaportSafeAdminTrace:safe.assertSeaportSafeAdminRevertTrace)(e.trace,origin,inner);
+   assert.equal(json(proof),json(e.traceProof));traceFrames+=proof.frames;
+   const events=v.parseEventLogs({abi,strict:true,logs:receipt.logs.filter(l=>same(l.address,p.safe))}).filter(x=>["ExecutionSuccess","ExecutionFailure"].includes(x.eventName));
+   if(success){assert.equal(events.length,1);assert.equal(events[0].eventName,"ExecutionSuccess");assert.equal(events[0].args.txHash,p.digest);assert.equal(events[0].args.payment,0n);assert.equal(BigInt(post.nonce),BigInt(pre.nonce)+1n);}
+   else{assert.equal(events.length,0);assert.equal(post.nonce,pre.nonce);const error=v.decodeErrorResult({abi:v.parseAbi(["error Error(string)"]),data:e.trace.output});assert.equal(error.args[0],"GS013");reverted++;}
+   assert.equal(await safe.verifySeaportSafeApprovals(p.safe,{...p.safeTx,nonce:String(BigInt(p.safeTx.nonce)+1n)},pre.owners,r.approvals,v),false,"Changing nonce must invalidate the archived real owner signatures");
+   const tampered=structuredClone(e.trace);const delegate=tampered.calls.find(n=>n.type==="DELEGATECALL"&&same(n.to,safe.seaportSafePins.singleton));assert.ok(delegate);delegate.calls??=[];delegate.calls.push({type:"CALL",from:p.safe,to:"0x00000000000000000000000000000000feed0000",input:"0x095ea7b3",value:"0x0"});
+   assert.throws(()=>(success?safe.assertSeaportSafeAdminTrace:safe.assertSeaportSafeAdminRevertTrace)(tampered,origin,inner),"An added Safe mutable CALL must be rejected");
+   executions++;signatures+=r.approvals.length;
+  }
+ }
+ return{status:"PASS",bundles:bundles.length,executions,verifiedSignatureUses:signatures,reverted,traceFrames,tamperRejections:executions*2,production:false};
+}
+
+const safeResult=await verifyRawSafeBundles(bundles);
+console.log(JSON.stringify({schemaVersion:1,status:"PASS",source:manifest.source,runId:manifest.runId,production:false,localViemVersion:r("viem/package.json").version,native:{bundles:4,fills:nativeFills,verifiedSyntheticSellerSignatureUses:signatureUses,traceFrames,tamperRejections:tamper,pgSnapshots:dbSnapshots,matchedPgRows:dbRows,watcherPolls},safe:safeResult,modes,limitations:["No retained direct native after-state query snapshot; custody/balances were live fixture/indexer assertions and receipt/trace/DB are retained.","Intermediate watcher PENDING_EVIDENCE/recovered record snapshots are live assertions, not separate retained record snapshots.","Native fills occur before browser launch; no native import UI control was added.","Offline checks verify retained evidence, not a fresh chain replay or production admission."]}));
+
+});

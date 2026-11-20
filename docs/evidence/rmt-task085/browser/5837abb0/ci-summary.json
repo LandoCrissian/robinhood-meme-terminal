@@ -1,0 +1,43 @@
+{
+  "schemaVersion": 1,
+  "source": "5837abb064e88646c4f10b35ab16f3253030efb2",
+  "runId": 44645011674,
+  "unitJobId": 135985250169,
+  "nodeTests": {
+    "tests": 101,
+    "pass": 101,
+    "fail": 0
+  },
+  "indexerTests": {
+    "tests": 9,
+    "pass": 9,
+    "fail": 0
+  },
+  "typechecks": [
+    "indexer passed",
+    "website passed"
+  ],
+  "foundry": {
+    "jobId": 135985250193,
+    "suites": 6,
+    "tests": 54,
+    "pass": 54,
+    "fail": 0,
+    "skipped": 0
+  },
+  "strictSecurity": {
+    "jobId": 135985250193,
+    "conclusion": "failure",
+    "detectors": 101,
+    "findings": 48,
+    "highs": 23,
+    "cleared": 0,
+    "strictExit": 1,
+    "inputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+    "slitherOriginalRawSha256": "42b68c7caceaaa7ff65fda391691f8c8c43c6612da87e50bbd9c8cdd4979fc4b",
+    "slitherOriginalRawBytes": 1956487,
+    "artifactId": 14588341166,
+    "rawReportRetainedHere": false
+  },
+  "scope": "Current PR13 checks:11success2unwaived strict failures. Separate dispatched security scopes are documented by root. Historical29 baseline is not a current rerun."
+}

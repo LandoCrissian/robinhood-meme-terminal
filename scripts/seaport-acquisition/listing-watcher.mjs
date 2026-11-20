@@ -9,10 +9,15 @@ const safeCode=e=>/^[A-Z][A-Z0-9_]{0,79}$/.test(e?.code??"")?e.code:"READ_OR_PRO
 export const watcherLimits=Object.freeze({maxEntries:8,maxRecords:64,maxStateBytes:524288,cycleTimeoutMs:15000,minIntervalMs:60000,maxGas:20000000n});
 const outcome=(status,reason,extra={})=>({schemaVersion:1,status,reason,executionEnabled:false,executionApproved:false,broadcast:false,signatureRequested:false,...extra});
 export function watcherBinding(configuration){
- const c=configuration;need(c&&["seaport-watch-local-31337","seaport-watch-4663-read-only"].includes(c.profile),"WATCH_PROFILE_UNASSIGNED");
- const chainId=c.profile==="seaport-watch-local-31337"?31337:4663;
+ const c=configuration;need(c&&["seaport-watch-local-31337","seaport-watch-4663-read-only","seaport-watch-native-31337-v1","seaport-watch-native-4663-read-only-v1"].includes(c.profile),"WATCH_PROFILE_UNASSIGNED");
+ const chainId=["seaport-watch-local-31337","seaport-watch-native-31337-v1"].includes(c.profile)?31337:4663;
  need(c.chainId===chainId&&[c.vault,c.projectToken,c.seaport,c.gasPayer].every(x=>address.test(x)&&!same(x,zero))&&hash.test(c.vaultRuntimeHash),"WATCH_BINDING_UNASSIGNED");
- return{profile:c.profile,chainId,vault:c.vault.toLowerCase(),projectToken:c.projectToken.toLowerCase(),seaport:c.seaport.toLowerCase(),gasPayer:c.gasPayer.toLowerCase(),vaultRuntimeHash:c.vaultRuntimeHash.toLowerCase()};
+ const binding={profile:c.profile,chainId,vault:c.vault.toLowerCase(),projectToken:c.projectToken.toLowerCase(),seaport:c.seaport.toLowerCase(),gasPayer:c.gasPayer.toLowerCase(),vaultRuntimeHash:c.vaultRuntimeHash.toLowerCase()};
+ if(c.profile.startsWith("seaport-watch-native-")){
+  need(c.nativeAdmission?.sourceId==="owner-supplied"&&hash.test(c.nativeAdmission.policyCatalogHash),"NATIVE_SOURCE_POLICY_UNASSIGNED");
+  binding.nativeAdmission={sourceId:"owner-supplied",policyCatalogHash:c.nativeAdmission.policyCatalogHash.toLowerCase()};
+ }else need(c.nativeAdmission===undefined,"NATIVE_PROFILE_REQUIRED");
+ return binding;
 }
 function assertSnapshot(s,b){
  need(s&&s.chainId===b.chainId&&same(s.vault,b.vault)&&same(s.projectToken,b.projectToken)&&same(s.seaport,b.seaport)&&same(s.vaultRuntimeHash,b.vaultRuntimeHash)&&s.runtimeVerified===true&&s.productionExecutionAvailable===false,"VAULT_BINDING_UNVERIFIED");
@@ -26,7 +31,7 @@ function assertSnapshot(s,b){
 function fingerprint(s){
  return digest({chainId:s.chainId,vault:s.vault.toLowerCase(),runtime:s.vaultRuntimeHash,project:s.projectToken.toLowerCase(),controller:s.controller.toLowerCase(),authority:s.controllerAuthorityHash,controllerEpoch:s.controllerEpoch,policyEpoch:s.policyEpoch,enabled:s.purchasesEnabled,policy:s.policy,available:s.availableWei,totalSpent:s.totalSpentWei,periodSpent:s.periodSpentWei,lastPurchase:s.lastPurchaseAt,gasPayer:s.gasPayer,collection:s.collection??null,orderConsumed:s.orderConsumed??null});
 }
-function normalizeProof(p,s,b,nowMs){
+function normalizeProof(p,s,b,nowMs,sourceEntry){
  need(p&&["OWNER_SUPPLIED_CURRENT_ORDER_VERIFIED","CURRENT_ORDER_INDEPENDENTLY_VERIFIED"].includes(p.status)&&p.currentOrderIndependentlyVerified===true&&p.executionApproved===false&&p.executionEnabled===false,"CURRENT_ORDER_UNPROVEN");
  const o=p.order,v=p.verified,rawObserved=p.observed??v?.observed,observed=rawObserved?{...rawObserved,chainId:rawObserved.chainId??v?.chainId}:null,orderHash=p.orderHash??v?.orderHash;
  need(o&&o.chainId===b.chainId&&same(o.seaport,b.seaport)&&hash.test(orderHash)&&v?.payment&&v?.nft&&observed?.chainId===b.chainId,"CURRENT_ORDER_IDENTITY");
@@ -35,6 +40,14 @@ function normalizeProof(p,s,b,nowMs){
  need(address.test(n.token)&&String(n.startAmount)===String(n.endAmount)&&uint(String(n.startAmount))>0n&&uint(String(n.startAmount))<=(n.itemType===2?1n:20n),"ORDER_QUANTITY_UNSUPPORTED");
  need(Array.isArray(params.consideration)&&params.consideration.length>0&&params.consideration.length<=8,"CONSIDERATION_UNAVAILABLE");
  const currency=params.consideration[0].token,total=params.consideration.reduce((sum,c)=>{need([0,1].includes(c.itemType)&&same(c.token,currency)&&String(c.startAmount)===String(c.endAmount)&&uint(String(c.startAmount))>0n&&address.test(c.recipient),"CONSIDERATION_UNAVAILABLE");return sum+uint(String(c.startAmount));},0n);
+ if(b.nativeAdmission){
+  const admission=p.nativeAdmission;
+  need(admission?.profile==="rmt-native-order-admission-v1"&&admission.sourceId===b.nativeAdmission.sourceId&&same(admission.policyCatalogHash,b.nativeAdmission.policyCatalogHash)&&admission.native===true&&same(admission.orderHash,orderHash)&&admission.totalWei===String(total)&&hash.test(admission.collectionPolicyHash)&&hash.test(admission.rawSha256),"NATIVE_SOURCE_POLICY_UNVERIFIED");
+  need(sourceEntry?.sourceKind==="OWNER_SUPPLIED"&&sourceEntry.sourceId===admission.sourceId&&typeof sourceEntry.rawUtf8==="string"&&same(admission.rawSha256,"0x"+createHash("sha256").update(sourceEntry.rawUtf8).digest("hex")),"NATIVE_IMPORT_BYTES_MISMATCH");
+  need(same(admission.collection?.address,n.token)&&admission.collection.standard===(n.itemType===2?721:1155)&&same(admission.collection.runtimeHash,s.collection?.runtimeHash)&&hash.test(admission.collection.sourceInputSha256)&&admission.productionApproved===false,"NATIVE_COLLECTION_POLICY_MISMATCH");
+  need(admission.observed?.chainId===observed.chainId&&admission.observed.blockNumber===observed.blockNumber&&same(admission.observed.blockHash,observed.blockHash)&&admission.observed.timestamp===observed.timestamp,"NATIVE_OBSERVATION_MISMATCH");
+  need(p.status==="OWNER_SUPPLIED_CURRENT_ORDER_VERIFIED"&&p.publicListingVerified===false&&params.consideration.every(c=>c.itemType===0&&same(c.token,zero)&&String(c.identifierOrCriteria)==="0")&&same(currency,zero),"NATIVE_PAYMENT_REQUIRED");
+ }
  need(same(currency,s.policy.currency)&&same(v.payment.currency,currency)&&v.payment.totalWei===String(total)&&same(v.nft.collection,n.token)&&v.nft.tokenId===String(n.identifierOrCriteria)&&v.nft.quantity===String(n.startAmount),"CONSIDERATION_IDENTITY");
  need(v.payment.consideration?.length===params.consideration.length&&params.consideration.every((c,i)=>same(c.recipient,v.payment.consideration[i].recipient)&&String(c.startAmount)===v.payment.consideration[i].amountWei),"CONSIDERATION_IDENTITY");
  need(s.collection&&same(s.collection.address,n.token)&&s.collection.enabled===true&&s.collection.tokenIdAllowed===true&&s.collection.standard===(n.itemType===2?721:1155)&&hash.test(s.collection.runtimeHash)&&s.orderConsumed===false,"COLLECTION_OR_ORDER_UNAVAILABLE");
@@ -80,7 +93,7 @@ export function createReadOnlySeaportWatcher({configuration,store,readState,disc
       open.status="INVALIDATED";open.invalidReason="CANONICAL_OR_AUTHORITY_STATE_CHANGED";response=outcome("REVIEW_REQUIRED","ORIGINAL_PROPOSAL_INVALIDATED",{bindingHash,orderHash:open.orderHash});
      }else{
       need(open.sourceEntry&&["OWNER_SUPPLIED","PUBLIC"].includes(open.sourceEntry.sourceKind),"ORIGINAL_SOURCE_UNAVAILABLE");
-      const rechecked=await read(signal=>verifyEntry(open.sourceEntry,{binding,state:current,signal})),p=normalizeProof(rechecked,current,binding,now());
+      const rechecked=await read(signal=>verifyEntry(open.sourceEntry,{binding,state:current,signal})),p=normalizeProof(rechecked,current,binding,now(),open.sourceEntry);
       need(same(p.orderHash,open.orderHash)&&await read(signal=>isCanonical(p.observed,signal))===true,"CURRENT_ORDER_REORG");
       const after=await read(signal=>readState({binding,orderHash:open.orderHash,order:open.order,signal}));assertSnapshot(after,binding);
       need(after.purchasesEnabled&&fingerprint(after)===fingerprint(current)&&same(after.canonical.hash,current.canonical.hash),"STATE_CHANGED_DURING_REVALIDATION");
@@ -97,6 +110,7 @@ export function createReadOnlySeaportWatcher({configuration,store,readState,disc
    need(Array.isArray(feed.entries)&&feed.entries.length<=watcherLimits.maxEntries,"LISTING_FEED_BOUND");
    for(const entry of feed.entries){
     need(entry&&["OWNER_SUPPLIED","PUBLIC"].includes(entry.sourceKind)&&Buffer.byteLength(JSON.stringify(entry))<=32768,"LISTING_ENTRY_BOUND");
+    if(binding.nativeAdmission)need(entry.sourceKind==="OWNER_SUPPLIED"&&entry.sourceId===binding.nativeAdmission.sourceId,"NATIVE_SOURCE_UNADMITTED");
     const first=await read(signal=>verifyEntry(entry,{binding,state:initial,signal}));const firstHash=first?.orderHash??first?.verified?.orderHash;
     if(!hash.test(firstHash))continue;
     if(next.records.some(r=>same(r.orderHash,firstHash)))continue;
@@ -104,7 +118,7 @@ export function createReadOnlySeaportWatcher({configuration,store,readState,disc
     if(!state.purchasesEnabled){await commit();return outcome("OFF","MINED_POLICY_OFF",{bindingHash});}
     // Reverify current signature/counter/status/ownership/approval and complete
     // consideration, rather than trusting a discovery result or a prior poll.
-    const second=await read(signal=>verifyEntry(entry,{binding,state,signal}));const p=normalizeProof(second,state,binding,now());
+    const second=await read(signal=>verifyEntry(entry,{binding,state,signal}));const p=normalizeProof(second,state,binding,now(),entry);
     need(same(firstHash,p.orderHash)&&await read(signal=>isCanonical(p.observed,signal))===true,"CURRENT_ORDER_REORG");
     if(binding.chainId!==31337){await commit();return outcome("UNAVAILABLE","PRODUCTION_VAULT_NOT_RELEASED",{bindingHash,orderHash:p.orderHash});}
     need(next.records.length<watcherLimits.maxRecords,"WATCH_STORE_CAPACITY");

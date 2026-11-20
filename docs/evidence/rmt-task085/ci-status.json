@@ -1,0 +1,223 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "observedAt": "2026-11-20T00:26:27.565Z",
+  "base": "9dae3fd6a93228e3f18e74f195b4b930051eee04",
+  "source": "5837abb064e88646c4f10b35ab16f3253030efb2",
+  "pr": 679,
+  "checks": [
+    {
+      "name": "reclaim-permanent-v2",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011676/job/135985250479",
+      "completedAt": "2026-11-20T00:21:41Z"
+    },
+    {
+      "name": "repository",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011684/job/135985250463",
+      "completedAt": "2026-11-20T00:21:26Z"
+    },
+    {
+      "name": "seaport-vault-strict-security",
+      "status": "completed",
+      "conclusion": "failure",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250193",
+      "completedAt": "2026-11-20T00:22:06Z"
+    },
+    {
+      "name": "seaport-vault-robinhood-browser (chromium)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250186",
+      "completedAt": "2026-11-20T00:24:22Z"
+    },
+    {
+      "name": "seaport-vault-units",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250169",
+      "completedAt": "2026-11-20T00:20:47Z"
+    },
+    {
+      "name": "indexer",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011684/job/135985250162",
+      "completedAt": "2026-11-20T00:20:59Z"
+    },
+    {
+      "name": "seaport-vault-browser (webkit)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250157",
+      "completedAt": "2026-11-20T00:24:57Z"
+    },
+    {
+      "name": "contracts",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011684/job/135985250149",
+      "completedAt": "2026-11-20T00:23:15Z"
+    },
+    {
+      "name": "seaport-vault-robinhood-browser (webkit)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250147",
+      "completedAt": "2026-11-20T00:24:24Z"
+    },
+    {
+      "name": "seaport-vault-browser (chromium)",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250101",
+      "completedAt": "2026-11-20T00:24:59Z"
+    },
+    {
+      "name": "operations-safe",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011684/job/135985250012",
+      "completedAt": "2026-11-20T00:20:24Z"
+    },
+    {
+      "name": "seaport-vault-robinhood-fork",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985249885",
+      "completedAt": "2026-11-20T00:21:07Z"
+    },
+    {
+      "name": "gitleaks",
+      "status": "completed",
+      "conclusion": "success",
+      "url": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011614/job/135985249575",
+      "completedAt": "2026-11-20T00:20:24Z"
+    }
+  ],
+  "counts": {
+    "success": 11,
+    "securityFailure": 2,
+    "pending": 0
+  },
+  "manualSecurity": {
+    "source": "ae767610cb8bd28edc27feff75d1b1812e24ca6a",
+    "run": 44644413695,
+    "sourceContractsIdenticalToCurrent": true,
+    "outcome": "four unwaived strict failures; one prototype pass",
+    "failed": [
+      "slither",
+      "fixed-supply-4663",
+      "project-treasury-v1",
+      "reclaim-v1"
+    ],
+    "passed": [
+      "treasury-purchase-v2-prototype"
+    ]
+  },
+  "preservation": {
+    "trackedSolidityFiles": 82,
+    "allGitBlobsIdenticalToBase": true,
+    "unchangedRoots": [
+      "packages/contracts",
+      "apps/launch-website",
+      "apps/indexer",
+      "config",
+      "pnpm-lock.yaml",
+      ".gitleaks.toml",
+      ".gitleaksignore",
+      ".github/workflows"
+    ]
+  },
+  "seaportCompilerInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+  "runtimeFiles": {
+    "knip.json": {
+      "gitBlob": "76d8d7b3a14e77b6ce1e25d87fabd60406638c0a",
+      "sha256": "b020df2cf91784b91e1ae715f079cc3b35a37941dd35f983d9482cad9a1049c7",
+      "bytes": 4098
+    },
+    "scripts/seaport-acquisition/browser-run.mjs": {
+      "gitBlob": "00d364d5bed3e765e746626880b358f881b160b3",
+      "sha256": "4e279375602819255209304c7b804d49c2bf91c3010a39af60768b60d0818abe",
+      "bytes": 13238
+    },
+    "scripts/seaport-acquisition/browser-watcher.mjs": {
+      "gitBlob": "f03589dd9330ac068296d7d83eaa47eeadfc2e03",
+      "sha256": "0dc84ee674494f900ed845a5e697cbdcc92bf8e2d38a0ade5819fc0e35e74d3a",
+      "bytes": 12031
+    },
+    "scripts/seaport-acquisition/listing-watcher.d.mts": {
+      "gitBlob": "633bbf99d2825ecc162ec2fac08c36ae33292258",
+      "sha256": "78d2292f4308f4b855a1a89d54aebf346e1606905468f50f26c484c1463ef72b",
+      "bytes": 2677
+    },
+    "scripts/seaport-acquisition/listing-watcher.mjs": {
+      "gitBlob": "ee9825977f358ef01a942f278685345adc61fcbc",
+      "sha256": "26465fa53dfb485a4fe8b2b52eee7ba11b067c4e1b3ee33c49903b0d32271129",
+      "bytes": 18606
+    },
+    "scripts/seaport-acquisition/listing-watcher.test.mjs": {
+      "gitBlob": "fbc64025bd434282b40ad6f5e922188a3a632d3d",
+      "sha256": "316a3a53302eae1ecdf66620cb433ff216d29617b5fd2c107a33b95a6603f8fb",
+      "bytes": 15105
+    },
+    "scripts/seaport-acquisition/native-order-admission.d.mts": {
+      "gitBlob": "f6652a231244d1a6262bb109cdeb696d562cbe42",
+      "sha256": "453e0a6248deba96bde12a0a519cbfe5aa2a69dd916e06bcb6309abac41ec2ec",
+      "bytes": 2587
+    },
+    "scripts/seaport-acquisition/native-order-admission.mjs": {
+      "gitBlob": "d91752c68bbac3fcabf31b1a6afb60b13e5aa613",
+      "sha256": "3049a94dfe847e348d3f7f1a0e5064d87065e4af284c7255ccbb4f6a5d8f0bfd",
+      "bytes": 8953
+    },
+    "scripts/seaport-acquisition/native-order-admission.test.mjs": {
+      "gitBlob": "863f8d5a8be93be59e5740c8f5b00f89567f8488",
+      "sha256": "acb7d51e363cee2a567bd3474d151f9d9c51a09a641219074cab5327ea8ed6fe",
+      "bytes": 18962
+    },
+    "scripts/seaport-acquisition/native-order-feed.d.mts": {
+      "gitBlob": "d5bb7ba279967855f2553690d6529a5dd641cf2f",
+      "sha256": "041d7838ff9b2066f04da02a6bb5f59ca01a08fae92d181abb5d9e8b1b3e3ed5",
+      "bytes": 567
+    },
+    "scripts/seaport-acquisition/native-order-feed.mjs": {
+      "gitBlob": "0e8a8f5643f36c5a6b93a912a52baf351233fe9a",
+      "sha256": "0bf8b66490182c2a422c39d6b6f0291d48d1ca779b9a954ffff24a438e19c0f2",
+      "bytes": 1952
+    },
+    "scripts/seaport-acquisition/native-order-feed.test.mjs": {
+      "gitBlob": "eba8731bb806a4c9ed9c09e735c7b7d67ecb641c",
+      "sha256": "da190830f72c9ca55804e254829f705be79b6c05d4d229021f3f90fe1bef4d50",
+      "bytes": 3057
+    },
+    "scripts/seaport-acquisition/owner-watcher-interop-fixture.mjs": {
+      "gitBlob": "e464058e381489f2cd699b22ec74435fb9f551bc",
+      "sha256": "2c6a3cc67ee000a07c0850cb3c8f01098c68a046f4b079d02ffe02945b8b3e13",
+      "bytes": 7846
+    },
+    "scripts/seaport-acquisition/probe-current-native-sources.mjs": {
+      "gitBlob": "038faa8d49b6d156e759d1899afdb54fe2c4cdfa",
+      "sha256": "b22bcf4bbd09c5e72c4745cd2b1da27dedfad9dd0573175175669d9890d6ed8e",
+      "bytes": 19268
+    },
+    "scripts/seaport-acquisition/probe-current-native-sources.test.mjs": {
+      "gitBlob": "f9f98f6250b038363d50c3ac9c8fbc2b465b216a",
+      "sha256": "997c71f0df003f0f717897ea444b05e43f9046246d72153fb77fb6ab047186cd",
+      "bytes": 12666
+    },
+    "scripts/seaport-acquisition/task085-connected-admission.mjs": {
+      "gitBlob": "d201edeb47c4ecd75e20d27ddf5a2a1f3be57637",
+      "sha256": "0359d5e860b5be36ef83bc04305a2d1b663da0cb7f9ce8b46915368073967af6",
+      "bytes": 10076
+    }
+  },
+  "limits": [
+    "The source check set is13, not the prior29-job baseline. Untriggered historical acquisitionV1 security and other reports remain preserved.",
+    "Evidence-only closeout commits are separate from the runtime source. Compare materialized file hashes before reusing these results.",
+    "No production transaction, signature, purchase or configuration change."
+  ]
+}

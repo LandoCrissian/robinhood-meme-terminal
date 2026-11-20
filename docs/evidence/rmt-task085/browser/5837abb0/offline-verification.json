@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS",
+  "source": "5837abb064e88646c4f10b35ab16f3253030efb2",
+  "runId": 44645011674,
+  "production": false,
+  "localViemVersion": "2.55.1",
+  "native": {
+    "bundles": 4,
+    "fills": 8,
+    "verifiedSyntheticSellerSignatureUses": 8,
+    "traceFrames": 532,
+    "tamperRejections": 8,
+    "pgSnapshots": 16,
+    "matchedPgRows": 32,
+    "watcherPolls": 20
+  },
+  "safe": {
+    "status": "PASS",
+    "bundles": 4,
+    "executions": 60,
+    "verifiedSignatureUses": 120,
+    "reverted": 4,
+    "traceFrames": 1996,
+    "tamperRejections": 120,
+    "production": false
+  },
+  "modes": [
+    {
+      "mode": "robinhood-fork-webkit",
+      "nativeFills": 2,
+      "rejections": 16,
+      "indexedSnapshots": 4,
+      "indexedRows": 8,
+      "watcherPolls": 5
+    },
+    {
+      "mode": "default-chromium",
+      "nativeFills": 2,
+      "rejections": 16,
+      "indexedSnapshots": 4,
+      "indexedRows": 8,
+      "watcherPolls": 5
+    },
+    {
+      "mode": "robinhood-fork-chromium",
+      "nativeFills": 2,
+      "rejections": 16,
+      "indexedSnapshots": 4,
+      "indexedRows": 8,
+      "watcherPolls": 5
+    },
+    {
+      "mode": "default-webkit",
+      "nativeFills": 2,
+      "rejections": 16,
+      "indexedSnapshots": 4,
+      "indexedRows": 8,
+      "watcherPolls": 5
+    }
+  ],
+  "limitations": [
+    "No retained direct native after-state query snapshot; custody/balances were live fixture/indexer assertions and receipt/trace/DB are retained.",
+    "Intermediate watcher PENDING_EVIDENCE/recovered record snapshots are live assertions, not separate retained record snapshots.",
+    "Native fills occur before browser launch; no native import UI control was added.",
+    "Offline checks verify retained evidence, not a fresh chain replay or production admission."
+  ]
+}
