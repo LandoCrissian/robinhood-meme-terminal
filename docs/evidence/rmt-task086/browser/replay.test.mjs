@@ -3,7 +3,7 @@ import A from"node:assert/strict";import{test}from"node:test";import *as safe fr
 import{createSeaportVerifier}from"../../../../packages/launchpad-common/seaport-order-verifier.mjs";
 import{assertSeaportVaultTrace}from"../../../../packages/launchpad-common/seaport-vault-proof.mjs";
 import *as rt from"../../../../packages/launchpad-common/seaport-vault-runtime.mjs";
-import{execFileSync}from"node:child_process";
+import{withArchivedSourcePack}from"./source-pack.mjs";
 function verifyPrivacy(manifest,root){
  const sha=b=>createHash("sha256").update(b).digest("hex"),p=manifest.privacy,raw=gunzipSync(readFileSync(new URL(p.originalReport,root))),classified=gunzipSync(readFileSync(new URL(p.classifications,root))),r=JSON.parse(raw),c=JSON.parse(classified);
  A.equal(sha(raw),p.originalReportRawSha256);A.equal(sha(classified),p.classificationsRawSha256);A.equal(r.length,p.rawFindings);A.equal(c.classifiedFindings,p.classifiedFindings);A.equal(p.rawFindings,p.classifiedFindings);A.equal(c.unknown,0);A.equal(p.unknown,0);A.equal(sha(readFileSync(new URL("../../../../.gitleaks.toml",import.meta.url))),p.configSha256);
@@ -12,7 +12,7 @@ for(const archiveDir of process.env.RMT_TASK086_ARCHIVE?[process.env.RMT_TASK086
 const r=createRequire(new URL("../../../../apps/indexer/package.json",import.meta.url)),v=r("viem"),verifier=createSeaportVerifier(v),root=new URL(archiveDir+"/",import.meta.url).pathname.replace(/^\/([A-Za-z]:\/)/,"$1"),manifest=JSON.parse(readFileSync(root+"integrity-manifest.json")),bundles=[];
 verifyPrivacy(manifest,new URL(archiveDir+"/",import.meta.url));
 const same=(a,b)=>typeof a==="string"&&typeof b==="string"&&a.toLowerCase()===b.toLowerCase(),canon=x=>typeof x==="string"&&x.startsWith("0x")?x.toLowerCase():Array.isArray(x)?x.map(canon):x&&typeof x==="object"?Object.fromEntries(Object.keys(x).sort().map(k=>[k,canon(x[k])])):x,eq=(a,b)=>A.deepEqual(canon(a),canon(b)),sha=b=>createHash("sha256").update(b).digest("hex"),V=v.parseAbi(rt.seaportVaultSignatures),S=v.parseAbi(rt.seaportVaultSeaportSignatures),N=v.parseAbi(rt.seaportVaultNftSignatures),PRICE=1000000000000000n;
-A.match(manifest.source,/^[0-9a-f]{40}$/);for(const f of manifest.sourceFiles??[])A.equal(sha(execFileSync("git",["show",manifest.source+":"+f.path])),f.gitBlobSha256);
+A.match(manifest.source,/^[0-9a-f]{40}$/);if(manifest.sourceFiles?.length)withArchivedSourcePack({pack:readFileSync(root+"source-1be772c8.pack"),source:manifest.source,sourceFiles:manifest.sourceFiles,sourcePack:manifest.sourcePack},readSource=>{for(const f of manifest.sourceFiles)A.equal(sha(readSource(f.path)),f.gitBlobSha256);});
 for(const ar of manifest.artifacts){A.equal(ar.source,manifest.source);A.equal(ar.runId,manifest.runId);}if(manifest.walletDiagnostics)A.equal(manifest.artifacts.filter(a=>a.mode!=="strict-security"&&a.conclusion==="success").length,4);
 for(const ar of manifest.artifacts)for(const m of ar.members){const b=readFileSync(root+m.path);A.equal(sha(b),m.storedSha256);A.equal(sha(m.encoding.startsWith("gzip")?gunzipSync(b):b),m.rawSha256);}
 const strictArtifact=manifest.artifacts.find(a=>a.mode==="strict-security");let security;

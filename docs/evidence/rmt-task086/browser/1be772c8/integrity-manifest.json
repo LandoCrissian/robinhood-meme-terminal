@@ -554,5 +554,97 @@
       "reportPath": "authored-gitleaks-report.json",
       "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
     }
+  },
+  "sourcePack": {
+    "schemaVersion": 1,
+    "path": "source-1be772c8.pack",
+    "objectFormat": "sha1",
+    "commit": "1be772c8787b47fbc0c791a03a694cb2a5673d86",
+    "bytes": 29465,
+    "sha256": "a9bccd6d949aa973ede7d6fe815cce68df25b7a0a97925ef3eb8e35b4f152d3f",
+    "objects": [
+      {
+        "type": "commit",
+        "oid": "1be772c8787b47fbc0c791a03a694cb2a5673d86",
+        "bytes": 292,
+        "sha256": "77d694472ead5f06b6a83156d111301bc0974069e3224dc5ba8a8b098c3cd9db"
+      },
+      {
+        "type": "tree",
+        "path": "",
+        "oid": "afd081ea371e6f0c89d52961b30b1f03cd1e9037",
+        "bytes": 726,
+        "sha256": "8fe4dd3a658ad394331044bdd42341f9c3defb035c50b25a8d957b40b2ea79a9"
+      },
+      {
+        "type": "tree",
+        "path": "scripts",
+        "oid": "bea564be2db95f496ff56230ad67c7e2c0d8a414",
+        "bytes": 597,
+        "sha256": "424a40fcaccb9987448c9ead95089302b5a7f736ba107b480f1a80fe1f7c4077"
+      },
+      {
+        "type": "tree",
+        "path": "scripts/seaport-acquisition",
+        "oid": "a8746b38d3a8ffca775fef22fa71274b71a92d65",
+        "bytes": 2439,
+        "sha256": "62b65ebab551dda08416baba0876845429af8202976a3eeaeb03ea4d8af7fbfb"
+      },
+      {
+        "type": "blob",
+        "path": "scripts/seaport-acquisition/browser-safe-admin.mjs",
+        "oid": "704a477edb95d3d8b7b1e2cec25a130acae4e7dc",
+        "bytes": 31654,
+        "sha256": "a310fbc75332dbc3814714d921201390f45226dbe5713e441aa82d2a02082779"
+      },
+      {
+        "type": "blob",
+        "path": "scripts/seaport-acquisition/browser-safe-diagnostics.mjs",
+        "oid": "f690685a34a0876195e62aaff08d6f0efbdd8f70",
+        "bytes": 4358,
+        "sha256": "452c66e44fa99db6a25e9b0b32703006be6d7f4d38c7019bd4856e54388a5078"
+      },
+      {
+        "type": "blob",
+        "path": "scripts/seaport-acquisition/browser-safe-diagnostics.test.mjs",
+        "oid": "80e92b9077c4f6d4638c65a57305b1cfcaaf496b",
+        "bytes": 3362,
+        "sha256": "b13b0e041b9277683f1f0ab1765c4facc028f07f772cac9559fe245b01834bc0"
+      },
+      {
+        "type": "blob",
+        "path": "scripts/seaport-acquisition/task086-collection-acceptance.mjs",
+        "oid": "c10c558dbac767db0a3ceacbb162a27588767233",
+        "bytes": 16905,
+        "sha256": "42dea9101cee1b8bb53c2a10d18b6807c6b6301f523ec9ed616f7b3cd4dd0d01"
+      },
+      {
+        "type": "blob",
+        "path": "scripts/seaport-acquisition/browser-run.mjs",
+        "oid": "1fc75eb0c1c59b530e5d716a5aefa1c50b71a897",
+        "bytes": 13629,
+        "sha256": "529e4c4345275b019eae4957071e8e2fbbe1d872f90c13d842a253f2ca3d5859"
+      },
+      {
+        "type": "blob",
+        "path": "scripts/seaport-acquisition/compiler.mjs",
+        "oid": "3509f74b5bf4b8b3fbad643f32f3792c082808d5",
+        "bytes": 10914,
+        "sha256": "9734c60009ed95ecc73327412e37dc89d081d4056fdf92b18b14bd78022b22f5"
+      }
+    ],
+    "scanner": {
+      "name": "Gitleaks",
+      "version": "8.30.1",
+      "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
+      "configurationSha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+      "scope": "TEN_UNCOMPRESSED_PUBLIC_GIT_OBJECTS_BEFORE_PACK_RETENTION",
+      "objectSetSha256": "04418c20df318fe3558e55463146e396a835e295cb47c010aeb7d5c9f68d34d4",
+      "exitCode": 0,
+      "findings": 0,
+      "suppressionsAdded": false,
+      "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "reportUtf8": "[]\n"
+    }
   }
 }
