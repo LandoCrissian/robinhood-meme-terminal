@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "scope": "CHANGED_SOURCE_AND_ALL_TASK091_EVIDENCE_WITH_LOSSLESS_EXPANDED_GZIP",
   "base": "27f19787ed0a2d904ba4508d2adfab1773e82e67",
-  "capturedAt": "2026-11-20T21:24:01.550Z",
+  "capturedAt": "2026-11-20T21:26:52.526Z",
   "scanner": {
     "version": "8.30.1",
     "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
@@ -18,9 +18,9 @@
   },
   "rawExit": 1,
   "rawFindingCount": 288,
-  "sourceFileCount": 93,
+  "sourceFileCount": 92,
   "expandedGzipCount": 24,
-  "reportSha256": "35d33bc25d16de5dffc4385ac32564883241cf8d308eb3151838214d1834ca35",
+  "reportSha256": "ee6cedbd73f2d3e5de9786a47292572aab4418500e820384ea1239e440cdafa6",
   "excludedGeneratedOutputs": [
     "docs/evidence/rmt-task091/validation/final-scan/scan-manifest.json",
     "docs/evidence/rmt-task091/validation/final-scan/gitleaks-redacted.json",
@@ -82,15 +82,6 @@
         "hex": "23ee9dc98e38fe6511e205f71f6fd2ef0012acbc1222877200cb851710932d45"
       },
       "scanPath": "source/.github/workflows/core-stateful-proofs.yml"
-    },
-    {
-      "path": ".github/workflows/launch-website-review.yml",
-      "bytes": 15535,
-      "contentDigest": {
-        "algorithm": "SHA-256",
-        "hex": "bc6528379082e22e67e5e3d69a8cb13d0873a191cc1d35abca0875a8f71ad909"
-      },
-      "scanPath": "source/.github/workflows/launch-website-review.yml"
     },
     {
       "path": "apps/launch-website/lib/server/earnings-claims.ts",
