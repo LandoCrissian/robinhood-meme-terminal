@@ -2,8 +2,8 @@
   "schemaVersion": 1,
   "scope": "FINAL_TASK090_FROZEN_SNAPSHOT_EXACT_PUBLIC_IDENTITIES_ONLY",
   "base": "b79515752ef42e88850ac2cea953955a3bb03087",
-  "sourceFiles": 95,
-  "losslesslyExpandedGzipFiles": 6,
+  "sourceFiles": 115,
+  "losslesslyExpandedGzipFiles": 8,
   "rawScannerExit": 1,
   "rawFindingCount": 18,
   "status": "EXACT_PUBLIC_IDENTITIES_VERIFIED_RAW_SCAN_REMAINS_EXIT_1",
@@ -971,11 +971,11 @@
   "financialSecurityClearance": false,
   "scanManifestContentDigest": {
     "algorithm": "SHA-256",
-    "hex": "7c9c471002308fa48f44e65132b800cf36a7db440aa95ecc5c81e46d79229ed4"
+    "hex": "1390a099fc145a72d8c5a8fbc98a6ccf736c0435470f634bec91e8f1a533153f"
   },
   "rawReportContentDigest": {
     "algorithm": "SHA-256",
-    "hex": "a8640bfc502b8a7ba83fb4826d9cd2fffa4804f82853cf22c4aaa6eed898d9fc"
+    "hex": "aa6dda09dd88592fac0671528dfd4576bfc94b0c266d65afc60fb4708010f8e0"
   },
   "limits": [
     "This classifies only these exact 18 frozen-snapshot observations; it introduces no detector exception or future-match allowance.",

@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "scope": "CHANGED_SOURCE_AND_ALL_TASK090_EVIDENCE_WITH_LOSSLESS_EXPANDED_GZIP",
   "base": "b79515752ef42e88850ac2cea953955a3bb03087",
-  "capturedAt": "2026-11-20T17:41:51.621Z",
+  "capturedAt": "2026-11-20T17:57:20.015Z",
   "scanner": {
     "version": "8.30.1",
     "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
@@ -18,9 +18,9 @@
   },
   "rawExit": 1,
   "rawFindingCount": 18,
-  "sourceFileCount": 95,
-  "expandedGzipCount": 6,
-  "reportSha256": "a8640bfc502b8a7ba83fb4826d9cd2fffa4804f82853cf22c4aaa6eed898d9fc",
+  "sourceFileCount": 115,
+  "expandedGzipCount": 8,
+  "reportSha256": "aa6dda09dd88592fac0671528dfd4576bfc94b0c266d65afc60fb4708010f8e0",
   "excludedGeneratedOutputs": [
     "docs/evidence/rmt-task090/validation/final-scan/scan-manifest.json",
     "docs/evidence/rmt-task090/validation/final-scan/gitleaks-redacted.json",
@@ -49,10 +49,10 @@
     },
     {
       "path": "docs/evidence/rmt-task090/README.md",
-      "bytes": 6765,
+      "bytes": 7736,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "153bb6bb09ea5b8a328623149ab35a8611d7e429e7e4a0516b348a5a0e29f59a"
+        "hex": "fe4d5a2e1f4a1a29b802a1c715fd37b9996df85d752aa5c84d4afb705b0dd790"
       },
       "scanPath": "source/docs/evidence/rmt-task090/README.md"
     },
@@ -460,6 +460,139 @@
       "scanPath": "source/docs/evidence/rmt-task090/harvest/verify-fixtures.mjs"
     },
     {
+      "path": "docs/evidence/rmt-task090/history-adjudication/README.md",
+      "bytes": 2008,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "260775c757c868e4e627dbd98dcc1a618e55f5c1dcd06b78cdeafac9880422bd"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/README.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/exact-public-identities.json",
+      "bytes": 20231,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "770f8156c47173de1fcdb926b6be0d4fd146179283012e600d05b2b7372f20bd"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/exact-public-identities.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/identity-tests.txt",
+      "bytes": 26845,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "5c8e60d0a7ee06477ae2104decd7cac38525fb37d0f5fff02019c76ecc1112f2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/identity-tests.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/local-canary-redacted.json",
+      "bytes": 792,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1d66e0852af3e01c9c9734fdaa59351c34a47843477d347613929a85556a7fd9"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/local-canary-redacted.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/local-canary-rejection.json",
+      "bytes": 255,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "dbb0ce1f21bc3bb4f4be95daf65e16c2835f969dcff9fbb07ed07774325b8ff2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/local-canary-rejection.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/local-history-public-classification.json",
+      "bytes": 11675,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6ba72515a2066163c2799f7647fc7d6b27f613a387eda8d2199d091a11fcb3cb"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/local-history-public-classification.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/local-history-raw-exit-code.txt",
+      "bytes": 2,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/local-history-raw-exit-code.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/local-history-raw-redacted.json.gz",
+      "bytes": 1584,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "3f232f4e5c549946e150119bf8c3c70ad8f335e936c4e80fd8b8eb7f86e3bfa2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/local-history-raw-redacted.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task090/history-adjudication/local-history-raw-redacted.json",
+        "bytes": 16737,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "d977333bf45666b274acaea97e44f7f89ae345cd8a3a412844fa2542c9e5e93c"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/local-history-run.txt",
+      "bytes": 232,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ed4fd367317aeaa80dbf7a9bcdbb45b7e06869f2f195e2b227e84981d59ff56b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/local-history-run.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/original-ci-canary-redacted.json",
+      "bytes": 643,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "278e286e570b19e9cd9b437c03defb735eee47799b7dbf0c1449ba849645af4a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/original-ci-canary-redacted.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/original-ci-history-raw-redacted.json.gz",
+      "bytes": 1588,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7246888a8419af67652ffc18ba241967adb2aaec50e017f7dde7ef28bd0efa90"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/original-ci-history-raw-redacted.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task090/history-adjudication/original-ci-history-raw-redacted.json",
+        "bytes": 16737,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "b80a4586e613e550478b9629edfbaeeb37116ae54355f3e4514cced893979b1c"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/original-ci-raw-exit-code.txt",
+      "bytes": 2,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/original-ci-raw-exit-code.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/history-adjudication/repository-check.txt",
+      "bytes": 432,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "aa09136cf7a9a0caf2fa66873697a41251da0b952bd142e9b5cfa47290f51921"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/repository-check.txt"
+    },
+    {
       "path": "docs/evidence/rmt-task090/migration/README.md",
       "bytes": 14482,
       "contentDigest": {
@@ -753,6 +886,15 @@
       "scanPath": "source/docs/evidence/rmt-task090/production/live-diagnostics.json"
     },
     {
+      "path": "docs/evidence/rmt-task090/production/owner-save-inspection.json",
+      "bytes": 361,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "5c876b35edf2c82ff7199dd633ccc24ad0fb83d0e9a1e711ea755a8d9af179ea"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/production/owner-save-inspection.json"
+    },
+    {
       "path": "docs/evidence/rmt-task090/production/persistent-bindings-result.json",
       "bytes": 987,
       "contentDigest": {
@@ -762,6 +904,15 @@
       "scanPath": "source/docs/evidence/rmt-task090/production/persistent-bindings-result.json"
     },
     {
+      "path": "docs/evidence/rmt-task090/production/persistent-preflight.json",
+      "bytes": 843,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ae3195b6fafc125b11a25e0067797e596f9add34178fa6d848f83414b4e9f0db"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/production/persistent-preflight.json"
+    },
+    {
       "path": "docs/evidence/rmt-task090/production/rollout-result.json",
       "bytes": 2201,
       "contentDigest": {
@@ -769,6 +920,15 @@
         "hex": "ac3beefa9d46d6b6537e33fc3776603ab867b305cc1c2fdf91ba5e3148804b7c"
       },
       "scanPath": "source/docs/evidence/rmt-task090/production/rollout-result.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/production/worker-advancement-later.json",
+      "bytes": 1674,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "50c7b6c5479e9a6720c17731653a0b6b8d79f9f28400f10cde17243f19e232a4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/production/worker-advancement-later.json"
     },
     {
       "path": "docs/evidence/rmt-task090/stage-dispositions.json",
@@ -922,6 +1082,42 @@
         "hex": "f5869291ab7b26cea40831ba6ba4347589052f3ae6ddff9833ee610e0908ae85"
       },
       "scanPath": "source/scripts/security/migration-proof.test.mjs"
+    },
+    {
+      "path": "scripts/security/public-history-identities.test.mjs",
+      "bytes": 3085,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ec8674ad3a8e1f0182a187ecd81a93ae225de3bf6cb66ceb71780ef80ea283aa"
+      },
+      "scanPath": "source/scripts/security/public-history-identities.test.mjs"
+    },
+    {
+      "path": "scripts/security/public-task090-identities.mjs",
+      "bytes": 10427,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "34caf1bc2e456b5a9d28a419d45c98e65dbfedc7a2e1f6d5bf2abff4b8c01417"
+      },
+      "scanPath": "source/scripts/security/public-task090-identities.mjs"
+    },
+    {
+      "path": "scripts/security/public-task090-identities.test.mjs",
+      "bytes": 7724,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "735c08f27ec1f78196feb543afea23b10a7859966ad532977a84f729afc5d6ee"
+      },
+      "scanPath": "source/scripts/security/public-task090-identities.test.mjs"
+    },
+    {
+      "path": "scripts/security/run-history-scan.mjs",
+      "bytes": 4849,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "483f1e164cf6b077e414d1a0c0a242694f9155e0dcc743ce2ea9892f56d8e31e"
+      },
+      "scanPath": "source/scripts/security/run-history-scan.mjs"
     },
     {
       "path": "scripts/security/scan-task090.mjs",

@@ -1,0 +1,826 @@
+TAP version 13
+# Subtest: seven exact public observations retain every raw finding and all security holds
+ok 1 - seven exact public observations retain every raw finding and all security holds
+  ---
+  duration_ms: 649.3243
+  type: 'test'
+  ...
+# Subtest: the original five-record verifier remains unchanged and rejects the two new observations
+ok 2 - the original five-record verifier remains unchanged and rejects the two new observations
+  ---
+  duration_ms: 448.0031
+  type: 'test'
+  ...
+# Subtest: missing raw observation 1 blocks
+ok 3 - missing raw observation 1 blocks
+  ---
+  duration_ms: 604.9194
+  type: 'test'
+  ...
+# Subtest: duplicate raw observation 1 blocks
+ok 4 - duplicate raw observation 1 blocks
+  ---
+  duration_ms: 629.3344
+  type: 'test'
+  ...
+# Subtest: missing raw observation 2 blocks
+ok 5 - missing raw observation 2 blocks
+  ---
+  duration_ms: 635.3264
+  type: 'test'
+  ...
+# Subtest: duplicate raw observation 2 blocks
+ok 6 - duplicate raw observation 2 blocks
+  ---
+  duration_ms: 585.7208
+  type: 'test'
+  ...
+# Subtest: missing raw observation 3 blocks
+ok 7 - missing raw observation 3 blocks
+  ---
+  duration_ms: 592.9917
+  type: 'test'
+  ...
+# Subtest: duplicate raw observation 3 blocks
+ok 8 - duplicate raw observation 3 blocks
+  ---
+  duration_ms: 576.7169
+  type: 'test'
+  ...
+# Subtest: missing raw observation 4 blocks
+ok 9 - missing raw observation 4 blocks
+  ---
+  duration_ms: 580.6715
+  type: 'test'
+  ...
+# Subtest: duplicate raw observation 4 blocks
+ok 10 - duplicate raw observation 4 blocks
+  ---
+  duration_ms: 575.4595
+  type: 'test'
+  ...
+# Subtest: missing raw observation 5 blocks
+ok 11 - missing raw observation 5 blocks
+  ---
+  duration_ms: 578.243
+  type: 'test'
+  ...
+# Subtest: duplicate raw observation 5 blocks
+ok 12 - duplicate raw observation 5 blocks
+  ---
+  duration_ms: 574.6421
+  type: 'test'
+  ...
+# Subtest: missing raw observation 6 blocks
+ok 13 - missing raw observation 6 blocks
+  ---
+  duration_ms: 577.3072
+  type: 'test'
+  ...
+# Subtest: duplicate raw observation 6 blocks
+ok 14 - duplicate raw observation 6 blocks
+  ---
+  duration_ms: 587.095
+  type: 'test'
+  ...
+# Subtest: missing raw observation 7 blocks
+ok 15 - missing raw observation 7 blocks
+  ---
+  duration_ms: 584.4345
+  type: 'test'
+  ...
+# Subtest: duplicate raw observation 7 blocks
+ok 16 - duplicate raw observation 7 blocks
+  ---
+  duration_ms: 586.2563
+  type: 'test'
+  ...
+# Subtest: an unrelated key-shaped finding is still rejected
+ok 17 - an unrelated key-shaped finding is still rejected
+  ---
+  duration_ms: 582.1462
+  type: 'test'
+  ...
+# Subtest: changed commit for source-checksum observation at line 14 blocks
+ok 18 - changed commit for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 573.2263
+  type: 'test'
+  ...
+# Subtest: changed future identical source value for source-checksum observation at line 14 blocks
+ok 19 - changed future identical source value for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 566.6587
+  type: 'test'
+  ...
+# Subtest: changed path for source-checksum observation at line 14 blocks
+ok 20 - changed path for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 585.9488
+  type: 'test'
+  ...
+# Subtest: changed start line for source-checksum observation at line 14 blocks
+ok 21 - changed start line for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 592.3027
+  type: 'test'
+  ...
+# Subtest: changed end line for source-checksum observation at line 14 blocks
+ok 22 - changed end line for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 581.1561
+  type: 'test'
+  ...
+# Subtest: changed rule for source-checksum observation at line 14 blocks
+ok 23 - changed rule for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 581.9848
+  type: 'test'
+  ...
+# Subtest: changed fingerprint for source-checksum observation at line 14 blocks
+ok 24 - changed fingerprint for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 588.6421
+  type: 'test'
+  ...
+# Subtest: changed unredacted secret for source-checksum observation at line 14 blocks
+ok 25 - changed unredacted secret for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 585.4185
+  type: 'test'
+  ...
+# Subtest: changed redacted match field for source-checksum observation at line 14 blocks
+ok 26 - changed redacted match field for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 567.5031
+  type: 'test'
+  ...
+# Subtest: changed redacted match value for source-checksum observation at line 14 blocks
+ok 27 - changed redacted match value for source-checksum observation at line 14 blocks
+  ---
+  duration_ms: 569.6309
+  type: 'test'
+  ...
+# Subtest: changed commit for source-checksum observation at line 15 blocks
+ok 28 - changed commit for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 580.9317
+  type: 'test'
+  ...
+# Subtest: changed future identical source value for source-checksum observation at line 15 blocks
+ok 29 - changed future identical source value for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 570.0215
+  type: 'test'
+  ...
+# Subtest: changed path for source-checksum observation at line 15 blocks
+ok 30 - changed path for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 584.4562
+  type: 'test'
+  ...
+# Subtest: changed start line for source-checksum observation at line 15 blocks
+ok 31 - changed start line for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 575.0395
+  type: 'test'
+  ...
+# Subtest: changed end line for source-checksum observation at line 15 blocks
+ok 32 - changed end line for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 564.9764
+  type: 'test'
+  ...
+# Subtest: changed rule for source-checksum observation at line 15 blocks
+ok 33 - changed rule for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 579.1632
+  type: 'test'
+  ...
+# Subtest: changed fingerprint for source-checksum observation at line 15 blocks
+ok 34 - changed fingerprint for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 567.1554
+  type: 'test'
+  ...
+# Subtest: changed unredacted secret for source-checksum observation at line 15 blocks
+ok 35 - changed unredacted secret for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 558.3242
+  type: 'test'
+  ...
+# Subtest: changed redacted match field for source-checksum observation at line 15 blocks
+ok 36 - changed redacted match field for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 551.687
+  type: 'test'
+  ...
+# Subtest: changed redacted match value for source-checksum observation at line 15 blocks
+ok 37 - changed redacted match value for source-checksum observation at line 15 blocks
+  ---
+  duration_ms: 556.6589
+  type: 'test'
+  ...
+# Subtest: changed immutable manifest blob fails proof verification
+ok 38 - changed immutable manifest blob fails proof verification
+  ---
+  duration_ms: 37.3234
+  type: 'test'
+  ...
+# Subtest: changed public source bytes fail proof verification: apps/launch-website/lib/server/launch-api.test.ts
+ok 39 - changed public source bytes fail proof verification: apps/launch-website/lib/server/launch-api.test.ts
+  ---
+  duration_ms: 73.0685
+  type: 'test'
+  ...
+# Subtest: changed public source bytes fail proof verification: apps/launch-website/lib/server/launch-api.ts
+ok 40 - changed public source bytes fail proof verification: apps/launch-website/lib/server/launch-api.ts
+  ---
+  duration_ms: 141.0198
+  type: 'test'
+  ...
+# Subtest: supplemental sourcePath tampering fails closed
+ok 41 - supplemental sourcePath tampering fails closed
+  ---
+  duration_ms: 0.4152
+  type: 'test'
+  ...
+# Subtest: supplemental sourceBlobSha256 tampering fails closed
+ok 42 - supplemental sourceBlobSha256 tampering fails closed
+  ---
+  duration_ms: 0.1918
+  type: 'test'
+  ...
+# Subtest: supplemental lineSha256 tampering fails closed
+ok 43 - supplemental lineSha256 tampering fails closed
+  ---
+  duration_ms: 0.2665
+  type: 'test'
+  ...
+# Subtest: supplemental manifestGitBlobSha1 tampering fails closed
+ok 44 - supplemental manifestGitBlobSha1 tampering fails closed
+  ---
+  duration_ms: 0.2227
+  type: 'test'
+  ...
+# Subtest: supplemental valueSha256 tampering fails closed
+ok 45 - supplemental valueSha256 tampering fails closed
+  ---
+  duration_ms: 0.2438
+  type: 'test'
+  ...
+# Subtest: supplemental redactedMatchSha256 tampering fails closed
+ok 46 - supplemental redactedMatchSha256 tampering fails closed
+  ---
+  duration_ms: 0.3417
+  type: 'test'
+  ...
+# Subtest: original detector configuration, ignore and five-record policy tampering still fail
+ok 47 - original detector configuration, ignore and five-record policy tampering still fail
+  ---
+  duration_ms: 547.2769
+  type: 'test'
+  ...
+# Subtest: malformed and oversized reports fail closed
+ok 48 - malformed and oversized reports fail closed
+  ---
+  duration_ms: 1157.2252
+  type: 'test'
+  ...
+# Subtest: all17 original CI observations remain intact; only10 exact new public records are added
+ok 49 - all17 original CI observations remain intact; only10 exact new public records are added
+  ---
+  duration_ms: 966.4378
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 1 blocks
+ok 50 - missing immutable observation 1 blocks
+  ---
+  duration_ms: 200.0407
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 1 blocks
+ok 51 - duplicated immutable observation 1 blocks
+  ---
+  duration_ms: 199.8473
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 2 blocks
+ok 52 - missing immutable observation 2 blocks
+  ---
+  duration_ms: 189.6469
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 2 blocks
+ok 53 - duplicated immutable observation 2 blocks
+  ---
+  duration_ms: 199.4664
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 3 blocks
+ok 54 - missing immutable observation 3 blocks
+  ---
+  duration_ms: 188.4917
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 3 blocks
+ok 55 - duplicated immutable observation 3 blocks
+  ---
+  duration_ms: 198.858
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 4 blocks
+ok 56 - missing immutable observation 4 blocks
+  ---
+  duration_ms: 180.4251
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 4 blocks
+ok 57 - duplicated immutable observation 4 blocks
+  ---
+  duration_ms: 191.4106
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 5 blocks
+ok 58 - missing immutable observation 5 blocks
+  ---
+  duration_ms: 200.3483
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 5 blocks
+ok 59 - duplicated immutable observation 5 blocks
+  ---
+  duration_ms: 185.1559
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 6 blocks
+ok 60 - missing immutable observation 6 blocks
+  ---
+  duration_ms: 185.0576
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 6 blocks
+ok 61 - duplicated immutable observation 6 blocks
+  ---
+  duration_ms: 189.9851
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 7 blocks
+ok 62 - missing immutable observation 7 blocks
+  ---
+  duration_ms: 185.1965
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 7 blocks
+ok 63 - duplicated immutable observation 7 blocks
+  ---
+  duration_ms: 195.6473
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 8 blocks
+ok 64 - missing immutable observation 8 blocks
+  ---
+  duration_ms: 188.4851
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 8 blocks
+ok 65 - duplicated immutable observation 8 blocks
+  ---
+  duration_ms: 196.6503
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 9 blocks
+ok 66 - missing immutable observation 9 blocks
+  ---
+  duration_ms: 181.5726
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 9 blocks
+ok 67 - duplicated immutable observation 9 blocks
+  ---
+  duration_ms: 190.9973
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 10 blocks
+ok 68 - missing immutable observation 10 blocks
+  ---
+  duration_ms: 187.6414
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 10 blocks
+ok 69 - duplicated immutable observation 10 blocks
+  ---
+  duration_ms: 194.3575
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 11 blocks
+ok 70 - missing immutable observation 11 blocks
+  ---
+  duration_ms: 188.3208
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 11 blocks
+ok 71 - duplicated immutable observation 11 blocks
+  ---
+  duration_ms: 190.5893
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 12 blocks
+ok 72 - missing immutable observation 12 blocks
+  ---
+  duration_ms: 186.3581
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 12 blocks
+ok 73 - duplicated immutable observation 12 blocks
+  ---
+  duration_ms: 195.7447
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 13 blocks
+ok 74 - missing immutable observation 13 blocks
+  ---
+  duration_ms: 185.4104
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 13 blocks
+ok 75 - duplicated immutable observation 13 blocks
+  ---
+  duration_ms: 199.6422
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 14 blocks
+ok 76 - missing immutable observation 14 blocks
+  ---
+  duration_ms: 188.0761
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 14 blocks
+ok 77 - duplicated immutable observation 14 blocks
+  ---
+  duration_ms: 194.6895
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 15 blocks
+ok 78 - missing immutable observation 15 blocks
+  ---
+  duration_ms: 188.075
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 15 blocks
+ok 79 - duplicated immutable observation 15 blocks
+  ---
+  duration_ms: 196.9648
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 16 blocks
+ok 80 - missing immutable observation 16 blocks
+  ---
+  duration_ms: 186.3551
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 16 blocks
+ok 81 - duplicated immutable observation 16 blocks
+  ---
+  duration_ms: 193.752
+  type: 'test'
+  ...
+# Subtest: missing immutable observation 17 blocks
+ok 82 - missing immutable observation 17 blocks
+  ---
+  duration_ms: 186.8614
+  type: 'test'
+  ...
+# Subtest: duplicated immutable observation 17 blocks
+ok 83 - duplicated immutable observation 17 blocks
+  ---
+  duration_ms: 193.8904
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json:50 blocks
+ok 84 - altered fingerprint for new observation at docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json:50 blocks
+  ---
+  duration_ms: 188.0927
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/graduation/manifest.json:135 blocks
+ok 85 - altered fingerprint for new observation at docs/evidence/rmt-task090/graduation/manifest.json:135 blocks
+  ---
+  duration_ms: 195.0507
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json:50 blocks
+ok 86 - altered fingerprint for new observation at docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json:50 blocks
+  ---
+  duration_ms: 185.2035
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:231 blocks
+ok 87 - altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:231 blocks
+  ---
+  duration_ms: 193.7812
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:833 blocks
+ok 88 - altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:833 blocks
+  ---
+  duration_ms: 185.4231
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:1488 blocks
+ok 89 - altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:1488 blocks
+  ---
+  duration_ms: 197.4724
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:2342 blocks
+ok 90 - altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:2342 blocks
+  ---
+  duration_ms: 187.3241
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:2893 blocks
+ok 91 - altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:2893 blocks
+  ---
+  duration_ms: 196.1079
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:3470 blocks
+ok 92 - altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:3470 blocks
+  ---
+  duration_ms: 181.1651
+  type: 'test'
+  ...
+# Subtest: altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:4108 blocks
+ok 93 - altered fingerprint for new observation at docs/evidence/rmt-task090/harvest/proof-results.json:4108 blocks
+  ---
+  duration_ms: 194.1467
+  type: 'test'
+  ...
+# Subtest: altered commit blocks
+ok 94 - altered commit blocks
+  ---
+  duration_ms: 188.9832
+  type: 'test'
+  ...
+# Subtest: altered same address in a future commit blocks
+ok 95 - altered same address in a future commit blocks
+  ---
+  duration_ms: 196.582
+  type: 'test'
+  ...
+# Subtest: altered path blocks
+ok 96 - altered path blocks
+  ---
+  duration_ms: 186.8381
+  type: 'test'
+  ...
+# Subtest: altered start line blocks
+ok 97 - altered start line blocks
+  ---
+  duration_ms: 194.8238
+  type: 'test'
+  ...
+# Subtest: altered end line blocks
+ok 98 - altered end line blocks
+  ---
+  duration_ms: 186.072
+  type: 'test'
+  ...
+# Subtest: altered start column blocks
+ok 99 - altered start column blocks
+  ---
+  duration_ms: 194.3729
+  type: 'test'
+  ...
+# Subtest: altered end column blocks
+ok 100 - altered end column blocks
+  ---
+  duration_ms: 188.2191
+  type: 'test'
+  ...
+# Subtest: altered rule blocks
+ok 101 - altered rule blocks
+  ---
+  duration_ms: 200.4026
+  type: 'test'
+  ...
+# Subtest: altered unredacted value blocks
+ok 102 - altered unredacted value blocks
+  ---
+  duration_ms: 196.4734
+  type: 'test'
+  ...
+# Subtest: altered different matched field blocks
+ok 103 - altered different matched field blocks
+  ---
+  duration_ms: 193.0014
+  type: 'test'
+  ...
+# Subtest: changed immutable blob blocks: docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json
+ok 104 - changed immutable blob blocks: docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json
+  ---
+  duration_ms: 153.8622
+  type: 'test'
+  ...
+# Subtest: changed actual ERC20 address blocks despite unchanged raw metadata: docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json
+ok 105 - changed actual ERC20 address blocks despite unchanged raw metadata: docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json
+  ---
+  duration_ms: 162.5819
+  type: 'test'
+  ...
+# Subtest: changed immutable blob blocks: docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json
+ok 106 - changed immutable blob blocks: docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json
+  ---
+  duration_ms: 150.2727
+  type: 'test'
+  ...
+# Subtest: changed actual ERC20 address blocks despite unchanged raw metadata: docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json
+ok 107 - changed actual ERC20 address blocks despite unchanged raw metadata: docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json
+  ---
+  duration_ms: 167.2091
+  type: 'test'
+  ...
+# Subtest: changed immutable blob blocks: docs/evidence/rmt-task090/graduation/manifest.json
+ok 108 - changed immutable blob blocks: docs/evidence/rmt-task090/graduation/manifest.json
+  ---
+  duration_ms: 148.2547
+  type: 'test'
+  ...
+# Subtest: changed actual ERC20 address blocks despite unchanged raw metadata: docs/evidence/rmt-task090/graduation/manifest.json
+ok 109 - changed actual ERC20 address blocks despite unchanged raw metadata: docs/evidence/rmt-task090/graduation/manifest.json
+  ---
+  duration_ms: 161.2042
+  type: 'test'
+  ...
+# Subtest: changed immutable blob blocks: docs/evidence/rmt-task090/harvest/proof-results.json
+ok 110 - changed immutable blob blocks: docs/evidence/rmt-task090/harvest/proof-results.json
+  ---
+  duration_ms: 149.7383
+  type: 'test'
+  ...
+# Subtest: changed actual ERC20 address blocks despite unchanged raw metadata: docs/evidence/rmt-task090/harvest/proof-results.json
+ok 111 - changed actual ERC20 address blocks despite unchanged raw metadata: docs/evidence/rmt-task090/harvest/proof-results.json
+  ---
+  duration_ms: 164.4181
+  type: 'test'
+  ...
+# Subtest: changed graduation factory creation receipt blocks
+ok 112 - changed graduation factory creation receipt blocks
+  ---
+  duration_ms: 1.8002
+  type: 'test'
+  ...
+# Subtest: changed CREATE2 success and returned runtime in retained harvest receipt block
+ok 113 - changed CREATE2 success and returned runtime in retained harvest receipt block
+  ---
+  duration_ms: 1827.2592
+  type: 'test'
+  ...
+# Subtest: registry fingerprint mutation cannot broaden the pinned proof
+ok 114 - registry fingerprint mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.6208
+  type: 'test'
+  ...
+# Subtest: registry commit mutation cannot broaden the pinned proof
+ok 115 - registry commit mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.3578
+  type: 'test'
+  ...
+# Subtest: registry path mutation cannot broaden the pinned proof
+ok 116 - registry path mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.3293
+  type: 'test'
+  ...
+# Subtest: registry ruleId mutation cannot broaden the pinned proof
+ok 117 - registry ruleId mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.2995
+  type: 'test'
+  ...
+# Subtest: registry gitBlobSha1 mutation cannot broaden the pinned proof
+ok 118 - registry gitBlobSha1 mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.291
+  type: 'test'
+  ...
+# Subtest: registry blobContentDigest mutation cannot broaden the pinned proof
+ok 119 - registry blobContentDigest mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.2723
+  type: 'test'
+  ...
+# Subtest: registry line mutation cannot broaden the pinned proof
+ok 120 - registry line mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.2824
+  type: 'test'
+  ...
+# Subtest: registry startColumn mutation cannot broaden the pinned proof
+ok 121 - registry startColumn mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.2809
+  type: 'test'
+  ...
+# Subtest: registry endColumn mutation cannot broaden the pinned proof
+ok 122 - registry endColumn mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.3148
+  type: 'test'
+  ...
+# Subtest: registry lineContentDigest mutation cannot broaden the pinned proof
+ok 123 - registry lineContentDigest mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.47
+  type: 'test'
+  ...
+# Subtest: registry publicValueDigest mutation cannot broaden the pinned proof
+ok 124 - registry publicValueDigest mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.369
+  type: 'test'
+  ...
+# Subtest: registry jsonPointer mutation cannot broaden the pinned proof
+ok 125 - registry jsonPointer mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.479
+  type: 'test'
+  ...
+# Subtest: registry receiptProof mutation cannot broaden the pinned proof
+ok 126 - registry receiptProof mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.4705
+  type: 'test'
+  ...
+# Subtest: registry redactedMatchContentDigest mutation cannot broaden the pinned proof
+ok 127 - registry redactedMatchContentDigest mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.3282
+  type: 'test'
+  ...
+# Subtest: registry publicKind mutation cannot broaden the pinned proof
+ok 128 - registry publicKind mutation cannot broaden the pinned proof
+  ---
+  duration_ms: 0.323
+  type: 'test'
+  ...
+# Subtest: changed receipt frame in proof metadata blocks
+ok 129 - changed receipt frame in proof metadata blocks
+  ---
+  duration_ms: 0.4016
+  type: 'test'
+  ...
+# Subtest: original detected runtime canary and a masquerading API-key match remain rejected
+ok 130 - original detected runtime canary and a masquerading API-key match remain rejected
+  ---
+  duration_ms: 404.7414
+  type: 'test'
+  ...
+# Subtest: original detector and ignore policies still fail closed when changed
+ok 131 - original detector and ignore policies still fail closed when changed
+  ---
+  duration_ms: 343.3166
+  type: 'test'
+  ...
+# Subtest: malformed, empty and oversized input cannot pass
+ok 132 - malformed, empty and oversized input cannot pass
+  ---
+  duration_ms: 383.8843
+  type: 'test'
+  ...
+# Subtest: exact immutable public conduit, two synthetic addresses and two source-response hashes preserve raw failure
+ok 133 - exact immutable public conduit, two synthetic addresses and two source-response hashes preserve raw failure
+  ---
+  duration_ms: 435.3713
+  type: 'test'
+  ...
+# Subtest: every new finding, duplicate or missing raw match blocks
+ok 134 - every new finding, duplicate or missing raw match blocks
+  ---
+  duration_ms: 1685.3282
+  type: 'test'
+  ...
+# Subtest: same-looking future values, paths, rules and source lines are never exempt
+ok 135 - same-looking future values, paths, rules and source lines are never exempt
+  ---
+  duration_ms: 2945.8018
+  type: 'test'
+  ...
+# Subtest: proof, configuration, policy and ignore tampering fail closed
+ok 136 - proof, configuration, policy and ignore tampering fail closed
+  ---
+  duration_ms: 179.2794
+  type: 'test'
+  ...
+1..136
+# tests 136
+# suites 0
+# pass 136
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 44322.0541

@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 1,
+  "EndColumn": 76,
+  "Match": "api_key = \"REDACTED\"",
+  "Secret": "REDACTED",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/ci-history-adapted-20261120-v1/ephemeral-canary/source.txt",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 5.22641,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/ci-history-adapted-20261120-v1/ephemeral-canary/source.txt:generic-api-key:1"
+ }
+]

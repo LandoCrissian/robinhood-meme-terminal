@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 1,
+  "EndColumn": 76,
+  "Match": "api_key = \"REDACTED\"",
+  "Secret": "REDACTED",
+  "File": "/home/runner/work/_temp/rmt-history-security-review/ephemeral-canary/source.txt",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 5.001964,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/home/runner/work/_temp/rmt-history-security-review/ephemeral-canary/source.txt:generic-api-key:1"
+ }
+]

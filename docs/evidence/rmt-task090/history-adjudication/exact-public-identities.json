@@ -1,0 +1,535 @@
+{
+  "schemaVersion": 1,
+  "scope": "TEN_EXACT_B6D094D1_PUBLIC_SYNTHETIC_ERC20_IDENTITIES_AFTER_UNCHANGED_RAW_SCAN",
+  "sourceCommit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+  "records": [
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json:generic-api-key:50",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json",
+      "ruleId": "generic-api-key",
+      "line": 50,
+      "startColumn": 7,
+      "endColumn": 58,
+      "gitBlobSha1": "30c949ef139ab0807720fc1ecc34d94ca6e3c2cf",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "71a9ecfbd39516480cc5a2d568a61ca72fa5e888c5be6939436ca5b1d5c4c1f0"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "794b34d0cc586d07110b6f750d9a1467a9760a2af1e6910d4401a66b0df4ce2c"
+      },
+      "jsonPointer": [
+        "balances",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "959be5f2d402e82fbc68ddfb29d84e26b736e63adb7da665cf2d7e944af0348e"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "graduation"
+    },
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json:generic-api-key:50",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json",
+      "ruleId": "generic-api-key",
+      "line": 50,
+      "startColumn": 7,
+      "endColumn": 58,
+      "gitBlobSha1": "30c949ef139ab0807720fc1ecc34d94ca6e3c2cf",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "71a9ecfbd39516480cc5a2d568a61ca72fa5e888c5be6939436ca5b1d5c4c1f0"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "794b34d0cc586d07110b6f750d9a1467a9760a2af1e6910d4401a66b0df4ce2c"
+      },
+      "jsonPointer": [
+        "balances",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "959be5f2d402e82fbc68ddfb29d84e26b736e63adb7da665cf2d7e944af0348e"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "graduation"
+    },
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/graduation/manifest.json:generic-api-key:135",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/graduation/manifest.json",
+      "ruleId": "generic-api-key",
+      "line": 135,
+      "startColumn": 7,
+      "endColumn": 58,
+      "gitBlobSha1": "dd978811c6b07e382c1728485367e49d9a7767c5",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "38bcfbd1a102f3ca5da115543d92be1e286edc113364f790ba17fc17bb3ba2dd"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "794b34d0cc586d07110b6f750d9a1467a9760a2af1e6910d4401a66b0df4ce2c"
+      },
+      "jsonPointer": [
+        "conservation",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "959be5f2d402e82fbc68ddfb29d84e26b736e63adb7da665cf2d7e944af0348e"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "graduation"
+    },
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:1488",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/harvest/proof-results.json",
+      "ruleId": "generic-api-key",
+      "line": 1488,
+      "startColumn": 13,
+      "endColumn": 64,
+      "gitBlobSha1": "5f26bbd303d4cf69c1d343efcc8dc27ec98fa278",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d169aa8bc20a59b5cb0e98eac6c9fe0276fab3c97cdc3651929dd40e2f3d4c10"
+      },
+      "jsonPointer": [
+        "rows",
+        "1",
+        "harvestCalls",
+        "0",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "harvest"
+    },
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:231",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/harvest/proof-results.json",
+      "ruleId": "generic-api-key",
+      "line": 231,
+      "startColumn": 13,
+      "endColumn": 64,
+      "gitBlobSha1": "5f26bbd303d4cf69c1d343efcc8dc27ec98fa278",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d169aa8bc20a59b5cb0e98eac6c9fe0276fab3c97cdc3651929dd40e2f3d4c10"
+      },
+      "jsonPointer": [
+        "rows",
+        "0",
+        "harvestCalls",
+        "0",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "harvest"
+    },
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:2342",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/harvest/proof-results.json",
+      "ruleId": "generic-api-key",
+      "line": 2342,
+      "startColumn": 13,
+      "endColumn": 64,
+      "gitBlobSha1": "5f26bbd303d4cf69c1d343efcc8dc27ec98fa278",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d169aa8bc20a59b5cb0e98eac6c9fe0276fab3c97cdc3651929dd40e2f3d4c10"
+      },
+      "jsonPointer": [
+        "rows",
+        "1",
+        "harvestCalls",
+        "2",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "harvest"
+    },
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:2893",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/harvest/proof-results.json",
+      "ruleId": "generic-api-key",
+      "line": 2893,
+      "startColumn": 13,
+      "endColumn": 64,
+      "gitBlobSha1": "5f26bbd303d4cf69c1d343efcc8dc27ec98fa278",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d169aa8bc20a59b5cb0e98eac6c9fe0276fab3c97cdc3651929dd40e2f3d4c10"
+      },
+      "jsonPointer": [
+        "rows",
+        "2",
+        "harvestCalls",
+        "0",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "harvest"
+    },
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:3470",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/harvest/proof-results.json",
+      "ruleId": "generic-api-key",
+      "line": 3470,
+      "startColumn": 13,
+      "endColumn": 64,
+      "gitBlobSha1": "5f26bbd303d4cf69c1d343efcc8dc27ec98fa278",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d169aa8bc20a59b5cb0e98eac6c9fe0276fab3c97cdc3651929dd40e2f3d4c10"
+      },
+      "jsonPointer": [
+        "rows",
+        "4",
+        "harvestCalls",
+        "0",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "harvest"
+    },
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:4108",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/harvest/proof-results.json",
+      "ruleId": "generic-api-key",
+      "line": 4108,
+      "startColumn": 13,
+      "endColumn": 64,
+      "gitBlobSha1": "5f26bbd303d4cf69c1d343efcc8dc27ec98fa278",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d169aa8bc20a59b5cb0e98eac6c9fe0276fab3c97cdc3651929dd40e2f3d4c10"
+      },
+      "jsonPointer": [
+        "rows",
+        "4",
+        "harvestCalls",
+        "2",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "harvest"
+    },
+    {
+      "fingerprint": "b6d094d1fc446fd84ab162e546a487a5304b8b4d:docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:833",
+      "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+      "path": "docs/evidence/rmt-task090/harvest/proof-results.json",
+      "ruleId": "generic-api-key",
+      "line": 833,
+      "startColumn": 13,
+      "endColumn": 64,
+      "gitBlobSha1": "5f26bbd303d4cf69c1d343efcc8dc27ec98fa278",
+      "blobContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "lineContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d169aa8bc20a59b5cb0e98eac6c9fe0276fab3c97cdc3651929dd40e2f3d4c10"
+      },
+      "jsonPointer": [
+        "rows",
+        "0",
+        "harvestCalls",
+        "2",
+        "token"
+      ],
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+      },
+      "redactedMatchContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09b52aafb84c0720e6d08a2e4a5dc6d4335d0cd037a46b86b13836f47e35f2a9"
+      },
+      "publicKind": "PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "receiptProof": "harvest"
+    }
+  ],
+  "receiptProofs": {
+    "graduation": {
+      "kind": "LOCAL_FACTORY_TEXT_CREATE_AND_CURVECREATED_RECEIPT",
+      "artifact": {
+        "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+        "path": "docs/evidence/rmt-task090/graduation/canonical-full-trace.txt",
+        "gitBlobSha1": "36ebb513302f9f698173ca684761a3482f94ee97",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4d53c59fb51cc4ee9849edd6fe28b5b5701d30dfa64c2a28352a90c6fcc4b748"
+        }
+      },
+      "contractType": "RMTLaunchCurveTokenV2",
+      "creation": {
+        "line": 211,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "8686e6857595b0449566d84b4c26040a54cb03cf4015e4fd563d07b0c908a2c5"
+        }
+      },
+      "registration": {
+        "line": 250,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "78a2c569338ebf4f58c5411d92c0eb5aaf4ea658bbee3acb8068e4f89bdda82b"
+        }
+      },
+      "receipt": {
+        "line": 254,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "6b5a491a2bd873fb510a1eec75b2705bff664ba2c997dd88420fd95e93362c60"
+        }
+      },
+      "publicValueDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "UTF8_LOWERCASE",
+        "hex": "959be5f2d402e82fbc68ddfb29d84e26b736e63adb7da665cf2d7e944af0348e"
+      }
+    },
+    "harvest": {
+      "kind": "LOCAL_FACTORY_CREATE2_WITH_CANONICAL_RETURNED_RUNTIME",
+      "artifact": {
+        "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+        "path": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+        "gitBlobSha1": "5f81e4b07f6931c226d3a68d33414fc7c89a468d",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "5c8ef617e7f888a3e55170935633e5aea57fdfc110f9978f8d1b8f2410712def"
+        }
+      },
+      "expandedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429"
+      },
+      "expandedBytes": 24179364,
+      "canonicalCompilation": {
+        "commit": "b6d094d1fc446fd84ab162e546a487a5304b8b4d",
+        "path": "docs/evidence/rmt-task090/migration/canonical-compilation.json.gz",
+        "gitBlobSha1": "04bcb297a1010711d7b5a8a13fc927c5c83a6ecd",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "c3f3b851e6d96fe89515e5f6517f4b5716dea8c81e05090841ed663d8cc7dd04"
+        }
+      },
+      "canonicalInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+      "contractType": "RMTLaunchCurveTokenV2",
+      "receipts": [
+        {
+          "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+          "test": "testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements()",
+          "phase": "Setup",
+          "frame": 64,
+          "parent": 63,
+          "factoryAddress": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+          "factoryCreateSelector": "0x71c51865",
+          "createdAddressDigest": {
+            "algorithm": "SHA-256",
+            "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+          },
+          "returnedRuntimeContentDigest": {
+            "algorithm": "SHA-256",
+            "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+          }
+        },
+        {
+          "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+          "test": "testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest()",
+          "phase": "Setup",
+          "frame": 64,
+          "parent": 63,
+          "factoryAddress": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+          "factoryCreateSelector": "0x71c51865",
+          "createdAddressDigest": {
+            "algorithm": "SHA-256",
+            "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+          },
+          "returnedRuntimeContentDigest": {
+            "algorithm": "SHA-256",
+            "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+          }
+        },
+        {
+          "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+          "test": "testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly()",
+          "phase": "Setup",
+          "frame": 64,
+          "parent": 63,
+          "factoryAddress": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+          "factoryCreateSelector": "0x71c51865",
+          "createdAddressDigest": {
+            "algorithm": "SHA-256",
+            "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+          },
+          "returnedRuntimeContentDigest": {
+            "algorithm": "SHA-256",
+            "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+          }
+        },
+        {
+          "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+          "test": "testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement()",
+          "phase": "Setup",
+          "frame": 64,
+          "parent": 63,
+          "factoryAddress": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+          "factoryCreateSelector": "0x71c51865",
+          "createdAddressDigest": {
+            "algorithm": "SHA-256",
+            "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+          },
+          "returnedRuntimeContentDigest": {
+            "algorithm": "SHA-256",
+            "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+          }
+        },
+        {
+          "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+          "test": "testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal()",
+          "phase": "Setup",
+          "frame": 64,
+          "parent": 63,
+          "factoryAddress": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+          "factoryCreateSelector": "0x71c51865",
+          "createdAddressDigest": {
+            "algorithm": "SHA-256",
+            "hex": "d586c55296d13fdd55ba7dcb6565b65dcaf738ddf57be480822516a2f46a8d19"
+          },
+          "returnedRuntimeContentDigest": {
+            "algorithm": "SHA-256",
+            "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+          }
+        }
+      ]
+    }
+  },
+  "originalCi": {
+    "runId": 44786450297,
+    "jobId": 136462469224,
+    "artifactId": 14655185863,
+    "rawExitCode": 1,
+    "rawFindingCount": 17,
+    "archiveContentDigest": {
+      "algorithm": "SHA-256",
+      "hex": "7e2381fcbf9e22284eeb1f4fea5a98465d84c25e232bb3ad3bab9b98b983212b"
+    },
+    "rawReportContentDigest": {
+      "algorithm": "SHA-256",
+      "hex": "b80a4586e613e550478b9629edfbaeeb37116ae54355f3e4514cced893979b1c"
+    }
+  },
+  "scannerChanged": false,
+  "ignoreChanged": false,
+  "existingSevenIdentityProofsChanged": false,
+  "rawScannerCleared": false,
+  "financialSecurityClearance": false,
+  "productionAuthorization": false
+}

@@ -8,7 +8,7 @@
   "EndColumn": 58,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.8298018,
@@ -17,7 +17,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json:generic-api-key:50"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json:generic-api-key:50"
  },
  {
   "RuleID": "generic-api-key",
@@ -28,7 +28,7 @@
   "EndColumn": 58,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.8298018,
@@ -37,7 +37,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json:generic-api-key:50"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json:generic-api-key:50"
  },
  {
   "RuleID": "generic-api-key",
@@ -48,7 +48,7 @@
   "EndColumn": 58,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/graduation/manifest.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/graduation/manifest.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.8298018,
@@ -57,47 +57,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/graduation/manifest.json:generic-api-key:135"
- },
- {
-  "RuleID": "generic-api-key",
-  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
-  "StartLine": 1,
-  "EndLine": 1,
-  "StartColumn": 96138,
-  "EndColumn": 96174,
-  "Match": "token =\u003e REDACTED ",
-  "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/auxiliary-ast-input.json",
-  "SymlinkFile": "",
-  "Commit": "",
-  "Entropy": 4.0006456,
-  "Author": "",
-  "Email": "",
-  "Date": "",
-  "Message": "",
-  "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/auxiliary-ast-input.json:generic-api-key:1"
- },
- {
-  "RuleID": "generic-api-key",
-  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
-  "StartLine": 1,
-  "EndLine": 1,
-  "StartColumn": 96138,
-  "EndColumn": 96174,
-  "Match": "token =\u003e REDACTED ",
-  "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-input.json",
-  "SymlinkFile": "",
-  "Commit": "",
-  "Entropy": 4.0006456,
-  "Author": "",
-  "Email": "",
-  "Date": "",
-  "Message": "",
-  "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-input.json:generic-api-key:1"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/graduation/manifest.json:generic-api-key:135"
  },
  {
   "RuleID": "generic-api-key",
@@ -108,7 +68,7 @@
   "EndColumn": 64,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.754915,
@@ -117,7 +77,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:231"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:231"
  },
  {
   "RuleID": "generic-api-key",
@@ -128,7 +88,7 @@
   "EndColumn": 64,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.754915,
@@ -137,7 +97,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:833"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:833"
  },
  {
   "RuleID": "generic-api-key",
@@ -148,7 +108,7 @@
   "EndColumn": 64,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.754915,
@@ -157,7 +117,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:1488"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:1488"
  },
  {
   "RuleID": "generic-api-key",
@@ -168,7 +128,7 @@
   "EndColumn": 64,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.754915,
@@ -177,7 +137,47 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:2342"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:2342"
+ },
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 96138,
+  "EndColumn": 96174,
+  "Match": "token =\u003e REDACTED ",
+  "Secret": "REDACTED",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-input.json",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.0006456,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-input.json:generic-api-key:1"
+ },
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 96138,
+  "EndColumn": 96174,
+  "Match": "token =\u003e REDACTED ",
+  "Secret": "REDACTED",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/auxiliary-ast-input.json",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.0006456,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/auxiliary-ast-input.json:generic-api-key:1"
  },
  {
   "RuleID": "generic-api-key",
@@ -188,7 +188,7 @@
   "EndColumn": 64,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.754915,
@@ -197,7 +197,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:2893"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:2893"
  },
  {
   "RuleID": "generic-api-key",
@@ -208,7 +208,7 @@
   "EndColumn": 64,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.754915,
@@ -217,7 +217,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:3470"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:3470"
  },
  {
   "RuleID": "generic-api-key",
@@ -228,7 +228,7 @@
   "EndColumn": 64,
   "Match": "token\": \"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.754915,
@@ -237,7 +237,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:4108"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/source/docs/evidence/rmt-task090/harvest/proof-results.json:generic-api-key:4108"
  },
  {
   "RuleID": "generic-api-key",
@@ -248,7 +248,7 @@
   "EndColumn": 28538,
   "Match": "RMTLaunchCurveTokenV2.sol\",\"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.9162774,
@@ -257,7 +257,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json:generic-api-key:1"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json:generic-api-key:1"
  },
  {
   "RuleID": "generic-api-key",
@@ -268,7 +268,7 @@
   "EndColumn": 2231,
   "Match": "RMTLaunchCurveTokenV2.sol\",\"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.9162774,
@@ -277,7 +277,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json:generic-api-key:1"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json:generic-api-key:1"
  },
  {
   "RuleID": "generic-api-key",
@@ -288,7 +288,7 @@
   "EndColumn": 8600,
   "Match": "PoolKey.sol\",\"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.6507745,
@@ -297,7 +297,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json:generic-api-key:1"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json:generic-api-key:1"
  },
  {
   "RuleID": "generic-api-key",
@@ -308,7 +308,7 @@
   "EndColumn": 8631,
   "Match": "RMTLaunchCurveTokenV2.sol\",\"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.9162774,
@@ -317,7 +317,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json:generic-api-key:1"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json:generic-api-key:1"
  },
  {
   "RuleID": "generic-api-key",
@@ -328,7 +328,7 @@
   "EndColumn": 10996,
   "Match": "RMTLaunchCurveTokenV2.sol\",\"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.9162774,
@@ -337,7 +337,7 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json:generic-api-key:1"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json:generic-api-key:1"
  },
  {
   "RuleID": "generic-api-key",
@@ -348,7 +348,7 @@
   "EndColumn": 17365,
   "Match": "PoolKey.sol\",\"REDACTED\"",
   "Secret": "REDACTED",
-  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json",
+  "File": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json",
   "SymlinkFile": "",
   "Commit": "",
   "Entropy": 3.6507745,
@@ -357,6 +357,6 @@
   "Date": "",
   "Message": "",
   "Tags": [],
-  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v1/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json:generic-api-key:1"
+  "Fingerprint": "C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task090-tools/final-scoped-scan-20261120-v2/snapshot/expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json:generic-api-key:1"
  }
 ]

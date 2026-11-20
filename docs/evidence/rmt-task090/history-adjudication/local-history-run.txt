@@ -1,0 +1,4 @@
+10:53AM INF 2109 commits scanned.
+10:53AM INF scanned ~58017896 bytes (58.02 MB) in 7.37s
+10:53AM WRN leaks found: 17
+Raw scan exit 1: 17 retained findings; 17 exact public identities; 0 unclassified. Financial gates unchanged.
