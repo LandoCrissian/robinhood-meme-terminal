@@ -60,7 +60,8 @@ export type CurveLifecycle =
 
 export type NewEngineDirectory =
   | { status: "prelaunch" | "unavailable" }
-  | { status: "ready"; launches: readonly CurveLaunch[] };
+  | { status: "ready"; launches: readonly CurveLaunch[]; freshUntil?: number }
+  | { status: "stale"; history: readonly CurveLaunch[] };
 
 export const proposedCurveLifecycle = { stage: "proposed", label: "Proposed token draft" } as const;
 

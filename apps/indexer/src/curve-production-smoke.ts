@@ -142,6 +142,35 @@ export async function testCurveProduction() {
   await worker.syncOnce();
   assert.equal(worker.state().status, "ready");
   assert.equal(worker.state().checkpoint?.blockNumber, "100");
+  // A DB read may straddle the freshness deadline without any writer revision.
+  // Recheck status after the query, rather than publishing the pre-query "ready".
+  const readyTime = observedTime;
+  const point = worker.state().checkpoint!;
+  const delayedReader = { query: async (sql: string) => {
+    if (sql.includes("b.next_block - 1 =")) return { rows: [{ matches: true }] };
+    if (sql.includes("SELECT l.payload")) {
+      observedTime = Date.parse(point.timestamp) + 120_001;
+      return { rows: [{ payload: item }] };
+    }
+    throw new Error("Unexpected delayed-read query");
+  } } as unknown as Pick<Client, "query">;
+  const agedRead = await worker.read(delayedReader, { token: undefined, after: undefined, limit: 25 });
+  assert.equal(agedRead.status, "stale", "freshness expiry during a read is visible in the response");
+  assert.equal(agedRead.checkpoint.blockHash, point.blockHash);
+  assert.equal(agedRead.launches[0]?.creation.transactionHash, item.creation.transactionHash);
+  observedTime = readyTime;
+  const earningsReader = { query: async (sql: string) => {
+    if (sql.includes("SELECT c.block_number::text")) return { rows: [{ block_number: point.blockNumber,
+      block_hash: point.blockHash, observed_at: new Date(point.timestamp) }] };
+    if (sql.includes("SELECT l.payload")) {
+      observedTime = readyTime - 1_000; // clock rollback invalidates the verification age
+      return { rows: [{ payload: item }] };
+    }
+    throw new Error("Unexpected delayed-earnings query");
+  } } as unknown as Pick<Client, "query">;
+  const clockRollbackRead = await worker.readEarnings(earningsReader, { recipient: item.creator, limit: 25 });
+  assert.equal(clockRollbackRead.status, "stale", "verification-clock drift during earnings read never remains ready");
+  observedTime = readyTime;
   observedTime += 121_000;
   await worker.syncOnce();
   assert.equal(worker.state().status, "stale", "successful reads of an old canonical head never imply freshness");

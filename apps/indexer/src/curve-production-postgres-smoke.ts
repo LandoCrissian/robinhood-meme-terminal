@@ -50,6 +50,25 @@ try {
   assert.equal(recovered.length, 1);
   assert.equal(recovered[0]?.creation.transactionHash, item.creation.transactionHash);
   assert.equal(recovered[0]?.chainId, 4663);
+  // The original receipt remains exact as the durable cursor advances; a
+  // replaced receipt is removed before a canonical replay can republish it.
+  const next = { blockNumber: "101", blockHash: "0x" + "a".repeat(64) as `0x${string}`,
+    timestamp: "2026-11-17T12:00:01.000Z" };
+  await commitProductionCurveRange(reopened, config, 101n, next, []);
+  assert.equal((await reopened.query("SELECT next_block::text FROM rmt_curve_production_bindings")).rows[0]?.next_block, "102");
+  const advanced = await readProductionCurveLaunches(reopened, scope, next, { limit: 25 });
+  assert.deepEqual(advanced[0]?.creation, item.creation);
+  await assert.rejects(readProductionCurveLaunches(reopened, scope, item.checkpoint, { limit: 25 }), /checkpoint changed/);
+  await rollbackProductionCurve(reopened, scope, 99n);
+  const replacementPoint = { ...item.checkpoint, blockHash: "0x" + "b".repeat(64) as `0x${string}` };
+  const canonical = { ...item, checkpoint: replacementPoint,
+    creation: { ...item.creation, blockHash: replacementPoint.blockHash,
+      transactionHash: "0x" + "c".repeat(64) as `0x${string}` } };
+  await commitProductionCurveRange(reopened, config, 100n, replacementPoint, [canonical]);
+  const replayed = await readProductionCurveLaunches(reopened, scope, replacementPoint, { limit: 25 });
+  assert.equal(replayed.length, 1);
+  assert.deepEqual(replayed[0]?.creation, canonical.creation);
+  await assert.rejects(readProductionCurveLaunches(reopened, scope, item.checkpoint, { limit: 25 }), /checkpoint changed/);
   await rollbackProductionCurve(reopened, scope, 99n);
   assert.equal((await reopened.query("SELECT count(*)::int AS count FROM rmt_curve_production_launches")).rows[0]?.count, 0);
   assert.equal((await reopened.query("SELECT next_block::text FROM rmt_curve_production_bindings")).rows[0]?.next_block, "100");

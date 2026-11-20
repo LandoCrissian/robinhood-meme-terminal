@@ -59,26 +59,61 @@ export function parseProductionDiscovery(raw: unknown, token?: string, now = Dat
         creationFee: { amountWei: row.creationFee.amountWei, refundWei: row.creationFee.refundWei,
           recipient: row.creationFee.recipient, logIndex: row.creationFee.logIndex }, checkpoint: cleanPoint });
     }
-    return { status: data.status === "stale" || now - Date.parse(point.timestamp) > 120_000 ? "stale" : "ready",
+    return { status: data.status === "stale" || now - Date.parse(point.timestamp) >= 120_000 ? "stale" : "ready",
       launches: clean, checkpoint: cleanPoint };
   } catch { return unavailable; }
 }
 
+// Diagnostics contain fixed categories and HTTP status only. Neither raw upstream
+// bodies, exception messages, origins nor credentials may cross this boundary.
+export type ProductionReadDiagnostic = {
+  reason: "config_missing" | "credential_invalid" | "origin_rejected" | "token_invalid"
+    | "unauthorized" | "forbidden" | "rate_limited" | "upstream_http" | "network"
+    | "response_body" | "response_schema" | "stale_checkpoint" | "stale_upstream";
+  status?: number;
+};
+type ProductionReadOptions = {
+  env?: Record<string, string | undefined>; fetch?: typeof fetch; now?: number;
+  onDiagnostic?: (diagnostic: ProductionReadDiagnostic) => void;
+};
+let lastDiagnosticAt = -Infinity;
+
 // Reuses the existing Railway origin and bearer credential; neither is returned
 // to the browser. This feed is never merged with historical V4/V6 registrations.
-export async function readProductionDiscovery(token?: string, options: { env?: Record<string, string | undefined>; fetch?: typeof fetch; now?: number } = {}): Promise<ProductionDiscovery> {
+export async function readProductionDiscovery(token?: string, options: ProductionReadOptions = {}): Promise<ProductionDiscovery> {
   const env = options.env ?? process.env;
+  const report = (reason: ProductionReadDiagnostic["reason"], status?: number) => {
+    const diagnostic = { reason, ...(status === undefined ? {} : { status }) };
+    if (options.onDiagnostic) options.onDiagnostic(diagnostic);
+    else if (Date.now() - lastDiagnosticAt >= 60_000) {
+      lastDiagnosticAt = Date.now();
+      console.warn(JSON.stringify({ event: "production_discovery_degraded", ...diagnostic }));
+    }
+    return unavailable;
+  };
   const endpoint = env.RMT_LAUNCH_HISTORY_INDEXER_URL;
   const credential = env.RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN;
-  if (!endpoint || !credential || !/^[\x21-\x7e]{1,512}$/.test(credential) || (token && !address(token))) return unavailable;
+  if (!endpoint || !credential) return report("config_missing");
+  if (!/^[\x21-\x7e]{1,512}$/.test(credential)) return report("credential_invalid");
+  if (token && !address(token)) return report("token_invalid");
+  const origin = indexerOrigin(endpoint, env);
+  if (!origin) return report("origin_rejected");
+  const url = new URL(token ? "/curve-launches/" + token.toLowerCase() : "/curve-launches?limit=25", origin);
+  let stage: "network" | "response_body" = "network";
   try {
-    const origin = indexerOrigin(endpoint, env);
-    if (!origin) return unavailable;
-    const url = new URL(token ? "/curve-launches/" + token.toLowerCase() : "/curve-launches?limit=25", origin);
     const response = await (options.fetch ?? fetch)(url, { headers: { Accept: "application/json", Authorization: "Bearer " + credential },
       redirect: "error", cache: "no-store", signal: AbortSignal.timeout(4_000) });
-    if (!response.ok || response.headers.get("content-type")?.split(";")[0] !== "application/json" || !response.body
-        || Number(response.headers.get("content-length")) > 65_536) { await response.body?.cancel(); return unavailable; }
+    if (!response.ok) {
+      await response.body?.cancel();
+      return report(response.status === 401 ? "unauthorized" : response.status === 403 ? "forbidden"
+        : response.status === 429 ? "rate_limited" : "upstream_http", response.status);
+    }
+    stage = "response_body";
+    if (response.headers.get("content-type")?.split(";")[0] !== "application/json" || !response.body
+        || Number(response.headers.get("content-length")) > 65_536) {
+      await response.body?.cancel();
+      return report("response_body");
+    }
     const reader = response.body.getReader();
     const bytes = new Uint8Array(65_536);
     let size = 0;
@@ -86,17 +121,23 @@ export async function readProductionDiscovery(token?: string, options: { env?: R
       for (;;) {
         const chunk = await reader.read();
         if (chunk.done) break;
-        if (size + chunk.value.byteLength > bytes.length) return unavailable;
+        if (size + chunk.value.byteLength > bytes.length) return report("response_body");
         bytes.set(chunk.value, size); size += chunk.value.byteLength;
       }
     } finally { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
-    return parseProductionDiscovery(JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, size))), token, options.now);
-  } catch { return unavailable; }
+    const raw = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, size)));
+    const data = parseProductionDiscovery(raw, token, options.now);
+    if (data.status === "unavailable") return report("response_schema");
+    if (data.status === "stale") report(raw.status === "stale" ? "stale_upstream" : "stale_checkpoint");
+    return data;
+  } catch { return report(stage); }
 }
 
 export function productionDirectory(data: ProductionDiscovery): NewEngineDirectory {
-  return data.status !== "unavailable" ? { status: "ready", launches: data.launches.map((registration) => ({ registration, state: "created" })) }
-    : { status: "unavailable" };
+  if (data.status === "unavailable") return { status: "unavailable" };
+  if (data.status === "stale") return { status: "stale",
+    history: data.launches.map((registration) => ({ registration, state: "unknown" })) };
+  return { status: "ready", freshUntil: Date.parse(data.checkpoint.timestamp) + 120_000, launches: data.launches.map((registration) => ({ registration, state: "created" })) };
 }
 
 export function configuredProductionDiscovery(headers: Headers, env: Record<string, string | undefined> = process.env) {
@@ -105,15 +146,29 @@ export function configuredProductionDiscovery(headers: Headers, env: Record<stri
     && (!headers.has("x-forwarded-host") || headers.get("x-forwarded-host") === "www.rmtlaunch.fun");
 }
 
-export async function productionDiscoveryResponse(request: Request, token?: string) {
-  const headers = new Headers({ "Cache-Control": "private, no-store", "Netlify-CDN-Cache-Control": "no-store", "Netlify-Vary": "query" });
-  if (!configuredProductionDiscovery(request.headers) || (request.method !== "GET" && request.method !== "HEAD")) return Response.json({ status: "unavailable" }, { status: 404, headers });
-  if (new URL(request.url).search || (token && !address(token))) return Response.json({ status: "invalid" }, { status: 400, headers });
-  const data = await readProductionDiscovery(token);
-  const status = data.status === "unavailable" ? 503 : token && !data.launches.length ? (data.status === "stale" ? 503 : 404) : 200;
-  if (status === 200 && request.method === "GET" && data.status === "ready" && (!token || token === token.toLowerCase())) {
-    const seconds = Math.max(0, Math.min(15, Math.floor((Date.parse(data.checkpoint.timestamp) + 120_000 - Date.now() - 5_000) / 1_000)));
-    if (seconds > 0) headers.set("Netlify-CDN-Cache-Control", `public, durable, s-maxage=${seconds}, must-revalidate`);
-  }
-  return request.method === "HEAD" ? new Response(null, { status, headers }) : Response.json(data, { status, headers });
+export function createProductionDiscoveryHandler(options: {
+  env?: Record<string, string | undefined>;
+  read?: typeof readProductionDiscovery;
+  now?: () => number;
+} = {}) {
+  const env = options.env ?? process.env;
+  const read = options.read ?? readProductionDiscovery;
+  const now = options.now ?? Date.now;
+  return async function productionDiscoveryResponse(request: Request, token?: string) {
+    const headers = new Headers({ "Cache-Control": "private, no-store", "Netlify-CDN-Cache-Control": "no-store", "Netlify-Vary": "query" });
+    if (!configuredProductionDiscovery(request.headers, env) || (request.method !== "GET" && request.method !== "HEAD")) return Response.json({ status: "unavailable" }, { status: 404, headers });
+    if (new URL(request.url).search || (token && !address(token))) return Response.json({ status: "invalid" }, { status: 400, headers });
+    const observed = await read(token, { env, now: now() });
+    // A response may cross the freshness boundary while reading its body.
+    const data = observed.status === "ready" && now() - Date.parse(observed.checkpoint.timestamp) >= 120_000
+      ? { ...observed, status: "stale" as const } : observed;
+    const status = data.status === "unavailable" || data.status === "stale" ? 503 : token && !data.launches.length ? 404 : 200;
+    if (status === 200 && request.method === "GET" && data.status === "ready" && (!token || token === token.toLowerCase())) {
+      const seconds = Math.max(0, Math.min(15, Math.floor((Date.parse(data.checkpoint.timestamp) + 120_000 - now() - 5_000) / 1_000)));
+      if (seconds > 0) headers.set("Netlify-CDN-Cache-Control", `public, durable, s-maxage=${seconds}, must-revalidate`);
+    }
+    return request.method === "HEAD" ? new Response(null, { status, headers }) : Response.json(data, { status, headers });
+  };
 }
+
+export const productionDiscoveryResponse = createProductionDiscoveryHandler();

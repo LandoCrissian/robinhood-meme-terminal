@@ -318,3 +318,29 @@ test("authenticates over a real HTTP connection and recovers from an interrupted
     await new Promise<void>((resolve, reject) => server.close((error) => error ? reject(error) : resolve()));
   }
 });
+
+
+test("missing or invalid server configuration is diagnosed before any authenticated request", async () => {
+  for (const [indexerUrl, indexerReadToken, code] of [
+    [undefined, undefined, "missing_origin"],
+    ["http://127.0.0.1:8080/", "synthetic", "invalid_origin"],
+    ["https://worker.example/", undefined, "missing_credential"],
+    ["https://worker.example/", "invalid\ncredential", "invalid_credential"],
+  ]) {
+    const failures: unknown[] = [];
+    const read = createLaunchDirectoryReader({ indexerUrl, indexerReadToken, now: () => clock,
+      onFailure: failure => failures.push(failure), fetch: async () => { throw Error("must not request"); } });
+    assert.equal((await read()).coverage, "verified-snapshot");
+    assert.deepEqual(failures, [{ stage: "config", code }]);
+  }
+});
+
+test("evidence merge disagreement is distinct from malformed authenticated response", async () => {
+  const failures: unknown[] = [];
+  const data = indexed();
+  data.launches[0].name = "Contradictory identity";
+  const read = createLaunchDirectoryReader({ now: () => clock, indexerUrl: "https://worker.example/",
+    indexerReadToken: "synthetic", fetch: async () => Response.json(data), onFailure: failure => failures.push(failure) });
+  assert.equal((await read()).status, "stale");
+  assert.deepEqual(failures, [{ stage: "merge" }]);
+});

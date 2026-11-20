@@ -1,5 +1,5 @@
 import snapshot from "../../data/historical-launches-4663.json";
-import { indexerOrigin, railwayReadOnlyProfile } from "./indexer-origin";
+import { indexerOrigin } from "./indexer-origin";
 import {
   isLaunchAddress, launchDirectoryLimit, robinhoodChainId,
   type HistoricalLaunch, type LaunchBlock, type LaunchDirectoryData, type LaunchReceipt,
@@ -16,7 +16,7 @@ const maxCachedExactReads = 64;
 
 type Fields = Record<string, unknown>;
 type Evidence = Omit<LaunchDirectoryData, "chainId" | "future" | "finality">;
-type ReadFailure = { stage: "transport" | "http" | "body" | "evidence"; status?: number; code?: string };
+type ReadFailure = { stage: "config" | "transport" | "http" | "body" | "evidence" | "merge"; status?: number; code?: string };
 type ReaderOptions = {
   indexerUrl?: string;
   indexerReadToken?: string;
@@ -235,14 +235,17 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
     // Operational evidence only: never log exception messages, URLs, headers,
     // credentials, project metadata or response bodies. Bound noisy outages.
     options.onFailure?.(failure);
-    if ((options.env ?? process.env).RMT_WEB_HOSTING === railwayReadOnlyProfile && now() - lastReportedAt >= 60_000) {
+    if (!options.onFailure && now() - lastReportedAt >= 60_000) {
       lastReportedAt = now();
       console.warn(JSON.stringify({ event: "launch_history_read_degraded", ...failure }));
     }
   }
 
   async function fetchIndex(archived: Evidence, token?: string): Promise<Evidence | null> {
-    if (!feed || !credential || !/^[\x21-\x7e]{1,512}$/.test(credential)) return null;
+    if (!feed || !credential || !/^[\x21-\x7e]{1,512}$/.test(credential)) {
+      reportFailure({ stage: "config", code: !options.indexerUrl ? "missing_origin" : !feed ? "invalid_origin" : !credential ? "missing_credential" : "invalid_credential" });
+      return null;
+    }
     const url = new URL(feed);
     if (token) url.searchParams.set("token", token);
     else url.searchParams.set("limit", String(launchDirectoryLimit));
@@ -260,7 +263,9 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
       stage = "body";
       const body = await readBoundedJson(response);
       stage = "evidence";
-      return mergeEvidence(readIndexedEvidence(body, now(), token), archived, token);
+      const indexed = readIndexedEvidence(body, now(), token);
+      stage = "merge";
+      return mergeEvidence(indexed, archived, token);
     } catch (error) {
       const code = (error as { cause?: { code?: unknown } } | null)?.cause?.code;
       const known = ["ECONNREFUSED", "ECONNRESET", "ENOTFOUND", "ETIMEDOUT", "EAI_AGAIN", "UND_ERR_SOCKET", "UND_ERR_CONNECT_TIMEOUT"];

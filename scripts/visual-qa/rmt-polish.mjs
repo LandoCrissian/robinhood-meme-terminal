@@ -174,6 +174,7 @@ async function startFixtureHarness() {
       const [mode, setMode] = useState('ready');
       const [theme, setTheme] = useState('dark');
       const directory = mode === 'prelaunch' || mode === 'unavailable' ? {status: mode}
+        : mode === 'stale' ? {status: 'stale', history: fixtures.map(launch => ({registration: launch.registration, state: 'unknown'}))}
         : {status: 'ready', launches: mode === 'empty' ? [] : mode === 'single' ? [fixtures[1]] : mode === 'many' ? manyFixtures : fixtures};
       return <div className="rmtVnext rmtTerminal launchpad" data-theme={theme}>
         <main className="lpContent">
@@ -528,8 +529,9 @@ async function checkAfter(browser, engine, layout, harness) {
   }
   await fixtureStates.getByRole("button", { name: "stale", exact: true }).click();
   await page.getByText("Stale creation records", { exact: true }).waitFor();
-  assert.equal(await cards.count(), 5);
-  const stale = page.locator("details.lpFeedStatus");
+  assert.equal(await cards.count(), 0);
+  await page.getByRole("heading", { name: "Launch feed stale", exact: true }).waitFor();
+  const stale = page.locator("details.lpFeedStatus").first();
   assert.equal(await stale.getAttribute("open"), null);
   await stale.locator("summary").click();
   assert.match(await stale.textContent(), /Current curve activity and Ethereum L1 finality are unverified/);

@@ -3,6 +3,7 @@
   "workspaces": {
     ".": {
       "entry": [
+        "scripts/discovery/continuity.ts",
         "docs/evidence/rmt-task087/operations/capture-public-reads.mjs",
         "docs/evidence/rmt-task087/bindings/capture.mjs",
         "docs/evidence/rmt-task087/bindings/initial-attempt/capture.mjs",

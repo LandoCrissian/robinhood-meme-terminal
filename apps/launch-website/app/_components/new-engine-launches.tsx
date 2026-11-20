@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { describeCurveLifecycle, hasCurveRegistration, type NewEngineDirectory } from "../../lib/curve-lifecycle";
 import { TokenArtwork } from "./token-artwork";
 
@@ -14,7 +14,20 @@ function units(wei: string) {
 
 const creationDate = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
 
-export function NewEngineLaunches({ directory }: { directory: NewEngineDirectory }) {
+export function NewEngineLaunches({ directory: received }: { directory: NewEngineDirectory }) {
+  const freshUntil = received.status === "ready" ? received.freshUntil : undefined;
+  const [expiredAt, setExpiredAt] = useState<number | null>(null);
+  useEffect(() => {
+    if (freshUntil === undefined) return;
+    const check = () => setExpiredAt((previous) => Date.now() >= freshUntil || previous === freshUntil ? freshUntil : null);
+    check();
+    const timer = window.setTimeout(check, Math.max(0, freshUntil - Date.now()) + 1);
+    document.addEventListener("visibilitychange", check);
+    return () => { window.clearTimeout(timer); document.removeEventListener("visibilitychange", check); };
+  }, [freshUntil]);
+  const directory: NewEngineDirectory = received.status === "ready" && freshUntil !== undefined && expiredAt === freshUntil
+    ? { status: "stale", history: received.launches.map(({ registration }) => ({ registration, state: "unknown" })) }
+    : received;
   const [query, setQuery] = useState("");
   const input = useRef<HTMLInputElement>(null);
   const launches = directory.status === "ready"
@@ -32,6 +45,18 @@ export function NewEngineLaunches({ directory }: { directory: NewEngineDirectory
     {directory.status === "prelaunch" && <section className="lpEmpty lpForm lpLaunchEmpty"><h2>Launches coming soon</h2>
       <p>Token creation, trading and fee claims are not yet available.</p></section>}
     {directory.status === "unavailable" && <section className="lpEmpty lpForm"><h2>Launch feed unavailable</h2><p>We could not verify the new-engine feed. Refresh to try again.</p><p>Missing feed data does not mean a token was never created. Wallet transactions remain disabled.</p></section>}
+    {directory.status === "stale" && <>
+      <section className="lpEmpty lpForm"><h2>Launch feed stale</h2>
+        <p>Current launches cannot be verified. Refresh to try again. Wallet transactions remain disabled.</p>
+        <p>Old records cannot establish current availability or whether a newly submitted transaction was indexed.</p></section>
+      {directory.history.length > 0 && <details className="lpFeedStatus"><summary>Last-known creation history (stale)</summary>
+        <p>These records describe an earlier checkpoint. Current lifecycle and availability are unverified.</p>
+        <ul>{directory.history.filter(({ registration }) => hasCurveRegistration(registration)).map(({ registration }) =>
+          <li key={registration.token}><Link href={`/launches/${registration.token}`} prefetch={false}>{registration.name}</Link>
+            {" · "}<code className="lpAddress">{registration.token}</code>{" · "}
+            <time dateTime={registration.creation.timestamp}>Created {creationDate.format(new Date(registration.creation.timestamp))} UTC</time>
+          </li>)}</ul></details>}
+    </>}
     {directory.status === "ready" && launches.length === 0 && <section className="lpEmpty lpForm lpLaunchEmpty"><h2>No launches yet</h2><p>Verified new-engine projects will appear here after on-chain registration and indexing.</p></section>}
     {launches.length > 0 && visible.length === 0 && <section className="lpEmpty lpForm"><h2>No launches match your search</h2><p>Try a token name, ticker or exact contract address.</p></section>}
     <div className="lpCardGrid">{visible.map((launch) => {
