@@ -2,15 +2,19 @@ param(
   [Parameter(Mandatory=$true)][string]$ZipPath,
   [Parameter(Mandatory=$true)][string]$MetadataPath,
   [Parameter(Mandatory=$true)][string]$OutputRoot,
-  [Parameter(Mandatory=$true)][string]$PlainRoot
+  [Parameter(Mandatory=$true)][string]$PlainRoot,
+  [ValidateSet('default','none','desktop-call','portrait-cost')][string]$ScreenshotSet = 'default'
 )
 $ErrorActionPreference = 'Stop'
 $meta = Get-Content -Raw -LiteralPath $MetadataPath | ConvertFrom-Json -AsHashtable
 $zipHash = (Get-FileHash -Algorithm SHA256 -LiteralPath $ZipPath).Hash.ToLowerInvariant()
 if ($zipHash -ne $meta.zipSha256) { throw 'Artifact ZIP digest differs from GitHub source record' }
 $names = @('task086-collection-acceptance.json','task086-real-collection-fork.json','native-order-admission-evidence.json','seaport-listing-watcher-evidence.json','seaport-safe-admin-evidence.json','seaport-browser-evidence.json','indexer-acceptance.json','worker-diagnostics.json','chain/seaport-acquisition-deployment.json','chain/seaport-acquisition-fixture-evidence.json')
-if ($meta.conclusion -eq 'failure') { $names += @('failure.json','safe-network-cost-review.png','safe-two-owner-call-review.png','seaport-portrait.png') }
-elseif ($meta.mode.StartsWith('default-')) { $names += @('safe-admin-desktop.png','safe-admin-portrait.png','safe-admin-landscape.png','safe-network-cost-review.png','safe-two-owner-call-review.png') }
+if ($meta.mode -eq 'strict-security') { $names = @('seaport-acquisition-manifest.json','seaport-acquisition.json','seaport-acquisition-slither.json') }
+elseif ($meta.conclusion -eq 'failure') { $names += @('failure.json','safe-network-cost-review.png','safe-two-owner-call-review.png','seaport-portrait.png') }
+elseif ($ScreenshotSet -eq 'desktop-call') { $names += @('safe-admin-desktop.png','safe-two-owner-call-review.png') }
+elseif ($ScreenshotSet -eq 'portrait-cost') { $names += @('safe-admin-portrait.png','safe-network-cost-review.png') }
+elseif ($ScreenshotSet -eq 'default' -and $meta.mode.StartsWith('default-')) { $names += @('safe-admin-desktop.png','safe-admin-portrait.png','safe-admin-landscape.png','safe-network-cost-review.png','safe-two-owner-call-review.png') }
 $archive = [System.IO.Compression.ZipFile]::OpenRead($ZipPath)
 $members = @()
 function Digest([byte[]]$b) { return [Convert]::ToHexString([System.Security.Cryptography.SHA256]::HashData($b)).ToLowerInvariant() }

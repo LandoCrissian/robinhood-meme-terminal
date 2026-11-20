@@ -64,7 +64,11 @@ Local verification passed123 Node tests,57 Foundry tests across seven suites (51
 
 The final two-provider collection capture remains **UNAVAILABLE**: Pocket returned37 matching anchored responses, then returned null for the concluding canonical block check. The earlier successful development capture is preserved without promotion to current evidence. No usable current-order payload or production collection policy is established.
 
-Fresh-source CI results are recorded separately at closeout. Pending jobs are not passed. Local Windows memory/provider interruptions are separate from source defects and preserved as such; no failed test is replaced with synthetic success. Browser emulation is not physical-wallet acceptance.
+Fresh diagnostic source `1be772c8787b47fbc0c791a03a694cb2a5673d86` passed all four connected modes in [run44665764302](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44665764302): default Chromium/WebKit and Robinhood-fork Chromium/WebKit. Each retained Safe report completed15 wallet callbacks and16 exact successful request revalidations. No callback error occurred in this run; the earlier failure's root cause remains unestablished. The126-test focused Node suite and the three diagnostic sanitizer tests passed. Source-bound archives, selected screenshots, privacy classifications and offline replay are under [browser/1be772c8](evidence/rmt-task086/browser/1be772c8/README.md).
+
+The fresh production-scope static report ran Slither0.11.5/crytic0.3.11 with all101 detectors:48 observations, comprising23 High, six Medium,13 Low and six Informational. Its exact unchanged compiler-input hash is `3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5`. The strict job remains failed. This is new analysis evidence, not clearance or an independent audit.
+
+The [complete CI roster](evidence/rmt-task086/ci/README.md) records21 completed checks on exact code source1be772c8:15 passed and six unchanged strict security gates failed. Both core launchpad lifecycle browser modes passed in addition to all four Seaport modes. Later closeout commits contain evidence/offline replay/documentation only; their automatically scheduled checks are separate and are not inferred to have passed. Local Windows memory/provider interruptions are separate from source defects and preserved as such; no failed test is replaced with synthetic success. Browser emulation is not physical-wallet acceptance.
 
 ## Minimum external input and next decision
 
