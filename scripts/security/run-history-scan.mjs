@@ -4,7 +4,7 @@ import {isAbsolute,join,resolve,relative} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parseArgs} from "node:util";
 import {randomBytes} from "node:crypto";
-import {verifyTask090HistoryPublicData as verifyHistoryPublicData} from "./public-task090-identities.mjs";
+import {verifyTask091HistoryPublicData as verifyHistoryPublicData} from "./public-task091-identities.mjs";
 
 const {values}=parseArgs({options:{scanner:{type:"string"},output:{type:"string"}}});
 const repository=fileURLToPath(new URL("../../",import.meta.url));

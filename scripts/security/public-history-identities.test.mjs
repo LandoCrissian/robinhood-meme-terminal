@@ -33,3 +33,4 @@ test("proof, configuration, policy and ignore tampering fail closed",()=>{
 // Keep the original assertions; run supplemental immutable-checksum negatives in the existing CI entry.
 import "./public-source-checksums.test.mjs";
 import "./public-task090-identities.test.mjs";
+import "./public-task091-identities.test.mjs";
