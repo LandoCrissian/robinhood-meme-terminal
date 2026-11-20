@@ -1,0 +1,499 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "5837abb064e88646c4f10b35ab16f3253030efb2",
+  "review": "https://github.com/LandoCrissian/robinhood-meme-terminal/pull/679",
+  "workflowRun": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674",
+  "scope": "ISOLATED_SYNTHETIC_LOCAL_CHAIN_31337_NOT_LIVE_LISTINGS_OR_PRODUCTION_ACCEPTANCE",
+  "productionChanged": false,
+  "currentPublicListingQualified": false,
+  "productionCollectionAdmitted": false,
+  "readOnlyWitnessLimitation": "Both local RPC clients corroborate the same synthetic Anvil state; this is not independent market evidence.",
+  "browserModes": [
+    {
+      "mode": "source-derived-chromium",
+      "status": "PASS",
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250101",
+      "artifact": {
+        "id": 14588386578,
+        "api": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/actions/artifacts/14588386578/zip",
+        "archiveSha256": "4fffc0131959121e059f676aa3471293e9695a71c038462340361d7fb7c52efb",
+        "archiveBytes": 2016380,
+        "filesSha256": {
+          "native-order-admission-evidence.json": "acdabf0c3409402b8c739ae57a87c8e03d91043aab763aa60cc27e9132626531",
+          "seaport-listing-watcher-evidence.json": "6b8161e9729955e788ae9c901a087de84edccb4076bc608751d97f24fa795764",
+          "seaport-safe-admin-evidence.json": "18bc9caa2505438c14e9cb100121f987545865ee169dd917648dca0b3df5b6b9",
+          "chain/seaport-acquisition-fixture-evidence.json": "4b93995d6691b4ab638a2b2cd63059de973ff6cff7fd704813e6c3f9fa26eef3",
+          "indexer-acceptance.json": "3f34ed460a527a1f1cbdcb379923da0956184981f0020784d64f369c9a6db629"
+        }
+      },
+      "chain": {
+        "executionChainId": 31337,
+        "scope": "LOCAL31337_REAL_SOURCE_DERIVED_SEAPORT_REAL_FIXED_1B_CORE_SYNTHETIC_PROJECT_AND_NFTS",
+        "cases": 11,
+        "receipts": 107,
+        "sourceInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+        "syntheticCoreBindingStub": false
+      },
+      "nativeAdmission": {
+        "accepted": 2,
+        "standards": [
+          721,
+          1155
+        ],
+        "rejections": 16,
+        "checks": {
+          "native721And1155AdmittedOnlyAsSynthetic": true,
+          "fullSignedFeeAndRoyaltyConsideration": true,
+          "genuineSeaportNativeSettlementAndCustody": true,
+          "exactNativeReserveAndSpendDelta": true,
+          "mutationsCancelledFilledAndStaleRejected": true,
+          "unknownSourceAndCollectionRejected": true,
+          "nonNativePaymentRejected": true,
+          "witnessOutageFailsClosed": true,
+          "orphanedProofRequiresFreshAdmission": true,
+          "productionUnchanged": true
+        },
+        "postgresPhases": [
+          "INITIAL_CANONICAL_INDEX",
+          "POSTGRES_SERVER_RESTART",
+          "POSTGRES_SERVER_RESTART",
+          "POSTGRES_SERVER_RESTART"
+        ],
+        "canonicalRowsPerPhase": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "openingNative": {
+          "availableWei": "16000000000000000",
+          "totalSpentWei": "4000000000000000"
+        },
+        "closingNative": {
+          "availableWei": "14000000000000000",
+          "totalSpentWei": "6000000000000000"
+        },
+        "orphanProofCanonical": false
+      },
+      "watcher": {
+        "polls": 5,
+        "nativeCurrentProofChecks": 4,
+        "checks": {
+          "actualSourceCurrentOrderAndUnsignedSimulation": true,
+          "noOwnerSignaturesOrBroadcasts": true,
+          "actualPostgresServerRestartRetainsCandidate": true,
+          "duplicateOrderNotPreparedTwice": true,
+          "sourceOutageLeavesOriginalPending": true,
+          "sourceRecoveryRetainsExactUnsignedIdentity": true,
+          "minedSafeDisableInvalidatesUnsignedCandidate": true
+        },
+        "signatureRequests": 0,
+        "broadcasts": 0,
+        "costReview": {
+          "scope": "SYNTHETIC_ESTIMATE_NOT_CURRENT_MAINNET_QUOTE",
+          "vaultSignedConsiderationWei": "1000000000000000",
+          "callerMaximumExecutionFeeWei": "712317009972438",
+          "combinedMaximumOutlayWei": "1712317009972438",
+          "gasPayer": "0x1696465E6BFb0230bB3aeF46EA25408b6B72BE22",
+          "l1DataFeesModeled": false,
+          "perNftAndDailyVaultCapsExcludeCallerGas": true
+        }
+      },
+      "safeAdministration": {
+        "proposals": 17,
+        "syntheticOwnerSignatureUses": 32,
+        "submissions": 15,
+        "canonicalExecutions": 15,
+        "recoveries": 20,
+        "negativeChecks": 18,
+        "checks": 23
+      },
+      "indexer": {
+        "singleWriterDenied": true,
+        "sameBlockTransactionIndex": 1,
+        "unrelatedAndRevertedExcluded": true
+      }
+    },
+    {
+      "mode": "source-derived-webkit",
+      "status": "PASS",
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250157",
+      "artifact": {
+        "id": 14587269345,
+        "api": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/actions/artifacts/14587269345/zip",
+        "archiveSha256": "20afecb9be0517cc9051ef27584fdd7298016acbbe6212efcf9551dc39d9a284",
+        "archiveBytes": 2255920,
+        "filesSha256": {
+          "native-order-admission-evidence.json": "4a8fd96878b60f19bc811283ed7b0a4fadb52f2f299bc06206eb5bebde60a323",
+          "seaport-listing-watcher-evidence.json": "a2f44fdbb7e98d4f362bd71953e3fb9bde8bf4010c22e30620c1a26fc1e7a13d",
+          "seaport-safe-admin-evidence.json": "b54f51ed6dffda5302bfb47a0d10c4f6a1587670fce60e37bc8386a2704b1d20",
+          "chain/seaport-acquisition-fixture-evidence.json": "27585f7702a89256596a9a6175fe6d91e65ca63eec24e7d0e059323c0b37dfcd",
+          "indexer-acceptance.json": "f8d79dc16bbaa97e037a43eebae4c0ef86a09784402b94bccca4b4761521d54e"
+        }
+      },
+      "chain": {
+        "executionChainId": 31337,
+        "scope": "LOCAL31337_REAL_SOURCE_DERIVED_SEAPORT_REAL_FIXED_1B_CORE_SYNTHETIC_PROJECT_AND_NFTS",
+        "cases": 11,
+        "receipts": 107,
+        "sourceInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+        "syntheticCoreBindingStub": false
+      },
+      "nativeAdmission": {
+        "accepted": 2,
+        "standards": [
+          721,
+          1155
+        ],
+        "rejections": 16,
+        "checks": {
+          "native721And1155AdmittedOnlyAsSynthetic": true,
+          "fullSignedFeeAndRoyaltyConsideration": true,
+          "genuineSeaportNativeSettlementAndCustody": true,
+          "exactNativeReserveAndSpendDelta": true,
+          "mutationsCancelledFilledAndStaleRejected": true,
+          "unknownSourceAndCollectionRejected": true,
+          "nonNativePaymentRejected": true,
+          "witnessOutageFailsClosed": true,
+          "orphanedProofRequiresFreshAdmission": true,
+          "productionUnchanged": true
+        },
+        "postgresPhases": [
+          "INITIAL_CANONICAL_INDEX",
+          "POSTGRES_SERVER_RESTART",
+          "POSTGRES_SERVER_RESTART",
+          "POSTGRES_SERVER_RESTART"
+        ],
+        "canonicalRowsPerPhase": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "openingNative": {
+          "availableWei": "16000000000000000",
+          "totalSpentWei": "4000000000000000"
+        },
+        "closingNative": {
+          "availableWei": "14000000000000000",
+          "totalSpentWei": "6000000000000000"
+        },
+        "orphanProofCanonical": false
+      },
+      "watcher": {
+        "polls": 5,
+        "nativeCurrentProofChecks": 4,
+        "checks": {
+          "actualSourceCurrentOrderAndUnsignedSimulation": true,
+          "noOwnerSignaturesOrBroadcasts": true,
+          "actualPostgresServerRestartRetainsCandidate": true,
+          "duplicateOrderNotPreparedTwice": true,
+          "sourceOutageLeavesOriginalPending": true,
+          "sourceRecoveryRetainsExactUnsignedIdentity": true,
+          "minedSafeDisableInvalidatesUnsignedCandidate": true
+        },
+        "signatureRequests": 0,
+        "broadcasts": 0,
+        "costReview": {
+          "scope": "SYNTHETIC_ESTIMATE_NOT_CURRENT_MAINNET_QUOTE",
+          "vaultSignedConsiderationWei": "1000000000000000",
+          "callerMaximumExecutionFeeWei": "712287009972018",
+          "combinedMaximumOutlayWei": "1712287009972018",
+          "gasPayer": "0xA6715488Fe7C8D424A9915fc886fDb873FF87f4F",
+          "l1DataFeesModeled": false,
+          "perNftAndDailyVaultCapsExcludeCallerGas": true
+        }
+      },
+      "safeAdministration": {
+        "proposals": 17,
+        "syntheticOwnerSignatureUses": 32,
+        "submissions": 15,
+        "canonicalExecutions": 15,
+        "recoveries": 20,
+        "negativeChecks": 18,
+        "checks": 23
+      },
+      "indexer": {
+        "singleWriterDenied": true,
+        "sameBlockTransactionIndex": 1,
+        "unrelatedAndRevertedExcluded": true
+      }
+    },
+    {
+      "mode": "robinhood-fork-chromium",
+      "status": "PASS",
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250186",
+      "artifact": {
+        "id": 14587603628,
+        "api": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/actions/artifacts/14587603628/zip",
+        "archiveSha256": "05a5880df7881606d67888c0405a8e6376c5bfa365bc0fc83dde767f26e12c29",
+        "archiveBytes": 1949941,
+        "filesSha256": {
+          "native-order-admission-evidence.json": "052d3c566591d25c93067ad46df199cb2455cadf94cb080a8057b6181da898d5",
+          "seaport-listing-watcher-evidence.json": "07e589d0d1acd90df45c9568481ebb1f0273989fe019575d418c1ca5baada4df",
+          "seaport-safe-admin-evidence.json": "177fee6c567a265b911fef83dd49696202b83252c8dba7a25af71dcb7c63df0e",
+          "chain/seaport-acquisition-fixture-evidence.json": "0215cdc32a099e2b3799b1ccbb1605e234038cfa7a6057adaf29912372d3722d",
+          "indexer-acceptance.json": "d68d81ccf17786aa83b4fbe3b01ab3234a00eded510ddff85aacb78845420ea0"
+        }
+      },
+      "chain": {
+        "executionChainId": 31337,
+        "scope": "ACTUAL_PINNED_4663_SEAPORT_ON_LOCAL31337_FORK_SYNTHETIC_PROJECT_AND_NFTS",
+        "cases": 11,
+        "receipts": 98,
+        "sourceInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+        "syntheticCoreBindingStub": true
+      },
+      "nativeAdmission": {
+        "accepted": 2,
+        "standards": [
+          721,
+          1155
+        ],
+        "rejections": 16,
+        "checks": {
+          "native721And1155AdmittedOnlyAsSynthetic": true,
+          "fullSignedFeeAndRoyaltyConsideration": true,
+          "genuineSeaportNativeSettlementAndCustody": true,
+          "exactNativeReserveAndSpendDelta": true,
+          "mutationsCancelledFilledAndStaleRejected": true,
+          "unknownSourceAndCollectionRejected": true,
+          "nonNativePaymentRejected": true,
+          "witnessOutageFailsClosed": true,
+          "orphanedProofRequiresFreshAdmission": true,
+          "productionUnchanged": true
+        },
+        "postgresPhases": [
+          "INITIAL_CANONICAL_INDEX",
+          "POSTGRES_SERVER_RESTART",
+          "POSTGRES_SERVER_RESTART",
+          "POSTGRES_SERVER_RESTART"
+        ],
+        "canonicalRowsPerPhase": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "openingNative": {
+          "availableWei": "16000000000000000",
+          "totalSpentWei": "4000000000000000"
+        },
+        "closingNative": {
+          "availableWei": "14000000000000000",
+          "totalSpentWei": "6000000000000000"
+        },
+        "orphanProofCanonical": false
+      },
+      "watcher": {
+        "polls": 5,
+        "nativeCurrentProofChecks": 4,
+        "checks": {
+          "actualSourceCurrentOrderAndUnsignedSimulation": true,
+          "noOwnerSignaturesOrBroadcasts": true,
+          "actualPostgresServerRestartRetainsCandidate": true,
+          "duplicateOrderNotPreparedTwice": true,
+          "sourceOutageLeavesOriginalPending": true,
+          "sourceRecoveryRetainsExactUnsignedIdentity": true,
+          "minedSafeDisableInvalidatesUnsignedCandidate": true
+        },
+        "signatureRequests": 0,
+        "broadcasts": 0,
+        "costReview": {
+          "scope": "SYNTHETIC_ESTIMATE_NOT_CURRENT_MAINNET_QUOTE",
+          "vaultSignedConsiderationWei": "1000000000000000",
+          "callerMaximumExecutionFeeWei": "708415009917810",
+          "combinedMaximumOutlayWei": "1708415009917810",
+          "gasPayer": "0xF61C9B2e27dCF910A7A895a0E182F3dd714De52b",
+          "l1DataFeesModeled": false,
+          "perNftAndDailyVaultCapsExcludeCallerGas": true
+        }
+      },
+      "safeAdministration": {
+        "proposals": 17,
+        "syntheticOwnerSignatureUses": 32,
+        "submissions": 15,
+        "canonicalExecutions": 15,
+        "recoveries": 20,
+        "negativeChecks": 18,
+        "checks": 23
+      },
+      "indexer": {
+        "singleWriterDenied": true,
+        "sameBlockTransactionIndex": 1,
+        "unrelatedAndRevertedExcluded": true
+      }
+    },
+    {
+      "mode": "robinhood-fork-webkit",
+      "status": "PASS",
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250147",
+      "artifact": {
+        "id": 14588990287,
+        "api": "https://api.github.com/repos/LandoCrissian/robinhood-meme-terminal/actions/artifacts/14588990287/zip",
+        "archiveSha256": "7e3f8db584c3be0bfab53d7337bb0be89d10730c01ac8fe77ae0ede71894c2dc",
+        "archiveBytes": 2176075,
+        "filesSha256": {
+          "native-order-admission-evidence.json": "eaff1c418428670e9a5a4654642a03f4fea4ffc610a412381755f3b0ee48dcf3",
+          "seaport-listing-watcher-evidence.json": "3cdb3d5383174d4dbe2acdbff304708c15a2d820bedcd43109bc6a760e24616b",
+          "seaport-safe-admin-evidence.json": "1b8692a57a35535a1909e81dc609db5be572d0cff1e6da2ebbe320544e8733cb",
+          "chain/seaport-acquisition-fixture-evidence.json": "3231527c8bb2e22d1df5e239780ca516a9c40f09199ca4d5385cda0dd5576b1a",
+          "indexer-acceptance.json": "8d13fcb0fabd5c35a0c767d1cc39d8621d2f05ba16d77cf9fe8efe82212ce307"
+        }
+      },
+      "chain": {
+        "executionChainId": 31337,
+        "scope": "ACTUAL_PINNED_4663_SEAPORT_ON_LOCAL31337_FORK_SYNTHETIC_PROJECT_AND_NFTS",
+        "cases": 11,
+        "receipts": 98,
+        "sourceInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+        "syntheticCoreBindingStub": true
+      },
+      "nativeAdmission": {
+        "accepted": 2,
+        "standards": [
+          721,
+          1155
+        ],
+        "rejections": 16,
+        "checks": {
+          "native721And1155AdmittedOnlyAsSynthetic": true,
+          "fullSignedFeeAndRoyaltyConsideration": true,
+          "genuineSeaportNativeSettlementAndCustody": true,
+          "exactNativeReserveAndSpendDelta": true,
+          "mutationsCancelledFilledAndStaleRejected": true,
+          "unknownSourceAndCollectionRejected": true,
+          "nonNativePaymentRejected": true,
+          "witnessOutageFailsClosed": true,
+          "orphanedProofRequiresFreshAdmission": true,
+          "productionUnchanged": true
+        },
+        "postgresPhases": [
+          "INITIAL_CANONICAL_INDEX",
+          "POSTGRES_SERVER_RESTART",
+          "POSTGRES_SERVER_RESTART",
+          "POSTGRES_SERVER_RESTART"
+        ],
+        "canonicalRowsPerPhase": [
+          2,
+          2,
+          2,
+          2
+        ],
+        "openingNative": {
+          "availableWei": "16000000000000000",
+          "totalSpentWei": "4000000000000000"
+        },
+        "closingNative": {
+          "availableWei": "14000000000000000",
+          "totalSpentWei": "6000000000000000"
+        },
+        "orphanProofCanonical": false
+      },
+      "watcher": {
+        "polls": 5,
+        "nativeCurrentProofChecks": 4,
+        "checks": {
+          "actualSourceCurrentOrderAndUnsignedSimulation": true,
+          "noOwnerSignaturesOrBroadcasts": true,
+          "actualPostgresServerRestartRetainsCandidate": true,
+          "duplicateOrderNotPreparedTwice": true,
+          "sourceOutageLeavesOriginalPending": true,
+          "sourceRecoveryRetainsExactUnsignedIdentity": true,
+          "minedSafeDisableInvalidatesUnsignedCandidate": true
+        },
+        "signatureRequests": 0,
+        "broadcasts": 0,
+        "costReview": {
+          "scope": "SYNTHETIC_ESTIMATE_NOT_CURRENT_MAINNET_QUOTE",
+          "vaultSignedConsiderationWei": "1000000000000000",
+          "callerMaximumExecutionFeeWei": "708342009916788",
+          "combinedMaximumOutlayWei": "1708342009916788",
+          "gasPayer": "0xDA317b86ed487c35F48F1E7E22Eb9e623814FBA2",
+          "l1DataFeesModeled": false,
+          "perNftAndDailyVaultCapsExcludeCallerGas": true
+        }
+      },
+      "safeAdministration": {
+        "proposals": 17,
+        "syntheticOwnerSignatureUses": 32,
+        "submissions": 15,
+        "canonicalExecutions": 15,
+        "recoveries": 20,
+        "negativeChecks": 18,
+        "checks": 23
+      },
+      "indexer": {
+        "singleWriterDenied": true,
+        "sameBlockTransactionIndex": 1,
+        "unrelatedAndRevertedExcluded": true
+      }
+    }
+  ],
+  "otherVerifiedResults": {
+    "nodeUnits": {
+      "passed": 101,
+      "failed": 0,
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250169"
+    },
+    "indexerUnits": {
+      "passed": 9,
+      "failed": 0,
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250169"
+    },
+    "seaportFoundry": {
+      "passed": 54,
+      "failed": 0,
+      "skipped": 0,
+      "invariantRuns": 128,
+      "invariantCalls": 4096,
+      "invariantReverts": 0,
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011674/job/135985250193"
+    },
+    "coreFoundry": {
+      "passed": 112,
+      "failed": 0,
+      "skipped": 0,
+      "suites": 14,
+      "job": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44645011684/job/135985250149",
+      "scope": "CURRENT_DEFAULT_FIXED_SUPPLY_ENGINE_SUITE",
+      "historicalOptInDistinctions": "The four historical opt-in cases remain separate retained evidence. This current default suite does not rerun or establish coverage for them."
+    },
+    "slither": {
+      "detectors": 101,
+      "observations": 48,
+      "high": 23,
+      "cleared": 0,
+      "strictExit": 1,
+      "productionSourceChanged": false,
+      "dispositionTestsPassed": 6
+    }
+  },
+  "priorFailureMatrix": {
+    "sourceCommit": "ae767610cb8bd28edc27feff75d1b1812e24ca6a",
+    "run": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44644216001",
+    "defaultChromium": {
+      "job": 135982582376,
+      "boundary": "ENVIRONMENT_BEFORE_TEST_EXECUTION",
+      "cause": "Playwright dependency installation: archive.ubuntu.com noble-updates/noble-security HTTP525; apt exit100."
+    },
+    "otherThreeBrowsers": {
+      "jobs": [
+        135982582363,
+        135982582468,
+        135982582491
+      ],
+      "boundary": "INTRODUCED_TEST_HARNESS_PREPARATION",
+      "cause": "Missing-payee negative case was pre-normalized by fixture.options instead of reaching the importer; UNSUPPORTED_EXTRA_CONSIDERATION escaped before the expected rejection assertion.",
+      "fix": "Use lazy explicitly supplied original trusted review for malformed bytes; actual importer regression preserves original review and rejects before new RPC reads.",
+      "assertionsWeakened": false
+    }
+  },
+  "limitations": [
+    "Synthetic fork orders are not real current listings or production collection admission.",
+    "Safe administration acceptance requires one transaction in its block; existing multiple-transaction native purchase attribution is a distinct tested path.",
+    "Synthetic execution-fee figures exclude L1 data fees and are not current mainnet quotes.",
+    "No physical-wallet acceptance, production-chain purchase build, independent audit or security clearance is established.",
+    "Original strict security gates and historical findings remain blocked."
+  ]
+}

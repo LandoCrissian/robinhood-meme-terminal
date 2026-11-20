@@ -1,0 +1,168 @@
+{
+  "schemaVersion": 1,
+  "source": "ae767610cb8bd28edc27feff75d1b1812e24ca6a",
+  "runId": 44644216001,
+  "status": "FAILED_OBSERVATIONS_NOT_ACCEPTANCE",
+  "production": false,
+  "nativeImportUIAdded": false,
+  "jobs": [
+    {
+      "jobId": 135982582376,
+      "key": "default-chromium",
+      "kind": "ENVIRONMENT_PRE_BROWSER",
+      "result": "failure",
+      "artifactId": null,
+      "artifactDigest": null,
+      "cause": "Ubuntu archive noble-updates/security HTTP525 during browser dependency installation, exit100 before browser tests; no browser artifact was produced."
+    },
+    {
+      "jobId": 135982582468,
+      "key": "robinhood-fork-chromium",
+      "kind": "HARNESS_NEGATIVE_SETUP",
+      "result": "failure",
+      "artifactId": 14588380341,
+      "artifactDigest": "sha256:26498d1f81a1bd891209b328464d45463269c2525477dbdd7f04662f432a141a",
+      "partialStatus": "incomplete",
+      "accepted": 0,
+      "completedRejections": 4,
+      "completedChecks": 0,
+      "cause": "Eager fixture.options normalization of malformed missing-payee input throws UNSUPPORTED_EXTRA_CONSIDERATION before intended importer call; no085 native fill completed."
+    },
+    {
+      "jobId": 135982582363,
+      "key": "robinhood-fork-webkit",
+      "kind": "HARNESS_NEGATIVE_SETUP",
+      "result": "failure",
+      "artifactId": 14588500137,
+      "artifactDigest": "sha256:8518b81999e1b5f44d8ccb0331a997bdc4ced8829be9075188882b9d9ae4aef3",
+      "partialStatus": "incomplete",
+      "accepted": 0,
+      "completedRejections": 4,
+      "completedChecks": 0,
+      "cause": "Eager fixture.options normalization of malformed missing-payee input throws UNSUPPORTED_EXTRA_CONSIDERATION before intended importer call; no085 native fill completed."
+    },
+    {
+      "jobId": 135982582491,
+      "key": "default-webkit",
+      "kind": "HARNESS_NEGATIVE_SETUP",
+      "result": "failure",
+      "artifactId": 14588490222,
+      "artifactDigest": "sha256:f1cefd09138cb89edd247692953b0715ff36356280a9b6f5d65603ef1ee3021a",
+      "partialStatus": "incomplete",
+      "accepted": 0,
+      "completedRejections": 4,
+      "completedChecks": 0,
+      "cause": "Eager fixture.options normalization of malformed missing-payee input throws UNSUPPORTED_EXTRA_CONSIDERATION before intended importer call; no085 native fill completed."
+    }
+  ],
+  "members": [
+    {
+      "jobId": 135982582376,
+      "path": "default-chromium/job-failure.log.gz",
+      "rawSha256": "a0dab01461bda8385f05a7a225796d5e1f17a00fc5aa1ff25ded60af49b1ba08",
+      "rawBytes": 933,
+      "storedSha256": "c34244e986f25bb5a1611423da05deacbbebb513756d8e719863aa6d84d498ad",
+      "storedBytes": 393
+    },
+    {
+      "jobId": 135982582468,
+      "path": "robinhood-fork-chromium/job-failure.log.gz",
+      "rawSha256": "7d0fa9683370cc8802152795ef92824afe018cb3af5452e297ac85adb094a6a2",
+      "rawBytes": 2200,
+      "storedSha256": "0b9df7e5222f467e7db681fe1ad0c566dfa7b3d7512c1705f989cf8794f3cbfd",
+      "storedBytes": 600
+    },
+    {
+      "jobId": 135982582468,
+      "path": "robinhood-fork-chromium/failure.json.gz",
+      "rawSha256": "a08be7c6c27f80f7cd7751a455c9d14bb53c63e97157750c54c7ad11b2703749",
+      "rawBytes": 1678,
+      "storedSha256": "9cad44cc90695b7c162f9527e1edfa891898342d1428eb9963b53a5f19435cf4",
+      "storedBytes": 481
+    },
+    {
+      "jobId": 135982582468,
+      "path": "robinhood-fork-chromium/native-order-admission-evidence.json.gz",
+      "rawSha256": "b3ea4689613e9cec3f4e70182255fe6feb13d29f26b7722684ee1c82869737e9",
+      "rawBytes": 2488,
+      "storedSha256": "67957edc407431daa09c8998f91eb531e9ab0d40756e4fc02246401735c16630",
+      "storedBytes": 778
+    },
+    {
+      "jobId": 135982582468,
+      "path": "robinhood-fork-chromium/chain/seaport-acquisition-deployment.json.gz",
+      "rawSha256": "3f6ca453e602d5047b4ac31daeabf2e329733976b3172546f47bf6fe4c51d95d",
+      "rawBytes": 6129,
+      "storedSha256": "50dd7e753c8a70318de71b21b1546b7dadad8d462d89b1a506ff00b651169758",
+      "storedBytes": 2078
+    },
+    {
+      "jobId": 135982582363,
+      "path": "robinhood-fork-webkit/job-failure.log.gz",
+      "rawSha256": "cc21113bdbf61d96aea9f16cc6b20c4c080993af30fdaff2874928e55497572d",
+      "rawBytes": 2200,
+      "storedSha256": "1fa2df2b1de9e6f49c43a1bc0f5e6287ace154f68d5a1092ef555d8adac46461",
+      "storedBytes": 604
+    },
+    {
+      "jobId": 135982582363,
+      "path": "robinhood-fork-webkit/failure.json.gz",
+      "rawSha256": "a08be7c6c27f80f7cd7751a455c9d14bb53c63e97157750c54c7ad11b2703749",
+      "rawBytes": 1678,
+      "storedSha256": "9cad44cc90695b7c162f9527e1edfa891898342d1428eb9963b53a5f19435cf4",
+      "storedBytes": 481
+    },
+    {
+      "jobId": 135982582363,
+      "path": "robinhood-fork-webkit/native-order-admission-evidence.json.gz",
+      "rawSha256": "fabebe0ed0a0fa9917b05dffbbacf84cc1211a89678d35a2830446e1b6e6ec5c",
+      "rawBytes": 2488,
+      "storedSha256": "4742c500000a52bb55d6a90efa2e480b1c90224a258fc7f99c62dee3ebc73943",
+      "storedBytes": 777
+    },
+    {
+      "jobId": 135982582363,
+      "path": "robinhood-fork-webkit/chain/seaport-acquisition-deployment.json.gz",
+      "rawSha256": "321d4dded7f5ad584fc097b2da27bb1d71b9f67d47a9dc16db1ec54ab317dfee",
+      "rawBytes": 6129,
+      "storedSha256": "0690dffeecb09c2c970d806de413a44843806f6897589e2160ba74ceeda984ca",
+      "storedBytes": 2083
+    },
+    {
+      "jobId": 135982582491,
+      "path": "default-webkit/job-failure.log.gz",
+      "rawSha256": "461ee9a472d7858587a63a391aadcdaa0dcb6da7ee35c2c244ba668534a15cff",
+      "rawBytes": 2200,
+      "storedSha256": "cac21682cd861ea19b1b95922ad2724332c1a6c75c0c8709b2258f2f1a289073",
+      "storedBytes": 602
+    },
+    {
+      "jobId": 135982582491,
+      "path": "default-webkit/failure.json.gz",
+      "rawSha256": "a08be7c6c27f80f7cd7751a455c9d14bb53c63e97157750c54c7ad11b2703749",
+      "rawBytes": 1678,
+      "storedSha256": "9cad44cc90695b7c162f9527e1edfa891898342d1428eb9963b53a5f19435cf4",
+      "storedBytes": 481
+    },
+    {
+      "jobId": 135982582491,
+      "path": "default-webkit/native-order-admission-evidence.json.gz",
+      "rawSha256": "e2b2035ef970cb9423020e833f85c9f2c40088b33ed94c9c7da428d84216fc21",
+      "rawBytes": 2488,
+      "storedSha256": "d6c0b3294992077da9388afaa7ea1db8758bf702fcf5f42cb7d4cdbb7100cfa3",
+      "storedBytes": 780
+    },
+    {
+      "jobId": 135982582491,
+      "path": "default-webkit/chain/seaport-acquisition-deployment.json.gz",
+      "rawSha256": "4036251b7a7f26b08a816c91044ba80bd1fa13e0b38592290907da24b27a0a00",
+      "rawBytes": 6128,
+      "storedSha256": "e1edebe56144dc03a0ca76612a513fbfeb95e4b0aaa731c5a3690216707e8b39",
+      "storedBytes": 2090
+    }
+  ],
+  "rawFindings": 9,
+  "classifiedFindings": 9,
+  "unknown": 0,
+  "correction": "Next source5837abb makes trusted valid review construction lazy and supplies the original complete consideration for the malformed-payee rejection; no assertion weakening or blind retry."
+}

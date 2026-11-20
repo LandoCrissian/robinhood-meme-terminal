@@ -69,7 +69,34 @@ node scripts/seaport-acquisition/browser-run.mjs --anvil /path/anvil \
 
 The existing Seaport acquisition CI runs all four connected modes. New native721/1155 admissions execute genuine Seaport against synthetic local assets; the Robinhood mode uses actual pinned Seaport on the loopback fork, with the existing explicit project-binding stub. It does not claim a deployed4663 vault or owner wallet acceptance. Actual settlement payloads are checked initially and after PostgreSQL server restart, preserving exact receipt/block/order identities and every payee amount. Existing Safe2-of3, same-block unrelated/reverted transaction attribution, missing-trace recovery and reorg suites remain intact.
 
-Verification is recorded in the final source-bound evidence index below once CI completes. No pending run is a pass. Windows checkout line-ending differences in historical raw archives must be corrected by restoring exact Git bytes, never by changing expected hashes or scanner evidence.
+## Verified results
+
+Runtime source **`5837abb064e88646c4f10b35ab16f3253030efb2`**, draft [PR679](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/679). [Exact check status and materialized source hashes](evidence/rmt-task085/ci-status.json) and [four-mode artifact/report identities and results](evidence/rmt-task085/connected-summary.json) bind this evidence. All82 tracked Solidity Git blobs equal Task084; website/indexer runtime, production configuration, dependencies, scanner rules and security workflows are unchanged.
+
+| Check | Actual result |
+| --- | --- |
+| Node source/import/feed/watcher/Safe/proof tests | **101 passed**, zero skipped |
+| Indexer units | **9 passed**; both web/indexer TypeScript checks passed |
+| Linux production-style build, repository/dependency and secret checks | Passed |
+| Core Foundry | **112 passed**, zero failed/skipped in this current scope |
+| Genuine-Seaport Foundry | **54 passed**, including invariant128 runs/4096 calls/zero reverts; six disposition-integrity tests passed |
+| Standalone Robinhood fork | Existing fixture11 cases/63 receipts passed; this alone is not proof of the new085 hook |
+| Connected Chromium/WebKit, source-derived and actual-Robinhood-Seaport modes | **All four passed**; two new native admissions and16 rejection cases per mode; local execution31337 only |
+| Actual PostgreSQL18.6 | Two native settlement rows matched exact receipts/payees/custody initially and after each of three actual server restarts per mode |
+| Native watcher | Five polls per mode; original unsigned intent survived source outage/recovery and restart without duplicate preparation; mined Safe OFF invalidated it |
+| Safe and historical settlement regression | Genuine synthetic2-of3,17 proposals/32 signature uses/15 submissions/20 recoveries per mode; exact same-block receipt attribution excludes unrelated/reverted transactions |
+| Current PR-source checks | **13 complete:11 success,2 unwaived security failures**, zero pending |
+| Separate unchanged contract-scope analysis | Five jobs at ancestor`ae767610`: one prototype pass, four retained strict failures; Solidity inputs identical to current source |
+
+The two current check failures are permanent ReclaimV2 and SeaportV2 strict security. Separate full-tree/fixed-supply4663/TreasuryV1/historical ReclaimV1 analyses remain failed. The earlier acquisitionV1 gate and other untriggered29-job parent evidence remain preserved; do not describe them as fresh085 runs. Four historical Foundry opt-in distinctions are not inferred from the current112-test zero-skip result.
+
+The first085 source`ae767610` failed three connected jobs because its malformed-payee test eagerly built a review from malformed input before reaching the importer. The minimal correction passes the original valid trusted review and preserves the rejection assertion; a real-signature importer regression was added. A separate default-Chromium job failed Ubuntu HTTP525 before tests. The corrected source's four fresh modes passed; no assertions, signing-key checks, package-signature verification or security gates were weakened. [Original partial/failure evidence](evidence/rmt-task085/browser/failures/ae767610/README.md) remains available.
+
+Fresh receipt/trace/database captures and screenshots are retained separately under the085 browser evidence directory. New085 native fills occur in the connected pre-browser harness; the existing dashboard is exercised separately. No new native-import UI control or physical iPhone acceptance is claimed. Exact NFT/recipient balance deltas are asserted against the live synthetic fixture and verified again by the indexer; an independent after-state snapshot for every raw capture is not retained. Watcher pending/recovered store states are asserted live; poll results and final state are retained. Offline replay coverage must not be overstated.
+
+Fresh existing-dashboard screenshots, visually reviewed: [desktop](evidence/rmt-task085/browser/5837abb0/default-chromium/safe-admin-desktop.png), [portrait](evidence/rmt-task085/browser/5837abb0/default-chromium/safe-admin-portrait.png), [landscape](evidence/rmt-task085/browser/5837abb0/default-webkit/safe-admin-landscape.png), [two-owner CALL review](evidence/rmt-task085/browser/5837abb0/default-webkit/safe-two-owner-call-review.png). These are browser fixtures, not physical-phone or production purchasing acceptance.
+
+Windows checkout line-ending differences in historical raw archives were corrected by restoring exact Git bytes, without changing expected hashes or scanner evidence. No pending run is a pass, and documentation-only closeout commits must match the recorded runtime hashes before reusing these results.
 
 ## Release holds and operational alternatives
 
