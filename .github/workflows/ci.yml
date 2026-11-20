@@ -33,6 +33,7 @@ jobs:
           git fetch --no-tags --depth=1 origin 4892d2af5ac09ae00975c2b799b66bec0d172779
           git fetch --no-tags --depth=1 origin 06e84522f3a920449e364399a74a7a46eb1ac68f
           git fetch --no-tags --depth=1 origin 50e278401ef6e0e66a5f38045295b97cf6b5d930
+          git fetch --no-tags --depth=1 origin 1be772c8787b47fbc0c791a03a694cb2a5673d86
       - run: pnpm test:release-evidence
       - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
         with:
