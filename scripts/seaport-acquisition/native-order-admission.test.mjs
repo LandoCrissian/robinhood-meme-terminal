@@ -128,3 +128,13 @@ test("actual native chain4663 import remains blocked by empty production policy 
  assert.equal(r.reason,"NO_ADMITTED_NEW_ORDER",JSON.stringify(r));assert.equal(f.counters.prepare,0);assert.equal(f.saved().records.length,0);assert.equal(r.executionEnabled,false);assert.equal(r.broadcast,false);assert.equal(r.signatureRequested,false);
  const options={...f.nativeOptions};delete options.collectionPolicies;const proof=await verifyNativeOwnerOrderEntry(f.entry(),options);assert.equal(proof.reason,"COLLECTION_POLICY_UNAVAILABLE");assert.equal(proof.currentOrderIndependentlyVerified,false);
 });
+
+test("missing signed consideration is rejected by the import boundary using the original trusted review",async()=>{
+ const f=await createOwnerWatcherInteropFixture(),options={profile:"seaport-local-31337-v1",nowMs:f.controls.clock,sourceId:"owner-supplied",collectionPolicies:f.verifierOptions.pins.collections.map(createSyntheticNativeCollectionPolicy),verifierOptions:f.verifierOptions};
+ const originalReview=structuredClone(options.verifierOptions.review),entry=envelope=>({sourceKind:"OWNER_SUPPLIED",sourceId:"owner-supplied",rawUtf8:JSON.stringify(envelope)});
+ assert.equal((await verifyNativeOwnerOrderEntry(entry(f.envelope),options)).currentOrderIndependentlyVerified,true);
+ const before=f.counters.orderRpcReads,missing=structuredClone(f.envelope);missing.order.parameters.consideration.pop();
+ const result=await verifyNativeOwnerOrderEntry(entry(missing),options);
+ assert.equal(result.status,"UNAVAILABLE");assert.equal(result.currentOrderIndependentlyVerified,false);assert.equal(result.executionEnabled,false);assert.equal(result.nativeAdmission,undefined);
+ assert.equal(f.counters.orderRpcReads,before,"The importer rejects malformed signed consideration before external reads");assert.deepEqual(options.verifierOptions.review,originalReview,"Malformed bytes never rewrite the trusted original payee review");
+});
