@@ -1,0 +1,386 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_EXACT_SCHEDULE_BATCH_RECEIPT_CORROBORATION",
+  "target": {
+    "number": "116966133",
+    "hash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+    "transactionHash": "0x96bd234e49d766c73c66f9787f26736040b4fc64d91ed2ae888eca3f4c8afb65"
+  },
+  "status": "CORROBORATED_FINALIZED_L1_POSTING",
+  "broadcastAuthorized": false,
+  "signingAuthorized": false,
+  "productionActivationAuthorized": false,
+  "observedAt": "2026-11-20T04:28:49.032Z",
+  "limits": {
+    "requests": 8,
+    "attemptsPerRequest": 1,
+    "timeoutMs": 8000,
+    "responseBytes": 196608,
+    "endpointSpacingMs": 250
+  },
+  "trustBoundary": "ORIGINAL_L2_RPC_BATCH_MEMBERSHIP_AND_TWO_ETHEREUM_RPC_RECEIPT_POSTING_READS",
+  "discoveryLimitation": "Original discovery capture stays UNVERIFIED because Publicnode eth_getLogs was forbidden; this lane uses permitted exact public receipt/header methods only.",
+  "finalizedScope": "Rechecks the original two-witness finalized block; does not claim a freshly advanced finalized tip.",
+  "witnesses": [
+    {
+      "provider": "publicnode",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "before": {
+        "number": "26438078",
+        "hash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+        "parentHash": "0xe8568ff1a3580de77da6cbff88c0719792a7cbdf1ec67b5a8001ae6cc60b0144",
+        "stateRoot": "0x80b6d5f3e679aca1f8406abfbd92e763862fc6f14be52fa7840f67001bab3436",
+        "timestamp": "1794958379"
+      },
+      "receipt": {
+        "receiptStatus": "0x1",
+        "transactionHash": "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a",
+        "logIndex": "277"
+      },
+      "event": {
+        "address": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+        "blockNumber": "26438078",
+        "blockHash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+        "transactionHash": "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a",
+        "logIndex": "277",
+        "topics": [
+          "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+          "0x00000000000000000000000000000000000000000000000000000000000617dc",
+          "0x89fb3ab9344b8785d46e86aa2fc09a78561f216650664c3b3c43a27991fb2c4e",
+          "0x753ddd7b1ba0670d1747e3aa47a3260c3842c990546eff2cf50e3f4ec85471fb"
+        ],
+        "data": "0x98688ab1ca6e72876e60ecacb0f63909aa8052bf1a97cd0fcdf6778d3400d7bb000000000000000000000000000000000000000000000000000000000006ebb0000000000000000000000000000000000000000000000000000000006af79e2b000000000000000000000000000000000000000000000000000000006afcf23b000000000000000000000000000000000000000000000000000000000192f93e0000000000000000000000000000000000000000000000000000000001936aea0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      "after": {
+        "number": "26438078",
+        "hash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+        "parentHash": "0xe8568ff1a3580de77da6cbff88c0719792a7cbdf1ec67b5a8001ae6cc60b0144",
+        "stateRoot": "0x80b6d5f3e679aca1f8406abfbd92e763862fc6f14be52fa7840f67001bab3436",
+        "timestamp": "1794958379"
+      },
+      "commonFinalized": {
+        "number": "26453807",
+        "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+        "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+        "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+        "timestamp": "1795147607"
+      }
+    },
+    {
+      "provider": "flashbots",
+      "url": "https://rpc.flashbots.net",
+      "before": {
+        "number": "26438078",
+        "hash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+        "parentHash": "0xe8568ff1a3580de77da6cbff88c0719792a7cbdf1ec67b5a8001ae6cc60b0144",
+        "stateRoot": "0x80b6d5f3e679aca1f8406abfbd92e763862fc6f14be52fa7840f67001bab3436",
+        "timestamp": "1794958379"
+      },
+      "receipt": {
+        "receiptStatus": "0x1",
+        "transactionHash": "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a",
+        "logIndex": "277"
+      },
+      "event": {
+        "address": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+        "blockNumber": "26438078",
+        "blockHash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+        "transactionHash": "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a",
+        "logIndex": "277",
+        "topics": [
+          "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+          "0x00000000000000000000000000000000000000000000000000000000000617dc",
+          "0x89fb3ab9344b8785d46e86aa2fc09a78561f216650664c3b3c43a27991fb2c4e",
+          "0x753ddd7b1ba0670d1747e3aa47a3260c3842c990546eff2cf50e3f4ec85471fb"
+        ],
+        "data": "0x98688ab1ca6e72876e60ecacb0f63909aa8052bf1a97cd0fcdf6778d3400d7bb000000000000000000000000000000000000000000000000000000000006ebb0000000000000000000000000000000000000000000000000000000006af79e2b000000000000000000000000000000000000000000000000000000006afcf23b000000000000000000000000000000000000000000000000000000000192f93e0000000000000000000000000000000000000000000000000000000001936aea0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      "after": {
+        "number": "26438078",
+        "hash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+        "parentHash": "0xe8568ff1a3580de77da6cbff88c0719792a7cbdf1ec67b5a8001ae6cc60b0144",
+        "stateRoot": "0x80b6d5f3e679aca1f8406abfbd92e763862fc6f14be52fa7840f67001bab3436",
+        "timestamp": "1794958379"
+      },
+      "commonFinalized": {
+        "number": "26453807",
+        "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+        "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+        "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+        "timestamp": "1795147607"
+      }
+    }
+  ],
+  "observations": [
+    {
+      "index": 1,
+      "provider": "publicnode",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x19369be",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:28:49.042Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 30075,
+      "responseSha256": "a46aa4b4d0d99776ac5d681dca59afe511b15b4737ecb82a00fa3e2d05468fe8"
+    },
+    {
+      "index": 2,
+      "provider": "flashbots",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x19369be",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:28:49.081Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 30075,
+      "responseSha256": "941f7ed5801b3882878d9ba91b086aaa2c05b95df163cd6a204ffd8b317b42e0"
+    },
+    {
+      "index": 3,
+      "provider": "publicnode",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "eth_getTransactionReceipt",
+        "params": [
+          "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a"
+        ]
+      },
+      "requestedAt": "2026-11-20T04:28:49.347Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 4076,
+      "responseSha256": "a125f4cc344b04ecf71de43426ebff4019e5ee113ff96ddb720f70ce6d5dbce1"
+    },
+    {
+      "index": 4,
+      "provider": "flashbots",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "eth_getTransactionReceipt",
+        "params": [
+          "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a"
+        ]
+      },
+      "requestedAt": "2026-11-20T04:28:49.347Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 4077,
+      "responseSha256": "f1bbcc56a26d2157cf7bf1e3ab9e854fa2e06e74084c9ad169dd32be6a51f564"
+    },
+    {
+      "index": 5,
+      "provider": "flashbots",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x19369be",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:28:49.607Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 30075,
+      "responseSha256": "b402d270448fc9db46b6b137a010975241a292429517f45afdab8a49e10c9f02"
+    },
+    {
+      "index": 6,
+      "provider": "publicnode",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x19369be",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:28:49.608Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 30075,
+      "responseSha256": "19c30fd4e41f9e431bee1bbdc0135fb160ecaaedd50eb13bd78419fa8c61f8aa"
+    },
+    {
+      "index": 7,
+      "provider": "flashbots",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x193a72f",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:28:49.871Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 19547,
+      "responseSha256": "785cd4adf4c57042e90df84e075be8d5f320ab36dc60aab125e111f1a6fa409f"
+    },
+    {
+      "index": 8,
+      "provider": "publicnode",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x193a72f",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:28:49.872Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 19547,
+      "responseSha256": "b529a497e9393a620991ab5da196e54cea3c2cb431b15e6747c4c7a19db0a87d"
+    }
+  ],
+  "discovery": {
+    "path": "../schedule-116966133",
+    "manifestSha256": "d13507607efaaa7730a0db077f8108bbcdffa65e6b3d583bde373bdc23aa592b",
+    "reportSha256": "37a261770b1e6307ee40a2a6c25f3d36458a00123c3c04ffbe74bd62d25071b6",
+    "rawStoredSha256": "ba8b01abd804a425d1fdfdf344383b39ca08a57373be18585eeb006e531e29a9",
+    "observedAt": "2026-11-20T04:20:36.299Z",
+    "completedAt": "2026-11-20T04:20:41.253Z",
+    "status": "UNVERIFIED",
+    "requests": 31,
+    "mapping": {
+      "status": "CORROBORATED",
+      "batch": "399324",
+      "origin": "26438074",
+      "query": {
+        "number": "118774091",
+        "hash": "0xd645118aca073612911319a9fa8d665b30d716b3978bfc547c5e71ff1c936e77",
+        "parentHash": "0x51dedd6bd8eb404a6055c171d3e2a25e8416dd74b1f57041682bd54a907f7638",
+        "stateRoot": "0xcbf95ddeb461053c5002cede9c014eefef998c44250d20776ccd56b271ef02a1",
+        "timestamp": "1795148435"
+      },
+      "providers": [
+        "official",
+        "pocket"
+      ]
+    }
+  },
+  "expectedLog": {
+    "address": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+    "blockNumber": "26438078",
+    "blockHash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+    "transactionHash": "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a",
+    "logIndex": "277",
+    "topics": [
+      "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+      "0x00000000000000000000000000000000000000000000000000000000000617dc",
+      "0x89fb3ab9344b8785d46e86aa2fc09a78561f216650664c3b3c43a27991fb2c4e",
+      "0x753ddd7b1ba0670d1747e3aa47a3260c3842c990546eff2cf50e3f4ec85471fb"
+    ],
+    "data": "0x98688ab1ca6e72876e60ecacb0f63909aa8052bf1a97cd0fcdf6778d3400d7bb000000000000000000000000000000000000000000000000000000000006ebb0000000000000000000000000000000000000000000000000000000006af79e2b000000000000000000000000000000000000000000000000000000006afcf23b000000000000000000000000000000000000000000000000000000000192f93e0000000000000000000000000000000000000000000000000000000001936aea0000000000000000000000000000000000000000000000000000000000000003"
+  },
+  "originalCommonFinalized": {
+    "status": "CORROBORATED",
+    "value": {
+      "number": "26453807",
+      "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+      "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+      "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+      "timestamp": "1795147607"
+    },
+    "providers": [
+      "publicnode",
+      "flashbots"
+    ]
+  },
+  "phase": "COMPLETE",
+  "posting": {
+    "status": "CORROBORATED",
+    "value": {
+      "address": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+      "blockNumber": "26438078",
+      "blockHash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+      "transactionHash": "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a",
+      "logIndex": "277",
+      "topics": [
+        "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+        "0x00000000000000000000000000000000000000000000000000000000000617dc",
+        "0x89fb3ab9344b8785d46e86aa2fc09a78561f216650664c3b3c43a27991fb2c4e",
+        "0x753ddd7b1ba0670d1747e3aa47a3260c3842c990546eff2cf50e3f4ec85471fb"
+      ],
+      "data": "0x98688ab1ca6e72876e60ecacb0f63909aa8052bf1a97cd0fcdf6778d3400d7bb000000000000000000000000000000000000000000000000000000000006ebb0000000000000000000000000000000000000000000000000000000006af79e2b000000000000000000000000000000000000000000000000000000006afcf23b000000000000000000000000000000000000000000000000000000000192f93e0000000000000000000000000000000000000000000000000000000001936aea0000000000000000000000000000000000000000000000000000000000000003"
+    },
+    "providers": [
+      "publicnode",
+      "flashbots"
+    ]
+  },
+  "finalized": {
+    "status": "CORROBORATED",
+    "value": {
+      "number": "26453807",
+      "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+      "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+      "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+      "timestamp": "1795147607"
+    },
+    "providers": [
+      "publicnode",
+      "flashbots"
+    ],
+    "originalTagObservation": "2026-11-20T04:20:36.299Z"
+  },
+  "requests": 8,
+  "completedAt": "2026-11-20T04:28:49.986Z",
+  "limitations": [
+    "Only exact L1 receipt inclusion and canonical posting/finalized block evidence are corroborated.",
+    "L2 batch membership remains the original two-RPC mapping, with no independent rollup execution, data-availability or challenge-state proof.",
+    "No current governance state, current checkpoint or future execution finality is established."
+  ],
+  "sourceFiles": [
+    {
+      "path": "docs/evidence/rmt-task087/finality/corroborate-exact-receipt.mjs",
+      "sha256": "b3fcb1f80ed27a3b812b109190271dc07bf25a3b317c0beef973227994594f20"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/corroborate-exact-receipt.test.mjs",
+      "sha256": "e6c31bab04fab5ba0ae7573108317b0ab528621382dd455a24ec08d733a1fa9d"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/schedule-116966133/report.json",
+      "sha256": "37a261770b1e6307ee40a2a6c25f3d36458a00123c3c04ffbe74bd62d25071b6"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/schedule-116966133/integrity-manifest.json",
+      "sha256": "d13507607efaaa7730a0db077f8108bbcdffa65e6b3d583bde373bdc23aa592b"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/schedule-116966133/raw-responses.json.gz",
+      "sha256": "ba8b01abd804a425d1fdfdf344383b39ca08a57373be18585eeb006e531e29a9"
+    }
+  ]
+}

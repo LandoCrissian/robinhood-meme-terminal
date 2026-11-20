@@ -1,0 +1,7 @@
+{
+  "status": "EVIDENCE_UNAVAILABLE_NO_SIGNING_REQUEST",
+  "sourceSha256": "109f405f50230378aa651b06620cbace51a7520195b539cf782e61ff72dcd27e",
+  "reportSha256": "cc64e9f7a9316ca2f1cc5fb6f1bbbe5f49e7e6f55247d815d07e1e8d9b9e2484",
+  "rootCause": "Collector did not normalize Viem uint48 numbers to the decimal strings used in the existing notice report; comparison failed before a cost quote. Partial concurrent read counts do not attribute a provider failure.",
+  "productionTransaction": false
+}

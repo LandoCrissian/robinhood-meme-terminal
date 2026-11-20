@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "kind": "ORIGINAL_PUBLIC_GET_RESPONSE_ARCHIVES_NOT_SCANNER_SUPPRESSION",
+  "archivedAtUtc": "2026-11-20T04:13:16.263Z",
+  "encoding": "gzip-original-UTF8-bytes-no-line-ending-normalization",
+  "files": [
+    {
+      "originalName": "initial-public-reads.json",
+      "storedName": "initial-public-reads.json.gz",
+      "rawBytes": 24632,
+      "rawSha256": "63f928723026b9e96119b7260ccf25a8740bfde7ffa19bdc444b7eeb0af5ed4f",
+      "storedBytes": 4399,
+      "storedSha256": "6880f850ba8a248650576b972e066534c1308bf6a13240edce2085e325eaeabe"
+    },
+    {
+      "originalName": "continuity-public-reads.json",
+      "storedName": "continuity-public-reads.json.gz",
+      "rawBytes": 15387,
+      "rawSha256": "46a18c0fc2f92c8b26b319e9563a0d034767784479cfd3923809e03dff2df558",
+      "storedBytes": 3405,
+      "storedSha256": "eb219adfab47b5565d9e755f562f060b745534bc0650f419a08048d4494e1347"
+    }
+  ],
+  "originalScan": {
+    "exit": 1,
+    "findings": 8,
+    "exactPublicClassifications": 8,
+    "unknown": 0,
+    "report": "raw-gitleaks-report.json.gz",
+    "classifications": "privacy-classifications.json"
+  },
+  "noDetectorOrConfigurationChanges": true
+}

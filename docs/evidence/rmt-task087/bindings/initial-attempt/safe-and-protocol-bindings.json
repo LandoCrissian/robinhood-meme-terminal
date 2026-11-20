@@ -1,0 +1,710 @@
+{
+  "schemaVersion": 1,
+  "status": "UNAVAILABLE",
+  "scope": "READ_ONLY_4663_SAFE_PROTOCOL_EXTERNAL_IMMUTABLE_BINDINGS",
+  "productionActivationAuthorized": false,
+  "signingAuthorized": false,
+  "broadcastAuthorized": false,
+  "gasOrTransferSimulations": false,
+  "chainId": 4663,
+  "startedAt": "2026-11-20T04:12:27.076Z",
+  "sourceCommit": "1f7160f5db5d67de348e041a84ccc2889786217e",
+  "sourcePlanSha256": "c333d4f60e4815fb86a719a5678da91b5331635213f8026bd7d6bc3fdfdd43d8",
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "providers": {
+    "official": {
+      "anchor": {
+        "number": "118769375",
+        "hash": "0x1a297ca862ef468036ef42471672b7be4f9dea8f3dff071d7dc54914ddd9982c",
+        "timestamp": "1795147946"
+      },
+      "runtimePins": [
+        {
+          "role": "directory",
+          "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+          "bytes": 10290,
+          "currentRuntimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+          "codeBytes": 10290,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "registry",
+          "address": "0xf1113714Dda31f31532995D2525e034271425398",
+          "runtimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+          "bytes": 16273,
+          "currentRuntimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+          "codeBytes": 16273,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "successor-v2",
+          "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+          "runtimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "bytes": 15226,
+          "currentRuntimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "codeBytes": 15226,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "successor-v3",
+          "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+          "runtimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+          "bytes": 15430,
+          "currentRuntimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+          "codeBytes": 15430,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "bootstrap",
+          "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+          "runtimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+          "bytes": 320,
+          "currentRuntimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+          "codeBytes": 320,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "bootstrap-guard",
+          "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "bytes": 949,
+          "currentRuntimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "codeBytes": 949,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "bootstrap-engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+          "bytes": 19710,
+          "currentRuntimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+          "codeBytes": 19710,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "bootstrap-factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+          "bytes": 23843,
+          "currentRuntimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+          "codeBytes": 23843,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "poolManager",
+          "address": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+          "runtimeHash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+          "currentRuntimeHash": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+          "codeBytes": 24009,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "positionManager",
+          "address": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+          "runtimeHash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+          "currentRuntimeHash": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+          "codeBytes": 23877,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "permit2",
+          "address": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          "runtimeHash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+          "currentRuntimeHash": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+          "codeBytes": 9152,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "quoter",
+          "address": "0x8dc178efb8111bb0973dd9d722ebeff267c98f94",
+          "runtimeHash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6",
+          "currentRuntimeHash": "0xd707b1da8cb165e5ea35a3b4450d971eb562ec171e23492aa117036b78a868f6",
+          "codeBytes": 6118,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "stateView",
+          "address": "0xf3334192d15450cdd385c8b70e03f9a6bd9e673b",
+          "runtimeHash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6",
+          "currentRuntimeHash": "0x7d9c591e0956fd89d98feb4ffcfe8bf1f7a62bd485edd979fa21d104b49878a6",
+          "codeBytes": 3531,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "universalRouter",
+          "address": "0x204FAca1764B154221e35c0d20aBb3c525710498",
+          "runtimeHash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296",
+          "currentRuntimeHash": "0x76b92a5bba2dd32019a64eb421f1750e78c6ba044dbfa6840b722eb5ac63d296",
+          "codeBytes": 24380,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "safeSingleton",
+          "address": "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762",
+          "runtimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+          "currentRuntimeHash": "0xb1f926978a0f44a2c0ec8fe822418ae969bd8c3f18d61e5103100339894f81ff",
+          "codeBytes": 24421,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "safeProxyFactory",
+          "address": "0x4e1DCf7AD4e460CfD30791CCC4F9c8a4f820ec67",
+          "runtimeHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+          "currentRuntimeHash": "0x50c3cdc4074750a7a974204a716c999edd37482f907608d960b2b025ee0b3317",
+          "codeBytes": 3054,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "safeFallbackHandler",
+          "address": "0xfd0732Dc9E303f09fCEf3a7388Ad10A83459Ec99",
+          "runtimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+          "currentRuntimeHash": "0x7c6007a5d711cea8dfd5d91f5940ec29c7f200fe511eb1fc1397b367af3c42f9",
+          "codeBytes": 5637,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "RMT-OPERATIONS",
+          "address": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "currentRuntimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "codeBytes": 171,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        },
+        {
+          "role": "RMT-RESERVE",
+          "address": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+          "runtimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "currentRuntimeHash": "0xd7d408ebcd99b2b70be43e20253d6d92a8ea8fab29bd3be7f55b10032331fb4c",
+          "codeBytes": 171,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": null
+        }
+      ],
+      "getters": [
+        {
+          "role": "factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "functionName": "graduationEngine",
+          "expected": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "observed": "0x10e540536f10ed36e5fc6638638f1d862e552d32",
+          "pending": "0x10e540536f10ed36e5fc6638638f1d862e552d32",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "functionName": "operatingRecipient",
+          "expected": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "observed": "0xaf9f10258b091719618c19d057f9cdab72effd8b",
+          "pending": "0xaf9f10258b091719618c19d057f9cdab72effd8b",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "functionName": "futureReserveRecipient",
+          "expected": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+          "observed": "0x8d44078642ce938fd799b23087bcdd6114a302e5",
+          "pending": "0x8d44078642ce938fd799b23087bcdd6114a302e5",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "functionName": "projectRegistry",
+          "expected": "0xf1113714Dda31f31532995D2525e034271425398",
+          "observed": "0xf1113714dda31f31532995d2525e034271425398",
+          "pending": "0xf1113714dda31f31532995d2525e034271425398",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "functionName": "successorDeployer",
+          "expected": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+          "observed": "0xcb25a3df74729f7104c4f924cb04f687f69391c6",
+          "pending": "0xcb25a3df74729f7104c4f924cb04f687f69391c6",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "functionName": "successorDeployerRuntimeHash",
+          "expected": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "observed": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "pending": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "functionName": "creationFeeWei",
+          "expected": "400000000000000",
+          "observed": "400000000000000",
+          "pending": "400000000000000",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "functionName": "engineVersion",
+          "expected": "1",
+          "observed": 1,
+          "pending": 1,
+          "matches": false,
+          "pendingMatches": true
+        },
+        {
+          "role": "factory",
+          "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "functionName": "tokenSupply",
+          "expected": "1000000000000000000000000000",
+          "observed": "1000000000000000000000000000",
+          "pending": "1000000000000000000000000000",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "factory",
+          "expected": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "observed": "0x7281e1f9d8764ae6533b374dfd08ab2ecbc273c3",
+          "pending": "0x7281e1f9d8764ae6533b374dfd08ab2ecbc273c3",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "poolManager",
+          "expected": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+          "observed": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+          "pending": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "positionManager",
+          "expected": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+          "observed": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+          "pending": "0x58daec3116aae6d93017baaea7749052e8a04fa7",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "permit2",
+          "expected": "0x000000000022D473030F116dDEE9F6B43aC78BA3",
+          "observed": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+          "pending": "0x000000000022d473030f116ddee9f6b43ac78ba3",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "initializationGuard",
+          "expected": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "observed": "0x998f3c0ce20cff92655d495a159b1ca37c162000",
+          "pending": "0x998f3c0ce20cff92655d495a159b1ca37c162000",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "poolManagerRuntimeHash",
+          "expected": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+          "observed": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+          "pending": "0xbd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "positionManagerRuntimeHash",
+          "expected": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+          "observed": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+          "pending": "0xc873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b2",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "permit2RuntimeHash",
+          "expected": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+          "observed": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+          "pending": "0x5208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "initializationGuardRuntimeHash",
+          "expected": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "observed": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "pending": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "CHAIN_ID",
+          "expected": "4663",
+          "observed": "4663",
+          "pending": "4663",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "POOL_FEE",
+          "expected": "3000",
+          "observed": 3000,
+          "pending": 3000,
+          "matches": false,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "TICK_SPACING",
+          "expected": "60",
+          "observed": 60,
+          "pending": 60,
+          "matches": false,
+          "pendingMatches": true
+        },
+        {
+          "role": "engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "functionName": "LP_FEE_ACCOUNTING_VERSION",
+          "expected": "1",
+          "observed": 1,
+          "pending": 1,
+          "matches": false,
+          "pendingMatches": true
+        },
+        {
+          "role": "guard",
+          "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "functionName": "poolManager",
+          "expected": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+          "observed": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+          "pending": "0x8366a39cc670b4001a1121b8f6a443a643e40951",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "guard",
+          "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "functionName": "graduationEngine",
+          "expected": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "observed": "0x10e540536f10ed36e5fc6638638f1d862e552d32",
+          "pending": "0x10e540536f10ed36e5fc6638638f1d862e552d32",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "registry",
+          "address": "0xf1113714Dda31f31532995D2525e034271425398",
+          "functionName": "directory",
+          "expected": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "observed": "0xe677a69a8124714dd0d88b73bdf1b89cc791ca9c",
+          "pending": "0xe677a69a8124714dd0d88b73bdf1b89cc791ca9c",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "bootstrap",
+          "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+          "functionName": "factory",
+          "expected": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+          "observed": "0x7281e1f9d8764ae6533b374dfd08ab2ecbc273c3",
+          "pending": "0x7281e1f9d8764ae6533b374dfd08ab2ecbc273c3",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "bootstrap",
+          "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+          "functionName": "graduationEngine",
+          "expected": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "observed": "0x10e540536f10ed36e5fc6638638f1d862e552d32",
+          "pending": "0x10e540536f10ed36e5fc6638638f1d862e552d32",
+          "matches": true,
+          "pendingMatches": true
+        },
+        {
+          "role": "bootstrap",
+          "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+          "functionName": "initializationGuard",
+          "expected": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "observed": "0x998f3c0ce20cff92655d495a159b1ca37c162000",
+          "pending": "0x998f3c0ce20cff92655d495a159b1ca37c162000",
+          "matches": true,
+          "pendingMatches": true
+        }
+      ],
+      "safes": [],
+      "ownerAccounts": [],
+      "canonicalRechecked": false
+    },
+    "pocket": {
+      "anchor": {
+        "number": "118769375",
+        "hash": "0x1a297ca862ef468036ef42471672b7be4f9dea8f3dff071d7dc54914ddd9982c",
+        "timestamp": "1795147946"
+      },
+      "runtimePins": [
+        {
+          "role": "directory",
+          "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+          "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+          "bytes": 10290,
+          "currentRuntimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+          "codeBytes": 10290,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "registry",
+          "address": "0xf1113714Dda31f31532995D2525e034271425398",
+          "runtimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+          "bytes": 16273,
+          "currentRuntimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+          "codeBytes": 16273,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "successor-v2",
+          "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+          "runtimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "bytes": 15226,
+          "currentRuntimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+          "codeBytes": 15226,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "successor-v3",
+          "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+          "runtimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+          "bytes": 15430,
+          "currentRuntimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+          "codeBytes": 15430,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "bootstrap",
+          "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+          "runtimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+          "bytes": 320,
+          "currentRuntimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+          "codeBytes": 320,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "bootstrap-guard",
+          "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+          "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "bytes": 949,
+          "currentRuntimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+          "codeBytes": 949,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        },
+        {
+          "role": "bootstrap-engine",
+          "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+          "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+          "bytes": 19710,
+          "currentRuntimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+          "codeBytes": 19710,
+          "runtimeMatches": true,
+          "pendingMatches": true,
+          "expectedBytesMatch": true
+        }
+      ],
+      "getters": [],
+      "safes": [],
+      "ownerAccounts": [],
+      "canonicalRechecked": false
+    }
+  },
+  "explorer": {
+    "scope": "EIGHT_BOUNDED_PUBLIC_GETS_ONLY",
+    "rows": [
+      {
+        "id": "directory",
+        "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+        "expectedRuntimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+        "expectedSourcePath": "src/RMTLaunchCurveDirectoryV2.sol",
+        "expectedSourceSha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531",
+        "httpStatus": 403,
+        "responseSha256": "934d383322ec27c236279199e5462c4d6519f9448cbbd60b4534d4588a5ee784",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "registry",
+        "address": "0xf1113714Dda31f31532995D2525e034271425398",
+        "expectedRuntimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+        "expectedSourcePath": "src/RMTLaunchProjectRegistryV3.sol",
+        "expectedSourceSha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c",
+        "httpStatus": 403,
+        "responseSha256": "032bc98e0ceda21839a6b1c421045a5246695ef502e6367366e2ed83a0b80606",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "successor-v2",
+        "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+        "expectedRuntimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+        "expectedSourcePath": "src/RMTLaunchBondingCurveV2.sol",
+        "expectedSourceSha256": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5",
+        "httpStatus": 403,
+        "responseSha256": "c4a8a0325fbb38f22a0ea5cbecd02bd2998cc3dcd07db634add6ef71aa1e79f0",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "successor-v3",
+        "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+        "expectedRuntimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+        "expectedSourcePath": "src/RMTLaunchBondingCurveV3.sol",
+        "expectedSourceSha256": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93",
+        "httpStatus": 403,
+        "responseSha256": "652fa50db666d6bfac348de34551ca6de5d617f670c4dfa38affe32dbfb4d103",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "bootstrap",
+        "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+        "expectedRuntimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+        "expectedSourcePath": "src/RMTLaunchCurveDeploymentV2.sol",
+        "expectedSourceSha256": "31e3173f1999f8d68e4bbc6cd55196d618d02de7d9a2da37c53d76dfc7ccfb93",
+        "httpStatus": 403,
+        "responseSha256": "6986dee6723f29b1bb4495d46854790ead2bcb8732d86b6178f47c2978231608",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "bootstrap-guard",
+        "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+        "expectedRuntimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+        "expectedSourcePath": "src/RMTV4CurveInitializationGuardV1.sol",
+        "expectedSourceSha256": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f",
+        "httpStatus": 403,
+        "responseSha256": "f86dde9c107532c783186eb8124f88e7d4f50b6d4014a0410b863fb8fd27b17f",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "bootstrap-engine",
+        "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+        "expectedRuntimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+        "expectedSourcePath": "src/RMTV4CurveGraduationV1.sol",
+        "expectedSourceSha256": "9d513915a4d36f05e1d4114bbe4f727ac6e6a504ef35bb856c47307e14795009",
+        "httpStatus": 403,
+        "responseSha256": "e2e2ad9ddbb306d9da7556e0beff9bb323abe32048e4c1f81a2666fe5ba4f4c8",
+        "status": "UNAVAILABLE"
+      },
+      {
+        "id": "bootstrap-factory",
+        "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+        "expectedRuntimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+        "expectedSourcePath": "src/RMTLaunchCurveFactoryV2.sol",
+        "expectedSourceSha256": "98756c0a980876266d9acf69cc3d5a032961149e8de261dbfe2ee2c31a0a56d6",
+        "httpStatus": 403,
+        "responseSha256": "7cee1849268d77192b1b708afb80d821ec4d8973111f70812c3079ba9dcbf3ba",
+        "status": "UNAVAILABLE"
+      }
+    ],
+    "postRequests": 0,
+    "completedAt": "2026-11-20T04:12:30.223Z"
+  },
+  "limitations": [
+    "Observed L2 equality is not Ethereum L1 finality or a security audit.",
+    "No token, curve or project was created. No project-specific treasury, curve or LP-ledger getters were invoked.",
+    "The600M/400M allocation and90/5/5 split remain bound to the existing compiler/source profile; this capture does not exercise a fresh project's economics.",
+    "Code hashes and present Safe configuration do not establish independent control of three signers, future authority stability or release approval."
+  ],
+  "anchor": {
+    "number": "118769375",
+    "hash": "0x1a297ca862ef468036ef42471672b7be4f9dea8f3dff071d7dc54914ddd9982c",
+    "timestamp": "1795147946"
+  },
+  "failureCategory": "REQUIRED_BINDING_EVIDENCE_UNAVAILABLE",
+  "errorClass": "AssertionError",
+  "finishedAt": "2026-11-20T04:12:36.491Z",
+  "readBudget": {
+    "responses": 124,
+    "totalRawBytes": 1283542,
+    "maxResponses": 512,
+    "maxResponseBytes": 2097152,
+    "maxTotalRawBytes": 25165824,
+    "pocketConcurrency": 1,
+    "pocketSpacingMs": 250,
+    "sourceGetAttempts": 8
+  },
+  "sourcePublicationStatus": "UNRESOLVED_ROWS_RETAINED"
+}

@@ -1,0 +1,46 @@
+{
+  "schemaVersion": 1,
+  "scope": "ORIGINAL_ENVELOPES_AND_UNESCAPED_PUBLIC_HTTP_BODIES",
+  "scanner": {
+    "name": "Gitleaks",
+    "version": "8.30.1",
+    "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
+    "configurationSha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+    "suppressionsAdded": false,
+    "exitCode": 0
+  },
+  "files": [
+    {
+      "name": "initial-envelopes.json",
+      "bytes": 1366431,
+      "sha256": "37b3da5c60542e7cf0ec2b831af415df7a65e5dd44fc429dbcc3e2628acdf08b"
+    },
+    {
+      "name": "initial-http-bodies.txt",
+      "bytes": 1292503,
+      "sha256": "ab76962c667c7149376ad24b1d587da50163a96ce430a80b0278e170c5e57f09"
+    },
+    {
+      "name": "final-envelopes.json",
+      "bytes": 2053185,
+      "sha256": "d42c15d36436f85a9873ba046543f0c94c2ad54e2360d81a2089a26555aea367"
+    },
+    {
+      "name": "final-http-bodies.txt",
+      "bytes": 1872330,
+      "sha256": "19354641343ce8762a40e5a299ca36e2b1c602937bdf93aa8441662f08fe2ebf"
+    }
+  ],
+  "rawFindings": 0,
+  "classifiedPublicFindings": 0,
+  "unknown": 0,
+  "originalReportRawSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+  "originalReportStoredSha256": "858ce9c035384bc4f31d7895b470bc72809b733274d960eabeca130df6c3bb1a",
+  "classificationsRawSha256": "a01c776967298d42c91634b888ec4fded5ba2946f06f618047dae16bc1440ec9",
+  "classificationsStoredSha256": "26fffecb8fbcbe9c87a3cbd0fe6c7bbcae5b47cd61e5adc227309d5cbcdd05e5",
+  "producerSha256": "6d924cc0b02fcd3aea289b6ba3fb4d6c4a31fdaf98a6826e944c021308430da7",
+  "limitations": [
+    "A classified public-byte match does not change the original scanner exit or suppress a detector.",
+    "Only credential-free, fixed public read responses are classified; unknown matches remain review blockers."
+  ]
+}

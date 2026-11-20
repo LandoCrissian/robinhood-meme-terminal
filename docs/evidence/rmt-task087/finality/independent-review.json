@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-11-20T04:40:09.978Z",
+  "scope": "INDEPENDENT_READ_ONLY_EVIDENCE_AND_SOURCE_REVIEW_NOT_SECURITY_AUDIT",
+  "status": "PASS",
+  "tests": 14,
+  "passed": 14,
+  "networkCalls": 0,
+  "checks": {
+    "actual31Plus8RequestsEqual39": true,
+    "originalDiscovery403UnverifiedPreserved": true,
+    "twoExactReceiptsEventsPostingHeadersBound": true,
+    "originalFinalizedBlockCanonicalRechecksBound": true,
+    "historicalPostingOnlyTrustLimits": true,
+    "sourceCapsulesRawStoredHashesVerified": true,
+    "twoJsonLfCapsulesMatchBase1fGitBlobs": true,
+    "executedProducerArchiveDiffIsOnlyPortableSourceReader": true,
+    "addedBomRejected": true
+  },
+  "resolvedFinding": "UTF8 decoder now preserves BOM; only CRLF/LF differences at the two exact inherited JSON paths are allowed.",
+  "outstandingMaterialFindings": []
+}

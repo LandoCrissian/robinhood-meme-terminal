@@ -1,0 +1,932 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_ORIGINAL_SCHEDULE_BATCH_L1_POSTING_ONLY",
+  "target": {
+    "number": "116966133",
+    "hash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+    "transactionHash": "0x96bd234e49d766c73c66f9787f26736040b4fc64d91ed2ae888eca3f4c8afb65"
+  },
+  "status": "UNVERIFIED",
+  "broadcastAuthorized": false,
+  "signingAuthorized": false,
+  "productionActivationAuthorized": false,
+  "observedAt": "2026-11-20T04:20:36.299Z",
+  "trustBoundary": "L2_RPC_BATCH_MEMBERSHIP_AND_TWO_ETHEREUM_RPC_POSTING_READS",
+  "limits": {
+    "requests": 40,
+    "attemptsPerRequest": 1,
+    "timeoutMs": 8000,
+    "responseBytes": 196608,
+    "endpointSpacingMs": 250,
+    "logWindowBlocks": 384
+  },
+  "protocol": {
+    "nodeInterface": "0x00000000000000000000000000000000000000c8",
+    "sequencerInbox": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+    "batchEventTopic": "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7"
+  },
+  "l2": [
+    {
+      "provider": "official",
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "latest": {
+        "number": "118774095",
+        "hash": "0x9effa61eb1a9d955f5db25ec881b15004a4d6dd27c5165f75f3f551080d11350",
+        "parentHash": "0x52f4010d9e41a1f0d7a43c132398395d6dc9bc152e0fc58cca1ddcec4b485505",
+        "stateRoot": "0x4fd221faaee73cf92657d7edb5f3e5a4d99ddc57d2b63e714a4805c8ba494a68",
+        "timestamp": "1795148435"
+      },
+      "queryBefore": {
+        "number": "118774091",
+        "hash": "0xd645118aca073612911319a9fa8d665b30d716b3978bfc547c5e71ff1c936e77",
+        "parentHash": "0x51dedd6bd8eb404a6055c171d3e2a25e8416dd74b1f57041682bd54a907f7638",
+        "stateRoot": "0xcbf95ddeb461053c5002cede9c014eefef998c44250d20776ccd56b271ef02a1",
+        "timestamp": "1795148435"
+      },
+      "targetBefore": {
+        "number": "116966133",
+        "hash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+        "parentHash": "0x194edc4b9bbc135b4a76dba629156b9b91b472ce97f6867b4c471d7180678214",
+        "stateRoot": "0x42302827ac3229605a285a7a1359b47969941f2c910aeb4c10f1ff2c5d882c90",
+        "timestamp": "1794958348"
+      },
+      "batch": "399324",
+      "origin": "26438074",
+      "targetAfter": {
+        "number": "116966133",
+        "hash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+        "parentHash": "0x194edc4b9bbc135b4a76dba629156b9b91b472ce97f6867b4c471d7180678214",
+        "stateRoot": "0x42302827ac3229605a285a7a1359b47969941f2c910aeb4c10f1ff2c5d882c90",
+        "timestamp": "1794958348"
+      },
+      "queryAfter": {
+        "number": "118774091",
+        "hash": "0xd645118aca073612911319a9fa8d665b30d716b3978bfc547c5e71ff1c936e77",
+        "parentHash": "0x51dedd6bd8eb404a6055c171d3e2a25e8416dd74b1f57041682bd54a907f7638",
+        "stateRoot": "0xcbf95ddeb461053c5002cede9c014eefef998c44250d20776ccd56b271ef02a1",
+        "timestamp": "1795148435"
+      }
+    },
+    {
+      "provider": "pocket",
+      "url": "https://robinhood.api.pocket.network",
+      "latest": {
+        "number": "118774111",
+        "hash": "0xd5aaf83849fc6dce73042cbb11b26e2b35cfb7c6a9ee9d78635200c56b2404f0",
+        "parentHash": "0xc84862f25c73f87696abf3d9a9897b0709e85ed013dc03f63df3de81b3e4d8ab",
+        "stateRoot": "0xf4daa17bf137387037f2fdab63c787969b2f6c998da9690831b04ac583cbb0dd",
+        "timestamp": "1795148437"
+      },
+      "queryBefore": {
+        "number": "118774091",
+        "hash": "0xd645118aca073612911319a9fa8d665b30d716b3978bfc547c5e71ff1c936e77",
+        "parentHash": "0x51dedd6bd8eb404a6055c171d3e2a25e8416dd74b1f57041682bd54a907f7638",
+        "stateRoot": "0xcbf95ddeb461053c5002cede9c014eefef998c44250d20776ccd56b271ef02a1",
+        "timestamp": "1795148435"
+      },
+      "targetBefore": {
+        "number": "116966133",
+        "hash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+        "parentHash": "0x194edc4b9bbc135b4a76dba629156b9b91b472ce97f6867b4c471d7180678214",
+        "stateRoot": "0x42302827ac3229605a285a7a1359b47969941f2c910aeb4c10f1ff2c5d882c90",
+        "timestamp": "1794958348"
+      },
+      "batch": "399324",
+      "origin": "26438074",
+      "targetAfter": {
+        "number": "116966133",
+        "hash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+        "parentHash": "0x194edc4b9bbc135b4a76dba629156b9b91b472ce97f6867b4c471d7180678214",
+        "stateRoot": "0x42302827ac3229605a285a7a1359b47969941f2c910aeb4c10f1ff2c5d882c90",
+        "timestamp": "1794958348"
+      },
+      "queryAfter": {
+        "number": "118774091",
+        "hash": "0xd645118aca073612911319a9fa8d665b30d716b3978bfc547c5e71ff1c936e77",
+        "parentHash": "0x51dedd6bd8eb404a6055c171d3e2a25e8416dd74b1f57041682bd54a907f7638",
+        "stateRoot": "0xcbf95ddeb461053c5002cede9c014eefef998c44250d20776ccd56b271ef02a1",
+        "timestamp": "1795148435"
+      }
+    }
+  ],
+  "ethereum": [
+    {
+      "provider": "publicnode",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "finalized": {
+        "number": "26453807",
+        "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+        "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+        "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+        "timestamp": "1795147607"
+      },
+      "latest": {
+        "number": "26453876",
+        "hash": "0x7d3c1c202fbd107cd23b90bf78a6b3d5d65d1bce073185385331fa84439e56b0",
+        "parentHash": "0x9f69f0d5dae819a6164c33958addf9502914e0a3aabedeb4983641c64fc84336",
+        "stateRoot": "0xa4733f4fcd66400a9bd58143b3d360e1c8525ea1ccdb5e0891af01af8a9de33d",
+        "timestamp": "1795148435"
+      },
+      "commonFinalized": {
+        "number": "26453807",
+        "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+        "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+        "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+        "timestamp": "1795147607"
+      },
+      "ownFinalizedRecheck": {
+        "number": "26453807",
+        "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+        "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+        "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+        "timestamp": "1795147607"
+      },
+      "logQuery": {
+        "address": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+        "topics": [
+          "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+          "0x00000000000000000000000000000000000000000000000000000000000617dc"
+        ],
+        "fromBlock": "0x19369ba",
+        "toBlock": "0x1936b39"
+      }
+    },
+    {
+      "provider": "flashbots",
+      "url": "https://rpc.flashbots.net",
+      "finalized": {
+        "number": "26453807",
+        "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+        "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+        "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+        "timestamp": "1795147607"
+      },
+      "latest": {
+        "number": "26453876",
+        "hash": "0x7d3c1c202fbd107cd23b90bf78a6b3d5d65d1bce073185385331fa84439e56b0",
+        "parentHash": "0x9f69f0d5dae819a6164c33958addf9502914e0a3aabedeb4983641c64fc84336",
+        "stateRoot": "0xa4733f4fcd66400a9bd58143b3d360e1c8525ea1ccdb5e0891af01af8a9de33d",
+        "timestamp": "1795148435"
+      },
+      "commonFinalized": {
+        "number": "26453807",
+        "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+        "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+        "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+        "timestamp": "1795147607"
+      },
+      "ownFinalizedRecheck": {
+        "number": "26453807",
+        "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+        "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+        "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+        "timestamp": "1795147607"
+      },
+      "logQuery": {
+        "address": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+        "topics": [
+          "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+          "0x00000000000000000000000000000000000000000000000000000000000617dc"
+        ],
+        "fromBlock": "0x19369ba",
+        "toBlock": "0x1936b39"
+      },
+      "log": {
+        "address": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+        "blockNumber": "26438078",
+        "blockHash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+        "transactionHash": "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a",
+        "logIndex": "277",
+        "topics": [
+          "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+          "0x00000000000000000000000000000000000000000000000000000000000617dc",
+          "0x89fb3ab9344b8785d46e86aa2fc09a78561f216650664c3b3c43a27991fb2c4e",
+          "0x753ddd7b1ba0670d1747e3aa47a3260c3842c990546eff2cf50e3f4ec85471fb"
+        ],
+        "data": "0x98688ab1ca6e72876e60ecacb0f63909aa8052bf1a97cd0fcdf6778d3400d7bb000000000000000000000000000000000000000000000000000000000006ebb0000000000000000000000000000000000000000000000000000000006af79e2b000000000000000000000000000000000000000000000000000000006afcf23b000000000000000000000000000000000000000000000000000000000192f93e0000000000000000000000000000000000000000000000000000000001936aea0000000000000000000000000000000000000000000000000000000000000003"
+      },
+      "before": {
+        "number": "26438078",
+        "hash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+        "parentHash": "0xe8568ff1a3580de77da6cbff88c0719792a7cbdf1ec67b5a8001ae6cc60b0144",
+        "stateRoot": "0x80b6d5f3e679aca1f8406abfbd92e763862fc6f14be52fa7840f67001bab3436",
+        "timestamp": "1794958379"
+      },
+      "receipt": {
+        "receiptStatus": "0x1",
+        "transactionHash": "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a",
+        "logIndex": "277"
+      },
+      "after": {
+        "number": "26438078",
+        "hash": "0x3a1e8c4fb85b6ec51a904da8574c580138996fa32c6e5ceadc2055fe1c8f5c52",
+        "parentHash": "0xe8568ff1a3580de77da6cbff88c0719792a7cbdf1ec67b5a8001ae6cc60b0144",
+        "stateRoot": "0x80b6d5f3e679aca1f8406abfbd92e763862fc6f14be52fa7840f67001bab3436",
+        "timestamp": "1794958379"
+      }
+    }
+  ],
+  "observations": [
+    {
+      "index": 1,
+      "provider": "official",
+      "layer": "L2",
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_chainId",
+        "params": []
+      },
+      "requestedAt": "2026-11-20T04:20:36.300Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 43,
+      "responseSha256": "75ea0f516604d743a7a785da0919b7b26debc20e260ff9d0a045c6cfa40f876f"
+    },
+    {
+      "index": 2,
+      "provider": "pocket",
+      "layer": "L2",
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "eth_chainId",
+        "params": []
+      },
+      "requestedAt": "2026-11-20T04:20:36.338Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 43,
+      "responseSha256": "ee4ee6e01b20b04445d722e401dcc920f89a1245e96c427582ce8df8dc33a662"
+    },
+    {
+      "index": 3,
+      "provider": "official",
+      "layer": "L2",
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "latest",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:36.553Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 1752,
+      "responseSha256": "71f085bc60c64755789b9588afd9de570bff5a1bd32bab06d997b0356aa11646"
+    },
+    {
+      "index": 4,
+      "provider": "pocket",
+      "layer": "L2",
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "latest",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:37.006Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 1820,
+      "responseSha256": "c36136cc2f580e3ca3a9e635ec6fa3c011ace21625afedb0a444842a26999cd2"
+    },
+    {
+      "index": 5,
+      "provider": "official",
+      "layer": "L2",
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x714594b",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:37.622Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 2719,
+      "responseSha256": "7b7286b2a7f20456755247361fdd91a2fbe208ed0ab77497455189638f5ac4c3"
+    },
+    {
+      "index": 6,
+      "provider": "pocket",
+      "layer": "L2",
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x714594b",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:37.623Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 2718,
+      "responseSha256": "bb88b26560f05e96567b33656393cb79509f05d6f95e42aea0d18f0cb97c4883"
+    },
+    {
+      "index": 7,
+      "provider": "official",
+      "layer": "L2",
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x6f8c2f5",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:37.874Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 2028,
+      "responseSha256": "9a418d407c98840dda8ae115dc7513ea9c6f20ebdca0c5ce08b21eed2077428c"
+    },
+    {
+      "index": 8,
+      "provider": "pocket",
+      "layer": "L2",
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x6f8c2f5",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:37.874Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 2027,
+      "responseSha256": "5a4392f406036bd97f984abffad9a54ee42a90ee4f798a3e0e1f172a122be8d7"
+    },
+    {
+      "index": 9,
+      "provider": "official",
+      "layer": "L2",
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 9,
+        "method": "eth_call",
+        "params": [
+          {
+            "to": "0x00000000000000000000000000000000000000c8",
+            "data": "0x81f1adaf0000000000000000000000000000000000000000000000000000000006f8c2f5"
+          },
+          "0x714594b"
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:38.139Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 103,
+      "responseSha256": "9b001de1feb696f578684bf15c847957ab260dc4bd81c644af22a898c65d711f"
+    },
+    {
+      "index": 10,
+      "provider": "pocket",
+      "layer": "L2",
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 10,
+        "method": "eth_call",
+        "params": [
+          {
+            "to": "0x00000000000000000000000000000000000000c8",
+            "data": "0x81f1adaf0000000000000000000000000000000000000000000000000000000006f8c2f5"
+          },
+          "0x714594b"
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:38.140Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 103,
+      "responseSha256": "71e20727d23e6f52f50f8672422144b3e428cd56cbe724f9e8f6da69e053d813"
+    },
+    {
+      "index": 11,
+      "provider": "official",
+      "layer": "L2",
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 11,
+        "method": "eth_call",
+        "params": [
+          {
+            "to": "0x00000000000000000000000000000000000000c8",
+            "data": "0x6f275ef20000000000000000000000000000000000000000000000000000000006f8c2f5"
+          },
+          "0x714594b"
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:38.400Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 104,
+      "responseSha256": "e0d1c70d680a0e5e648a42aba8614a9956b9ff1a295230177f1f5a6aff75cb97"
+    },
+    {
+      "index": 12,
+      "provider": "pocket",
+      "layer": "L2",
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 12,
+        "method": "eth_call",
+        "params": [
+          {
+            "to": "0x00000000000000000000000000000000000000c8",
+            "data": "0x6f275ef20000000000000000000000000000000000000000000000000000000006f8c2f5"
+          },
+          "0x714594b"
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:38.401Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 103,
+      "responseSha256": "fd49f3d426e2393cc8a15d6ea0b90b5644e676d63fdd7648c5ab19815071fd4a"
+    },
+    {
+      "index": 13,
+      "provider": "official",
+      "layer": "L2",
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 13,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x6f8c2f5",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:38.652Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 2029,
+      "responseSha256": "bd48eba2f164b7400d7992f992ae4d095fabe1cf6f447dac1d5de0b64eebda70"
+    },
+    {
+      "index": 14,
+      "provider": "pocket",
+      "layer": "L2",
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 14,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x6f8c2f5",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:38.653Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 2028,
+      "responseSha256": "05fe018d34d49279d265e2604e4c8b28f30ade197e1433fe8cef6904f2b71132"
+    },
+    {
+      "index": 15,
+      "provider": "official",
+      "layer": "L2",
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 15,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x714594b",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:38.915Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 2720,
+      "responseSha256": "e3a5bdbbb1997eb7b50950a11890ba7b29ddcbf3357803d8861f291105eb3b7e"
+    },
+    {
+      "index": 16,
+      "provider": "pocket",
+      "layer": "L2",
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 16,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x714594b",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:38.916Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 2720,
+      "responseSha256": "6b684bce669777482294a347966faacc2a0446fd4c6a76cd5cb4ef9283419a94"
+    },
+    {
+      "index": 17,
+      "provider": "publicnode",
+      "layer": "L1",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 17,
+        "method": "eth_chainId",
+        "params": []
+      },
+      "requestedAt": "2026-11-20T04:20:39.122Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 41,
+      "responseSha256": "0f401bd62c5379e1726c542368d835ee0867b9d07e2674d15a0914972c32d595"
+    },
+    {
+      "index": 18,
+      "provider": "flashbots",
+      "layer": "L1",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 18,
+        "method": "eth_chainId",
+        "params": []
+      },
+      "requestedAt": "2026-11-20T04:20:39.122Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 41,
+      "responseSha256": "f50fd17f7e7ae13b723a0953e28c78fa707883973acd4fb37af5bf5218f55d9a"
+    },
+    {
+      "index": 19,
+      "provider": "publicnode",
+      "layer": "L1",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 19,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "finalized",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:39.377Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 19548,
+      "responseSha256": "10c2d55e749d3191b20c86727405e3cae71f2956b9460ff34510e3a12d3eb60a"
+    },
+    {
+      "index": 20,
+      "provider": "flashbots",
+      "layer": "L1",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 20,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "finalized",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:39.378Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 19548,
+      "responseSha256": "67be2aa4383a4150334584957531276bcea3008b038698e3187efdc7b793b8d4"
+    },
+    {
+      "index": 21,
+      "provider": "publicnode",
+      "layer": "L1",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 21,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "latest",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:39.628Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 20556,
+      "responseSha256": "e6ce8545ed01901432309418c0309d9b0cf9603d0629a9ffa4847dd04bc0bd93"
+    },
+    {
+      "index": 22,
+      "provider": "flashbots",
+      "layer": "L1",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 22,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "latest",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:39.628Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 20556,
+      "responseSha256": "cc08cb569f9260d6947c816bcb15310769c94ffa903ec890562e351e50ca4360"
+    },
+    {
+      "index": 23,
+      "provider": "publicnode",
+      "layer": "L1",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 23,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x193a72f",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:39.892Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 19548,
+      "responseSha256": "0577a8b1e4e68c61f66a5cd4b3cff424665f8aad929e23b4429c266c4bd29e53"
+    },
+    {
+      "index": 24,
+      "provider": "flashbots",
+      "layer": "L1",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 24,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x193a72f",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:39.893Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 19548,
+      "responseSha256": "eb049bd2853229a9b11e6b251b8334ede33bf921592ca1be1a40428cad4249af"
+    },
+    {
+      "index": 25,
+      "provider": "publicnode",
+      "layer": "L1",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 25,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x193a72f",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:40.143Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 19548,
+      "responseSha256": "5cf65cca7375acf9bc90de0de7be35a6cf306a18a39c66d5137435c981a70fcc"
+    },
+    {
+      "index": 26,
+      "provider": "flashbots",
+      "layer": "L1",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 26,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x193a72f",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:40.144Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 19548,
+      "responseSha256": "44a59d50f44e2c4cec5f7440fce08ce565f9566d52b9f38ffb172ac4fb1de76a"
+    },
+    {
+      "index": 27,
+      "provider": "publicnode",
+      "layer": "L1",
+      "url": "https://ethereum-rpc.publicnode.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 27,
+        "method": "eth_getLogs",
+        "params": [
+          {
+            "address": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+            "topics": [
+              "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+              "0x00000000000000000000000000000000000000000000000000000000000617dc"
+            ],
+            "fromBlock": "0x19369ba",
+            "toBlock": "0x1936b39"
+          }
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:40.406Z",
+      "status": "UNAVAILABLE",
+      "httpStatus": 403,
+      "responseBytes": 153,
+      "responseSha256": "284a1f1cda10d1608bcbd95203834be3685b05becb5162c4e636afdddca47c82",
+      "reason": "HTTP_UNAVAILABLE"
+    },
+    {
+      "index": 28,
+      "provider": "flashbots",
+      "layer": "L1",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 28,
+        "method": "eth_getLogs",
+        "params": [
+          {
+            "address": "0xbd0d173eeb87d57a09521c24388a12789f33ba96",
+            "topics": [
+              "0x7394f4a19a13c7b92b5bb71033245305946ef78452f7b4986ac1390b5df4ebd7",
+              "0x00000000000000000000000000000000000000000000000000000000000617dc"
+            ],
+            "fromBlock": "0x19369ba",
+            "toBlock": "0x1936b39"
+          }
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:40.407Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 1126,
+      "responseSha256": "8f8478da0407bde15d3761058c170d36312928cb5c507507b3da46ff66cd8405"
+    },
+    {
+      "index": 29,
+      "provider": "flashbots",
+      "layer": "L1",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 29,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x19369be",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:40.667Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 30076,
+      "responseSha256": "af721a4ed205984f6b3384425f1c90212373c21e3ecb83485c43c577f51dd8e1"
+    },
+    {
+      "index": 30,
+      "provider": "flashbots",
+      "layer": "L1",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 30,
+        "method": "eth_getTransactionReceipt",
+        "params": [
+          "0x82a3521f2fc1e758097b859df2e1809c5b3f064f13683b92d2415754953d6f3a"
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:40.916Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 4078,
+      "responseSha256": "65fa16dad0686102270abefc67c145a649df366d255093944969cdaa20ab6c16"
+    },
+    {
+      "index": 31,
+      "provider": "flashbots",
+      "layer": "L1",
+      "url": "https://rpc.flashbots.net",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 31,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x19369be",
+          false
+        ]
+      },
+      "requestedAt": "2026-11-20T04:20:41.181Z",
+      "status": "OBSERVED",
+      "httpStatus": 200,
+      "responseBytes": 30076,
+      "responseSha256": "da9d87d3c8c40c5076cde15ceaff68ae0ef8339ae0a525c1519e54c1ee5de350"
+    }
+  ],
+  "limitations": [
+    "L2 batch membership relies on the recorded L2 RPC witnesses; no independent rollup execution/challenge proof is claimed.",
+    "This targets the original schedule block only, not current governance state, current backend checkpoints or any future execution.",
+    "Absence/unsupported data in the single bounded log window stays UNVERIFIED; it is not a finality veto."
+  ],
+  "mapping": {
+    "status": "CORROBORATED",
+    "batch": "399324",
+    "origin": "26438074",
+    "query": {
+      "number": "118774091",
+      "hash": "0xd645118aca073612911319a9fa8d665b30d716b3978bfc547c5e71ff1c936e77",
+      "parentHash": "0x51dedd6bd8eb404a6055c171d3e2a25e8416dd74b1f57041682bd54a907f7638",
+      "stateRoot": "0xcbf95ddeb461053c5002cede9c014eefef998c44250d20776ccd56b271ef02a1",
+      "timestamp": "1795148435"
+    },
+    "providers": [
+      "official",
+      "pocket"
+    ]
+  },
+  "finalized": {
+    "status": "CORROBORATED",
+    "value": {
+      "number": "26453807",
+      "hash": "0x92091eabb57369c01c3cf027e075eda66f0dee6ffe9caa695032ed5fcac0841a",
+      "parentHash": "0xa8e6c84d599a9037e2a4a264863a92520a431c62cc6c2d0e5ad324efb9537854",
+      "stateRoot": "0xcf5888c9c963570150cf9d1ff3afbf039c8787480f3d1c0459b2c4045a405d65",
+      "timestamp": "1795147607"
+    },
+    "providers": [
+      "publicnode",
+      "flashbots"
+    ]
+  },
+  "failures": [
+    {
+      "provider": "publicnode",
+      "reason": "HTTP_UNAVAILABLE",
+      "status": "UNVERIFIED"
+    }
+  ],
+  "reason": "HTTP_UNAVAILABLE",
+  "requests": 31,
+  "completedAt": "2026-11-20T04:20:41.253Z",
+  "sourceFiles": [
+    {
+      "path": "docs/evidence/rmt-task087/finality/probe-schedule-posting.mjs",
+      "sha256": "4ff3bf3b28dbedcbe2fe5bd21a6635809d3b9d66743f17e12c7e2042fee6c8b0"
+    },
+    {
+      "path": "docs/evidence/rmt-task087/finality/probe-schedule-posting.test.mjs",
+      "sha256": "e1710fae3a7f4e1c8195b08dea5de1f1efbe35599e1cea8ef0d959863962f038"
+    },
+    {
+      "path": "scripts/production-readiness/rpc.mjs",
+      "sha256": "456e51835601c802032be78d9e0346d98260ca851376d3825c008b077c55ac67"
+    },
+    {
+      "path": "docs/evidence/fixed-supply-release/l1-batches.json",
+      "sha256": "8c9d3f889cba30e31ce5ce399ac014e79be4a4b80c2074e5f8fe10f51853e5f1"
+    },
+    {
+      "path": "docs/evidence/mobile-signing/factory-publication-scheduled.json",
+      "sha256": "82a9f6cef8144fdecdcb3873ab58d028b88bca99248d805bd0c8456401c420aa"
+    }
+  ]
+}

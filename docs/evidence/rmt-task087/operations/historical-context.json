@@ -1,0 +1,178 @@
+{
+  "schemaVersion": 1,
+  "scope": "HISTORICAL_PUBLIC_REPOSITORY_EVIDENCE_NOT_CURRENT_BACKUP_OR_BILLING_VERIFICATION",
+  "readAtUtc": "2026-11-20T04:08:58.910Z",
+  "sourceHead": "1f7160f5db5d67de348e041a84ccc2889786217e",
+  "sources": [
+    {
+      "path": "docs/evidence/production-readiness/task066-backend-activation.json",
+      "gitBlobSha256": "0d581824f9b1bd7192b819787654320a266e9418a290c91b562b5da30d0bcd41"
+    },
+    {
+      "path": "docs/evidence/railway-073/acceptance.json",
+      "gitBlobSha256": "29d323f7d2872e02157a7e1be334d9848efd333edc7886ab87a44c4c671d2909"
+    }
+  ],
+  "backend": {
+    "observedAt": "2026-11-17T20:29:09.853Z",
+    "backup": {
+      "status": "VERIFIED_ENCRYPTED_BACKUP_AND_ISOLATED_RESTORE",
+      "exportedAt": "2026-11-17T19:49:35Z",
+      "verifiedAt": "2026-11-17T19:57:11.218Z",
+      "format": "pg_dump custom",
+      "clientVersion": "pg_restore (PostgreSQL) 18.6",
+      "archiveBytes": 55976168,
+      "archiveSha256": "b04f475cf8720feb56ecdbd39f88794cc516540547a92a995d9253c913b537a0",
+      "encryption": "AES-256-GCM",
+      "keyProtection": "Windows DPAPI CurrentUser; no key or database contents published",
+      "storage": "Encrypted owner-controlled local private storage outside Railway, Git and public hosting",
+      "offDeviceCopyVerified": false,
+      "archiveTocTableDataEntries": 9,
+      "indexDefinitionsMatched": 21,
+      "tableCounts": [
+        {
+          "table": "creator_payout_events",
+          "count": 0
+        },
+        {
+          "table": "fee_splitter_events",
+          "count": 222
+        },
+        {
+          "table": "graduation_fee_collections",
+          "count": 0
+        },
+        {
+          "table": "graduations",
+          "count": 0
+        },
+        {
+          "table": "indexer_state",
+          "count": 1
+        },
+        {
+          "table": "launches",
+          "count": 2
+        },
+        {
+          "table": "liquidity_migrations",
+          "count": 0
+        },
+        {
+          "table": "sync_points",
+          "count": 620648
+        },
+        {
+          "table": "trades",
+          "count": 74
+        }
+      ],
+      "chainId": 4663,
+      "checkpoint": 116835508,
+      "checkpointHash": "0x6ddc167064501c005e9b0c91d7c324c9f1b9007c015dab8969280aeb2f777f8c",
+      "sourceFactory": "0x8e75c57079a01ce2094bc4187b78710887547651",
+      "checkpointCorroborators": [
+        "official",
+        "pocket"
+      ],
+      "isolatedRestoreEndpoint": "127.0.0.1:60666",
+      "isolatedRestoreServerStopped": true,
+      "temporaryPlaintextRemoved": true,
+      "originalDatabaseRestored": false,
+      "originalTableWrites": false,
+      "earlierOptionalValidationFailure": "An unnecessary full-row checksum/sort query exceeded temporary volume capacity. PostgreSQL aborted its read-only transaction and cleaned the temporary files; /health, /ready and normal capacity were verified before a new bounded export. Failed ciphertext retained as unusable; the successful archive above is separate.",
+      "newBackupRequiredBeforeFutureSchemaChanges": true
+    },
+    "providerAcceptance": {
+      "primary": "https://robinhood.api.pocket.network",
+      "corroborator": "https://robinhood.rpc.pinax.network",
+      "localRestoredCloneResult": "Actual deployment/runtime/binding/receipt and six bounded passes passed against both public providers.",
+      "officialRpcLimitation": "The official RPC rejected historical factory state at deploymentBlock-1=116835101. Exact failure retained; no archive evidence was fabricated.",
+      "temporaryHostedProviderFailure": "A ResourceUnavailableRpcError occurred during the first production pass, then subsequent unchanged retries verified bindings and progressed. A historical InvalidParamsRpcError was also observed and recovered; read freshness remained fail closed.",
+      "canonicalCheckpointCorroboration": [
+        {
+          "provider": "pocket",
+          "chainId": 4663,
+          "blockNumber": "116856494",
+          "blockHash": "0xe105cc3439815557d0dbbe10ff6d15f03e42667b7ddeb36f79072e0532cfc06e",
+          "timestamp": "0x6afcb82e"
+        },
+        {
+          "provider": "pinax",
+          "chainId": 4663,
+          "blockNumber": "116856494",
+          "blockHash": "0xe105cc3439815557d0dbbe10ff6d15f03e42667b7ddeb36f79072e0532cfc06e",
+          "timestamp": "0x6afcb82e"
+        }
+      ]
+    },
+    "releaseBoundaries": {
+      "websiteChanged": false,
+      "websiteWalletSigningOrTradingEnabled": false,
+      "tokenCreatedByAgent": false,
+      "contractTransactionsByAgent": false,
+      "knownContractSecurityFindingsCleared": false,
+      "sourceExplorerPublication": "Separate pending/accepted evidence; this backend activation does not waive remaining explorer publication requirements.",
+      "l1Finality": "UNVERIFIED",
+      "governanceNoticesBypassed": false,
+      "productionTokenCreationApproval": "SEPARATE_OWNER_DECISION"
+    }
+  },
+  "railway": {
+    "observedAt": "2026-11-18T14:52:36.100Z",
+    "usage": {
+      "billingPeriod": {
+        "end": "2026-11-29T16:40:44+00:00",
+        "start": "2026-10-29T16:40:44+00:00"
+      },
+      "usedDollars": 0.7554817445466666,
+      "providerProjectionDollars": 1.5678161117480907,
+      "remainingUsageCreditDollars": 0.2445182554533334,
+      "plan": "FREE",
+      "hasExhaustedFreePlan": false,
+      "lineItems": [
+        {
+          "currentUsageDollars": 0.01568693578703704,
+          "label": "CPU"
+        },
+        {
+          "currentUsageDollars": 0.3513014869175309,
+          "label": "Memory"
+        },
+        {
+          "currentUsageDollars": 0.028450050650000003,
+          "label": "Egress"
+        },
+        {
+          "currentUsageDollars": 0.35480828970666667,
+          "label": "Volume"
+        },
+        {
+          "currentUsageDollars": 0.006128224426666666,
+          "label": "Backup"
+        }
+      ],
+      "limitsUnchanged": {
+        "hardLimit": 20,
+        "isOverLimit": false,
+        "softLimit": 5
+      },
+      "customDomainCapability": 0,
+      "estimateIsNotInvoiceOrContinuityGuarantee": true
+    },
+    "production": {
+      "netlifyDeployment": "6afd4265956a469adeb55747",
+      "netlifyRetainedOlderDeployment": "6af86be73747ac95bd6d15ea",
+      "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+      "url": "https://www.rmtlaunch.fun",
+      "unchanged": true,
+      "auth": "disabled",
+      "transactions": "disabled",
+      "dnsChanged": false
+    }
+  },
+  "limitations": [
+    "No private archive, encryption key, production credential or database record was read.",
+    "Retained isolated-restore proof is historical. Current archive recoverability, off-device copy, current allowance and production failover/reorg recovery were not retested."
+  ]
+}

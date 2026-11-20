@@ -1,0 +1,31 @@
+{
+  "schemaVersion": 1,
+  "scanner": "Gitleaks8.30.1",
+  "configPath": ".gitleaks.toml",
+  "configSha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+  "rawFindings": 0,
+  "unknown": 0,
+  "exemptionsAdded": false,
+  "scopes": [
+    {
+      "path": "schedule-116966133/raw-gitleaks-report.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "findings": 0
+    },
+    {
+      "path": "exact-receipt-corroboration/raw-gitleaks-report.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "findings": 0
+    },
+    {
+      "path": "source-capsules-gitleaks-report.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "findings": 0
+    },
+    {
+      "path": "authored-gitleaks-report.json",
+      "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "findings": 0
+    }
+  ]
+}

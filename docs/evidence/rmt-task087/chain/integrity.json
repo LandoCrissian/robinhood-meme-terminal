@@ -1,0 +1,62 @@
+{
+  "schemaVersion": 1,
+  "sourceBase": "1f7160f5db5d67de348e041a84ccc2889786217e",
+  "files": [
+    {
+      "path": "notice-first.json.gz",
+      "rawBytes": 9493,
+      "rawSha256": "d2adb2b7b9529a78a8d988359c3c3bd18523bbd879947e2535fbea54043123eb",
+      "storedBytes": 2245,
+      "storedSha256": "81e44687d2d9607571fb2bc0d198ad00edaf9ba8ca4bbeb93ab1037a0d13012e"
+    },
+    {
+      "path": "notice-current.json.gz",
+      "rawBytes": 9493,
+      "rawSha256": "3f852b96f9f25835c9324d7ed5024ca704ce7ce70c91d92f355d0b9b70a3fa47",
+      "storedBytes": 2244,
+      "storedSha256": "0b82c70e6852ca4f37ce284cbab2d5e7fcab6f6afbe628d978e3b0454ad737b6"
+    },
+    {
+      "path": "execution-cost.json.gz",
+      "rawBytes": 5605,
+      "rawSha256": "90e237ba793f7d87c817464feb5ad28357cf74a67c4ae9f20f5eac18f4d74a41",
+      "storedBytes": 1693,
+      "storedSha256": "5c371d97096888e4d6158d5e678f8b3dafc99b2d495baec869d37f537d392504"
+    },
+    {
+      "path": "notice-closeout.json.gz",
+      "rawBytes": 9493,
+      "rawSha256": "872a42b52aa140a424dc1df1af4de7808311cc06db6d8e3f8eb548a27bfb3ec4",
+      "storedBytes": 2245,
+      "storedSha256": "a104b5c15fc62466999b3c8efd4ab523cd879011db0b096a6d0492770382a1fe"
+    },
+    {
+      "path": "notice-handoff.json.gz",
+      "rawBytes": 9493,
+      "rawSha256": "77ffcc07678575dcde3fa651f5d3d5a7cd73a5f24e73bf785b41d6612991bcb5",
+      "storedBytes": 2245,
+      "storedSha256": "ca00f475e211c1fd19b36d4aafe27898b906799eabb5f06971f2c46cc4a6da97"
+    }
+  ],
+  "noticeProducer": {
+    "path": "scripts/production-readiness/check-governance-notice.mjs",
+    "normalizedSha256": "ee35c85695c2ae73fceec79fb6960d59b607730cfb0cbbf68136b8a0682bf4c9"
+  },
+  "costProducer": {
+    "path": "docs/evidence/rmt-task087/chain/capture-cost.mjs",
+    "normalizedSha256": "dc40fe5ccb911fcd36e0b3b965e0ae9f8f8e66e027044005fb43a4c935708ca1"
+  },
+  "status": "BLOCKED_NO_BROADCAST",
+  "privacy": {
+    "scanner": "Gitleaks8.30.1",
+    "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
+    "configurationSha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+    "scope": "SEVEN_DECOMPRESSED_ORIGINAL_REPORT_OR_PRODUCER_FILES_AND_CURRENT_PRODUCER",
+    "inputCount": 8,
+    "findings": 0,
+    "exitCode": 0,
+    "suppressionsAdded": false,
+    "report": "raw-gitleaks-report.json",
+    "reportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  }
+}

@@ -1,0 +1,42 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import {readFileSync} from "node:fs";
+import {gunzipSync} from "node:zlib";
+import {createHash} from "node:crypto";
+import {createRequire} from "node:module";
+import {assertCurrentNotice} from "../../../../scripts/production-readiness/check-governance-notice.mjs";
+import {publicationDigest,publicationActionTypes,publicationDomainTypes} from "../../../../packages/contracts/scripts/prepare-governance-publication.mjs";
+import {remainingWindow,executeData} from "./capture-cost.mjs";
+const require=createRequire(new URL("../../../../apps/launch-website/package.json",import.meta.url)),v=require("viem");
+const root=new URL("./",import.meta.url),load=path=>JSON.parse(readFileSync(new URL(path,root))),read=path=>JSON.parse(gunzipSync(readFileSync(new URL(path,root))));
+const integrity=load("integrity.json"),notice=read("notice-closeout.json.gz"),cost=read("execution-cost.json.gz"),scheduled=JSON.parse(readFileSync(new URL("../../mobile-signing/factory-publication-scheduled.json",import.meta.url))),deployed=JSON.parse(readFileSync(new URL("../../mobile-signing/protocol-mainnet.json",import.meta.url)));
+const sha=bytes=>createHash("sha256").update(bytes).digest("hex"),normal=bytes=>Buffer.from(bytes.toString("utf8").replaceAll("\r\n","\n"));
+test("source-bound governance/cost records retain exact compressed original bytes and closed authorization",()=>{
+ assert.equal(integrity.sourceBase,"1f7160f5db5d67de348e041a84ccc2889786217e");
+ for(const file of integrity.files){const stored=readFileSync(new URL(file.path,root)),raw=gunzipSync(stored);assert.equal(stored.length,file.storedBytes);assert.equal(sha(stored),file.storedSha256);assert.equal(raw.length,file.rawBytes);assert.equal(sha(raw),file.rawSha256);}
+ for(const producer of[integrity.noticeProducer,integrity.costProducer])assert.equal(sha(normal(readFileSync(new URL("../../../../"+producer.path,import.meta.url)))),producer.normalizedSha256);
+ for(const report of[notice,cost]){assert.equal(report.chainId,4663);assert.equal(report.signingAuthorized,false);assert.equal(report.broadcastAuthorized,false);assert.equal(report.productionActivationAuthorized,false);assert.equal(report.finality,"L1_UNVERIFIED");}
+ assert.equal(notice.status,"SCHEDULE_VERIFIED_SEPARATE_OWNER_APPROVAL_REQUIRED");assert.equal(cost.status,"EXACT_READ_ONLY_SIMULATION_AND_COST_OBSERVED");const handoff=read("notice-handoff.json.gz");assert.equal(handoff.status,notice.status);assert.equal(handoff.timeEligible,true);assert.equal(handoff.digest,notice.digest);assert.deepEqual(handoff.current[0].state,notice.current[0].state);assert.deepEqual(handoff.current[1].state,notice.current[1].state);assert.deepEqual(handoff.current[0].block,handoff.current[1].block);assert.equal(remainingWindow(handoff.current[0].block.timestamp,handoff.current[0].state.pending[1],handoff.current[0].state.pending[2]).secondsRemaining,"572502");assert.equal(handoff.signingAuthorized,false);assert.equal(handoff.broadcastAuthorized,false);
+});
+test("actual recorded action identity, receipt linkage and both eight-runtime witnesses remain exact",()=>{
+ const data={domain:{name:"RMT Launch Curve Directory",version:"2",chainId:4663,verifyingContract:scheduled.directory},types:{EIP712Domain:publicationDomainTypes,...publicationActionTypes},primaryType:"Action",message:scheduled.action};
+ assert.equal(publicationDigest(data),notice.digest);assert.equal(notice.digest,scheduled.digest);assert.notEqual(notice.digest,notice.transactionHash);assert.equal(notice.transactionHash,scheduled.transactionHash);assert.equal(notice.receipt.blockHash,scheduled.blockHash);assert.equal(notice.receipt.blockNumber,scheduled.receiptBlock);
+ assert.equal(notice.sourcePlanSha256,deployed.planSha256);assert.equal(notice.compilerInputSha256,deployed.compiler.inputSha256);assert.equal(notice.current.length,2);assert.deepEqual(notice.current.map(row=>row.provider),["official","pocket"]);assert.deepEqual(notice.current[0].block,notice.current[1].block);assert.deepEqual(notice.current[0].state,notice.current[1].state);
+ const expected=[...deployed.constructors,...deployed.bootstrapChildren];for(const row of notice.current){assert.equal(row.runtimePins.length,8);for(const pin of row.runtimePins){const recorded=expected.find(x=>x.address.toLowerCase()===pin.address.toLowerCase());assert.ok(recorded);assert.equal(pin.runtimeHash,recorded.runtimeHash);assert.equal(pin.bytes,recorded.runtimeBytes);}}
+ assert.equal(notice.current[0].state.suspended,false);assert.equal(notice.current[0].state.nonce,"0");assert.equal(notice.current[0].state.signerSetEpoch,"1");assert.equal(notice.current[0].state.latestVersion,"0");
+});
+test("current captured notice validates and mutated authorization/expiry never becomes signing permission",()=>{
+ const state=notice.current[0].state,block=notice.current[0].block,schedule={scheduleBlockTime:String(Date.parse(notice.notice.startsAt)/1000),executeAfter:state.pending[1],executeBy:state.pending[2]},at=Number(block.timestamp)*1000;
+ assert.equal(assertCurrentNotice(state,block,schedule,at).timeEligible,true);
+ for(const change of[s=>s.nonce="1",s=>s.signerSetEpoch="2",s=>s.pending[0]=v.zeroHash,s=>s.suspended=true]){const changed=structuredClone(state);change(changed);assert.throws(()=>assertCurrentNotice(changed,block,schedule,at));}
+ const expired={...block,timestamp:String(BigInt(state.pending[2])+1n)},result=assertCurrentNotice(state,expired,schedule,Number(expired.timestamp)*1000);assert.equal(result.timeEligible,false);assert.equal(result.status,"SCHEDULE_EXPIRED_REQUIRES_AUTHORIZED_RECOVERY");assert.equal(result.signingAuthorized,false);assert.equal(result.broadcastAuthorized,false);
+ const remaining=remainingWindow(block.timestamp,state.pending[1],state.pending[2]);assert.equal(remaining.secondsRemaining,"573724");assert.equal(remaining.expiryInclusive,true);
+});
+test("actual indicative quote decodes exact execution and counts L1 posting once",()=>{
+ const abi=v.parseAbi(["function execute((uint8 kind,uint64 nonce,uint32 version,address factory,bytes32 runtimeHash,uint64 signerSetEpoch,uint48 deadline))"]),decoded=v.decodeFunctionData({abi,data:cost.executeCalldata});assert.equal(decoded.functionName,"execute");
+ const action=decoded.args[0];assert.equal(action.kind,scheduled.action.kind);assert.equal(action.nonce,BigInt(scheduled.action.nonce));assert.equal(action.version,scheduled.action.version);assert.equal(action.factory.toLowerCase(),scheduled.action.factory.toLowerCase());assert.equal(action.runtimeHash,scheduled.action.runtimeHash);assert.equal(action.signerSetEpoch,BigInt(scheduled.action.signerSetEpoch));assert.equal(BigInt(action.deadline),BigInt(scheduled.action.deadline));
+ assert.equal(cost.executeCalldata,executeData);assert.equal(cost.executeCalldataKeccak256,v.keccak256(executeData));assert.equal(cost.valueWei,"0");assert.equal(cost.payerNonce,"493");assert.equal(cost.cost.maximumIndicativeWei,String(BigInt(cost.cost.gasLimit)*BigInt(cost.cost.maxFeePerGasWei)));assert.equal(v.formatEther(BigInt(cost.cost.maximumIndicativeWei)),cost.cost.maximumIndicativeEth);
+ assert.equal(cost.observations.length,2);assert.deepEqual(cost.observations[0].block,cost.observations[1].block);assert.deepEqual(cost.observations[0].state,cost.observations[1].state);
+ for(const row of cost.observations){assert.equal(row.simulation.status,"SUCCESS_EPHEMERAL_ETH_CALL_NO_TRANSACTION");assert.equal(BigInt(row.nonce),BigInt(cost.payerNonce));assert.equal(row.balanceSufficient,true);const total=cost.cost.estimatedExecutionAndPosting.find(x=>x.provider===row.name);assert.equal(total.totalWei,String(BigInt(row.gas.nitro.total)*BigInt(row.gas.nitro.baseFee)));assert.equal(total.l1PostingWei,String(BigInt(row.gas.nitro.l1)*BigInt(row.gas.nitro.baseFee)));assert.ok(BigInt(total.l1PostingWei)<BigInt(total.totalWei));assert.ok(row.window.timeEligible);}
+ const original=load("initial-cost-attempt/manifest.json"),failedBytes=gunzipSync(readFileSync(new URL("initial-cost-attempt/result.json.gz",root))),producerBytes=gunzipSync(readFileSync(new URL("initial-cost-attempt/producer.mjs.gz",root))),failed=JSON.parse(failedBytes);assert.equal(sha(failedBytes),original.reportSha256);assert.equal(sha(producerBytes),original.sourceSha256);assert.equal(failed.producerSha256,original.sourceSha256);assert.equal(failed.status,"EVIDENCE_UNAVAILABLE_NO_SIGNING_REQUEST");assert.equal(failed.broadcastAuthorized,false);
+});

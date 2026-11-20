@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_4663_SAFE_PROTOCOL_EXTERNAL_IMMUTABLE_BINDINGS",
+  "status": "UNAVAILABLE",
+  "producerSha256": "c27e10d4ef9f9e0c5cf7b03f8476efb553bf890aa2f089b8ed43956e83c8a03b",
+  "sourceCommit": "1f7160f5db5d67de348e041a84ccc2889786217e",
+  "inputFiles": [
+    {
+      "path": "scripts/production-readiness/rpc.mjs",
+      "sha256": "456e51835601c802032be78d9e0346d98260ca851376d3825c008b077c55ac67"
+    },
+    {
+      "path": "packages/contracts/scripts/prepare-protocol-continuation.mjs",
+      "sha256": "6d7d6c72bafb797e12dff92c9a813e8b9b7cea7e8a5a5a2e416f39f22bccf7a1"
+    },
+    {
+      "path": "docs/evidence/mobile-signing/protocol-mainnet.json",
+      "sha256": "e471abbed504f42c59229a6299043631f489659e36a905173cbc5ff74d6b9016"
+    },
+    {
+      "path": "docs/evidence/mobile-signing/treasuries-mainnet.json",
+      "sha256": "450a8f870e8cc096692ae3550bc32ccf21b0f5e4ae649311ec5d3b1f13b10d3c"
+    },
+    {
+      "path": "docs/evidence/rmt-task045/operations-safe-policy.json",
+      "sha256": "97b79ece11e34b159c5b36d9036da99207b92bed0230d619ea4acb23cd916f80"
+    },
+    {
+      "path": "docs/evidence/rmt-task044/safe-infrastructure-4663.json",
+      "sha256": "9892e476bd8911b77b40005039f58e6116b34817346c132f375646df0e63a4bc"
+    },
+    {
+      "path": "docs/evidence/fixed-supply-security/4663-profile.json",
+      "sha256": "7ca45b8fc261a06143a17e991b26d52a1297a9228f498215c33930d6f8280c26"
+    }
+  ],
+  "reportSha256": "6cb696d3b74c23bba5ec7c96d4d3a9bb8c826cf4cfc4cbf08d1883a6c6eaefb9",
+  "rawSha256": "37b3da5c60542e7cf0ec2b831af415df7a65e5dd44fc429dbcc3e2628acdf08b",
+  "rawBytes": 1366431,
+  "compressedSha256": "c7e1cb0de0cf7ee11244b9e05b73cc6beeed10950bf3e592cf3453eb2ca8d4ec",
+  "scannerStatus": "REQUIRES_UNCHANGED_RAW_SCAN",
+  "signingAuthorized": false,
+  "broadcastAuthorized": false,
+  "sourceVerificationRequests": 0
+}
