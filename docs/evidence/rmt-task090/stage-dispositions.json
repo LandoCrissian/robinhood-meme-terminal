@@ -11,7 +11,7 @@
   "productionSolidityChanged": false,
   "confirmedFirstPartyDefectDemonstrated": false,
   "stageDecisions": {
-    "hostedDiscovery": "NO_GO_HOSTED_AUTHENTICATION_AND_TWO_FRESH_CANONICAL_OBSERVATIONS_MISSING",
+    "hostedDiscovery": "GO_READ_ONLY_HOSTED_AUTHENTICATED_FRESH_CANONICAL_PATH_VERIFIED",
     "directoryPublication": "NO_GO_NO_EXECUTION_AUTHORIZATION",
     "financialLaunch": "NO_GO_NO_FINANCIAL_AUTHORIZATION_OR_STAGE_CLEARANCE"
   },
@@ -579,5 +579,12 @@
       "wholeStageSecurityClearance": false,
       "financialActivationAuthorized": false
     }
-  ]
+  ],
+  "websiteRuntimeEvidence": {
+    "deploy": "6b0096332beb675b1d8e0f49",
+    "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+    "capture": "docs/evidence/rmt-task090/hosted-resolution/correlation.json",
+    "financialActivation": false,
+    "scopeChangeOwnerApproved": true
+  }
 }

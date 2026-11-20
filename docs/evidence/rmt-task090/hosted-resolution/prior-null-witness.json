@@ -1,0 +1,297 @@
+{
+  "startedAt": "2026-11-20T18:52:06.669Z",
+  "site": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "deploy": "6b0096332beb675b1d8e0f49",
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "scope": "ACTUAL_HOSTED_READ_ONLY_ACCEPTANCE",
+  "publicResponseContract": "PINNED_SANITIZED_STATUS_LAUNCHES_CHECKPOINT_NO_INVENTED_UPSTREAM_METADATA",
+  "observations": [
+    {
+      "startedAt": "2026-11-20T18:52:06.671Z",
+      "finishedAt": "2026-11-20T18:52:08.417Z",
+      "url": "https://www.rmtlaunch.fun/api/launchpad/new-engine",
+      "status": 200,
+      "requestId": "01M7X4TDKWQCNVWDXJDN6QD29H",
+      "cacheControl": "private,no-store",
+      "cdnCache": null,
+      "cacheStatus": "\"Netlify Durable\"; fwd=stale; ttl=-72; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "parsedStatus": "ready",
+      "body": {
+        "status": "ready",
+        "launches": [],
+        "checkpoint": {
+          "blockNumber": "119276608",
+          "blockHash": "0xe4bbf57ee7119c3ca20c1af9bd7e92729651e5b27cce7c194fde75179fb87148",
+          "timestamp": "2026-11-20T18:51:52.000Z",
+          "confirmations": 20,
+          "finality": "l2-confirmed",
+          "l1Finality": "unverified"
+        }
+      },
+      "ageMs": 16417,
+      "canonicalBothProviders": [
+        {
+          "provider": "https://rpc.mainnet.chain.robinhood.com",
+          "number": "0x71c0440",
+          "hash": "0xe4bbf57ee7119c3ca20c1af9bd7e92729651e5b27cce7c194fde75179fb87148",
+          "timestamp": "0x6b0096c8"
+        },
+        {
+          "provider": "https://robinhood.api.pocket.network",
+          "number": "0x71c0440",
+          "hash": "0xe4bbf57ee7119c3ca20c1af9bd7e92729651e5b27cce7c194fde75179fb87148",
+          "timestamp": "0x6b0096c8"
+        }
+      ]
+    },
+    {
+      "startedAt": "2026-11-20T18:52:35.023Z",
+      "finishedAt": "2026-11-20T18:52:36.550Z",
+      "url": "https://www.rmtlaunch.fun/api/launchpad/new-engine",
+      "status": 200,
+      "requestId": "01M7X4V958R4KTJDG6JR9FDEAF",
+      "cacheControl": "private,no-store",
+      "cdnCache": null,
+      "cacheStatus": "\"Netlify Durable\"; fwd=stale; ttl=-13; stored, \"Netlify Edge\"; fwd=stale; fwd-status=200; ttl=-99; stored",
+      "parsedStatus": "ready",
+      "body": {
+        "status": "ready",
+        "launches": [],
+        "checkpoint": {
+          "blockNumber": "119276953",
+          "blockHash": "0xfcbbef4b9a782fb69e14fb3f9f998360fab9b8019d0fa4c73e07721f8a09dde2",
+          "timestamp": "2026-11-20T18:52:27.000Z",
+          "confirmations": 20,
+          "finality": "l2-confirmed",
+          "l1Finality": "unverified"
+        }
+      },
+      "ageMs": 9550
+    }
+  ],
+  "boundary": [],
+  "rpcReads": [
+    {
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "method": "eth_chainId",
+        "params": []
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": "0x1237"
+      },
+      "httpStatus": 200
+    },
+    {
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x71c0440",
+          false
+        ]
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 2,
+        "result": {
+          "baseFeePerGas": "0x13fa420",
+          "difficulty": "0x1",
+          "extraData": "0x3036a7ff29c7ffdf1e662f053bd062cedff6aafad2d20ba51a65732bb0196978",
+          "gasLimit": "0x4000000000000",
+          "gasUsed": "0x2f51e",
+          "hash": "0xe4bbf57ee7119c3ca20c1af9bd7e92729651e5b27cce7c194fde75179fb87148",
+          "l1BlockNumber": "0x193b865",
+          "logsBloom": "0x000000000000000000000000000000000000000000000000000000000000100000000000000000000000004000020000000000000c0000008000000000200000000000010000400000000008000000000010000000000020000000000000000000040000000000000000000000000100000000000000400000000010000000000000000120000000000000000000000000080040010000000000000000100000000000000000000000000020000000000000000000000000000000000000000000000402001000000000000000000000000000000000000100000000000000000000000000000800004000000100000000000000000000000000000002080000",
+          "miner": "0xa4b000000000000000000073657175656e636572",
+          "mixHash": "0x0000000000000f5a000000000193b865000000000000003d0000000000000000",
+          "nonce": "0x00000000000703c5",
+          "number": "0x71c0440",
+          "parentHash": "0x0ad2ef4c3a8ad63a68d46c519b1a0ceb9cf747807c82758f745e2d4ae441913e",
+          "receiptsRoot": "0x71af0553aca06282c59a2c9e0090a720078c6dbbdf58b2f3975bf8bb096bb102",
+          "sendCount": "0xf5a",
+          "sendRoot": "0x3036a7ff29c7ffdf1e662f053bd062cedff6aafad2d20ba51a65732bb0196978",
+          "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+          "size": "0x925",
+          "stateRoot": "0x27e076001616efc4c2f8685093992317f22b0837248a2a066e064275aa907b7b",
+          "timestamp": "0x6b0096c8",
+          "transactions": [
+            "0x1ebebb186bf4c6dcf7377fc3aac147bd53ae5ff844e32da730c54a0911380e68",
+            "0x1d634278cef7185543c7ea67c7c318543431c0930a0d7f4a95c136759b1f91b2",
+            "0x712acb66f46d1356e1c0bb8ac430c766ef864f59b621beba53020fcb5a041a3b",
+            "0x5f0b25dc8af5aeef5cd7d6c6dd1516ded6de5a5069ae6efd60419abce28cd811"
+          ],
+          "transactionsRoot": "0x99c27f134fae4105cebd51d73f9ed53b508ccf6713fb3907f0f48a8b79279a71",
+          "uncles": []
+        }
+      },
+      "httpStatus": 200
+    },
+    {
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "method": "eth_chainId",
+        "params": []
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 3,
+        "result": "0x1237"
+      },
+      "httpStatus": 200
+    },
+    {
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x71c0440",
+          false
+        ]
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 4,
+        "result": {
+          "baseFeePerGas": "0x13fa420",
+          "difficulty": "0x1",
+          "extraData": "0x3036a7ff29c7ffdf1e662f053bd062cedff6aafad2d20ba51a65732bb0196978",
+          "gasLimit": "0x4000000000000",
+          "gasUsed": "0x2f51e",
+          "hash": "0xe4bbf57ee7119c3ca20c1af9bd7e92729651e5b27cce7c194fde75179fb87148",
+          "l1BlockNumber": "0x193b865",
+          "logsBloom": "0x000000000000000000000000000000000000000000000000000000000000100000000000000000000000004000020000000000000c0000008000000000200000000000010000400000000008000000000010000000000020000000000000000000040000000000000000000000000100000000000000400000000010000000000000000120000000000000000000000000080040010000000000000000100000000000000000000000000020000000000000000000000000000000000000000000000402001000000000000000000000000000000000000100000000000000000000000000000800004000000100000000000000000000000000000002080000",
+          "miner": "0xa4b000000000000000000073657175656e636572",
+          "mixHash": "0x0000000000000f5a000000000193b865000000000000003d0000000000000000",
+          "nonce": "0x00000000000703c5",
+          "number": "0x71c0440",
+          "parentHash": "0x0ad2ef4c3a8ad63a68d46c519b1a0ceb9cf747807c82758f745e2d4ae441913e",
+          "receiptsRoot": "0x71af0553aca06282c59a2c9e0090a720078c6dbbdf58b2f3975bf8bb096bb102",
+          "sendCount": "0xf5a",
+          "sendRoot": "0x3036a7ff29c7ffdf1e662f053bd062cedff6aafad2d20ba51a65732bb0196978",
+          "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+          "size": "0x925",
+          "stateRoot": "0x27e076001616efc4c2f8685093992317f22b0837248a2a066e064275aa907b7b",
+          "timestamp": "0x6b0096c8",
+          "transactions": [
+            "0x1ebebb186bf4c6dcf7377fc3aac147bd53ae5ff844e32da730c54a0911380e68",
+            "0x1d634278cef7185543c7ea67c7c318543431c0930a0d7f4a95c136759b1f91b2",
+            "0x712acb66f46d1356e1c0bb8ac430c766ef864f59b621beba53020fcb5a041a3b",
+            "0x5f0b25dc8af5aeef5cd7d6c6dd1516ded6de5a5069ae6efd60419abce28cd811"
+          ],
+          "transactionsRoot": "0x99c27f134fae4105cebd51d73f9ed53b508ccf6713fb3907f0f48a8b79279a71",
+          "uncles": []
+        }
+      },
+      "httpStatus": 200
+    },
+    {
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "method": "eth_chainId",
+        "params": []
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 5,
+        "result": "0x1237"
+      },
+      "httpStatus": 200
+    },
+    {
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x71c0599",
+          false
+        ]
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 6,
+        "result": {
+          "baseFeePerGas": "0x13f7540",
+          "difficulty": "0x1",
+          "extraData": "0x3036a7ff29c7ffdf1e662f053bd062cedff6aafad2d20ba51a65732bb0196978",
+          "gasLimit": "0x4000000000000",
+          "gasUsed": "0x5f23a",
+          "hash": "0xfcbbef4b9a782fb69e14fb3f9f998360fab9b8019d0fa4c73e07721f8a09dde2",
+          "l1BlockNumber": "0x193b868",
+          "logsBloom": "0x000020000000000000000000000a080000000200100400000200000000000000000000048000004001008000000200000000020004000000000000000000000000000000002040000000040800800000000200000001002000000000000000000000000008400000000000000100004000000200000010000040001201000c00000000000000000000080000401100000008000010000000020004000000000000000000a800000000000020002000000000008200001000000001000000000000100602001008200000000000000000008500000000000000800000000000000800000000000000004004000100000000000000000000000000000042000000",
+          "miner": "0xa4b000000000000000000073657175656e636572",
+          "mixHash": "0x0000000000000f5a000000000193b868000000000000003d0000000000000000",
+          "nonce": "0x00000000000703c5",
+          "number": "0x71c0599",
+          "parentHash": "0xda60c1ec60df5db817146e2c59e1f1dcb830a13c616155074515d695c04160fe",
+          "receiptsRoot": "0xaf8889c7308c19e92cd3625579a567abce2e0fc8916c6738f9bd5631fa26d723",
+          "sendCount": "0xf5a",
+          "sendRoot": "0x3036a7ff29c7ffdf1e662f053bd062cedff6aafad2d20ba51a65732bb0196978",
+          "sha3Uncles": "0x1dcc4de8dec75d7aab85b567b6ccd41ad312451b948a7413f0a142fd40d49347",
+          "size": "0xb36",
+          "stateRoot": "0x22b89379f69c9db5493b2b64879361ebbe2924fce24cc249fe09b92286c4c20c",
+          "timestamp": "0x6b0096eb",
+          "transactions": [
+            "0xe70fab1b63aad132f768b581f8b50b90175e99a7e14659da2efb389ab7d6020c",
+            "0xaa4e87b1d0a08dc0e740737de8066a8feddba3ea0f11c207a9f22b1b02fcb55b",
+            "0xfd71996a30643b977fc990e02f118bdd9af4535fa9b7ef8ce48bfaddfb9765cb",
+            "0x504a613d0e5814ed794e96799863c57acb5029051b153b139efec8e77802f53e"
+          ],
+          "transactionsRoot": "0xdbf25da3452b997549cc978a5e7244b1337e364dba28fabda9a739340c04fdb2",
+          "uncles": []
+        }
+      },
+      "httpStatus": 200
+    },
+    {
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "method": "eth_chainId",
+        "params": []
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 7,
+        "result": "0x1237"
+      },
+      "httpStatus": 200
+    },
+    {
+      "url": "https://robinhood.api.pocket.network",
+      "request": {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "method": "eth_getBlockByNumber",
+        "params": [
+          "0x71c0599",
+          false
+        ]
+      },
+      "response": {
+        "jsonrpc": "2.0",
+        "id": 8,
+        "result": null
+      },
+      "httpStatus": 200
+    }
+  ],
+  "productionFinancialCalls": 0,
+  "status": "FAIL_NO_FINANCIAL_ACTIVATION",
+  "error": "Cannot read properties of null (reading 'number')"
+}

@@ -1,0 +1,37 @@
+{
+  "startedAt": "2026-11-20T18:50:38.267Z",
+  "site": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "deploy": "6b0096332beb675b1d8e0f49",
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "scope": "ACTUAL_HOSTED_READ_ONLY_ACCEPTANCE",
+  "observations": [
+    {
+      "startedAt": "2026-11-20T18:50:38.269Z",
+      "finishedAt": "2026-11-20T18:50:41.363Z",
+      "url": "https://www.rmtlaunch.fun/api/launchpad/new-engine",
+      "status": 200,
+      "requestId": "01M7X4QQ8WFJD1G49TNMDF4PGJ",
+      "cacheControl": "private,no-store",
+      "cdnCache": null,
+      "cacheStatus": "\"Netlify Durable\"; fwd=uri-miss; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+      "parsedStatus": "unavailable",
+      "body": {
+        "status": "ready",
+        "launches": [],
+        "checkpoint": {
+          "blockNumber": "119275579",
+          "blockHash": "0xdda8087908f796b4b78adf05fb2a643f60909c27becc8b142de080d498e7f61d",
+          "timestamp": "2026-11-20T18:50:09.000Z",
+          "confirmations": 20,
+          "finality": "l2-confirmed",
+          "l1Finality": "unverified"
+        }
+      }
+    }
+  ],
+  "boundary": [],
+  "rpcReads": [],
+  "productionFinancialCalls": 0,
+  "status": "FAIL_NO_FINANCIAL_ACTIVATION",
+  "error": "Expected values to be strictly equal:\n+ actual - expected\n\n+ 'unavailable'\n- 'ready'\n"
+}

@@ -1,0 +1,35 @@
+{
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "serverZipSha256": "08d237501b2c16de95627a3e773d9092cc3050c155e39c2d33449503b564c345",
+  "artifactActivationProfile": "rmt-curve-fixed-supply-security-v2-4663-task066",
+  "artifactFeedProfile": "rmt-curve-fixed-supply-security-v2",
+  "bindingKeys": [
+    "RMT_CURVE_PRODUCTION_DISCOVERY",
+    "RMT_LAUNCH_HISTORY_INDEXER_URL",
+    "RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN"
+  ],
+  "cases": [
+    {
+      "name": "feed-profile-disabled",
+      "passed": true,
+      "result": "profile_disabled"
+    },
+    {
+      "name": "exact-activation-profile-admitted",
+      "passed": true,
+      "result": "admitted"
+    },
+    {
+      "name": "fixture-rejected",
+      "passed": true,
+      "result": "fixture_active"
+    },
+    {
+      "name": "authority-rejected",
+      "passed": true,
+      "result": "authority_rejected"
+    }
+  ],
+  "networkCalls": 0,
+  "productionMutation": false
+}

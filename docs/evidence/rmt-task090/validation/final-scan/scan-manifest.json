@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "scope": "CHANGED_SOURCE_AND_ALL_TASK090_EVIDENCE_WITH_LOSSLESS_EXPANDED_GZIP",
   "base": "b79515752ef42e88850ac2cea953955a3bb03087",
-  "capturedAt": "2026-11-20T17:57:20.015Z",
+  "capturedAt": "2026-11-20T19:07:15.409Z",
   "scanner": {
     "version": "8.30.1",
     "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
@@ -18,9 +18,9 @@
   },
   "rawExit": 1,
   "rawFindingCount": 18,
-  "sourceFileCount": 115,
+  "sourceFileCount": 140,
   "expandedGzipCount": 8,
-  "reportSha256": "aa6dda09dd88592fac0671528dfd4576bfc94b0c266d65afc60fb4708010f8e0",
+  "reportSha256": "8e26a9680c8480c170b63e59c98e5c60f30df5dc4d2926d1355525de6734cd4a",
   "excludedGeneratedOutputs": [
     "docs/evidence/rmt-task090/validation/final-scan/scan-manifest.json",
     "docs/evidence/rmt-task090/validation/final-scan/gitleaks-redacted.json",
@@ -48,11 +48,38 @@
       "scanPath": "source/.github/workflows/core-stateful-proofs.yml"
     },
     {
-      "path": "docs/evidence/rmt-task090/README.md",
-      "bytes": 7736,
+      "path": "docs/RMT_CORE_LAUNCH_GO_NO_GO.md",
+      "bytes": 27357,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "fe4d5a2e1f4a1a29b802a1c715fd37b9996df85d752aa5c84d4afb705b0dd790"
+        "hex": "760c7bc90e9beea8ed07fe091c24b9eae75bfbc062f9f19c3d1f41b693ed96a7"
+      },
+      "scanPath": "source/docs/RMT_CORE_LAUNCH_GO_NO_GO.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task089/discovery/README.md",
+      "bytes": 12633,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e788edcd7ac1b45b9b4c122669233c9aa9533b11e786dc7137f901a4e73cc629"
+      },
+      "scanPath": "source/docs/evidence/rmt-task089/discovery/README.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task089/discovery/manifest.json",
+      "bytes": 5659,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "bb8965df488d0f9973f80040ba4cfad153a2ce27c258929661a9dcbaa1cd71b3"
+      },
+      "scanPath": "source/docs/evidence/rmt-task089/discovery/manifest.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/README.md",
+      "bytes": 6785,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7c1704ec14aeb457ded13c199e56e8cdc83d743f223fd6e0d9079db2c0b066a5"
       },
       "scanPath": "source/docs/evidence/rmt-task090/README.md"
     },
@@ -593,6 +620,204 @@
       "scanPath": "source/docs/evidence/rmt-task090/history-adjudication/repository-check.txt"
     },
     {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/README.md",
+      "bytes": 2700,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "dbc71004dc3371a67b79cdd61633476d414c25ecba642eff3cd2bfaf47de6ef6"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/README.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/account-capabilities.json",
+      "bytes": 281,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "dac1ae50e1cb5cc7ede207beddd5bb11c9be910b6e44b6bf7456dee2dbd6de51"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/account-capabilities.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/activation-profile-correction.json",
+      "bytes": 1362,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7361ffb4aa194a5ac51c8ba9f6ef310759a440e1d7104ba608a04780ae9db227"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/activation-profile-correction.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/bindings-final.json",
+      "bytes": 1143,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9dac3e539fb9ccb813635c9f08b25717182f663cfc61798670699084178772ba"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/bindings-final.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/compiled-gate-audit.json",
+      "bytes": 944,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "03181da429a2d1ca73e182b5c916d2ad3e617497470881549b5d0fb0fe9c9f34"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/compiled-gate-audit.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/correlation.json",
+      "bytes": 1909,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "467a699ae631e5b84835260cb35b2e6c9a385b4ad40b72fa36d30dc0dec7062a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/correlation.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/deployment.json",
+      "bytes": 576,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "90d36eb8fbef9ab2826570e01b4e9c33ebc19f9d81af7c3cc2020881c4ffa2b0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/deployment.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/hosted-acceptance.json",
+      "bytes": 54403,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "cc9dfaee9616315d78e843fab52b47ebdbbfe184f34b5ed0db10756b66f4e058"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/hosted-acceptance.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/manifest.json",
+      "bytes": 4152,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "71dd09ae170db8e30f1eb0fdf72ed9af2eab551c89ade9f184733a6b8e758f00"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/manifest.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/owner-scope-approval.json",
+      "bytes": 427,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a350969b6f8cd1b25f004bfdc927062213e7889d1c20a70834d117f4bc34bb5f"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/owner-scope-approval.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/prior-checker-contract-failure.json",
+      "bytes": 1352,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "62e95d76c82696b069737f64fe584b53cbac05217056f45506110dfb4c686d81"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/prior-checker-contract-failure.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/prior-null-witness.json",
+      "bytes": 12192,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "301e09e2af555413e03a39a49d97a024e49d47379329fdb3fd1cb6a0b25a82a6"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/prior-null-witness.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/prior-profile-disabled.json",
+      "bytes": 380,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "dc29f8554e3d6c6083aa232f9b03ac897e4a1392fb072b22081435be9bd1a52c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/prior-profile-disabled.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/prior-profile-failure.json",
+      "bytes": 957,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d0449676a3487e81668e387aa1c6d5623e6b54d39c9d9e02b41339ed8ab3b3bb"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/prior-profile-failure.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/prior-railway-availability.json",
+      "bytes": 1349,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "90d84868916b96d2a502460250a4147351e96196c1f908cee4682e20e841e1da"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/prior-railway-availability.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/prior-upstream-unavailable.json",
+      "bytes": 629,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "001884c32a28a6d707a5795a912a3f0bfc641a4d41e33244a12dd5e4960156a7"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/prior-upstream-unavailable.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/producer-correspondence.json",
+      "bytes": 453,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d5ac52876079b6425662c9d80b7347f9a45e939d9a1550390ad1afa1048cb8b4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/producer-correspondence.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/railway-http.json",
+      "bytes": 1079,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "be585a6ecb627d67c2a9dd16aa402e8d586002258b452a2665b1aa092099d6bd"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/railway-http.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/repository-check.txt",
+      "bytes": 432,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "aa09136cf7a9a0caf2fa66873697a41251da0b952bd142e9b5cfa47290f51921"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/repository-check.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/rollout.json",
+      "bytes": 1354,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d03a01a7ab80a8d79198ce65b91f849171d0cc9e87b6a3434b26fcf909ecd7bc"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/rollout.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/secret-binding-transfer.json",
+      "bytes": 3278,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1d9925e6c5631c85481be88d2c7280d659c4dbb1bd54f681c432d968ee518771"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/secret-binding-transfer.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task090/hosted-resolution/verify-hosted.mts",
+      "bytes": 6924,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "5148777e6e924e5413cd269c6464d001f0d7b868428ddb9c77795c2d002b50ce"
+      },
+      "scanPath": "source/docs/evidence/rmt-task090/hosted-resolution/verify-hosted.mts"
+    },
+    {
       "path": "docs/evidence/rmt-task090/migration/README.md",
       "bytes": 14482,
       "contentDigest": {
@@ -932,10 +1157,10 @@
     },
     {
       "path": "docs/evidence/rmt-task090/stage-dispositions.json",
-      "bytes": 30710,
+      "bytes": 30992,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "2ea47bc37339fa96ad31ca131687201cc4f5c5281f86c452f7db32fe0a7941b0"
+        "hex": "8b966770e02d3fd45f38aee860fbff3f82ebf66d1c64923595fd48899247c701"
       },
       "scanPath": "source/docs/evidence/rmt-task090/stage-dispositions.json"
     },
@@ -986,10 +1211,10 @@
     },
     {
       "path": "knip.json",
-      "bytes": 4847,
+      "bytes": 4920,
       "contentDigest": {
         "algorithm": "SHA-256",
-        "hex": "30787e8fdcfdfcadbf4521ca671a8f8c0f47f7d814d4d478c171db5b5808afd7"
+        "hex": "1cd163730aa6ec9e5bad4c7dbd74bdd59262e1fc45b782279148eb997acd95ce"
       },
       "scanPath": "source/knip.json"
     },

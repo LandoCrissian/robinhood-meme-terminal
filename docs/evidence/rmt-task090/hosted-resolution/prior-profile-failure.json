@@ -1,0 +1,28 @@
+{
+  "startedAt": "2026-11-20T18:43:14.266Z",
+  "site": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "deploy": "6b00948ccb4392558a3fc56f",
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "scope": "ACTUAL_HOSTED_READ_ONLY_ACCEPTANCE",
+  "observations": [
+    {
+      "startedAt": "2026-11-20T18:43:14.268Z",
+      "finishedAt": "2026-11-20T18:43:16.015Z",
+      "url": "https://www.rmtlaunch.fun/api/launchpad/new-engine",
+      "status": 404,
+      "requestId": "01M7X4A5NWET8EVPSS2F5HTRP4",
+      "cacheControl": "private,no-store",
+      "cdnCache": null,
+      "cacheStatus": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=404",
+      "parsedStatus": "unavailable",
+      "body": {
+        "status": "unavailable"
+      }
+    }
+  ],
+  "boundary": [],
+  "rpcReads": [],
+  "productionFinancialCalls": 0,
+  "status": "FAIL_NO_FINANCIAL_ACTIVATION",
+  "error": "Expected values to be strictly equal:\n\n404 !== 200\n"
+}

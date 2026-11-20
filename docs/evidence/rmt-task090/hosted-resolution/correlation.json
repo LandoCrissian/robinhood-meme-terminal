@@ -1,0 +1,64 @@
+{
+  "verifiedAt": "2026-11-20T18:59:54.969Z",
+  "status": "HOSTED_AUTHENTICATED_FRESH_CANONICAL_PATH_VERIFIED",
+  "netlifyDeploy": "6b0096332beb675b1d8e0f49",
+  "websiteSource": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "railwayDeploy": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+  "pairs": [
+    {
+      "netlifyRequestId": "01M7X51MEZ37N2PQ53FS8MRVTY",
+      "netlifyResponseAt": "2026-11-20T18:56:04.666Z",
+      "railwayAt": "2026-11-20T18:56:04.251797519Z",
+      "railwayStatus": 200,
+      "deltaMs": 415,
+      "checkpoint": {
+        "blockNumber": "119278659",
+        "blockHash": "0xba50f4bf21ba1988ad38741f89905558235bb72489e271d81f0235148bd9a21c",
+        "timestamp": "2026-11-20T18:55:20.000Z",
+        "confirmations": 20,
+        "finality": "l2-confirmed",
+        "l1Finality": "unverified"
+      }
+    },
+    {
+      "netlifyRequestId": "01M7X52G1R4QW2CEXHJS7NKHT2",
+      "netlifyResponseAt": "2026-11-20T18:56:32.899Z",
+      "railwayAt": "2026-11-20T18:56:32.488005604Z",
+      "railwayStatus": 200,
+      "deltaMs": 411,
+      "checkpoint": {
+        "blockNumber": "119279107",
+        "blockHash": "0x4695a101af705b9a6e31f06e3ef588de7191773393648507046ce17b9828ca00",
+        "timestamp": "2026-11-20T18:56:06.000Z",
+        "confirmations": 20,
+        "finality": "l2-confirmed",
+        "l1Finality": "unverified"
+      }
+    }
+  ],
+  "unauthenticatedWorkerStatus": 401,
+  "financialBoundary": [
+    {
+      "method": "GET",
+      "path": "/api/launchpad/config",
+      "status": 200
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/production-creation",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/launchpad/production-earnings",
+      "status": 404
+    },
+    {
+      "method": "POST",
+      "path": "/api/account/nonce",
+      "status": 404
+    }
+  ],
+  "credentialValuesExcluded": true,
+  "clientAddressesExcluded": true
+}

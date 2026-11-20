@@ -1,0 +1,53 @@
+{
+  "checkedAt": "2026-11-20T18:48:38.318Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "sourceFile": "apps/launch-website/lib/server/curve-production.ts",
+  "key": "RMT_CURVE_PRODUCTION_DISCOVERY",
+  "previousPublicActivationValue": "rmt-curve-fixed-supply-security-v2",
+  "correctPublicActivationValue": "rmt-curve-fixed-supply-security-v2-4663-task066",
+  "workerResponseProfile": "rmt-curve-fixed-supply-security-v2",
+  "credentialReadOrModified": false,
+  "financialFlags": "UNSET",
+  "after": [
+    {
+      "key": "RMT_CURVE_PRODUCTION_DISCOVERY",
+      "isSecret": false,
+      "scopes": [
+        "builds",
+        "functions",
+        "post_processing",
+        "runtime"
+      ],
+      "contexts": [
+        "production"
+      ]
+    },
+    {
+      "key": "RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN",
+      "isSecret": true,
+      "scopes": [
+        "builds",
+        "functions",
+        "runtime"
+      ],
+      "contexts": [
+        "production"
+      ]
+    },
+    {
+      "key": "RMT_LAUNCH_HISTORY_INDEXER_URL",
+      "isSecret": false,
+      "scopes": [
+        "builds",
+        "functions",
+        "post_processing",
+        "runtime"
+      ],
+      "contexts": [
+        "production"
+      ]
+    }
+  ],
+  "status": "PUBLIC_ACTIVATION_PROFILE_MATCHES_EXACT_TESTED_SOURCE"
+}
