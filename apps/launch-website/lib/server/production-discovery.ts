@@ -17,19 +17,19 @@ const unavailable: ProductionDiscovery = { status: "unavailable", launches: [] }
 
 export function parseProductionDiscovery(raw: unknown, token?: string, now = Date.now()): ProductionDiscovery {
   try {
-    if (!raw || typeof raw !== "object") return unavailable;
+    if (!raw || typeof raw !== "object" || !Number.isFinite(now)) return unavailable;
     const data = raw as { chainId: unknown; profile: unknown; status: unknown; deployment: Record<string, string>;
       checkpoint: CurveRegistration["checkpoint"]; launches: ProductionRegistration[]; nextCursor: unknown };
-    if (data.chainId !== 4663 || data.profile !== "rmt-curve-fixed-supply-security-v2" || !["ready", "stale"].includes(String(data.status))
+    if (data.chainId !== 4663 || data.profile !== "rmt-curve-fixed-supply-security-v2" || (data.status !== "ready" && data.status !== "stale")
         || !same(data.deployment.factory, curveProductionPins.factory[0]) || !same(data.deployment.registry, curveProductionPins.registry[0])
         || data.deployment.blockNumber !== String(curveProductionDeployment.blockNumber)
         || !same(data.deployment.blockHash, curveProductionDeployment.blockHash) || !Array.isArray(data.launches)
         || data.launches.length > (token ? 1 : 25) || (data.nextCursor !== null && (token || !address(data.nextCursor)))) return unavailable;
     const point = data.checkpoint;
     if (!point || point.finality !== "l2-confirmed" || point.l1Finality !== "unverified" || !fixtureHash(point.blockHash)
-        || !/^[1-9][0-9]{0,15}$/.test(point.blockNumber) || BigInt(point.blockNumber) < curveProductionDeployment.blockNumber
+        || typeof point.blockNumber !== "string" || !/^[1-9][0-9]{0,15}$/.test(point.blockNumber) || BigInt(point.blockNumber) < curveProductionDeployment.blockNumber
         || !Number.isInteger(point.confirmations) || point.confirmations < 20 || point.confirmations > 256
-        || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(point.timestamp)
+        || typeof point.timestamp !== "string" || !/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(point.timestamp)
         || !Number.isFinite(Date.parse(point.timestamp)) || Date.parse(point.timestamp) > now + 15_000) return unavailable;
     const seen = new Set<string>();
     const cleanPoint = { blockNumber: point.blockNumber, blockHash: point.blockHash, timestamp: point.timestamp,
@@ -159,12 +159,15 @@ export function createProductionDiscoveryHandler(options: {
     if (!configuredProductionDiscovery(request.headers, env) || (request.method !== "GET" && request.method !== "HEAD")) return Response.json({ status: "unavailable" }, { status: 404, headers });
     if (new URL(request.url).search || (token && !address(token))) return Response.json({ status: "invalid" }, { status: 400, headers });
     const observed = await read(token, { env, now: now() });
-    // A response may cross the freshness boundary while reading its body.
-    const data = observed.status === "ready" && now() - Date.parse(observed.checkpoint.timestamp) >= 120_000
-      ? { ...observed, status: "stale" as const } : observed;
+    // Age and future-skew validity can both change while awaiting a read.
+    const publishedAt = now();
+    const data = !Number.isFinite(publishedAt) || (observed.status !== "unavailable"
+      && Date.parse(observed.checkpoint.timestamp) > publishedAt + 15_000) ? unavailable
+      : observed.status === "ready" && publishedAt - Date.parse(observed.checkpoint.timestamp) >= 120_000
+        ? { ...observed, status: "stale" as const } : observed;
     const status = data.status === "unavailable" || data.status === "stale" ? 503 : token && !data.launches.length ? 404 : 200;
     if (status === 200 && request.method === "GET" && data.status === "ready" && (!token || token === token.toLowerCase())) {
-      const seconds = Math.max(0, Math.min(15, Math.floor((Date.parse(data.checkpoint.timestamp) + 120_000 - now() - 5_000) / 1_000)));
+      const seconds = Math.max(0, Math.min(15, Math.floor((Date.parse(data.checkpoint.timestamp) + 120_000 - publishedAt - 5_000) / 1_000)));
       if (seconds > 0) headers.set("Netlify-CDN-Cache-Control", `public, durable, s-maxage=${seconds}, must-revalidate`);
     }
     return request.method === "HEAD" ? new Response(null, { status, headers }) : Response.json(data, { status, headers });

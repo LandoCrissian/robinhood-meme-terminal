@@ -281,3 +281,47 @@ test("default operational logging is rate bounded and cannot contain an upstream
     console.warn = actualWarn;
   }
 });
+
+
+test("numeric block identities cannot avoid same-height canonical hash checks", () => {
+  const numericCheckpoint = feed();
+  Object.assign(numericCheckpoint.checkpoint, { blockNumber: Number(point.blockNumber) });
+  assert.equal(parseProductionDiscovery(numericCheckpoint, undefined, now).status, "unavailable");
+
+  const conflicting = feed();
+  const sameHeight = conflicting.launches[0].creation.blockNumber;
+  Object.assign(conflicting.launches[0].creation, { blockNumber: Number(sameHeight) });
+  Object.assign(conflicting.launches[0].checkpoint, { blockNumber: sameHeight, blockHash: hash("d") });
+  Object.assign(conflicting.checkpoint, { blockNumber: sameHeight, blockHash: hash("a") });
+  assert.equal(parseProductionDiscovery(conflicting, undefined, now).status, "unavailable");
+});
+
+test("clock rollback during an authenticated read cannot publish a future checkpoint as current", async () => {
+  let at = now;
+  const headers = { host: "www.rmtlaunch.fun", "x-forwarded-proto": "https" };
+  const env = { RMT_CURVE_PRODUCTION_DISCOVERY: curveProductionProfile };
+  const respond = createProductionDiscoveryHandler({ env, now: () => at, read: async () => {
+    const data = parseProductionDiscovery(feed(), undefined, at);
+    at -= 30_000;
+    return data;
+  } });
+  const response = await respond(new Request("https://www.rmtlaunch.fun/api/launchpad/new-engine", { headers }));
+  assert.equal(response.status, 503);
+  assert.equal((await response.json()).status, "unavailable");
+  assert.equal(response.headers.get("netlify-cdn-cache-control"), "no-store");
+});
+
+
+test("block timestamps and decimal identities cannot enter the public schema through JSON coercion", () => {
+  const timestampArray = feed();
+  Object.assign(timestampArray.checkpoint, { timestamp: [point.timestamp] });
+  assert.equal(parseProductionDiscovery(timestampArray, undefined, now).status, "unavailable");
+  const statusArray = feed();
+  Object.assign(statusArray, { status: ["ready"] });
+  assert.equal(parseProductionDiscovery(statusArray, undefined, now).status, "unavailable");
+  const sameHeight = feed();
+  Object.assign(sameHeight.launches[0].creation, { ...sameHeight.checkpoint,
+    timestamp: new Date(Date.parse(point.timestamp) - 1_000).toISOString() });
+  Object.assign(sameHeight.launches[0].checkpoint, sameHeight.checkpoint);
+  assert.equal(parseProductionDiscovery(sameHeight, undefined, now).status, "unavailable");
+});

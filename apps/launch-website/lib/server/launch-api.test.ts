@@ -78,3 +78,15 @@ test("stale historical absence remains unavailable instead of a definitive missi
   assert.equal(response.status, 503);
   assert.equal(response.headers.get("netlify-cdn-cache-control"), "no-store");
 });
+
+
+test("historical HTTP publication rechecks expiry and clock rollback after the awaited read", async () => {
+  for (const offset of [-90_000, indexedFreshnessMs]) {
+    let at = now;
+    const respond = createLaunchHistoryHandler(async () => { at += offset; return evidence; }, () => at);
+    const response = await respond(new Request(url), token);
+    assert.equal(response.status, 503);
+    assert.equal((await response.json()).status, "stale");
+    assert.equal(response.headers.get("netlify-cdn-cache-control"), "no-store");
+  }
+});

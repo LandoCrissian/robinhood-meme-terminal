@@ -29,3 +29,6 @@ test("proof, configuration, policy and ignore tampering fail closed",()=>{
   assert.throws(()=>verifyHistoryPublicIdentities(findings,{ignoreBytes:Buffer.from("new ignore")}),/proof/);
   assert.throws(()=>verifyHistoryPublicIdentities(findings,{readGit:(commit,path)=>path.endsWith("snapshot.test.json")?Buffer.from("changed"):git(commit,path)}),/proof/);
 });
+
+// Keep the original assertions; run supplemental immutable-checksum negatives in the existing CI entry.
+import "./public-source-checksums.test.mjs";

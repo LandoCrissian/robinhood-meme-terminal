@@ -84,3 +84,22 @@ test("detail evidence retains complete identities and never promotes an invalid 
   } }));
   assert.match(wrongChain, /evidence is unavailable/); assert.ok(!wrongChain.includes(registration.token));
 });
+
+
+test("decimal block identities remain strings and bind hashes at equal heights", () => {
+  assert.equal(hasCurveRegistration({ ...registration, checkpoint: {
+    ...registration.checkpoint, ...height, timestamp: height.timestamp.replace(".000Z", "Z"),
+  } }), true, "equivalent ISO timestamp spellings identify the same canonical block");
+  const conflicting = { ...registration,
+    creation: { ...registration.creation, blockNumber: Number(height.blockNumber) },
+    checkpoint: { ...registration.checkpoint, ...height, blockHash: hash("f") },
+  } as unknown as CurveRegistration;
+  assert.equal(hasCurveRegistration(conflicting), false);
+  assert.equal(hasCurveRegistration({ ...registration,
+    checkpoint: { ...registration.checkpoint, blockNumber: Number(observed.blockNumber) },
+  } as unknown as CurveRegistration), false);
+  assert.equal(describeCurveLifecycle({ registration, state: "graduated", observation: {
+    ...graduatedObservation, receipt: { ...graduatedObservation.receipt,
+      blockNumber: Number(observed.blockNumber), blockHash: hash("f") },
+  } } as unknown as CurveLaunch).stage, "unknown");
+});

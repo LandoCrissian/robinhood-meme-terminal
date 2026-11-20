@@ -12,9 +12,9 @@ The existing Railway worker deployment `b48f0e6e-a34b-4a26-b95f-d4b978562282` re
 
 The historical reader selects the committed snapshot whenever the server URL/credential is missing or invalid, the authenticated request fails, the body/schema fails, or the snapshot merge rejects evidence. The deployed artifact does not report those reasons. Its stale historical snapshot is also explicitly permitted 15 seconds of durable edge caching. The observed cache header included `Netlify Durable; fwd=stale; ttl=-4869; stored`; that header alone cannot identify the origin failure.
 
-**The precise live fallback trigger is still unverified.** The available Netlify connector has no server-function log operation. Credential-bearing environment values were not read; no authentication restriction was bypassed. No matching Railway historical HTTP request appeared in the bounded provider-log query. Missing credentials, wrong credentials, transport failure and schema/merge failure therefore remain distinct possibilities. A deployment title and advancing health endpoint cannot resolve them.
+**The precise live fallback trigger is still unverified.** The continuation used provider request detail plus the owner's ordinary authenticated Netlify CLI session. The correlated function invocation emitted two info entries but no categorized fallback reason; a fresh site-variable listing decoded to an empty array, and current legacy build settings contained no named read bindings. These current site listings do not prove the deployed function-version environment. The bounded Railway HTTP query contained the independent health read but no historical launch request. Missing/obsolete origin or credential configuration, wrong credentials, transport failure and schema/merge rejection remain distinct possibilities. No credential values were exposed or used. A deployment title, invocation duration or advancing health endpoint cannot establish the missing reason. This supersedes the initial assumption that connector log capability alone was the blocker; see the [continuation observation](evidence/rmt-task088/completion/production-observation.json).
 
-See [production inspection](evidence/rmt-task088/production-inspection.json) and [inspection notes](evidence/rmt-task088/production-inspection-notes.txt). The retained historical merge strict-newer lifecycle rule is a separate candidate limitation; available production evidence does not show it caused this incident, and this repair does not relax that evidence rule.
+See [production inspection](evidence/rmt-task088/production-inspection.json) and [inspection notes](evidence/rmt-task088/production-inspection-notes.txt). The continuation independently reproduced and repaired the historical strict-newer lifecycle merge defect: the indexer supplies an actual transition receipt while the snapshot records a later lifecycle observation. An already-reflected receipt can be earlier or at the same block; it is now accepted only with consistent state, hashes, timestamps and unchanged exact creation identity. Contradictions and graduation reversal remain rejected. Available production evidence still does not prove that this merge defect caused the live fallback.
 
 ## Proven source defects and repair
 
@@ -25,6 +25,18 @@ See [production inspection](evidence/rmt-task088/production-inspection.json) and
 5. Fixed, bounded server diagnostics now distinguish configuration, authentication/HTTP, network, body, schema and stale outcomes for new-engine reads. Historical reads distinguish configuration, transport, HTTP, body, schema and merge failures on Netlify as well as Railway. Diagnostics do not include headers, credentials, upstream URLs, exception text or response bodies.
 
 Authentication, exact chain/deployment/receipt validation, private-origin bindings, forwarded-authority guards, response size limits and redirect rejection remain enforced. No database schema, package lock, contract, production configuration or financial activation flag changes.
+
+## Completion follow-up
+
+The final follow-up closes three additional reproduced source gaps without changing authentication, contracts, dependencies or deployment settings:
+
+- Decimal block identities now require strings. A numeric/string mismatch can no longer skip same-height hash binding. Same-height timestamps bind to the same instant while accepting equivalent ISO spellings.
+- Cached historical evidence and awaited HTTP results recheck both age and future-clock skew. A clock rollback cannot leave a future-invalid checkpoint ready or turn uncertain absence into a cacheable 404.
+- Historical lifecycle merge uses receipt/observation continuity, preserving exact creation identity and one-way graduation.
+
+Seven before-fix failures are retained from a 49-test focused run. Candidate Node 22 regression results are **324 passed, zero failed/skipped**; the expanded actual TLS/PG/Next harness passed **21 HTTP checks and 30 Chromium/WebKit cases**, including numeric-height rejection. Typechecks, Knip, PostgreSQL smoke, actual offline Netlify server/edge build and artifact preflight passed. See [current commands/source digests](evidence/rmt-task088/completion/test-results.json), [browser report](evidence/rmt-task088/completion/continuity.json) and [fresh read-only production evidence](evidence/rmt-task088/completion/production-observation.json).
+
+The two Gitleaks matches are now covered by a separate immutable public-source checksum proof, following the existing repository mechanism. All four original tests and the original five-record policy/verifier remain unchanged. **52 tests passed**, including source/blob/line/value/future-fingerprint tampering and unknown/missing/duplicate observations. The actual unchanged full-history scanner still exits **1**, retains the same seven matches, and detects the unrelated random canary. Exact public-data adjudication classifies seven matches with zero unknowns; the wrapper exits 0 and still rejects the canary. No scanner rule, ignore, severity or raw finding is removed. No contract/financial clearance follows. [Proof, raw before/after and adversarial evidence](evidence/rmt-task088/hash-adjudication/README.md).
 
 ## Isolated verification
 
@@ -53,7 +65,7 @@ Fresh creation evidence and the expired page are independent test states. Neithe
 
 The first published candidate `3ec076fdd77e6dd502061040698c998eadc81b7b` passed repository/indexer, actual Netlify packaging, Railway container and all 112 core Foundry tests. Its new browser dependency install stalled; the workflow now uses the same signed HTTPS Ubuntu archive preparation as the existing browser jobs. No application source changed in this follow-up.
 
-The unchanged full-history Gitleaks gate reported two new unclassified matches at `test-results.json:14-15`: the recorded SHA-256 digests of `launch-api.test.ts` and `launch-api.ts`. All 16 source digests were recomputed and match. These are public file digests, not credential values. The raw failure remains retained in CI; no scanner rule, ignore, classifier or gate was changed. Original [redacted artifact](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44682350976/artifacts/14604263838).
+The initial unchanged full-history Gitleaks gate reported two new unclassified matches at `test-results.json:14-15`: the recorded SHA-256 digests of `launch-api.test.ts` and `launch-api.ts`. All 16 source digests were recomputed and match. These are public file digests, not credential values. The raw failure remains retained in CI. The completion follow-up adds only the exact immutable public-source proof described above; scanner rules, ignores, raw-exit handling and financial gates are unchanged. Original [redacted artifact](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44682350976/artifacts/14604263838).
 
 ## Production application proposal and recovery
 

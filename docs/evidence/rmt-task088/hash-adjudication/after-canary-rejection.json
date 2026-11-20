@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "scope": "RUNTIME_GENERATED_SYNTHETIC_CANARY_NOT_A_CREDENTIAL",
+  "scannerVersion": "8.30.1",
+  "rawExitCode": 1,
+  "findings": 1,
+  "combinedGate": "BLOCKED_UNCLASSIFIED_OR_MISSING_FINDING",
+  "productionAuthorization": false
+}

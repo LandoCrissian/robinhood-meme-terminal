@@ -1,0 +1,473 @@
+{
+  "schemaVersion": 1,
+  "suite": "Task088 isolated discovery continuity",
+  "startedAt": "2026-11-20T12:59:39.737Z",
+  "source": "b02a0c2bb3b2814bfc9a0610dee79860b648cc08",
+  "node": "v22.16.0",
+  "worktreeDiffSha256": "41ad42153936dbe77f46c763bd292190405b81d926268774b22835eae2531aa6",
+  "syntheticOnly": true,
+  "liveChainAccess": false,
+  "authProbes": [
+    {
+      "credential": "missing",
+      "status": 401
+    },
+    {
+      "credential": "incorrect synthetic",
+      "status": 401
+    }
+  ],
+  "http": [
+    {
+      "mode": "fresh",
+      "path": "/api/launchpad/new-engine",
+      "status": 200,
+      "feedStatus": "ready",
+      "launches": 1,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "public, durable, s-maxage=15, must-revalidate"
+    },
+    {
+      "mode": "fresh",
+      "path": "/api/launchpad/new-engine/0x2222222222222222222222222222222222222222",
+      "status": 200,
+      "feedStatus": "ready",
+      "launches": 1,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "public, durable, s-maxage=15, must-revalidate"
+    },
+    {
+      "mode": "fresh",
+      "path": "/api/launchpad/new-engine/0x9999999999999999999999999999999999999999",
+      "status": 404,
+      "feedStatus": "ready",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "stale",
+      "path": "/api/launchpad/new-engine",
+      "status": 503,
+      "feedStatus": "stale",
+      "launches": 1,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "stale",
+      "path": "/api/launchpad/new-engine/0x9999999999999999999999999999999999999999",
+      "status": 503,
+      "feedStatus": "stale",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "unauthorized",
+      "path": "/api/launchpad/new-engine",
+      "status": 503,
+      "feedStatus": "unavailable",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "unauthorized",
+      "path": "/api/launchpad/new-engine/0x9999999999999999999999999999999999999999",
+      "status": 503,
+      "feedStatus": "unavailable",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "outage",
+      "path": "/api/launchpad/new-engine",
+      "status": 503,
+      "feedStatus": "unavailable",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "outage",
+      "path": "/api/launchpad/new-engine/0x9999999999999999999999999999999999999999",
+      "status": 503,
+      "feedStatus": "unavailable",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "malformed",
+      "path": "/api/launchpad/new-engine",
+      "status": 503,
+      "feedStatus": "unavailable",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "malformed",
+      "path": "/api/launchpad/new-engine/0x9999999999999999999999999999999999999999",
+      "status": 503,
+      "feedStatus": "unavailable",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "numeric-height",
+      "path": "/api/launchpad/new-engine",
+      "status": 503,
+      "feedStatus": "unavailable",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "numeric-height",
+      "path": "/api/launchpad/new-engine/0x9999999999999999999999999999999999999999",
+      "status": 503,
+      "feedStatus": "unavailable",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "path": "/api/launchpad/test-creation",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/test-lifecycle",
+      "status": 404
+    },
+    {
+      "path": "/api/launchpad/test-mobile-review",
+      "status": 404
+    },
+    {
+      "mode": "fresh",
+      "path": "/api/launchpad/new-engine",
+      "status": 200,
+      "feedStatus": "ready",
+      "launches": 1,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "public, durable, s-maxage=15, must-revalidate"
+    },
+    {
+      "mode": "fresh",
+      "path": "/api/launchpad/new-engine",
+      "status": 503,
+      "feedStatus": "unavailable",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    },
+    {
+      "mode": "fresh",
+      "path": "/api/launchpad/new-engine",
+      "status": 200,
+      "feedStatus": "ready",
+      "launches": 1,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "public, durable, s-maxage=15, must-revalidate"
+    },
+    {
+      "mode": "fresh",
+      "path": "/api/launchpad/new-engine",
+      "status": 200,
+      "feedStatus": "ready",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "public, durable, s-maxage=15, must-revalidate"
+    },
+    {
+      "mode": "fresh",
+      "path": "/api/launchpad/new-engine/0x2222222222222222222222222222222222222222",
+      "status": 404,
+      "feedStatus": "ready",
+      "launches": 0,
+      "cacheControl": "private, no-store",
+      "cdnCacheControl": "no-store"
+    }
+  ],
+  "browsers": [
+    {
+      "browser": "chromium",
+      "viewport": "desktop",
+      "mode": "fresh",
+      "statusText": "Synthetic continuity project",
+      "cards": 1,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "desktop",
+      "mode": "client-expiration-and-clock-rollback",
+      "cards": 0,
+      "historyCollapsed": true,
+      "stayedStaleAfterClockRestore": true,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "desktop",
+      "mode": "stale",
+      "statusText": "Launch feed stale",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "desktop",
+      "mode": "unauthorized",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "desktop",
+      "mode": "outage",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "desktop",
+      "mode": "malformed",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "desktop",
+      "mode": "numeric-height",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "portrait",
+      "mode": "fresh",
+      "statusText": "Synthetic continuity project",
+      "cards": 1,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "portrait",
+      "mode": "client-expiration-and-clock-rollback",
+      "cards": 0,
+      "historyCollapsed": true,
+      "stayedStaleAfterClockRestore": true,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "portrait",
+      "mode": "stale",
+      "statusText": "Launch feed stale",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "portrait",
+      "mode": "unauthorized",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "portrait",
+      "mode": "outage",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "portrait",
+      "mode": "malformed",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "portrait",
+      "mode": "numeric-height",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "desktop",
+      "mode": "fresh",
+      "statusText": "Synthetic continuity project",
+      "cards": 1,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "desktop",
+      "mode": "client-expiration-and-clock-rollback",
+      "cards": 0,
+      "historyCollapsed": true,
+      "stayedStaleAfterClockRestore": true,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "desktop",
+      "mode": "stale",
+      "statusText": "Launch feed stale",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "desktop",
+      "mode": "unauthorized",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "desktop",
+      "mode": "outage",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "desktop",
+      "mode": "malformed",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "desktop",
+      "mode": "numeric-height",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "portrait",
+      "mode": "fresh",
+      "statusText": "Synthetic continuity project",
+      "cards": 1,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "portrait",
+      "mode": "client-expiration-and-clock-rollback",
+      "cards": 0,
+      "historyCollapsed": true,
+      "stayedStaleAfterClockRestore": true,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "portrait",
+      "mode": "stale",
+      "statusText": "Launch feed stale",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "portrait",
+      "mode": "unauthorized",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "portrait",
+      "mode": "outage",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "portrait",
+      "mode": "malformed",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "portrait",
+      "mode": "numeric-height",
+      "statusText": "Launch feed unavailable",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "chromium",
+      "viewport": "portrait",
+      "mode": "reorg-empty",
+      "cards": 0,
+      "passed": true
+    },
+    {
+      "browser": "webkit",
+      "viewport": "portrait",
+      "mode": "reorg-empty",
+      "cards": 0,
+      "passed": true
+    }
+  ],
+  "recovery": [
+    {
+      "phase": "advanced-checkpoint",
+      "creationBlock": "116835103",
+      "checkpointBlock": "116835112",
+      "unchangedCreation": true
+    },
+    {
+      "phase": "writer-restart",
+      "recoveredRows": 1,
+      "originalReceiptPreserved": true
+    },
+    {
+      "phase": "reorg-replay",
+      "oldCheckpointRejected": true,
+      "canonicalTransactionHash": "0x7777777777777777777777777777777777777777777777777777777777777777"
+    }
+  ],
+  "externalRequests": [],
+  "walletRequests": [],
+  "limitations": [
+    "Synthetic HTTPS backend uses the actual PostgreSQL store and bearer verifier; no live indexer/RPC or production credentials.",
+    "Database recovery closes and reopens the writer connection; it does not restart a production database or test PostgreSQL crash durability.",
+    "The loopback proxy supplies the exact admitted deployment host/proto; this is local acceptance, not a Netlify deployment."
+  ],
+  "postgresVersion": "PostgreSQL 18.6 (Debian 18.6-1.pgdg12+2) on aarch64-unknown-linux-gnu, compiled by gcc (Debian 12.2.0-14+deb12u1) 12.2.0, 64-bit",
+  "authentication": {
+    "authorizedReads": 44,
+    "rejectedMissingOrWrongCredentials": 2,
+    "syntheticCredentialNotExposed": true
+  },
+  "result": "PASS",
+  "completedAt": "2026-11-20T13:00:01.615Z"
+}

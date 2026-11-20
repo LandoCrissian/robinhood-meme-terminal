@@ -22,7 +22,7 @@ mkdirSync(output, { recursive: true });
 const credential = "synthetic-discovery-continuity-088";
 const hash = (digit: string) => "0x" + digit.repeat(64);
 const address = (digit: string) => "0x" + digit.repeat(40);
-type Mode = "fresh" | "stale" | "unauthorized" | "outage" | "malformed";
+type Mode = "fresh" | "stale" | "unauthorized" | "outage" | "malformed" | "numeric-height";
 let mode: Mode = "fresh";
 const report: any = { schemaVersion: 1, suite: "Task088 isolated discovery continuity",
   startedAt: new Date().toISOString(), source: execFileSync("git", ["rev-parse", "HEAD"], { cwd: root, encoding: "utf8" }).trim(),
@@ -136,11 +136,12 @@ async function main() {
       await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
       const launches = await readProductionCurveLaunches(db, scope, point, { token, limit: 25 });
       await db.query("COMMIT");
-      const checkpoint = { ...point, confirmations: 20, finality: "l2-confirmed", l1Finality: "unverified",
+      const checkpoint = { ...point, ...(mode === "numeric-height" ? { blockNumber: Number(point.blockNumber) } : {}), confirmations: 20, finality: "l2-confirmed", l1Finality: "unverified",
         ...(mode === "stale" ? { timestamp: new Date(Date.now() - 180_000).toISOString() } : {}) };
       json(200, { chainId: 4663, profile: "rmt-curve-fixed-supply-security-v2", status: mode === "stale" ? "stale" : "ready",
         observedAt: new Date().toISOString(), deployment: { factory: config.binding.factory, registry: config.binding.projectRegistry,
-          blockNumber: String(start), blockHash: config.binding.deploymentBlockHash }, checkpoint, launches, nextCursor: null });
+          blockNumber: String(start), blockHash: config.binding.deploymentBlockHash }, checkpoint, launches: launches.map(launch => mode === "numeric-height"
+          ? { ...launch, creation: { ...launch.creation, blockNumber: Number(launch.creation.blockNumber) } } : launch), nextCursor: null });
     } catch {
       await db?.query("ROLLBACK").catch(() => undefined); json(503, { status: "unavailable" });
     } finally { db?.release(); }
@@ -196,7 +197,7 @@ async function main() {
   await api("/api/launchpad/new-engine", 200, "ready");
   await api("/api/launchpad/new-engine/" + registration.token, 200, "ready");
   await api("/api/launchpad/new-engine/" + address("9"), 404, "ready");
-  for (const [selected, expected] of [["stale", "stale"], ["unauthorized", "unavailable"], ["outage", "unavailable"], ["malformed", "unavailable"]] as const) {
+  for (const [selected, expected] of [["stale", "stale"], ["unauthorized", "unavailable"], ["outage", "unavailable"], ["malformed", "unavailable"], ["numeric-height", "unavailable"]] as const) {
     mode = selected; await api("/api/launchpad/new-engine", 503, expected);
     await api("/api/launchpad/new-engine/" + address("9"), 503, expected);
   }
@@ -226,7 +227,7 @@ async function main() {
         const pageErrors: string[] = []; page.on("pageerror", (error: Error) => pageErrors.push(error.message));
         for (const [selected, text, cards] of [["fresh", "Synthetic continuity project", 1], ["stale", "Launch feed stale", 0],
           ["unauthorized", "Launch feed unavailable", 0], ["outage", "Launch feed unavailable", 0],
-          ["malformed", "Launch feed unavailable", 0]] as const) {
+          ["malformed", "Launch feed unavailable", 0], ["numeric-height", "Launch feed unavailable", 0]] as const) {
           mode = selected;
           await page.goto(origin + "/", { waitUntil: "networkidle" });
           assert.ok(await page.getByText(text, { exact: selected !== "fresh" }).first().isVisible(), selected + " UI status");

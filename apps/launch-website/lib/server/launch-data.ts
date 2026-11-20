@@ -77,7 +77,8 @@ function block(row: Fields, now: number): LaunchBlock {
 function assertInCheckpoint(earlier: LaunchBlock, checkpoint: LaunchBlock) {
   requireValue(BigInt(earlier.blockNumber) <= BigInt(checkpoint.blockNumber)
     && earlier.timestamp <= checkpoint.timestamp
-    && (earlier.blockNumber !== checkpoint.blockNumber || earlier.blockHash === checkpoint.blockHash));
+    && (earlier.blockNumber !== checkpoint.blockNumber
+      || (earlier.blockHash === checkpoint.blockHash && earlier.timestamp === checkpoint.timestamp)));
 }
 
 function receipt(row: Fields, now: number): LaunchReceipt {
@@ -156,6 +157,20 @@ function readIndexedEvidence(input: unknown, now: number, token?: string): Evide
   return { coverage: "v6-indexed", status: stale ? "stale" : "ready", checkpoint, observedAt, launches, truncated: data.nextCursor !== null };
 }
 
+// A snapshot records the lifecycle observed at its block, while the indexer
+// supplies the actual lifecycle receipt. A known earlier receipt can already
+// be reflected by that observation; it need not be a new transition.
+function assertLifecycleContinuity(indexed: HistoricalLaunch, archived: HistoricalLaunch) {
+  if (!indexed.lifecycleAt || !archived.lifecycleAt) return;
+  requireValue(archived.lifecycle !== "graduated" || indexed.lifecycle === "graduated");
+  if (BigInt(indexed.lifecycleAt.blockNumber) <= BigInt(archived.lifecycleAt.blockNumber)) {
+    requireValue(indexed.lifecycle === archived.lifecycle);
+    assertInCheckpoint(indexed.lifecycleAt, archived.lifecycleAt);
+  } else {
+    assertInCheckpoint(archived.lifecycleAt, indexed.lifecycleAt);
+  }
+}
+
 function mergeEvidence(indexed: Evidence, archived: Evidence, token?: string): Evidence {
   const archivedV6 = archived.launches.filter((row) => row.version === 6 && (!token || row.token.toLowerCase() === token));
   const indexedCheckpoint = indexed.checkpoint;
@@ -174,9 +189,8 @@ function mergeEvidence(indexed: Evidence, archived: Evidence, token?: string): E
       && older.receipt.logIndex === row.receipt.logIndex && older.receipt.blockHash === row.receipt.blockHash
       && older.receipt.blockNumber === row.receipt.blockNumber && older.receipt.timestamp === row.receipt.timestamp
       && older.launchId === row.launchId && older.creator?.toLowerCase() === row.creator?.toLowerCase()
-      && older.name === row.name && older.symbol === row.symbol
-      && (row.lifecycleAt === null || older.lifecycleAt === null ||
-        BigInt(row.lifecycleAt.blockNumber) > BigInt(older.lifecycleAt.blockNumber)));
+      && older.name === row.name && older.symbol === row.symbol);
+    assertLifecycleContinuity(row, older);
     return { ...row, classification: older.classification, reservedPoolId: older.reservedPoolId,
       ...(row.lifecycle === "unknown" && older.lifecycle !== "unknown"
         ? { lifecycle: older.lifecycle, lifecycleAt: older.lifecycleAt } : {}) };
@@ -218,6 +232,16 @@ async function readBoundedJson(response: Response): Promise<unknown> {
 const unavailable: Evidence = {
   status: "unavailable", coverage: "verified-snapshot", checkpoint: null, observedAt: null, launches: [], truncated: false,
 };
+
+/** Recheck cached evidence and awaited responses against the publication clock. */
+export function historicalFreshnessStatus(data: Pick<LaunchDirectoryData, "status" | "checkpoint" | "observedAt">, now: number): LaunchDirectoryData["status"] {
+  if (data.status !== "ready") return data.status;
+  const checkpointAt = data.checkpoint ? Date.parse(data.checkpoint.timestamp) : Number.NaN;
+  const observedAt = data.observedAt ? Date.parse(data.observedAt) : Number.NaN;
+  if (![now, checkpointAt, observedAt].every(Number.isFinite)) return "unavailable";
+  return checkpointAt > now + 60_000 || observedAt > now + 60_000 || now - checkpointAt >= indexedFreshnessMs
+    ? "stale" : "ready";
+}
 
 export function createLaunchDirectoryReader(options: ReaderOptions) {
   const now = options.now ?? Date.now;
@@ -335,8 +359,7 @@ export function createLaunchDirectoryReader(options: ReaderOptions) {
       .filter((row) => !token || row.token.toLowerCase() === token)
       .sort((a, b) => Number(BigInt(b.receipt.blockNumber) - BigInt(a.receipt.blockNumber)))
       .slice(0, launchDirectoryLimit);
-    const status = evidence.status === "ready" && evidence.checkpoint
-      && now() - Date.parse(evidence.checkpoint.timestamp) >= indexedFreshnessMs ? "stale" : evidence.status;
+    const status = historicalFreshnessStatus(evidence, now());
     // A stale snapshot can verify a known historical record, but cannot establish current absence.
     const result = token && liveConfigured && launches.length === 0 && status !== "ready"
       ? unavailable : { ...evidence, status, launches };

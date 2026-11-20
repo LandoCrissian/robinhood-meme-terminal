@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "scope": "Task088 A bounded read-only continuation",
+  "observedAt": "2026-11-20T12:51:09Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "publishedDeploy": "6afd4265956a469adeb55747",
+  "normalGet": {
+    "path": "/api/launchpad/launches",
+    "requestId": "01M7WG5G1B2YBTE85PRSC0NWQ9",
+    "status": 200,
+    "coverage": "verified-snapshot",
+    "freshness": "stale",
+    "blockNumber": "113899119",
+    "blockTimestamp": "2026-11-14T04:26:14.000Z",
+    "requestCacheControl": "no-cache",
+    "operations": [
+      {
+        "type": "edge_function",
+        "name": "___netlify-edge-handler-middleware",
+        "durationNs": 5541251861
+      },
+      {
+        "type": "edge_function",
+        "name": "launch-discovery-limit",
+        "durationNs": 5541251861
+      },
+      {
+        "type": "function",
+        "name": "___netlify-server-handler",
+        "durationNs": 4191651086
+      }
+    ],
+    "functionLogLines": 0,
+    "cache": {
+      "hit": false,
+      "caches": {
+        "durable": {
+          "hit": false,
+          "stored": true,
+          "ttl": -26716,
+          "stale": true,
+          "swr": false
+        },
+        "edge": {
+          "hit": false,
+          "stale": false
+        }
+      }
+    }
+  },
+  "newEngineGet": {
+    "requestId": "01M7WG5NGHYNCQ3M0GM2750NQF",
+    "status": 404,
+    "bodyStatus": "unavailable"
+  },
+  "siteVariableListing": {
+    "decodedJsonLevels": 2,
+    "entries": 0,
+    "limitation": "Site-level empty listing does not prove deploy-scoped function runtime variables are absent; no credential values exposed or used."
+  },
+  "railwayLogQuery": {
+    "start": "2026-11-20T12:50:00Z",
+    "end": "2026-11-20T12:53:00Z",
+    "types": [
+      "http"
+    ],
+    "filter": "@path:/historical-launches",
+    "rows": 0
+  },
+  "railway": {
+    "deployment": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+    "stagedChanges": false,
+    "healthObservedAt": "2026-11-20T12:52:39.486683Z",
+    "indexedThrough": "119063191",
+    "latestBlock": "119063211",
+    "lag": "20",
+    "newEngine": {
+      "status": "ready",
+      "checkpointBlock": "119063214",
+      "checkpointHash": "0x0c2309da772d14ca1822b2f6bbf29c549543cd6f3ec6f25af10b3a4927e4508f",
+      "checkpointTimestamp": "2026-11-20T12:52:25.000Z",
+      "caughtUp": true
+    }
+  },
+  "causality": "The same server invocation is visible in provider metadata and ordinary authenticated CLI logs; it emitted two info entries but no categorized fallback reason. The lack of function-log API capability is not the current limitation. Actual production trigger remains unverified because the deployed reader swallows that reason; durations, empty current site-variable listings and absent correlated backend requests cannot prove its precise configuration/auth/transport/schema failure.",
+  "productionMutations": false,
+  "credentialsExposed": false,
+  "railwayUnfilteredHttpQuery": {
+    "start": "2026-11-20T12:50:00Z",
+    "end": "2026-11-20T12:54:00Z",
+    "limit": 100,
+    "rows": 1,
+    "observedPaths": [
+      "/health"
+    ],
+    "historicalLaunchRequestsObserved": 0
+  },
+  "authenticatedCliRead": {
+    "localSessionAuthenticated": true,
+    "temporaryLocalLinkOnly": true,
+    "hostedConfigurationChanged": false,
+    "operation": "netlify logs --source functions --function ___netlify-server-handler --deploy-id <unchanged-deploy> --since 2026-11-20T12:50:00Z --until 2026-11-20T12:54:00Z --json",
+    "exitCode": 0,
+    "entries": 2,
+    "timestamps": [
+      "2026-11-20T12:51:11.534Z",
+      "2026-11-20T12:51:15.187Z"
+    ],
+    "levels": [
+      "info",
+      "info"
+    ],
+    "categorizedFailureMessages": 0,
+    "rawLogValuesRetained": false
+  },
+  "additionalSiteMetadataRead": {
+    "ordinaryAuthenticatedCliGetSite": true,
+    "siteEnvAndLegacyBuildEnvNamedBindings": 0,
+    "limitation": "Does not establish the function version environment frozen for the published deployment."
+  }
+}

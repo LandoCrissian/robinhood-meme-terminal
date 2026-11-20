@@ -67,12 +67,12 @@ export const proposedCurveLifecycle = { stage: "proposed", label: "Proposed toke
 
 const unknown = { stage: "unknown", label: "Lifecycle unverified" } as const;
 const native = "0x" + "0".repeat(40);
-const hash = (value: string) => /^0x[0-9a-f]{64}$/i.test(value) && !/^0x0{64}$/i.test(value);
+const hash = (value: unknown): value is string => typeof value === "string" && /^0x[0-9a-f]{64}$/i.test(value) && !/^0x0{64}$/i.test(value);
 const address = (value: string) => isLaunchAddress(value) && value.toLowerCase() !== native;
-const uint = (value: string) => /^(0|[1-9][0-9]{0,77})$/.test(value);
+const uint = (value: unknown): value is string => typeof value === "string" && /^(0|[1-9][0-9]{0,77})$/.test(value);
 
 function isBlock(block: LaunchBlock) {
-  return uint(block.blockNumber) && hash(block.blockHash)
+  return uint(block.blockNumber) && hash(block.blockHash) && typeof block.timestamp === "string"
     && /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/.test(block.timestamp) && Number.isFinite(Date.parse(block.timestamp));
 }
 
@@ -81,7 +81,7 @@ function between(block: LaunchBlock, start: LaunchBlock, end: LaunchBlock) {
     && BigInt(block.blockNumber) <= BigInt(end.blockNumber)
     && Date.parse(block.timestamp) >= Date.parse(start.timestamp) && Date.parse(block.timestamp) <= Date.parse(end.timestamp)
     && [start, end].every((bound) => bound.blockNumber !== block.blockNumber
-      || bound.blockHash.toLowerCase() === block.blockHash.toLowerCase());
+      || (bound.blockHash.toLowerCase() === block.blockHash.toLowerCase() && Date.parse(bound.timestamp) === Date.parse(block.timestamp)));
 }
 
 function isReceipt(value: LaunchReceipt) {

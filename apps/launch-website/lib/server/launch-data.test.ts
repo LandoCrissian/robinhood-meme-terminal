@@ -344,3 +344,85 @@ test("evidence merge disagreement is distinct from malformed authenticated respo
   assert.equal((await read()).status, "stale");
   assert.deepEqual(failures, [{ stage: "merge" }]);
 });
+
+
+test("cached historical evidence fails closed after clock rollback makes its checkpoint future-invalid", async () => {
+  let at = clock + 600_000;
+  let calls = 0;
+  const current = indexed();
+  current.checkpoint = { ...current.checkpoint, blockNumber: String(BigInt(checkpoint.blockNumber) + 10n),
+    blockHash: word("d"), timestamp: new Date(at - 2_000).toISOString(), observedAt: new Date(at).toISOString() };
+  const read = withFeed(async () => { calls++; return Response.json(current); }, () => at);
+  assert.equal((await read()).status, "ready");
+  at -= 120_000;
+  const rolledBack = await read();
+  assert.equal(rolledBack.status, "stale");
+  assert.equal(rolledBack.coverage, "v6-indexed");
+  assert.equal(rolledBack.checkpoint?.blockNumber, current.checkpoint.blockNumber);
+  assert.equal(calls, 1, "clock rollback must not silently renew cached evidence");
+});
+
+function historicalGraduationFixture() {
+  const archived = structuredClone(snapshot);
+  const historical = archived.launches.find(row => row.version === 6)!;
+  historical.lifecycle = "graduated";
+  const current = indexed();
+  current.checkpoint = { ...current.checkpoint, blockNumber: String(BigInt(checkpoint.blockNumber) + 10n),
+    blockHash: word("d"), timestamp: new Date(clock - 1_000).toISOString() };
+  const launch = current.launches.find(row => row.token === historical.token)!;
+  const event = { blockNumber: String(BigInt(checkpoint.blockNumber) - 1n), blockHash: word("e"),
+    timestamp: new Date(Date.parse(checkpoint.timestamp) - 1_000).toISOString(),
+    transactionHash: word("f"), logIndex: 7 };
+  Object.assign(launch, { lifecycle: "graduated", lifecycleEvidence: event });
+  return { archived, current, launch, historical, event };
+}
+
+test("an authenticated graduation already reflected in a snapshot does not force historical fallback", async () => {
+  for (const sameHeight of [false, true]) {
+    const fixture = historicalGraduationFixture();
+    if (sameHeight) Object.assign(fixture.event, checkpoint);
+    const failures: unknown[] = [];
+    const read = createLaunchDirectoryReader({ snapshot: fixture.archived, now: () => clock,
+      indexerUrl: "https://history.example/", indexerReadToken: "synthetic",
+      onFailure: failure => failures.push(failure), fetch: async () => Response.json(fixture.current) });
+    const result = await read();
+    assert.equal(result.status, "ready");
+    assert.equal(result.coverage, "v6-indexed");
+    const row = result.launches.find(row => row.token === fixture.launch.token)!;
+    assert.equal(row.lifecycle, "graduated");
+    assert.equal(row.lifecycleAt?.blockNumber, fixture.event.blockNumber);
+    assert.deepEqual(failures, []);
+  }
+});
+
+test("snapshot lifecycle continuity rejects contradictory old states and equal-height block hashes", async () => {
+  const fixtures = [
+    () => { const f = historicalGraduationFixture(); Object.assign(f.event, checkpoint, { blockHash: word("f") }); return f; },
+    () => { const f = historicalGraduationFixture(); f.launch.lifecycle = "curve"; return f; },
+    () => { const f = historicalGraduationFixture(); f.historical.lifecycle = "curve"; return f; },
+  ];
+  for (const make of fixtures) {
+    const f = make();
+    const failures: unknown[] = [];
+    const read = createLaunchDirectoryReader({ snapshot: f.archived, now: () => clock,
+      indexerUrl: "https://history.example/", indexerReadToken: "synthetic",
+      onFailure: failure => failures.push(failure), fetch: async () => Response.json(f.current) });
+    assert.equal((await read()).coverage, "verified-snapshot");
+    assert.deepEqual(failures, [{ stage: "merge" }]);
+  }
+});
+
+
+test("a newly verified graduation after the historical observation remains admissible", async () => {
+  const f = historicalGraduationFixture();
+  f.historical.lifecycle = "curve";
+  Object.assign(f.event, { blockNumber: String(BigInt(checkpoint.blockNumber) + 1n),
+    timestamp: new Date(Date.parse(checkpoint.timestamp) + 1_000).toISOString() });
+  const read = createLaunchDirectoryReader({ snapshot: f.archived, now: () => clock,
+    indexerUrl: "https://history.example/", indexerReadToken: "synthetic",
+    fetch: async () => Response.json(f.current) });
+  const result = await read();
+  assert.equal(result.status, "ready");
+  assert.equal(result.coverage, "v6-indexed");
+  assert.equal(result.launches.find(row => row.token === f.launch.token)?.lifecycle, "graduated");
+});

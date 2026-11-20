@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "base": "b02a0c2bb3b2814bfc9a0610dee79860b648cc08",
+  "scope": "Task088 A completion; isolated and read-only production inspection",
+  "node": "22.16.0",
+  "postgres": "18.6",
+  "sources": [
+    {
+      "relativePath": "apps/launch-website/lib/curve-lifecycle.ts",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "26a223f46fc22ac6457105ac8e3a47b37a35340869a909f214b72244c49f5715"
+      }
+    },
+    {
+      "relativePath": "apps/launch-website/lib/server/curve-lifecycle.test.ts",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "c89e8c4dae30057358cdbed302f89806858ac50a58ac800c943f22e535183ac7"
+      }
+    },
+    {
+      "relativePath": "apps/launch-website/lib/server/launch-api.test.ts",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "63d34590227db1bf35d23ea645a640d5ee80ea80cbd973e74091b5edc564d437"
+      }
+    },
+    {
+      "relativePath": "apps/launch-website/lib/server/launch-api.ts",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "dd8e588dbc85835b79e1f6510f191a3de6fd05b834a4e245f08010e648eb167d"
+      }
+    },
+    {
+      "relativePath": "apps/launch-website/lib/server/launch-data.test.ts",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "e73fc1ccf7b8551016562184c30fd6c9c5400c1a3e0651af12a9866a5286da00"
+      }
+    },
+    {
+      "relativePath": "apps/launch-website/lib/server/launch-data.ts",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "37b5ca4429e4a1d440da3ca260250bd2b25507a1e5e59dfbc6d59593c15c6a9b"
+      }
+    },
+    {
+      "relativePath": "apps/launch-website/lib/server/production-discovery.test.ts",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "9da90b73490db130d4976353b09ed9794a6b6c6c87f06cb945e2a132e8a5e7bf"
+      }
+    },
+    {
+      "relativePath": "apps/launch-website/lib/server/production-discovery.ts",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "2c05c4ff858a46ad343d58d28acba821cc5db5d0879eff45c69fde78e6a0ef90"
+      }
+    },
+    {
+      "relativePath": "scripts/discovery/continuity.ts",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "86b3d928f2bcada88f422c27e2043033972812ee138ef9ea5762f5bdc4031946"
+      }
+    },
+    {
+      "relativePath": "scripts/security/public-history-identities.test.mjs",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "a048933581700de86517b1e25512da871dda94bb71038310d3a4b77d7b3da358"
+      }
+    },
+    {
+      "relativePath": "scripts/security/run-history-scan.mjs",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "ca1836c329bd176042a41f252744cb7fccd2e2bfbca467d43f8599452aaac101"
+      }
+    },
+    {
+      "relativePath": "scripts/security/public-source-checksums.mjs",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "2f283ffd041b20a39865a456f6e18fa36cb04491446c6c29413f0d6723685fc2"
+      }
+    },
+    {
+      "relativePath": "scripts/security/public-source-checksums.test.mjs",
+      "contentDigest": {
+        "algorithm": "SHA256",
+        "hex": "a13b69dd9bf60913d49ef93f5c317ba2fe8e8625b6c588883656ec48a2bc79a9"
+      }
+    }
+  ],
+  "results": [
+    {
+      "command": "pnpm --filter @rmt/launch-website test:history",
+      "passed": 324,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "before-fix focused regression",
+      "tests": 49,
+      "passed": 42,
+      "failed": 7,
+      "expectedExitCode": 1
+    },
+    {
+      "command": "after-fix focused regression",
+      "tests": 49,
+      "passed": 49,
+      "failed": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "pnpm typecheck; pnpm check:repo",
+      "exitCode": 0,
+      "knipHints": "two unchanged redundant entry hints"
+    },
+    {
+      "command": "pnpm --filter indexer build; DATABASE_URL=<synthetic-loopback> pnpm --filter indexer test:curve-production",
+      "exitCode": 0
+    },
+    {
+      "command": "netlify build --offline --context deploy-preview --filter @rmt/launch-website; node scripts/release/website-preflight.mjs --artifacts",
+      "exitCode": 0,
+      "deployed": false
+    },
+    {
+      "command": "pnpm --filter indexer exec tsx ../../scripts/discovery/continuity.ts",
+      "httpChecks": 21,
+      "browserCases": 30,
+      "walletRequests": 0,
+      "externalRequests": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "node --test scripts/release/website-preflight.test.mjs scripts/release/railway-website.test.mjs",
+      "passed": 8,
+      "exitCode": 0
+    },
+    {
+      "command": "python3 scripts/release/website-archive.test.py; python3 scripts/release/website-bundle.test.py",
+      "passed": 4,
+      "exitCode": 0
+    },
+    {
+      "command": "node --test scripts/security/public-history-identities.test.mjs",
+      "passed": 52,
+      "failed": 0,
+      "skipped": 0,
+      "exitCode": 0
+    },
+    {
+      "command": "unchanged full-history Gitleaks plus exact public-data adjudication",
+      "rawExitCode": 1,
+      "rawMatches": 7,
+      "classified": 7,
+      "unclassified": 0,
+      "wrapperExitCode": 0,
+      "canaryDetected": true,
+      "canaryRejected": true
+    }
+  ],
+  "localProvenance": "Base HEAD plus the explicitly recorded source digests; exact subsequent candidate CI is independent.",
+  "productionMutations": false,
+  "credentialValuesExposed": false,
+  "contractsChanged": false
+}
