@@ -1,0 +1,274 @@
+TAP version 13
+# Subtest: binds the exact eleven IDs and unchanged first-party source
+ok 1 - binds the exact eleven IDs and unchanged first-party source
+  ---
+  duration_ms: 4.4728
+  type: 'test'
+  ...
+# Subtest: rejects unknown ID
+ok 2 - rejects unknown ID
+  ---
+  duration_ms: 2.5205
+  type: 'test'
+  ...
+# Subtest: rejects missing ID
+ok 3 - rejects missing ID
+  ---
+  duration_ms: 0.5242
+  type: 'test'
+  ...
+# Subtest: rejects duplicate ID
+ok 4 - rejects duplicate ID
+  ---
+  duration_ms: 0.4302
+  type: 'test'
+  ...
+# Subtest: rejects altered first-party bytes: RMTLaunchBondingCurveV1.sol
+ok 5 - rejects altered first-party bytes: RMTLaunchBondingCurveV1.sol
+  ---
+  duration_ms: 0.8696
+  type: 'test'
+  ...
+# Subtest: rejects altered first-party bytes: RMTV4CurveGraduationV1.sol
+ok 6 - rejects altered first-party bytes: RMTV4CurveGraduationV1.sol
+  ---
+  duration_ms: 1.413
+  type: 'test'
+  ...
+# Subtest: rejects altered first-party bytes: RMTV4CurveInitializationGuardV1.sol
+ok 7 - rejects altered first-party bytes: RMTV4CurveInitializationGuardV1.sol
+  ---
+  duration_ms: 0.7985
+  type: 'test'
+  ...
+# Subtest: rejects altered first-party bytes: RMTLaunchCurveTokenV2.sol
+ok 8 - rejects altered first-party bytes: RMTLaunchCurveTokenV2.sol
+  ---
+  duration_ms: 0.9263
+  type: 'test'
+  ...
+# Subtest: binds both canonical witnesses and embedded local Permit2 byte-for-byte
+ok 9 - binds both canonical witnesses and embedded local Permit2 byte-for-byte
+  ---
+  duration_ms: 40.7604
+  type: 'test'
+  ...
+# Subtest: rejects changed chain
+ok 10 - rejects changed chain
+  ---
+  duration_ms: 1.0861
+  type: 'test'
+  ...
+# Subtest: rejects changed missing witness
+ok 11 - rejects changed missing witness
+  ---
+  duration_ms: 0.959
+  type: 'test'
+  ...
+# Subtest: rejects changed canonical hash
+ok 12 - rejects changed canonical hash
+  ---
+  duration_ms: 7.4075
+  type: 'test'
+  ...
+# Subtest: rejects changed post-read reorg
+ok 13 - rejects changed post-read reorg
+  ---
+  duration_ms: 0.4462
+  type: 'test'
+  ...
+# Subtest: rejects changed runtime bytes
+ok 14 - rejects changed runtime bytes
+  ---
+  duration_ms: 4.2829
+  type: 'test'
+  ...
+# Subtest: rejects changed runtime hash
+ok 15 - rejects changed runtime hash
+  ---
+  duration_ms: 2.0985
+  type: 'test'
+  ...
+# Subtest: rejects changed runtime target
+ok 16 - rejects changed runtime target
+  ---
+  duration_ms: 8.5555
+  type: 'test'
+  ...
+# Subtest: rejects embedded Permit2 substitution
+ok 17 - rejects embedded Permit2 substitution
+  ---
+  duration_ms: 14.5963
+  type: 'test'
+  ...
+# Subtest: canonical compiler bytes materialize all three fresh deployed first-party runtimes
+ok 18 - canonical compiler bytes materialize all three fresh deployed first-party runtimes
+  ---
+  duration_ms: 22.8875
+  type: 'test'
+  ...
+# Subtest: canonical correspondence rejects altered chain
+ok 19 - canonical correspondence rejects altered chain
+  ---
+  duration_ms: 14.7699
+  type: 'test'
+  ...
+# Subtest: canonical correspondence rejects altered compiler input
+ok 20 - canonical correspondence rejects altered compiler input
+  ---
+  duration_ms: 14.7021
+  type: 'test'
+  ...
+# Subtest: canonical correspondence rejects altered compiler settings
+ok 21 - canonical correspondence rejects altered compiler settings
+  ---
+  duration_ms: 18.5501
+  type: 'test'
+  ...
+# Subtest: canonical correspondence rejects altered source pin
+ok 22 - canonical correspondence rejects altered source pin
+  ---
+  duration_ms: 14.7255
+  type: 'test'
+  ...
+# Subtest: canonical correspondence rejects altered immutable field identity
+ok 23 - canonical correspondence rejects altered immutable field identity
+  ---
+  duration_ms: 14.6453
+  type: 'test'
+  ...
+# Subtest: canonical correspondence rejects altered RMTV4CurveInitializationGuardV1 runtime bytes
+ok 24 - canonical correspondence rejects altered RMTV4CurveInitializationGuardV1 runtime bytes
+  ---
+  duration_ms: 20.9498
+  type: 'test'
+  ...
+# Subtest: canonical correspondence rejects altered RMTV4CurveGraduationV1 runtime bytes
+ok 25 - canonical correspondence rejects altered RMTV4CurveGraduationV1 runtime bytes
+  ---
+  duration_ms: 20.5
+  type: 'test'
+  ...
+# Subtest: canonical correspondence rejects altered RMTLaunchCurveFactoryV2 runtime bytes
+ok 26 - canonical correspondence rejects altered RMTLaunchCurveFactoryV2 runtime bytes
+  ---
+  duration_ms: 20.3861
+  type: 'test'
+  ...
+# Subtest: independent per-account oracle accepts exact debit and exact PoolManager credit
+ok 27 - independent per-account oracle accepts exact debit and exact PoolManager credit
+  ---
+  duration_ms: 0.4602
+  type: 'test'
+  ...
+# Subtest: conservation oracle rejects native diversion with same total
+ok 28 - conservation oracle rejects native diversion with same total
+  ---
+  duration_ms: 0.227
+  type: 'test'
+  ...
+# Subtest: conservation oracle rejects token diversion with same total
+ok 29 - conservation oracle rejects token diversion with same total
+  ---
+  duration_ms: 0.1416
+  type: 'test'
+  ...
+# Subtest: conservation oracle rejects engine short credit
+ok 30 - conservation oracle rejects engine short credit
+  ---
+  duration_ms: 0.1159
+  type: 'test'
+  ...
+# Subtest: conservation oracle rejects prefunded manager neutralization
+ok 31 - conservation oracle rejects prefunded manager neutralization
+  ---
+  duration_ms: 0.1158
+  type: 'test'
+  ...
+# Subtest: conservation oracle rejects extra curve debit
+ok 32 - conservation oracle rejects extra curve debit
+  ---
+  duration_ms: 0.1096
+  type: 'test'
+  ...
+# Subtest: conservation oracle rejects missing account
+ok 33 - conservation oracle rejects missing account
+  ---
+  duration_ms: 0.109
+  type: 'test'
+  ...
+# Subtest: conservation oracle rejects zero position
+ok 34 - conservation oracle rejects zero position
+  ---
+  duration_ms: 6.302
+  type: 'test'
+  ...
+# Subtest: conservation oracle rejects negative amount
+ok 35 - conservation oracle rejects negative amount
+  ---
+  duration_ms: 0.2412
+  type: 'test'
+  ...
+# Subtest: six exact migration IDs bind all 16 first-party and 50 dependency sources
+ok 36 - six exact migration IDs bind all 16 first-party and 50 dependency sources
+  ---
+  duration_ms: 11.0405
+  type: 'test'
+  ...
+# Subtest: missing, duplicated or substituted finding IDs reject
+ok 37 - missing, duplicated or substituted finding IDs reject
+  ---
+  duration_ms: 2.9124
+  type: 'test'
+  ...
+# Subtest: first-party or pinned dependency drift rejects
+ok 38 - first-party or pinned dependency drift rejects
+  ---
+  duration_ms: 5.769
+  type: 'test'
+  ...
+# Subtest: nine exact canonical creation bytecodes and token runtime retain 4663 economics
+ok 39 - nine exact canonical creation bytecodes and token runtime retain 4663 economics
+  ---
+  duration_ms: 1.7563
+  type: 'test'
+  ...
+# Subtest: fixture byte drift, missing bytecode and changed chain/economics reject
+ok 40 - fixture byte drift, missing bytecode and changed chain/economics reject
+  ---
+  duration_ms: 5.2059
+  type: 'test'
+  ...
+# Subtest: two canonical witnesses bind exact deployed migration runtimes and 18 read-only RPCs
+ok 41 - two canonical witnesses bind exact deployed migration runtimes and 18 read-only RPCs
+  ---
+  duration_ms: 20.7076
+  type: 'test'
+  ...
+# Subtest: equal declared hash cannot conceal changed or truncated runtime bytes
+ok 42 - equal declared hash cannot conceal changed or truncated runtime bytes
+  ---
+  duration_ms: 14.0408
+  type: 'test'
+  ...
+# Subtest: chain, canonical recheck, RPC scope or signing changes reject
+ok 43 - chain, canonical recheck, RPC scope or signing changes reject
+  ---
+  duration_ms: 42.2681
+  type: 'test'
+  ...
+# Subtest: exact integer vector binds conserved assets, already-earned claims and each final payout
+ok 44 - exact integer vector binds conserved assets, already-earned claims and each final payout
+  ---
+  duration_ms: 2.5855
+  type: 'test'
+  ...
+1..44
+# tests 44
+# suites 0
+# pass 44
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1300.1046

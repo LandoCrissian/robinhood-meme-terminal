@@ -1,0 +1,21 @@
+{
+  "checkedAt": "2026-11-20T18:50:28.353Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "publishedDeploy": "6b0096332beb675b1d8e0f49",
+  "deployments": [
+    {
+      "id": "6b0096332beb675b1d8e0f49",
+      "state": "ready",
+      "context": "production",
+      "publishedAt": "2026-11-20T18:49:44.086Z",
+      "createdAt": "2026-11-20T18:49:23.262Z"
+    },
+    {
+      "id": "6b00948ccb4392558a3fc56f",
+      "state": "ready",
+      "context": "production",
+      "publishedAt": "2026-11-20T18:42:41.870Z",
+      "createdAt": "2026-11-20T18:42:20.075Z"
+    }
+  ]
+}

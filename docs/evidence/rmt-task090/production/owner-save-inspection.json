@@ -1,0 +1,17 @@
+{
+  "checkedAt": "2026-11-20T17:55:37.468Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "accountId": "679021997d24399b38980446",
+  "accountSlug": "landon361",
+  "useEnvelope": true,
+  "legacyBuildSettingKeys": [],
+  "viaSlug": {
+    "status": "read",
+    "keys": []
+  },
+  "normalCli": {
+    "exit": 0,
+    "keys": []
+  },
+  "valuesExcluded": true
+}

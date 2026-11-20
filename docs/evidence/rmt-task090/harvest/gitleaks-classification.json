@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "scanner": "gitleaks 8.30.1",
+  "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
+  "policy": "unchanged repository/.gitleaks.toml",
+  "policySha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+  "rawExit": 1,
+  "rawFindingCount": 7,
+  "scopeFiles": 12,
+  "scopeSnapshot": "gitleaks-source-snapshot.json",
+  "scope": "Only the harvest evidence, focused Solidity test and two runtime/profile JSON fixtures; excludes these five derived scanner reports and full outside-checkout traces. Not a full repository or historical scan.",
+  "classifications": [
+    {
+      "rule": "generic-api-key",
+      "count": 7,
+      "file": "docs/evidence/rmt-task090/harvest/proof-results.json",
+      "lines": [
+        231,
+        833,
+        1488,
+        2342,
+        2893,
+        3470,
+        4108
+      ],
+      "observedAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+      "result": "SYNTHETIC_PUBLIC_ERC20_ADDRESS_NOT_CREDENTIAL",
+      "basis": "All seven exact source lines are the decoded token argument of successful local collectLpFees calls. The fresh chain-31337 test deploys this ERC20 with factory.create; trace extraction retains the engine call arguments and actual token transfers. It is an EVM account address, with no signing or service credential capability."
+    }
+  ],
+  "changesToRulesAllowlistOrRawSeverity": false,
+  "secretScanClearanceClaim": false
+}

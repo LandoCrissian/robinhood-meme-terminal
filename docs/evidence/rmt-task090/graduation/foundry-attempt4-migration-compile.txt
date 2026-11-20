@@ -1,0 +1,14 @@
+Compiler run failed:
+Warning (5159): "selfdestruct" has been deprecated. Note that, starting from the Cancun hard fork, the underlying opcode no longer deletes the code and data associated with an account and only transfers its Ether to the beneficiary, unless executed in the same transaction in which the contract was created (see EIP-6780). Any use in newly deployed contracts is strongly discouraged even if the new behavior is taken into account. Future changes to the EVM might further reduce the functionality of the opcode.
+  --> test/RMTLaunchBondingCurveV1.t.sol:15:9:
+   |
+15 |         selfdestruct(curve);
+   |         ^^^^^^^^^^^^
+
+Error (9582): Member "AccountAccessKind" not found or not visible after argument-dependent lookup in type(contract Vm).
+   --> test/Task090MigrationProof.t.sol:146:39:
+    |
+146 |             assertTrue(access.kind != Vm.AccountAccessKind.DelegateCall && access.kind != Vm.AccountAccessKind.CallCode
+    |                                       ^^^^^^^^^^^^^^^^^^^^
+
+Error: Compilation failed

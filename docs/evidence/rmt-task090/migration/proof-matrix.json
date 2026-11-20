@@ -1,0 +1,158 @@
+{
+  "schemaVersion": 1,
+  "scope": "SIX_EXACT_MIGRATION_FINDINGS_CANONICAL_RUNTIME_PATH_ONLY",
+  "sourceBase": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "observedRuntimeAnchor": {
+    "number": "0x71ade63",
+    "hash": "0xe336ee0fe772d41cd6939ccbd994f629cd1bc254d2ff7901178dcb0e06989023",
+    "timestamp": "0x6b00791b"
+  },
+  "findings": [
+    {
+      "id": "04dd86035f4ee7098c24bb34ee716fb14d25372ec3714df5c746a364f9aa83d9",
+      "rawCheck": "reentrancy-balance",
+      "rawSeverity": "High",
+      "flaggedCall": "revenueLedger.moveAccrual(nextCurve)",
+      "baseline": "successor token baseline",
+      "path": "src/RMTLaunchBondingCurveV1.sol",
+      "line": 198,
+      "retainedTask089Disposition": "UNRESOLVED",
+      "boundedProof": "Original ledger writer-switch has no external call and only activeCurve SSTORE; exact successor increment I reconciles the final baseline.",
+      "proofEvidence": [
+        "foundry-canonical-4663.log",
+        "conservation-vector.json",
+        "source-runtime-binding.json"
+      ],
+      "canonicalMutableCallFrames": 6,
+      "originalLedgerStorageWrites": 1
+    },
+    {
+      "id": "1fdf2b7ea9c9f97d447984c8465928fb275e1762930f87972a33d2dedc10f9da",
+      "rawCheck": "reentrancy-balance",
+      "rawSeverity": "High",
+      "flaggedCall": "token.safeTransfer(nextCurve,inventory)",
+      "baseline": "predecessor token baseline",
+      "path": "src/RMTLaunchBondingCurveV1.sol",
+      "line": 196,
+      "retainedTask089Disposition": "UNRESOLVED",
+      "boundedProof": "Exact fixed-supply non-hooking ERC20 transfer has no external call; predecessor debit I is reconciled against full pre-transfer inventory plus surplus.",
+      "proofEvidence": [
+        "foundry-canonical-4663.log",
+        "conservation-vector.json",
+        "source-runtime-binding.json"
+      ],
+      "canonicalMutableCallFrames": 6,
+      "originalLedgerStorageWrites": 1
+    },
+    {
+      "id": "7f0d825327586187a4f0c915e12ad0b7ecb6555643bb51e223e5ec407788b16a",
+      "rawCheck": "reentrancy-balance",
+      "rawSeverity": "High",
+      "flaggedCall": "next.acceptMigration{value:backing}",
+      "baseline": "successor token baseline",
+      "path": "src/RMTLaunchBondingCurveV1.sol",
+      "line": 199,
+      "retainedTask089Disposition": "UNRESOLVED",
+      "boundedProof": "Exact canonical acceptMigration has no outgoing mutable CALL; only STATICCALL getters, pure math and own writes precede exact final successor token credit I.",
+      "proofEvidence": [
+        "foundry-canonical-4663.log",
+        "conservation-vector.json",
+        "source-runtime-binding.json"
+      ],
+      "canonicalMutableCallFrames": 6,
+      "originalLedgerStorageWrites": 1
+    },
+    {
+      "id": "be7b3e4ab44843109965a75e105e1eeda02e07c291640eecad1a6a313afdbdee",
+      "rawCheck": "reentrancy-balance",
+      "rawSeverity": "High",
+      "flaggedCall": "next.acceptMigration{value:backing}",
+      "baseline": "predecessor token baseline",
+      "path": "src/RMTLaunchBondingCurveV1.sol",
+      "line": 199,
+      "retainedTask089Disposition": "UNRESOLVED",
+      "boundedProof": "Canonical acceptMigration cannot mutate predecessor or token via STATICCALL; complete predecessor inventory debit I remains exact.",
+      "proofEvidence": [
+        "foundry-canonical-4663.log",
+        "conservation-vector.json",
+        "source-runtime-binding.json"
+      ],
+      "canonicalMutableCallFrames": 6,
+      "originalLedgerStorageWrites": 1
+    },
+    {
+      "id": "c87c792deb6a8d1b2cd802f5d698e711471eeec6436202d64d463d82af745826",
+      "rawCheck": "reentrancy-balance",
+      "rawSeverity": "High",
+      "flaggedCall": "token.safeTransfer(nextCurve,inventory)",
+      "baseline": "successor token baseline",
+      "path": "src/RMTLaunchBondingCurveV1.sol",
+      "line": 196,
+      "retainedTask089Disposition": "UNRESOLVED",
+      "boundedProof": "Canonical ERC20 transfer credits successor exactly I; pre-existing successor token surplus survives the individually exact final credit.",
+      "proofEvidence": [
+        "foundry-canonical-4663.log",
+        "conservation-vector.json",
+        "source-runtime-binding.json"
+      ],
+      "canonicalMutableCallFrames": 6,
+      "originalLedgerStorageWrites": 1
+    },
+    {
+      "id": "d7b62a52dbdc751f89829f6663cbbdb7c775d05f9aa0b6364b707aaa531573fe",
+      "rawCheck": "reentrancy-balance",
+      "rawSeverity": "High",
+      "flaggedCall": "revenueLedger.moveAccrual(nextCurve)",
+      "baseline": "predecessor token baseline",
+      "path": "src/RMTLaunchBondingCurveV1.sol",
+      "line": 198,
+      "retainedTask089Disposition": "UNRESOLVED",
+      "boundedProof": "Original ledger moveAccrual has no token/native call and only writer SSTORE; predecessor debit I and every original fee credit/bucket/balance remain unchanged.",
+      "proofEvidence": [
+        "foundry-canonical-4663.log",
+        "conservation-vector.json",
+        "source-runtime-binding.json"
+      ],
+      "canonicalMutableCallFrames": 6,
+      "originalLedgerStorageWrites": 1
+    }
+  ],
+  "results": {
+    "default31337": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "fuzzRuns": 512,
+      "graduationBackingWei": "1000000000000000000"
+    },
+    "canonical4663": {
+      "passed": 9,
+      "failed": 0,
+      "skipped": 0,
+      "fuzzRuns": 512,
+      "graduationBackingWei": "2000000000000000000"
+    },
+    "bindingTests": {
+      "passed": 9,
+      "failed": 0
+    }
+  },
+  "assumptions": [
+    "Exact immutable factory/registry/directory/V2deployer source and observed runtime correspond",
+    "Factory-produced fixed-supply non-hooking token and original immutable no-call revenue ledger remain the bound identities",
+    "Canonical V1-to-V2 successor acceptance path only; canonical V2-to-V3 proof additionally assumes separate exact-template admission",
+    "No arbitrary future admitted runtime or unknown third-party raw proposal/nonce consumer is cleared"
+  ],
+  "counterfactuals": {
+    "hostileSuccessorNativeDiversion": "EXACT_SETTLEMENT_REVERT_FULL_ROLLBACK_IDENTICAL_PROPOSAL_RETRY",
+    "hostileLedgerPostWriterTrade": "FUNDED_CALLBACK_CLOSED_SUCCESSOR_REVERT_FULL_ROLLBACK",
+    "mutableLedgerNativeDiversion": "VM_ONLY_NONCANONICAL_IMPLEMENTATION_SUCCEEDS_SHOWING_LEDGER_IDENTITY_IS_NECESSARY_NOT_A_REACHABLE_CANONICAL_DEFECT"
+  },
+  "stageClearance": false,
+  "rawStrictScannerChanged": false,
+  "governanceMediumClearance": false,
+  "productionMutation": false,
+  "signing": false,
+  "broadcast": false
+}

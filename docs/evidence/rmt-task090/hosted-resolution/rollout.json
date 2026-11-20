@@ -1,0 +1,57 @@
+{
+  "recordedAt": "2026-11-20T18:49:21.876Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "serverZipSha256": "08d237501b2c16de95627a3e773d9092cc3050c155e39c2d33449503b564c345",
+  "previousDeploy": "6b00948ccb4392558a3fc56f",
+  "status": "CLI_EXIT_RECHECK_PROVIDER_STATE",
+  "staticHashes": 90,
+  "nativeEdgeHashVerified": true,
+  "cachedFunctionArchiveVerified": true,
+  "build": false,
+  "deploymentLocalOverrides": false,
+  "financialFlags": "UNSET",
+  "bindings": [
+    {
+      "key": "RMT_CURVE_PRODUCTION_DISCOVERY",
+      "isSecret": false,
+      "scopes": [
+        "builds",
+        "functions",
+        "post_processing",
+        "runtime"
+      ],
+      "contexts": [
+        "production"
+      ]
+    },
+    {
+      "key": "RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN",
+      "isSecret": true,
+      "scopes": [
+        "builds",
+        "functions",
+        "runtime"
+      ],
+      "contexts": [
+        "production"
+      ]
+    },
+    {
+      "key": "RMT_LAUNCH_HISTORY_INDEXER_URL",
+      "isSecret": false,
+      "scopes": [
+        "builds",
+        "functions",
+        "post_processing",
+        "runtime"
+      ],
+      "contexts": [
+        "production"
+      ]
+    }
+  ],
+  "credentialValuesExcluded": true,
+  "productionDeploymentAttempted": true,
+  "exitCode": 0
+}

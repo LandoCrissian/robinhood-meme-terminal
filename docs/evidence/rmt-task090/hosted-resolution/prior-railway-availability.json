@@ -1,0 +1,46 @@
+{
+  "scope": "service",
+  "deploymentId": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+  "serviceId": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+  "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+  "status": "SUCCESS",
+  "http": [
+    {
+      "timestamp": "2026-11-20T18:50:40.919391523Z",
+      "method": "GET",
+      "path": "/curve-launches",
+      "host": "robinhood-meme-terminal-production.up.railway.app",
+      "httpStatus": 200,
+      "totalDuration": 929,
+      "upstreamErrors": ""
+    },
+    {
+      "timestamp": "2026-11-20T18:52:08.002681710Z",
+      "method": "GET",
+      "path": "/curve-launches",
+      "host": "robinhood-meme-terminal-production.up.railway.app",
+      "httpStatus": 200,
+      "totalDuration": 1046,
+      "upstreamErrors": ""
+    },
+    {
+      "timestamp": "2026-11-20T18:52:36.139756358Z",
+      "method": "GET",
+      "path": "/curve-launches",
+      "host": "robinhood-meme-terminal-production.up.railway.app",
+      "httpStatus": 200,
+      "totalDuration": 993,
+      "upstreamErrors": ""
+    },
+    {
+      "timestamp": "2026-11-20T18:54:46.314987735Z",
+      "method": "GET",
+      "path": "/curve-launches",
+      "host": "robinhood-meme-terminal-production.up.railway.app",
+      "httpStatus": 503,
+      "totalDuration": 136,
+      "upstreamErrors": ""
+    }
+  ],
+  "clientAddressesExcluded": true
+}

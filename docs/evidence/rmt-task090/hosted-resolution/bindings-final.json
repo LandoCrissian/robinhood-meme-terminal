@@ -1,0 +1,50 @@
+{
+  "verifiedAt": "2026-11-20T19:04:12.265Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "publishedDeploy": "6b0096332beb675b1d8e0f49",
+  "keys": [
+    {
+      "key": "RMT_LAUNCH_HISTORY_INDEXER_URL",
+      "isSecret": false,
+      "scopes": [
+        "builds",
+        "functions",
+        "post_processing",
+        "runtime"
+      ],
+      "contexts": [
+        "production"
+      ]
+    },
+    {
+      "key": "RMT_CURVE_PRODUCTION_DISCOVERY",
+      "isSecret": false,
+      "scopes": [
+        "builds",
+        "functions",
+        "post_processing",
+        "runtime"
+      ],
+      "contexts": [
+        "production"
+      ]
+    },
+    {
+      "key": "RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN",
+      "isSecret": true,
+      "scopes": [
+        "builds",
+        "functions",
+        "runtime"
+      ],
+      "contexts": [
+        "production"
+      ]
+    }
+  ],
+  "publicActivationProfile": "rmt-curve-fixed-supply-security-v2-4663-task066",
+  "publicIndexerUrl": "https://robinhood-meme-terminal-production.up.railway.app",
+  "teamKeys": [],
+  "financialPreparationProfileFixtureKeys": "UNSET",
+  "secretValueExcluded": true
+}

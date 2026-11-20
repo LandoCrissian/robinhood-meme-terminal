@@ -1,0 +1,646 @@
+{
+  "schemaVersion": 1,
+  "scope": "CANONICAL_4663_SOURCE_COMPILER_FIXTURE_AND_OBSERVED_RUNTIME_BINDING",
+  "sources": {
+    "findingIds": [
+      "04dd86035f4ee7098c24bb34ee716fb14d25372ec3714df5c746a364f9aa83d9",
+      "1fdf2b7ea9c9f97d447984c8465928fb275e1762930f87972a33d2dedc10f9da",
+      "7f0d825327586187a4f0c915e12ad0b7ecb6555643bb51e223e5ec407788b16a",
+      "be7b3e4ab44843109965a75e105e1eeda02e07c291640eecad1a6a313afdbdee",
+      "c87c792deb6a8d1b2cd802f5d698e711471eeec6436202d64d463d82af745826",
+      "d7b62a52dbdc751f89829f6663cbbdb7c775d05f9aa0b6364b707aaa531573fe"
+    ],
+    "sources": [
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchBondingCurveV1.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchBondingCurveV2.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchBondingCurveV3.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchCurveDeploymentV2.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "31e3173f1999f8d68e4bbc6cd55196d618d02de7d9a2da37c53d76dfc7ccfb93"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchCurveDirectoryV1.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "cc8e4b76a3783b5422a309d0ed83a3346985e363e68fa2145b37cf0fba1fe3e0"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchCurveRevenueLedgerV1.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/RMTV4CurveInitializationGuardV1.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/interfaces/IRMTLaunchCurveExecution.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "9b5793ca3cfbffc912e53f6e26d6744aa49a1dfce913791e867e466a5bfa451c"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/src/interfaces/IRMTV4CurveGraduationV1.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "d3fe566a9b14f907c5289860d96f26b58649027f0ea6d1718862c377839ebefe"
+        }
+      }
+    ],
+    "dependencies": [
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/IERC5267.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "efd1ebd1e04b6ef9c3b8781a097588f83da954323f438d54a71dc06508e6c7b8"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "4aea87243e6de38804bf8737bf86f750443d3b5e63dd0fd0b7ad92f77cdbd3e3"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "2d874da1c1478ed22a2d30dcf1a6ec0d09a13f897ca680d55fb49fbcc0e0c5b1"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "6f2faae462e286e24e091d7718575179644dc60e79936ef0c92e2d1ab3ca3cee"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "1d079c20a192a135308e99fa5515c27acfbb071e6cdb0913b13634e630865939"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "912509e0e9bf74e0f8a8c92d031b5b26d2d35c6d4abf3f56251be1ea9ca946bf"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "471157c89111d7b9eab456b53ebe9042bc69504a64cb5cc980d38da9103379ae"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Address.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "b3710b1712637eb8c0df81912da3450da6ff67b0b3ed18146b033ed15b1aa3b9"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Context.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "847fda5460fee70f56f4200f59b82ae622bb03c79c77e67af010e31b7e2cc5b6"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "8d0bac508a25133c9ff80206f65164cef959ec084645d1e7b06050c2971ae0fc"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "ddd52921d2996abf2e3d9c1c4f6d00194a3e3b278a164948f995862371444a55"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "b4a5fb7ab93bfeda06509eafbd5f71fde0e0de84b6d9129553bd535a42166c15"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Strings.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "0519199dbc635f98ce2e4537986604ee618bca665c65e9a1738702dfacf72010"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "37828cb50b47bcc51c7b770bde15d5885d871ef1e67028057a0b788c3568726e"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "27dac0732a0154f432c0a7a1d1f067ab51116105e157d0e5d68d040fd83954d5"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "2fd5c641cf452efd15f784827cb2835664970d7fbc166bf80824ed27011cc374"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/Math.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "a6ee779fc42e6bf01b5e6a963065706e882b016affbedfd8be19a71ea48e6e15"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/SafeCast.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "089488198de38548e4e8ee7940d307f18396e5b295de5bca7ff7567fd4142cc3"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "768c28e3a33c3312e57ae8a1caaec2893bc89ac6e386621de018f85e9a2d6e99"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/interfaces/IExtsload.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "9421ef4ba198d94058cd9a4c9fd2d663c61fc682f7dafa449a873456853f0025"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/interfaces/IExttload.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "c21643d2c7f48d2d2407438a64a3ff0f376324cf6a0c62608977713652308c9e"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/interfaces/IHooks.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "6eb35c9c598eb932e963219f1ff180748bc4c30ac6a02d924893b3c29abb1d73"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/interfaces/IPoolManager.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "a98405333567e4ab344489728014795721cf0071c151536377d2fcc986e0600c"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/interfaces/IProtocolFees.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "807d68adea106ec2aa51a8009155de09ebfe09e1ee7053d5a5ae448d7e840654"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/interfaces/external/IERC20Minimal.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "5e966a2d22b3b234a56af4b17e36bf7be90f9b29b1ddb6a15bfefc0b6dab4282"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/interfaces/external/IERC6909Claims.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "1cd65496c829036bc6aee67bc71363ab5fb6989c65e793087d0e1e2379f7d7d8"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/BitMath.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "e8a45eb3d57f9427fc47bbb2543c1a6a5f394113b378123ac7ca9f113a7502b4"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/CustomRevert.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "9d3dbe6b742cb1ac30f57df89d879ade9649389de1165fc637114bd062d39fca"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/FixedPoint128.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "1ca2f55160697b73bd66fd27c8724d79a57108121ce1e8a0ab8b79f38bb58fbb"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/FixedPoint96.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "66ee26d4fb3ac639124bdfa27d3256d196970997fa127c09e9bf7154e30d4590"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/FullMath.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "a9607255a6fd604d9c92f6b7416811c38b9d86e5dfdb0c345a494ebd35f7a4a3"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/Hooks.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "297d577998cdede64d48b47b12f15e4f442eea032fbb9676bb3c2f89da89b83c"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/LPFeeLibrary.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "e96c3fa7deac991dc09b6c5e560a340d01d6c68ccba483d4b29f8a66e5aa44e0"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/LiquidityMath.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "67a39e58732340af4870342ba9230691f35501d89ed8725ca1b338deaa0eb26a"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/ParseBytes.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "6a6f3d1cec0143fd70ea68c34e6dce3bde72f368b213f1a225ada23dbfd99bb8"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/Position.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "3dc4e2ad1564fa94eddf3ff06ce9ac592c9d578ea64ca194050382da454c8fcb"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/SafeCast.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "c1a815a41607be5b4c86ca588a951f368156da8ee21bdfc18b5d51b58a0f27be"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/SqrtPriceMath.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "42440c21bbab86c7eed4716b281ed5ca281cf14af8b5e06dc6dc3bc6864bcfdf"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/StateLibrary.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "eebdbc1b6e431072ce5521b9e1b603d43831e3b6e062743e6665e070d5cf8a1a"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/TickMath.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "272d4f6d3ff9ae33596ebcdb84a71a3c2d4542ae8fb5c88ddf1aca8043f5d06b"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/libraries/UnsafeMath.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "2de236e7ca0b9572a6b0184557565b6fd54e177224e202c727fe248785ede427"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/types/BalanceDelta.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "320d9c13dec135c3903729e66d3a1040fe86d537a7ee53728915012ca183af32"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/types/BeforeSwapDelta.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "6aee06f1553e879f5909e8f4c0eac26ec23dd4821a7e56e4d5077db39a227e12"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/types/Currency.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "ba6726fd24fbc66848208dfbb2899116c10729c505e6e5552316ac2444f1dfc3"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/types/PoolId.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "548424ac50ad58212545da70207283fb8990731578c115c85d5acbcb0e1d3c9f"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/types/PoolKey.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "99e1afe285b5c614ebc9586ab5196db9d24a63fd924a449f5d99f490a6a6d6a9"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-core/src/types/PoolOperation.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "cf72ad0c3e5e91662029e862acd841fabce8753040b0d4e802dee64ef1157232"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-periphery/src/libraries/Actions.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "404b842f30a05783b20eb37b20cc86e7a0df2730f6a7399229b46ae77f63e63a"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-periphery/src/libraries/LiquidityAmounts.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "dbfbef7aed94a6a56885124f0802b42adf7ee7bdd658f11fed40ffbb93fe6ba5"
+        }
+      },
+      {
+        "relativePath": "packages/contracts/lib/v4-periphery/src/libraries/PositionInfoLibrary.sol",
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "5c889e1d5f259291045413e28069101eba1e7b8b72df6586bf54e4de5e525099"
+        }
+      }
+    ],
+    "productionCompilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "strictScannerGateChanged": false,
+    "financialActivationAuthorized": false
+  },
+  "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "auxiliaryCompilerInputSha256": "7923ec6acc0666f18c7dd9d8d181eb15d5e664be841325f0787b0dd046132426",
+  "runtime": {
+    "directory": {
+      "contract": "RMTLaunchCurveDirectoryV2",
+      "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+      "constructorData": "0x000000000000000000000000c447a378cfd8460febc2eef67501d7a5473b9001000000000000000000000000c3600f2df60929d2ab9ab294cff42eedcb984f510000000000000000000000002bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697",
+      "initcodeHash": "0x8dc67390ae8f34d293894cec0067c9a053dcfbb7cf3ca09d4d5b9b077b9f336c",
+      "runtimeHash": "0x9534a4223eb7e50e2387a7e5486e256416b468980436852ce1a91624904e8735",
+      "initcodeBytes": 11833,
+      "initcodeHeadroom": 37319,
+      "runtimeBytes": 10290,
+      "runtimeHeadroom": 14286,
+      "immutableInputs": {
+        "_cachedDomainSeparator": "0x056df5f0468837de1788770b0ce8dfaad5dcebd35844c8c52b45d5948860b4cb",
+        "_cachedChainId": "0x1237",
+        "_cachedThis": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+        "_hashedName": "0xb2fcda5021c31c09b0176c082e095252c93566b9425c69965ad6fdcc9bb2733b",
+        "_hashedVersion": "0xad7c5bef027816a800da1736444fb58a807ef4c9603b7848673f7e3a68eb14a5",
+        "_name": "0x524d54204c61756e6368204375727665204469726563746f727900000000001a",
+        "_version": "0x3200000000000000000000000000000000000000000000000000000000000001"
+      }
+    },
+    "registry": {
+      "contract": "RMTLaunchProjectRegistryV3",
+      "address": "0xf1113714Dda31f31532995D2525e034271425398",
+      "constructorData": "0x000000000000000000000000e677a69a8124714dd0d88b73bdf1b89cc791ca9c",
+      "initcodeHash": "0xb8521e681298045055d5cd3d05f526248b9cfca71ef808733faa32a228940c1d",
+      "runtimeHash": "0xd1b4756bcdabb6a8ee04c827b5a6a76079bedc996df39b76dffa24269a61f644",
+      "initcodeBytes": 17691,
+      "initcodeHeadroom": 31461,
+      "runtimeBytes": 16273,
+      "runtimeHeadroom": 8303,
+      "immutableInputs": {
+        "_cachedDomainSeparator": "0xb35f711427d6b943716bc6b8ceb0bcbb00a393e9eea1e4ab8ef8f4d880f2b3bb",
+        "_cachedChainId": "0x1237",
+        "_cachedThis": "0xf1113714Dda31f31532995D2525e034271425398",
+        "_hashedName": "0x12c4d8f381d5bc59a0313f4139362aaa576642f81e9689e4706f8cb54bc78869",
+        "_hashedVersion": "0x13600b294191fc92924bb3ce4b969c1e7e2bab8f4c93c3fc6d0a51733df3c060",
+        "_name": "0x524d54204c61756e63682050726f6a656374205265676973747279000000001b",
+        "_version": "0x3400000000000000000000000000000000000000000000000000000000000001",
+        "directory": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C"
+      }
+    },
+    "factory": {
+      "contract": "RMTLaunchCurveFactoryV2",
+      "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+      "constructorData": "0x00000000000000000000000010e540536f10ed36e5fc6638638f1d862e552d32000000000000000000000000af9f10258b091719618c19d057f9cdab72effd8b0000000000000000000000008d44078642ce938fd799b23087bcdd6114a302e5000000000000000000000000f1113714dda31f31532995d2525e034271425398000000000000000000000000cb25a3df74729f7104c4f924cb04f687f69391c6c0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be00000000000000000000000000000000000000000000000000016bcc41e90000",
+      "initcodeHash": "0xa9a337271cd3a91f9de691800b98526bd612de1cace33c3f18e41df0c1aabbfa",
+      "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+      "initcodeBytes": 24916,
+      "initcodeHeadroom": 24236,
+      "runtimeBytes": 23843,
+      "runtimeHeadroom": 733,
+      "immutableInputs": {
+        "graduationEngine": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+        "operatingRecipient": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+        "futureReserveRecipient": "0x8D44078642ce938Fd799b23087BcdD6114A302e5",
+        "projectRegistry": "0xf1113714Dda31f31532995D2525e034271425398",
+        "successorDeployer": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+        "successorDeployerRuntimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+        "creationFeeWei": "0x16bcc41e90000"
+      }
+    },
+    "successorV2": {
+      "contract": "RMTLaunchCurveSuccessorDeployerV1",
+      "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+      "constructorData": "0x",
+      "initcodeHash": "0xef8c62038760eadaa5e7cf985febe23f9444e80710fbb3b30f5cf13d6513f3fa",
+      "runtimeHash": "0xc0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be",
+      "initcodeBytes": 15252,
+      "initcodeHeadroom": 33900,
+      "runtimeBytes": 15226,
+      "runtimeHeadroom": 9350,
+      "immutableInputs": {}
+    },
+    "successorV3": {
+      "contract": "RMTLaunchCurveSuccessorDeployerV2",
+      "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+      "constructorData": "0x",
+      "initcodeHash": "0x5492ddda03a48dd5718830b01043bfbfd5ea1862e2d2f370851d41a5840914e8",
+      "runtimeHash": "0x07efd03ff4ec2028d176deb6bfde1b77e3d5fd4d32c69851b59e7d78b1ac7fc9",
+      "initcodeBytes": 15456,
+      "initcodeHeadroom": 33696,
+      "runtimeBytes": 15430,
+      "runtimeHeadroom": 9146,
+      "immutableInputs": {}
+    }
+  },
+  "anchor": {
+    "number": "0x71ade63",
+    "hash": "0xe336ee0fe772d41cd6939ccbd994f629cd1bc254d2ff7901178dcb0e06989023",
+    "timestamp": "0x6b00791b"
+  },
+  "strictSecurityGate": "UNCHANGED_FAIL_HIGH",
+  "signing": false,
+  "broadcast": false
+}

@@ -1,0 +1,12 @@
+{
+  "answer": "Approve Production-only default scopes",
+  "recordedAt": "2026-11-20T18:40:17.732Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "serverZipSha256": "08d237501b2c16de95627a3e773d9092cc3050c155e39c2d33449503b564c345",
+  "productionOnly": true,
+  "existingTokenOnly": true,
+  "secret": true,
+  "build": false,
+  "financialActivation": false
+}

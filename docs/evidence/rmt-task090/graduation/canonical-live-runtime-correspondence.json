@@ -1,0 +1,34 @@
+{
+  "scope": "CANONICAL_4663_COMPILER_OUTPUT_AND_DEPLOYED_IMMUTABLE_RUNTIME_CORRESPONDENCE_ONLY",
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "compilerVersion": "0.8.26+commit.8a97fa7a",
+  "compilerExecutableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "auxiliaryCompilerInputSha256": "7923ec6acc0666f18c7dd9d8d181eb15d5e664be841325f0787b0dd046132426",
+  "runtimeBindings": [
+    {
+      "contract": "RMTV4CurveInitializationGuardV1",
+      "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+      "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+      "runtimeBytes": 949
+    },
+    {
+      "contract": "RMTV4CurveGraduationV1",
+      "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+      "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+      "runtimeBytes": 19710
+    },
+    {
+      "contract": "RMTLaunchCurveFactoryV2",
+      "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+      "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+      "runtimeBytes": 23843
+    }
+  ],
+  "runtimeAnchor": {
+    "number": "0x71ad781",
+    "hash": "0xb046e7ad1052e3c8c72aaf1b63de9e2e03f6c87bddfac4111fca0b8398b46859",
+    "timestamp": "0x6b007869"
+  },
+  "productionExecutionTested": false,
+  "financialActivationAuthorized": false
+}

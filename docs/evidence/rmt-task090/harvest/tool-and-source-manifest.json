@@ -1,0 +1,110 @@
+{
+  "tools": {
+    "schemaVersion": 1,
+    "scope": "LOCAL_NATIVE_WINDOWS_TOOLS_NO_ADMIN_NO_PAID_SERVICES",
+    "foundry": {
+      "version": "1.7.1",
+      "officialRelease": "https://api.github.com/repos/foundry-rs/foundry/releases/tags/v1.7.1",
+      "asset": "foundry_v1.7.1_win32_amd64.zip",
+      "officialAssetSha256": "6d41121b4bbb809845821c903619cfee75ed364f2bdc58a6787c9b0454114537",
+      "downloadedAssetSha256": "6d41121b4bbb809845821c903619cfee75ed364f2bdc58a6787c9b0454114537",
+      "forgeSha256": "6df26c16a6e53519abdd09fcdacf9af1ecdb50e216ee1816fa8012b5a553ef48",
+      "anvilSha256": "5c2217d266135a6fbe5faaccccb1e9eb2ddc1d06f8aabeef5fdb16d9846e4880"
+    },
+    "solc": {
+      "version": "0.8.26+commit.8a97fa7a",
+      "executableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+      "existingRepositoryPin": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+      "officialBuildList": "https://binaries.soliditylang.org/windows-amd64/list.json",
+      "officialBuildPath": "solc-windows-amd64-v0.8.26+commit.8a97fa7a.exe",
+      "githubReleaseAssetDigest": null,
+      "githubDigestLimitation": "Older Solidity GitHub asset exposes no digest; downloaded bytes matched both the official build-list SHA and existing repository pin."
+    },
+    "dependencies": {
+      "coreRevision": "59d3ecf53afa9264a16bba0e38f4c5d2231f80bc",
+      "peripheryRevision": "ad04c9f24a170accf5ea1b2836bbafd514537ca6",
+      "retainedDependencySourceDigestsChecked": 50,
+      "globalGitConfigurationChanged": false,
+      "setupLimitations": [
+        "Initial invocation resolved the tool relative to contracts cwd; corrected to exact absolute executable path before any compilation.",
+        "Recursive dependency install encountered Windows path/GIT_DIR limits in unused nested legacy ds-test test libraries. Pinned required source parents/direct submodules were completed with process-scoped core.longpaths and all50 retained dependency source digests verified. No source assertions or package pins were weakened."
+      ]
+    }
+  },
+  "sourcePins": [
+    {
+      "path": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "normalization": "LF",
+      "sha256": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "normalization": "LF",
+      "sha256": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "normalization": "LF",
+      "sha256": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+    },
+    {
+      "path": "packages/contracts/lib/v4-core/src/PoolManager.sol",
+      "normalization": "LF",
+      "sha256": "3b6ab111dadf613e3cfd617e4b1c6ab75b5445cd15cbe52d7c6207fc02449717"
+    },
+    {
+      "path": "packages/contracts/lib/v4-core/src/libraries/Pool.sol",
+      "normalization": "LF",
+      "sha256": "59c493035ad25d56f24a457e8b40d9d1e3784504b8ff13d171db1eb25c6f128e"
+    },
+    {
+      "path": "packages/contracts/lib/v4-core/src/libraries/Hooks.sol",
+      "normalization": "LF",
+      "sha256": "297d577998cdede64d48b47b12f15e4f442eea032fbb9676bb3c2f89da89b83c"
+    },
+    {
+      "path": "packages/contracts/lib/v4-core/src/types/Currency.sol",
+      "normalization": "LF",
+      "sha256": "ba6726fd24fbc66848208dfbb2899116c10729c505e6e5552316ac2444f1dfc3"
+    },
+    {
+      "path": "packages/contracts/lib/v4-periphery/src/PositionManager.sol",
+      "normalization": "LF",
+      "sha256": "49214f7463f709c378e5bdd010697eea02c1cabb2339fbe09f2ee5395748c6e3"
+    },
+    {
+      "path": "packages/contracts/lib/v4-periphery/src/base/BaseActionsRouter.sol",
+      "normalization": "LF",
+      "sha256": "e3ceda8c5bb24d3e439aef94d004fdce7956439bc74c5c5bcd86e2cb9455e813"
+    },
+    {
+      "path": "packages/contracts/lib/v4-periphery/src/base/DeltaResolver.sol",
+      "normalization": "LF",
+      "sha256": "cb2df93554fb4541355c6e42e346a39cd59138d919456dd5f1d500e2a5d70864"
+    },
+    {
+      "path": "packages/contracts/lib/v4-periphery/src/base/Notifier.sol",
+      "normalization": "LF",
+      "sha256": "b4e380f1fb38506aa02b8325266c7de9f2298f5d0fd878622977a184776a871e"
+    },
+    {
+      "path": "packages/contracts/lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol",
+      "normalization": "LF",
+      "sha256": "2d874da1c1478ed22a2d30dcf1a6ec0d09a13f897ca680d55fb49fbcc0e0c5b1"
+    }
+  ],
+  "soliditySourceChanges": false,
+  "scannerChanges": false,
+  "productionChanges": false,
+  "finalHarvestTrace": {
+    "path": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+    "availability": "VERSIONED_RAW_GZIP_FULL_FOUNDRY_JSON",
+    "compressedSha256": "5c8ef617e7f888a3e55170935633e5aea57fdfc110f9978f8d1b8f2410712def",
+    "compressedBytes": 3766968,
+    "expandedSha256": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429",
+    "expandedBytes": 24179364,
+    "losslessDecompressionVerified": true,
+    "compactExtraction": "docs/evidence/rmt-task090/harvest/proof-results.json",
+    "scope": "All five tests and full setup/execution Foundry trace; no source or assertion changes."
+  }
+}

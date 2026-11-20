@@ -112,7 +112,9 @@ records real Next/PostgreSQL/browser acceptance and exact-head CI.
    `RMT_LAUNCH_HISTORY_INDEXER_URL` (the existing approved HTTPS worker origin),
    `RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN` (the existing worker read credential,
    private continuity check against `RMT_INDEXER_READ_TOKEN`), and
-   `RMT_CURVE_PRODUCTION_DISCOVERY=rmt-curve-fixed-supply-security-v2`.
+   `RMT_CURVE_PRODUCTION_DISCOVERY=rmt-curve-fixed-supply-security-v2-4663-task066`.
+   The worker response format remains `rmt-curve-fixed-supply-security-v2`;
+   that shorter format name is not the website activation value.
    Never place the credential in Git, a client bundle, NEXT_PUBLIC variables,
    request/query parameters, ordinary logs or evidence. Do not infer that the
    old deployed secret transfers automatically. If an approved private

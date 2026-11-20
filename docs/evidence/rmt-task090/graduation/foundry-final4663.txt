@@ -1,0 +1,16 @@
+No files changed, compilation skipped
+
+Ran 6 tests for test/Task090GraduationProof.t.sol:Task090GraduationProofTest
+[PASS] testEachDependencyRuntimeSubstitutionFailsBeforeSettlement() (gas: 5734467)
+[PASS] testExactRealPermit2GraphConservesPrefundingAndOriginalPosition() (gas: 13707342)
+[PASS] testFuzzRealPermit2ConservesIndependentPrefundedBalances(uint64,uint64) (runs: 512, μ: 5357565, ~: 5357519)
+Logs:
+  Bound result 676946
+  Bound result 0
+
+[PASS] testSharedUnlockWithRealPermit2RollsBackAllStateThenRetries() (gas: 6496352)
+[PASS] testUnapprovedThirdPartyCannotSpendInventoryOrCaptureOriginalNft() (gas: 5445763)
+[PASS] testWrongPermitExpiryRollsBackAllStateThenRetries() (gas: 6467398)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 453.21ms (402.09ms CPU time)
+
+Ran 1 test suite in 454.61ms (453.21ms CPU time): 6 tests passed, 0 failed, 0 skipped (6 total tests)

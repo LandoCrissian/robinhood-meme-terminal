@@ -1,0 +1,50 @@
+{
+  "capturedAt": "2026-11-20T17:50:21.266Z",
+  "scope": "AUTHORIZED_DIRECT_WORKER_CONTROL_NOT_NETLIFY_AUTHENTICATION",
+  "credentialsMatch": true,
+  "workerRead": {
+    "status": 200,
+    "origin": "https://robinhood-meme-terminal-production.up.railway.app",
+    "chainId": 4663,
+    "profile": "rmt-curve-fixed-supply-security-v2",
+    "statusField": "ready",
+    "deployment": {
+      "factory": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+      "registry": "0xf1113714Dda31f31532995D2525e034271425398",
+      "blockNumber": "116835102",
+      "blockHash": "0x4a72961fb6649c1690fe4cf361ae6a6fbbdab39117a85604e2a11ba4646c7639"
+    },
+    "checkpoint": {
+      "blockNumber": "119239732",
+      "blockHash": "0x2ae3be07372c446a4395af430b7bdd218ecb3c7449a98818904cfabe37923d71",
+      "timestamp": "2026-11-20T17:49:35.000Z",
+      "confirmations": 20,
+      "finality": "l2-confirmed",
+      "l1Finality": "unverified"
+    },
+    "launchCount": 0,
+    "nextCursor": null,
+    "observedAt": "2026-11-20T17:50:03.263Z"
+  },
+  "ageAtReadMs": 28263,
+  "priorBlock": "119196994",
+  "heightAdvanced": true,
+  "canonicalWitnesses": [
+    {
+      "provider": "https://rpc.mainnet.chain.robinhood.com",
+      "number": "0x71b7434",
+      "hash": "0x2ae3be07372c446a4395af430b7bdd218ecb3c7449a98818904cfabe37923d71",
+      "timestamp": "0x6b00882f"
+    },
+    {
+      "provider": "https://robinhood.api.pocket.network",
+      "number": "0x71b7434",
+      "hash": "0x2ae3be07372c446a4395af430b7bdd218ecb3c7449a98818904cfabe37923d71",
+      "timestamp": "0x6b00882f"
+    }
+  ],
+  "publicRpcReadCount": 4,
+  "signing": false,
+  "transactions": false,
+  "secretValuesExcluded": true
+}

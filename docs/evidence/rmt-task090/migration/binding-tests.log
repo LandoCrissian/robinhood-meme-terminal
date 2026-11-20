@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: six exact migration IDs bind all 16 first-party and 50 dependency sources
+ok 1 - six exact migration IDs bind all 16 first-party and 50 dependency sources
+  ---
+  duration_ms: 10.1452
+  type: 'test'
+  ...
+# Subtest: missing, duplicated or substituted finding IDs reject
+ok 2 - missing, duplicated or substituted finding IDs reject
+  ---
+  duration_ms: 2.9499
+  type: 'test'
+  ...
+# Subtest: first-party or pinned dependency drift rejects
+ok 3 - first-party or pinned dependency drift rejects
+  ---
+  duration_ms: 5.9534
+  type: 'test'
+  ...
+# Subtest: nine exact canonical creation bytecodes and token runtime retain 4663 economics
+ok 4 - nine exact canonical creation bytecodes and token runtime retain 4663 economics
+  ---
+  duration_ms: 1.5965
+  type: 'test'
+  ...
+# Subtest: fixture byte drift, missing bytecode and changed chain/economics reject
+ok 5 - fixture byte drift, missing bytecode and changed chain/economics reject
+  ---
+  duration_ms: 4.4056
+  type: 'test'
+  ...
+# Subtest: two canonical witnesses bind exact deployed migration runtimes and 18 read-only RPCs
+ok 6 - two canonical witnesses bind exact deployed migration runtimes and 18 read-only RPCs
+  ---
+  duration_ms: 21.1811
+  type: 'test'
+  ...
+# Subtest: equal declared hash cannot conceal changed or truncated runtime bytes
+ok 7 - equal declared hash cannot conceal changed or truncated runtime bytes
+  ---
+  duration_ms: 13.9315
+  type: 'test'
+  ...
+# Subtest: chain, canonical recheck, RPC scope or signing changes reject
+ok 8 - chain, canonical recheck, RPC scope or signing changes reject
+  ---
+  duration_ms: 40.8078
+  type: 'test'
+  ...
+# Subtest: exact integer vector binds conserved assets, already-earned claims and each final payout
+ok 9 - exact integer vector binds conserved assets, already-earned claims and each final payout
+  ---
+  duration_ms: 2.7149
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 930.9505

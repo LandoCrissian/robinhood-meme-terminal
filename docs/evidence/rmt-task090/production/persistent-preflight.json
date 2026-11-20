@@ -1,0 +1,18 @@
+{
+  "checkedAt": "2026-11-20T17:52:59.812Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "publishedDeploy": "6b008009d57abd2faf8e0ec7",
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "serverZipSha256": "08d237501b2c16de95627a3e773d9092cc3050c155e39c2d33449503b564c345",
+  "staticFiles": 90,
+  "staticHashesVerified": true,
+  "siteKeys": [],
+  "teamKeys": [],
+  "secretValuesExcluded": true,
+  "status": "BLOCKED_BINDING_OR_DEPLOY_STATE_REQUIRES_OWNER_RESOLUTION",
+  "deployAttempted": false,
+  "financialActivationAuthorized": false,
+  "deploymentLocalOverrides": false,
+  "preparedCommand": "netlify deploy --no-build --prod --site ebdf8492-ff86-452f-b4cc-45d7865c8311 --filter @rmt/launch-website --dir <staged-app>/.netlify/static --functions <staged-app>/.netlify/functions --json",
+  "commandExecuted": false
+}

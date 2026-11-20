@@ -1,0 +1,32 @@
+Retained unified-exec result, session1180; initial local harness before prank-order correction.
+Command used absolute verified tool paths after the first relative-solc-path error.
+
+Compiling 151 files with Solc 0.8.26
+Solc 0.8.26 finished in 66.90s
+Compiler run successful!
+
+Ran 6 tests for test/Task090GraduationProof.t.sol:Task090GraduationProofTest
+[FAIL: NativeTransferFailed()] testEachDependencyRuntimeSubstitutionFailsBeforeSettlement() (gas: 3499506)
+[FAIL: NativeTransferFailed()] testExactRealPermit2GraphConservesPrefundingAndOriginalPosition() (gas: 3499128)
+[FAIL: NativeTransferFailed(); counterexample: calldata=0xd9bdf1e2000000000000000000000000000000000000000000000000000001691adb3e9100000000000000000000000000000000000000000000000000000002b8c5cb45 args=[1550933769873 [1.55e12], 11689904965 [1.168e10]]] testFuzzRealPermit2ConservesIndependentPrefundedBalances(uint64,uint64) (runs: 0, μ: 0, ~: 0)
+[FAIL: NativeTransferFailed()] testSharedUnlockWithRealPermit2RollsBackAllStateThenRetries() (gas: 3499286)
+[FAIL: NativeTransferFailed()] testUnapprovedThirdPartyCannotSpendInventoryOrCaptureOriginalNft() (gas: 3499374)
+[FAIL: NativeTransferFailed()] testWrongPermitExpiryRollsBackAllStateThenRetries() (gas: 3499154)
+Suite result: FAILED. 0 passed; 6 failed; 0 skipped; finished in 188.63ms (49.01ms CPU time)
+
+Ran 1 test suite in 196.47ms (188.63ms CPU time): 0 tests passed, 6 failed, 0 skipped (6 total tests)
+
+Failing tests:
+Encountered 6 failing tests in test/Task090GraduationProof.t.sol:Task090GraduationProofTest
+[FAIL: NativeTransferFailed()] testEachDependencyRuntimeSubstitutionFailsBeforeSettlement() (gas: 3499506)
+[FAIL: NativeTransferFailed()] testExactRealPermit2GraphConservesPrefundingAndOriginalPosition() (gas: 3499128)
+[FAIL: NativeTransferFailed(); counterexample: calldata=0xd9bdf1e2000000000000000000000000000000000000000000000000000001691adb3e9100000000000000000000000000000000000000000000000000000002b8c5cb45 args=[1550933769873 [1.55e12], 11689904965 [1.168e10]]] testFuzzRealPermit2ConservesIndependentPrefundedBalances(uint64,uint64) (runs: 0, μ: 0, ~: 0)
+[FAIL: NativeTransferFailed()] testSharedUnlockWithRealPermit2RollsBackAllStateThenRetries() (gas: 3499286)
+[FAIL: NativeTransferFailed()] testUnapprovedThirdPartyCannotSpendInventoryOrCaptureOriginalNft() (gas: 3499374)
+[FAIL: NativeTransferFailed()] testWrongPermitExpiryRollsBackAllStateThenRetries() (gas: 3499154)
+
+Encountered a total of 6 failing tests, 0 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 6 failed tests
+
+Fuzz seed: 0xdbd13d6eedb0cf6532ea37a0d463f67869636cf054d4eb837b3185801ce0821e (use `--fuzz-seed` to reproduce)

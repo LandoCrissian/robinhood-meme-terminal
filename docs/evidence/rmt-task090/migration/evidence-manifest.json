@@ -1,0 +1,163 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK090_MIGRATION_SOURCE_AND_NONSCANNER_EVIDENCE_DIGESTS",
+  "sourceBase": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "excludedFromDigests": [
+    "evidence-manifest.json",
+    "gitleaks-*"
+  ],
+  "entries": [
+    {
+      "relativePath": "packages/contracts/test/Task090MigrationProof.t.sol",
+      "bytes": 28546,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "333203dbc6c6b097f3ae79a7e813ba3efa89cd985d9fbba7ae7907999e745551"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/fixtures/task090-migration-profile.json",
+      "bytes": 345049,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "57c79fcc523a44ca787773eadac36fb4487f9c99a173902cae86fdb32d16faf9"
+      }
+    },
+    {
+      "relativePath": "scripts/security/migration-proof.mjs",
+      "bytes": 20686,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c8acd407de66bb229228cda6a9f8ba16a384437975bf04b818ded50014af58a6"
+      }
+    },
+    {
+      "relativePath": "scripts/security/migration-proof.test.mjs",
+      "bytes": 5092,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f5869291ab7b26cea40831ba6ba4347589052f3ae6ddff9833ee610e0908ae85"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/auxiliary-ast-input.json.gz",
+      "bytes": 70739,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d8ea5689bd974d7be21d38e07a305bccb327765e6b866213d7d2f01d4e8f6034"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/binding-tests.log",
+      "bytes": 2054,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "441c66e43444a9d12af36c2e2eff8c407947786c5693bf74fbcb725234cc8fe0"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/canonical-compilation.json.gz",
+      "bytes": 151726,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c3f3b851e6d96fe89515e5f6517f4b5716dea8c81e05090841ed663d8cc7dd04"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/canonical-compile.log",
+      "bytes": 834,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7833a4a7ae9bbc128c52474a8ac686fe945f992926d19a31e07429aae77de49e"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/canonical-input.json.gz",
+      "bytes": 70730,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b3440ceb0d0c87290acb926cfc44818c91c530f0b2073316fe31ada97b9b7595"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/compiler-artifacts.json",
+      "bytes": 2096,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "23b7aac60f2202adc43a181dbfb7c7e6c915e7361966196c9905ede263c32817"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/conservation-vector.json",
+      "bytes": 3453,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "403dc2418bcc012d4b70b5400ec009fe58491e915005bdcf9ee12ca46e0eead4"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/foundry-canonical-4663.log",
+      "bytes": 2976,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b66ced5d57865ac778f2b8e78084644a0a098ffc87f0474762fed323a58d2482"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/foundry-default-31337.log",
+      "bytes": 3036,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8a6c783f9b81b0d78d42e033908364bb86c9e1bb50abf6ff25a20de909e14d18"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/initial-fixture-failure.log",
+      "bytes": 1725,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9649616754dfefd1bdce0f0dd7bb34f2ef93e67f2b894211cf7b59e05f6541d8"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/proof-matrix.json",
+      "bytes": 6604,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "df776e183cc330924a25453e9fab493af8d8c23e4c7213d1bec88ff0696f8bef"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/raw-compiler-output.json.gz",
+      "bytes": 764266,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4a66908446901e2c9fa35e9921f664eb3b47090edd9514bda5f15aeb071d867b"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/README.md",
+      "bytes": 14482,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "66e5c86f982b9016e7aeb4f9fcfbda593ca50bb86c2ed2a374bce139000349ad"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/runtime-observation.json",
+      "bytes": 330529,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c1db306be8af5b314bed9927e257c89d80919b36dd1c38961c91a24ab178a515"
+      }
+    },
+    {
+      "relativePath": "docs/evidence/rmt-task090/migration/source-runtime-binding.json",
+      "bytes": 26149,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a6c84b888adfe9b6dfbd37c3e5ebb9ff4635eaae249933df25a581ba70671332"
+      }
+    }
+  ]
+}

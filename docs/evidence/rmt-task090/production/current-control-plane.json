@@ -1,0 +1,15 @@
+{
+  "capturedAt": "2026-11-20T17:36:03.972Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "publishedDeploy": "6b008009d57abd2faf8e0ec7",
+  "deploy": {
+    "id": "6b008009d57abd2faf8e0ec7",
+    "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+    "state": "ready",
+    "context": "production",
+    "publishedAt": "2026-11-20T17:14:56.180Z",
+    "commitRef": null
+  },
+  "keys": [],
+  "valuesExcluded": true
+}

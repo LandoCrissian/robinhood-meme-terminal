@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "scope": "EXACT_PUBLIC_SOURCE_IDENTITIES_IN_NEW_MIGRATION_ARTIFACTS_ONLY_NO_SCANNER_SUPPRESSION",
+  "scannerVersion": "8.30.1",
+  "scannerExecutableDigest": {
+    "algorithm": "SHA-256",
+    "hex": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c"
+  },
+  "rawExitCode": 1,
+  "rawFindingCount": 5,
+  "classifications": [
+    {
+      "index": 0,
+      "ruleId": "generic-api-key",
+      "evidenceArchive": "auxiliary-ast-input.json.gz",
+      "rawRange": {
+        "startLine": 1,
+        "startColumn": 9698,
+        "endColumn": 9734
+      },
+      "classification": "PUBLIC_SOLIDITY_TYPE_IDENTIFIER",
+      "publicSource": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "sourceLine": 114,
+      "publicTypeIdentifier": "RMTLaunchCurveLpFeeLedgerV1",
+      "publicContentDigest": null
+    },
+    {
+      "index": 1,
+      "ruleId": "generic-api-key",
+      "evidenceArchive": "canonical-input.json.gz",
+      "rawRange": {
+        "startLine": 1,
+        "startColumn": 9698,
+        "endColumn": 9734
+      },
+      "classification": "PUBLIC_SOLIDITY_TYPE_IDENTIFIER",
+      "publicSource": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "sourceLine": 114,
+      "publicTypeIdentifier": "RMTLaunchCurveLpFeeLedgerV1",
+      "publicContentDigest": null
+    },
+    {
+      "index": 2,
+      "ruleId": "generic-api-key",
+      "evidenceArchive": "canonical-compilation.json.gz",
+      "rawRange": {
+        "startLine": 1,
+        "startColumn": 18427,
+        "endColumn": 18519
+      },
+      "classification": "PUBLIC_SOURCE_CONTENT_DIGEST",
+      "publicSource": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "sourceLine": null,
+      "publicTypeIdentifier": null,
+      "publicContentDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "LF",
+        "hex": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+      }
+    },
+    {
+      "index": 3,
+      "ruleId": "generic-api-key",
+      "evidenceArchive": "canonical-compilation.json.gz",
+      "rawRange": {
+        "startLine": 1,
+        "startColumn": 20792,
+        "endColumn": 20884
+      },
+      "classification": "PUBLIC_SOURCE_CONTENT_DIGEST",
+      "publicSource": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "sourceLine": null,
+      "publicTypeIdentifier": null,
+      "publicContentDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "LF",
+        "hex": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+      }
+    },
+    {
+      "index": 4,
+      "ruleId": "generic-api-key",
+      "evidenceArchive": "canonical-compilation.json.gz",
+      "rawRange": {
+        "startLine": 1,
+        "startColumn": 27175,
+        "endColumn": 27253
+      },
+      "classification": "PUBLIC_DEPENDENCY_CONTENT_DIGEST",
+      "publicSource": "packages/contracts/lib/v4-core/src/types/PoolKey.sol",
+      "sourceLine": null,
+      "publicTypeIdentifier": null,
+      "publicContentDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "LF",
+        "hex": "99e1afe285b5c614ebc9586ab5196db9d24a63fd924a449f5d99f490a6a6d6a9"
+      }
+    }
+  ],
+  "unclassified": [],
+  "scannerPolicyChanged": false,
+  "strictSecurityGateChanged": false
+}

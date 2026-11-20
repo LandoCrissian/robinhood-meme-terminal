@@ -1,0 +1,62 @@
+[
+  {
+    "path": "docs/evidence/rmt-task090/harvest/extract-proof-results.mjs",
+    "sha256": "c69d20e7dfe1c87c2556521783b1e101d998d7c327ee4f6518c1f5521ac8aac4",
+    "bytes": 9923
+  },
+  {
+    "path": "docs/evidence/rmt-task090/harvest/fixture-verification-before.txt",
+    "sha256": "f42123d50f16a6a630d0bb6b3eb5c44a0300f91d1d6bf812c936232b6e7b417e",
+    "bytes": 1004
+  },
+  {
+    "path": "docs/evidence/rmt-task090/harvest/fixture-verification.txt",
+    "sha256": "05a15fa35e80099372bd85e5e36ec53edb590b1c532a41b8dfb7c268c9f700d1",
+    "bytes": 708
+  },
+  {
+    "path": "docs/evidence/rmt-task090/harvest/foundry-traces-final-stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "docs/evidence/rmt-task090/harvest/foundry-traces-stderr.txt",
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  {
+    "path": "docs/evidence/rmt-task090/harvest/proof-results.json",
+    "sha256": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92",
+    "bytes": 262738
+  },
+  {
+    "path": "docs/evidence/rmt-task090/harvest/README.md",
+    "sha256": "532adcd22e8e31e901d0f708570afb36e35b565c4321df57d426009549a41bb9",
+    "bytes": 11679
+  },
+  {
+    "path": "docs/evidence/rmt-task090/harvest/tool-and-source-manifest.json",
+    "sha256": "68223be6f2f085ef509653f14e8a0902ee8ebdbd28994e2aed55ebc048630b23",
+    "bytes": 4611
+  },
+  {
+    "path": "docs/evidence/rmt-task090/harvest/verify-fixtures.mjs",
+    "sha256": "6052e341ae6c4a9ab6f7f7b177d4949096b0040ef388c66d545e1dd5e6f46daa",
+    "bytes": 3703
+  },
+  {
+    "path": "packages/contracts/test/Task090HarvestProof.t.sol",
+    "sha256": "29affe4f7ae32f079cc4e029dbdaec6d7cba4fa58b84f02d883ac8144acf639d",
+    "bytes": 23628
+  },
+  {
+    "path": "packages/contracts/test/fixtures/task090-canonical-v4-runtime.json",
+    "sha256": "5966ea1363b5faee42c86ccb13b10f97c8fb74a324b5689b42c286109567fa10",
+    "bytes": 115253
+  },
+  {
+    "path": "packages/contracts/test/fixtures/task090-harvest-profile.json",
+    "sha256": "decbdeeda201b99ecbd71e0fb9f37bab8541dffa3f60a124a124214ef05d6507",
+    "bytes": 149836
+  }
+]

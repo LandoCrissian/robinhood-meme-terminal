@@ -1,0 +1,128 @@
+{
+  "schemaVersion": 1,
+  "scope": "ACTUAL_HOSTED_READ_ONLY_REPAIR_AND_PRESERVED_FAILED_ATTEMPTS",
+  "capturedAt": "2026-11-20T19:07:06.094Z",
+  "websiteSource": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "deployedServerZipSha256": "08d237501b2c16de95627a3e773d9092cc3050c155e39c2d33449503b564c345",
+  "deploy": "6b0096332beb675b1d8e0f49",
+  "sourceAndSecurityCi": "4a174f425ded6b0a8ed212878cffbde732a87cc8",
+  "secretValueOrCredentialFingerprintIncluded": false,
+  "actualHostedAcceptance": "PASS",
+  "canonicalRpcReads": 8,
+  "netlifyObservations": 2,
+  "railwayAuthenticatedCorrelations": 2,
+  "financialBoundaryRefusedPostProbes": 3,
+  "productionFinancialExecution": false,
+  "newTokenGenerated": false,
+  "tokenRotated": false,
+  "buildRun": false,
+  "railwayDatabaseChanged": false,
+  "producerSyntaxErrors": 0,
+  "files": [
+    {
+      "name": "README.md",
+      "bytes": 2700,
+      "sha256": "dbc71004dc3371a67b79cdd61633476d414c25ecba642eff3cd2bfaf47de6ef6"
+    },
+    {
+      "name": "account-capabilities.json",
+      "bytes": 281,
+      "sha256": "dac1ae50e1cb5cc7ede207beddd5bb11c9be910b6e44b6bf7456dee2dbd6de51"
+    },
+    {
+      "name": "activation-profile-correction.json",
+      "bytes": 1362,
+      "sha256": "7361ffb4aa194a5ac51c8ba9f6ef310759a440e1d7104ba608a04780ae9db227"
+    },
+    {
+      "name": "bindings-final.json",
+      "bytes": 1143,
+      "sha256": "9dac3e539fb9ccb813635c9f08b25717182f663cfc61798670699084178772ba"
+    },
+    {
+      "name": "compiled-gate-audit.json",
+      "bytes": 944,
+      "sha256": "03181da429a2d1ca73e182b5c916d2ad3e617497470881549b5d0fb0fe9c9f34"
+    },
+    {
+      "name": "correlation.json",
+      "bytes": 1909,
+      "sha256": "467a699ae631e5b84835260cb35b2e6c9a385b4ad40b72fa36d30dc0dec7062a"
+    },
+    {
+      "name": "deployment.json",
+      "bytes": 576,
+      "sha256": "90d36eb8fbef9ab2826570e01b4e9c33ebc19f9d81af7c3cc2020881c4ffa2b0"
+    },
+    {
+      "name": "hosted-acceptance.json",
+      "bytes": 54403,
+      "sha256": "cc9dfaee9616315d78e843fab52b47ebdbbfe184f34b5ed0db10756b66f4e058"
+    },
+    {
+      "name": "owner-scope-approval.json",
+      "bytes": 427,
+      "sha256": "a350969b6f8cd1b25f004bfdc927062213e7889d1c20a70834d117f4bc34bb5f"
+    },
+    {
+      "name": "prior-checker-contract-failure.json",
+      "bytes": 1352,
+      "sha256": "62e95d76c82696b069737f64fe584b53cbac05217056f45506110dfb4c686d81"
+    },
+    {
+      "name": "prior-null-witness.json",
+      "bytes": 12192,
+      "sha256": "301e09e2af555413e03a39a49d97a024e49d47379329fdb3fd1cb6a0b25a82a6"
+    },
+    {
+      "name": "prior-profile-disabled.json",
+      "bytes": 380,
+      "sha256": "dc29f8554e3d6c6083aa232f9b03ac897e4a1392fb072b22081435be9bd1a52c"
+    },
+    {
+      "name": "prior-profile-failure.json",
+      "bytes": 957,
+      "sha256": "d0449676a3487e81668e387aa1c6d5623e6b54d39c9d9e02b41339ed8ab3b3bb"
+    },
+    {
+      "name": "prior-railway-availability.json",
+      "bytes": 1349,
+      "sha256": "90d84868916b96d2a502460250a4147351e96196c1f908cee4682e20e841e1da"
+    },
+    {
+      "name": "prior-upstream-unavailable.json",
+      "bytes": 629,
+      "sha256": "001884c32a28a6d707a5795a912a3f0bfc641a4d41e33244a12dd5e4960156a7"
+    },
+    {
+      "name": "producer-correspondence.json",
+      "bytes": 453,
+      "sha256": "d5ac52876079b6425662c9d80b7347f9a45e939d9a1550390ad1afa1048cb8b4"
+    },
+    {
+      "name": "railway-http.json",
+      "bytes": 1079,
+      "sha256": "be585a6ecb627d67c2a9dd16aa402e8d586002258b452a2665b1aa092099d6bd"
+    },
+    {
+      "name": "repository-check.txt",
+      "bytes": 432,
+      "sha256": "aa09136cf7a9a0caf2fa66873697a41251da0b952bd142e9b5cfa47290f51921"
+    },
+    {
+      "name": "rollout.json",
+      "bytes": 1354,
+      "sha256": "d03a01a7ab80a8d79198ce65b91f849171d0cc9e87b6a3434b26fcf909ecd7bc"
+    },
+    {
+      "name": "secret-binding-transfer.json",
+      "bytes": 3278,
+      "sha256": "1d9925e6c5631c85481be88d2c7280d659c4dbb1bd54f681c432d968ee518771"
+    },
+    {
+      "name": "verify-hosted.mts",
+      "bytes": 6924,
+      "sha256": "5148777e6e924e5413cd269c6464d001f0d7b868428ddb9c77795c2d002b50ce"
+    }
+  ]
+}

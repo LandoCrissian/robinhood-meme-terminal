@@ -1,0 +1,11 @@
+{
+  "executedProducerSha256": "e37e8fd6729e6350c284f32cd66ffaf4b9f5162be387a64d36c0408c76da0c1d",
+  "packagedProducerSha256": "5148777e6e924e5413cd269c6464d001f0d7b868428ddb9c77795c2d002b50ce",
+  "onlyChanges": [
+    "relative repository import roots",
+    "explicit fresh output path argument"
+  ],
+  "validationAndRequestLogicIdentical": true,
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "credentialsUsedByPublicProducer": false
+}

@@ -1,0 +1,25 @@
+Compiling 1 files with Solc 0.8.26
+Solc 0.8.26 finished in 73.05s
+Compiler run successful!
+
+Ran 9 tests for test/Task090MigrationProof.t.sol:Task090MigrationProofTest
+[PASS] testCancelledCreatorConsentAndExpiryCannotReuseApprovalOrMoveAssets() (gas: 988206)
+[PASS] testCanonicalCallGraphHasOnlySixMutableFramesAndOneLedgerWrite() (gas: 1680137)
+Logs:
+  TASK090_MIGRATION_VECTOR: {"balances":[297000000000000091,30,"767261645624727905964301320",19,"232738354375272094035698737",297000000000000000,"1000000000000000000000000000","232738354375272094035698661",750000000000000,0,3000000000000000,2250000000000000,400000000000000,400000000000000],"beneficiaryNative":[2100000000000000,0,150000000000000,0],"bucketAccrued":[2100000000000000,600000000000000,150000000000000,150000000000000],"canonicalBytecodes":false,"chainId":31337,"claimable":[0,600000000000000,0,150000000000000],"graduationBackingWei":"1000000000000000000","phase":"before"}
+  TASK090_MIGRATION_VECTOR: {"balances":[91,297000000000000030,57,"767261645624727905964301282","232738354375272094035698737",0,"1000000000000000000000000000","232738354375272094035698661",750000000000000,0,3000000000000000,2250000000000000,400000000000000,400000000000000],"beneficiaryNative":[2100000000000000,0,150000000000000,0],"bucketAccrued":[2100000000000000,600000000000000,150000000000000,150000000000000],"canonicalBytecodes":false,"chainId":31337,"claimable":[0,600000000000000,0,150000000000000],"graduationBackingWei":"1000000000000000000","phase":"after"}
+  TASK090_MIGRATION_VECTOR: {"balances":[91,297000000000000030,57,"767261645624727905964301282","232738354375272094035698737",0,"1000000000000000000000000000","232738354375272094035698661",0,0,3000000000000000,3000000000000000,400000000000000,400000000000000],"beneficiaryNative":[2100000000000000,600000000000000,150000000000000,150000000000000],"bucketAccrued":[2100000000000000,600000000000000,150000000000000,150000000000000],"canonicalBytecodes":false,"chainId":31337,"claimable":[0,0,0,0],"graduationBackingWei":"1000000000000000000","phase":"after-claims"}
+
+[PASS] testCounterfactualMutableLedgerDemonstratesTheExactLedgerCodeAssumption() (gas: 1030112)
+[PASS] testFuzzCanonicalHandoffConservesSurplusesAndAlreadyEarnedClaims(uint96,uint96,uint96) (runs: 512, μ: 1000108, ~: 1000109)
+Logs:
+  Bound result 490000000000012642
+
+[PASS] testHostileAdmittedSuccessorNativeDiversionRevertsAndSameProposalCanRetry() (gas: 1497336)
+[PASS] testHostileLedgerPostWriterTradeRollsBackAssetsClaimsProposalAndRoutes() (gas: 1435053)
+[PASS] testMissingCreatorQuorumWrongVersionAndPauseCannotMoveAnyAssets() (gas: 1208826)
+[PASS] testPostSignatureRuntimeReplacementFailsBeforeHandoffAndRestoredPinRetries() (gas: 1221810)
+[PASS] testRealAdjacentV2ToV3RetainsOriginalLedgerAndSeparateTemplateConsent() (gas: 6951779)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 145.77ms (171.57ms CPU time)
+
+Ran 1 test suite in 147.09ms (145.77ms CPU time): 9 tests passed, 0 failed, 0 skipped (9 total tests)

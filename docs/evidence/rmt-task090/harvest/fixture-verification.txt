@@ -1,0 +1,16 @@
+{
+  "status": "PASS",
+  "scope": "EXACT_SOURCE_RECOMPILE_AND_DUAL_PROVIDER_RUNTIME_FIXTURE_IDENTITY",
+  "inputSha256": "437fb783d7dce558a05317e8b15877f6d08b9571bc12aefec360382469d53648",
+  "sourceCount": 66,
+  "compilerPlatform": "win32-x64",
+  "compilerSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "runtimeWitnesses": 2,
+  "exactRuntimes": 3,
+  "bootstrapArtifacts": 3,
+  "sourceOrPolicyChanges": false,
+  "limitations": [
+    "Pure local verification of archived reads and fresh compilation; no network, production storage, signatures or transactions.",
+    "Fresh synthetic storage is not a mainnet-state/finality or whole-stage correctness proof."
+  ]
+}

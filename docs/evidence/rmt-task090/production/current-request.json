@@ -1,0 +1,47 @@
+{
+  "capturedAt": "2026-11-20T17:37:07.315Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "deploy": "6b008009d57abd2faf8e0ec7",
+  "requestId": "01M7X0EMTCC24V2JVM2GPRMEDK",
+  "url": "https://www.rmtlaunch.fun/api/launchpad/new-engine",
+  "method": "GET",
+  "status": 404,
+  "timestamp": 1795196146508,
+  "cache": {
+    "hit": false,
+    "caches": {
+      "durable": {
+        "hit": false,
+        "stored": false,
+        "ttl": 0,
+        "stale": false,
+        "swr": false
+      },
+      "edge": {
+        "hit": false,
+        "stale": false
+      }
+    }
+  },
+  "operations": [
+    {
+      "type": "edge_function",
+      "name": "___netlify-edge-handler-middleware",
+      "timestamp": 1795196146512,
+      "duration_ns": 1410556099
+    },
+    {
+      "type": "edge_function",
+      "name": "launch-discovery-limit",
+      "timestamp": 1795196146512,
+      "duration_ns": 1410556099
+    },
+    {
+      "type": "function",
+      "name": "___netlify-server-handler",
+      "timestamp": 1795196147802,
+      "duration_ns": 67476538
+    }
+  ],
+  "clientAndHeadersExcluded": true
+}

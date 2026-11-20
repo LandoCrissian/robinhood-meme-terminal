@@ -1,0 +1,14 @@
+{
+  "startedAt": "2026-11-20T18:54:45.565Z",
+  "site": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "deploy": "6b0096332beb675b1d8e0f49",
+  "sourceCommit": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "scope": "ACTUAL_HOSTED_READ_ONLY_ACCEPTANCE",
+  "publicResponseContract": "PINNED_SANITIZED_STATUS_LAUNCHES_CHECKPOINT_NO_INVENTED_UPSTREAM_METADATA",
+  "observations": [],
+  "boundary": [],
+  "rpcReads": [],
+  "productionFinancialCalls": 0,
+  "status": "FAIL_NO_FINANCIAL_ACTIVATION",
+  "error": "Expected values to be strictly deep-equal:\n+ actual - expected\n\n  [\n-   'checkpoint',\n    'launches',\n    'status'\n  ]\n"
+}
