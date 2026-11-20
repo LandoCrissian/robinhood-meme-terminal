@@ -5,6 +5,7 @@ on:
     paths:
       - "docs/RMT_CORE_LAUNCH_GO_NO_GO.md"
       - "docs/evidence/rmt-task089/**"
+      - "docs/evidence/rmt-task091/**"
       - "apps/launch-website/lib/server/production-discovery*"
       - "packages/contracts/scripts/fixed-supply-profile.mjs"
       - "packages/contracts/scripts/pinned-solc*"

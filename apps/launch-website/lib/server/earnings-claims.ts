@@ -21,13 +21,13 @@ const asPoint = (b: { number: bigint; hash: Hex | null; timestamp: bigint }): Ea
 };
 
 // No environment value or caller-supplied approval can activate 4663 here.
-// Production release, scanner disposition and physical-wallet acceptance are
+// Production release, stage-specific risk and physical-wallet acceptance are
 // separate owner approvals. HTTP preparation/recovery and the wallet sender are
 // 31337-only. The unsigned 4663 review below is an internal, non-executable artifact.
 export const productionEarningsExecutionEnabled = false;
 export function earningsClaimReadiness() {
   return { status: "blocked", chainId: 4663, executionEnabled: productionEarningsExecutionEnabled,
-    holds: ["22 retained high findings and failed security gates", "separate owner transaction activation", "production claim settlement/provider acceptance", "physical wallet acceptance"] } as const;
+    holds: ["production claim HTTP preparation/recovery and wallet sender are not implemented", "separate owner transaction activation", "production claim settlement/provider acceptance", "physical wallet acceptance"] } as const;
 }
 export async function handleProductionEarningsClaim(_request: Request) {
   return reply({ status: "unavailable", executionEnabled: false }, 404);

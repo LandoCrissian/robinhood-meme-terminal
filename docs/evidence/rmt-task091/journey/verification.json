@@ -1,0 +1,104 @@
+{
+  "schemaVersion": 1,
+  "status": "PASS_RETAINED_EXACT_SOURCE_SYNTHETIC_LIFECYCLE",
+  "checkedAt": "2026-11-20T20:37:10.971Z",
+  "sourceHead": "27f19787ed0a2d904ba4508d2adfab1773e82e67",
+  "sourceTree": "ea29eedf86e4e68600a4d591c15bd4af43d96986",
+  "reportsVerified": 11,
+  "minimumAssertions": 321,
+  "firstPartySourceBindingsPerCompilerReport": 16,
+  "compiledSourcesPerCompilerReport": 66,
+  "terms": {
+    "fixedSupplyWei": "1000000000000000000000000000",
+    "decimals": 18,
+    "curveInventoryWei": "600000000000000000000000000",
+    "initialLiquidityInventoryWei": "400000000000000000000000000",
+    "creationFeeWei": "400000000000000",
+    "graduationBackingWei": "2000000000000000000",
+    "tradingFeeBps": 100,
+    "projectBps": 9000,
+    "operationsBps": 500,
+    "reserveBps": 500
+  },
+  "reports": [
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/webkit-mobile.json.gz",
+      "rawSha256": "7f207d225366681b47227213d7a9d2a2211e30f27d6790569ebf987b6063cfa1",
+      "kind": "creator",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/chromium-desktop.json.gz",
+      "rawSha256": "3f3d48ff29d6dd7c59368fa7e82c7775527e84241073c9e0a18075e2692787ec",
+      "kind": "creator",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/chromium-mobile.json.gz",
+      "rawSha256": "e969d7310bb89f7c9b4b65e86c55ef76d5e9349f73d7f8440f715974f808f594",
+      "kind": "creator",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/webkit-desktop.json.gz",
+      "rawSha256": "98bba30906acc49751860ebd48301ce5f988252e0204926fdb10793a4b24b6c0",
+      "kind": "creator",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/chromium-claim-wallet-acceptance.json.gz",
+      "rawSha256": "f58799ab71e74e4c217f7388f31c4e38e5c194325a6da4a26df73bd21518e85b",
+      "kind": "wallet-claim-wallet-acceptance",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/chromium-claim-wallet-profile-manifest.json.gz",
+      "rawSha256": "ad8f82100642d9c58ab83647f55805e0a32f5d1179fd2e33eb8450fac14ca726",
+      "kind": "wallet-claim-wallet-profile-manifest",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/chromium-claim-wallet-browser-evidence.json.gz",
+      "rawSha256": "812e61b3dfaff9eb8ea0ffe217294fd7b946745cc73b5c0f424375dd9529201e",
+      "kind": "wallet-claim-wallet-browser-evidence",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/webkit-claim-wallet-acceptance.json.gz",
+      "rawSha256": "d5ce7b35d9bb9c97e94d4d4076bc4c3baba6006e30f61f81bad62b35b1966d23",
+      "kind": "wallet-claim-wallet-acceptance",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/webkit-claim-wallet-profile-manifest.json.gz",
+      "rawSha256": "ad8f82100642d9c58ab83647f55805e0a32f5d1179fd2e33eb8450fac14ca726",
+      "kind": "wallet-claim-wallet-profile-manifest",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/journey/retained-head/webkit-claim-wallet-browser-evidence.json.gz",
+      "rawSha256": "1a961bd1c3dd09234e6ebe915af9f51590ff64e3de04cfd5cd6ff35ff2a61ab3",
+      "kind": "wallet-claim-wallet-browser-evidence",
+      "result": "PASS"
+    },
+    {
+      "path": "docs/evidence/rmt-task091/operations/retained-head-backup-restore.json",
+      "rawSha256": "bdfcca7a4fe75313160434355d662590f4349dbfabdd2143c95d9675c65bddea",
+      "kind": "synthetic-recovery",
+      "result": "PASS"
+    }
+  ],
+  "sourceHashMethod": "UTF8 text with CRLF converted to LF, exactly as the retained fixed-supply-profile compiler helper; not Windows raw-file digest equality",
+  "chain31337Only": true,
+  "currentCandidateReexecutionClaimed": false,
+  "productionLifecycleClaimed": false,
+  "safeWebsiteCreateSupported": false,
+  "physicalIphoneAccepted": false,
+  "boundaries": [
+    "The four creator reports execute the complete 2ETH economic profile; genuine delegated/Safe profile reports bind the same 66-source input.",
+    "The creator fixture discovers actual 31337 receipts in the fixture namespace. Separate authenticated 4663-shaped adapter tests are not a continuous production-namespace witness.",
+    "The profile runtime proof qualifies local synthetic delegated type2 and Safe beneficiary claims, not general website Safe CREATE or live phone signing.",
+    "Production trade/claim HTTP execution is not implemented; changing a flag cannot activate those routes.",
+    "This verifier checks stored evidence and exact current contract source bytes. Current Task091 CI and operational approval remain separate."
+  ]
+}

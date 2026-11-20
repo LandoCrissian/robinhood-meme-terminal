@@ -3,6 +3,12 @@
   "workspaces": {
     ".": {
       "entry": [
+        "docs/evidence/rmt-task091/governance/capture-authority.mjs",
+        "docs/evidence/rmt-task091/governance/capture.mjs",
+        "docs/evidence/rmt-task091/governance/prepare-source-publication.mjs",
+        "docs/evidence/rmt-task091/operations/capture-railway.mjs",
+        "scripts/security/run-task091-admission.mjs",
+        "scripts/security/scan-task091.mjs",
         "docs/evidence/rmt-task090/hosted-resolution/verify-hosted.mts",
         "scripts/security/scan-task090.mjs",
         "docs/evidence/rmt-task089/archive-scan/scan-changed-source.mjs",

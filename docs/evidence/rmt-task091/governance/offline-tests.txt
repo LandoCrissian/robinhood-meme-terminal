@@ -1,0 +1,70 @@
+TAP version 13
+# Subtest: replay 206 actual bounded public reads, all14pins and canonical constructor/schedule witnesses
+ok 1 - replay 206 actual bounded public reads, all14pins and canonical constructor/schedule witnesses
+  ---
+  duration_ms: 57.6718
+  type: 'test'
+  ...
+# Subtest: admit exact original action for review at captured block; never authorize signing or broadcast
+ok 2 - admit exact original action for review at captured block; never authorize signing or broadcast
+  ---
+  duration_ms: 7.2697
+  type: 'test'
+  ...
+# Subtest: replay114 exact authority reads: unpublished V3 template and both2of3Safes, no modules/guard, pinned handler
+ok 3 - replay114 exact authority reads: unpublished V3 template and both2of3Safes, no modules/guard, pinned handler
+  ---
+  duration_ms: 24.1512
+  type: 'test'
+  ...
+# Subtest: reject altered action typed domain value and calldata
+ok 4 - reject altered action typed domain value and calldata
+  ---
+  duration_ms: 56.6493
+  type: 'test'
+  ...
+# Subtest: reject current action change, rotation, duplicate publication, suspended directory and pending sender nonce
+ok 5 - reject current action change, rotation, duplicate publication, suspended directory and pending sender nonce
+  ---
+  duration_ms: 71.9456
+  type: 'test'
+  ...
+# Subtest: enforce actual notice and inclusive expiry, independent of fake accelerated fork clock
+ok 6 - enforce actual notice and inclusive expiry, independent of fake accelerated fork clock
+  ---
+  duration_ms: 6.5075
+  type: 'test'
+  ...
+# Subtest: saved costs/nonce expire after180seconds and cannot be treated as current wallet approval
+ok 7 - saved costs/nonce expire after180seconds and cannot be treated as current wallet approval
+  ---
+  duration_ms: 7.8376
+  type: 'test'
+  ...
+# Subtest: refuse underfunded caller and incoherent cost maximum
+ok 8 - refuse underfunded caller and incoherent cost maximum
+  ---
+  duration_ms: 10.831
+  type: 'test'
+  ...
+# Subtest: raw replay rejects reorg, changed deployed runtime, forged raw digest, prohibited RPC and changed simulation
+ok 9 - raw replay rejects reorg, changed deployed runtime, forged raw digest, prohibited RPC and changed simulation
+  ---
+  duration_ms: 88.8205
+  type: 'test'
+  ...
+# Subtest: four exact source-verification forms reconstruct original production constructor bytes and current runtime targets offline
+ok 10 - four exact source-verification forms reconstruct original production constructor bytes and current runtime targets offline
+  ---
+  duration_ms: 66.8283
+  type: 'test'
+  ...
+1..10
+# tests 10
+# suites 0
+# pass 10
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 1222.668

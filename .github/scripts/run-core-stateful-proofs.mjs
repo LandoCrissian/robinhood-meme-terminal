@@ -12,6 +12,8 @@ const suites = [
   {name: "Task090GraduationProofTest", count: 6, fuzzTests: 1, file: "graduation"},
   {name: "Task090MigrationProofTest", count: 9, fuzzTests: 1, file: "migration"},
   {name: "Task090HarvestProofTest", count: 5, fuzzTests: 0, file: "harvest"},
+  {name: "Task091AdmissionAcceptanceTest", count: 4, fuzzTests: 0, file: "admission",
+    matchTest: "^(testCanonicalInitialization|testValidEoaPermit|testUnadmittedCaller|testOriginalNftSignature)"},
 ];
 
 export function validateProofSuite(report, {name, count, fuzzTests}, fuzzRuns = 512) {
@@ -50,6 +52,7 @@ function main() {
     const args = ["test", "--root", join(root, "packages/contracts"), "--offline", "--use", solc,
       "--out", join(output, "build"), "--cache-path", join(output, "cache"), "--threads", "1",
       "--match-contract", "^" + suite.name + "$", "--fuzz-runs", "512", "--json", "-vvvv"];
+    if (suite.matchTest) args.push("--match-test", suite.matchTest);
     const stdout = openSync(join(output, suite.file + ".json"), "w"), stderr = openSync(join(output, suite.file + ".stderr.log"), "w");
     let child;
     try { child = spawnSync(forge, args, {cwd: root, env: environment, stdio: ["ignore", stdout, stderr],
@@ -66,8 +69,8 @@ function main() {
     writeFileSync(join(output, "summary.json"), JSON.stringify(summary, null, 2) + "\n");
   }
   copyFileSync(join(output, "build/Task090HarvestProof.t.sol/Task090HarvestProofTest.json"), join(output, "harvest-test-artifact.json"));
-  assert.equal(rows.filter(row => row.status === "PASS").length, 3, "All three focused suites must pass");
-  assert.equal(rows.reduce((total, row) => total + row.passed, 0), 20);
+  assert.equal(rows.filter(row => row.status === "PASS").length, 4, "All four focused suites must pass");
+  assert.equal(rows.reduce((total, row) => total + row.passed, 0), 24);
 }
 
 if (process.argv[1] && pathToFileURL(resolve(process.argv[1])).href === import.meta.url) main();

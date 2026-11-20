@@ -1,0 +1,237 @@
+{
+  "schemaVersion": 1,
+  "observedAt": "2026-11-20T20:33:31.582Z",
+  "sourceHead": "27f19787ed0a2d904ba4508d2adfab1773e82e67",
+  "scope": "AUTHORIZED_READ_ONLY_CONTROL_PLANE_METADATA_NO_SECRET_VALUES",
+  "website": {
+    "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+    "siteName": "eclectic-valkyrie-16cb92",
+    "origin": "https://www.rmtlaunch.fun",
+    "accountId": "679021997d24399b38980446",
+    "deploy": {
+      "id": "6b0096332beb675b1d8e0f49",
+      "state": "ready",
+      "source": "b79515752ef42e88850ac2cea953955a3bb03087"
+    },
+    "bindings": [
+      {
+        "key": "RMT_CURVE_PRODUCTION_DISCOVERY",
+        "scopes": [
+          "builds",
+          "functions",
+          "post_processing",
+          "runtime"
+        ],
+        "isSecret": false,
+        "updatedAt": "2026-11-20T18:48:37Z",
+        "contexts": [
+          "production"
+        ]
+      },
+      {
+        "key": "RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN",
+        "scopes": [
+          "builds",
+          "functions",
+          "runtime"
+        ],
+        "isSecret": true,
+        "updatedAt": "2026-11-20T18:41:21Z",
+        "contexts": [
+          "production"
+        ]
+      },
+      {
+        "key": "RMT_LAUNCH_HISTORY_INDEXER_URL",
+        "scopes": [
+          "builds",
+          "functions",
+          "post_processing",
+          "runtime"
+        ],
+        "isSecret": false,
+        "updatedAt": "2026-11-20T18:41:22Z",
+        "contexts": [
+          "production"
+        ]
+      }
+    ],
+    "financialActivationBindingsPresent": false,
+    "readOnlyAcceptance": "PRESERVED_NOT_REOPENED; see rmt-task090/hosted-resolution"
+  },
+  "railway": {
+    "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+    "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+    "worker": {
+      "service": {
+        "id": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+        "name": "robinhood-meme-terminal",
+        "state": "live"
+      },
+      "latestDeployment": {
+        "id": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+        "status": "SUCCESS",
+        "createdAt": "2026-11-17T20:21:40.444Z",
+        "url": null
+      },
+      "variableNames": [
+        "DATABASE_URL",
+        "RMT_ARCHIVE_RPC_URL",
+        "RMT_CURVE_PRODUCTION_BINDING",
+        "RMT_FACTORY_ADDRESS",
+        "RMT_FACTORY_START_BLOCK",
+        "RMT_INDEXER_CHUNK_SIZE",
+        "RMT_INDEXER_READ_TOKEN",
+        "RMT_RPC_URL"
+      ],
+      "config": {
+        "source": {
+          "repo": "LandoCrissian/robinhood-meme-terminal",
+          "branch": "main",
+          "checkSuites": false
+        },
+        "networking": {
+          "serviceDomains": {
+            "robinhood-meme-terminal-production.up.railway.app": {}
+          }
+        },
+        "build": {
+          "builder": "RAILPACK",
+          "buildEnvironment": "V3"
+        },
+        "deploy": {
+          "sleepApplication": true,
+          "useLegacyStacker": false,
+          "ipv6EgressEnabled": false,
+          "runtime": "V2",
+          "multiRegionConfig": {
+            "sfo": {
+              "numReplicas": 1
+            }
+          }
+        },
+        "configFile": "/apps/indexer/railway.json"
+      },
+      "domains": {
+        "serviceDomains": [
+          {
+            "id": "0dd66537-fede-470f-b1e5-a32b75c4fa09",
+            "domain": "robinhood-meme-terminal-production.up.railway.app",
+            "targetPort": null
+          }
+        ],
+        "customDomains": []
+      },
+      "tcpProxies": [],
+      "staged": null
+    },
+    "database": {
+      "service": {
+        "id": "a1ef7853-e21a-401e-87c9-c99002228507",
+        "name": "Postgres",
+        "state": "live"
+      },
+      "latestDeployment": {
+        "id": "c91c8f93-2812-4837-9aa2-94c3fc2d351a",
+        "status": "SUCCESS",
+        "createdAt": "2026-11-14T06:40:39.751Z",
+        "url": null
+      },
+      "volumes": [
+        {
+          "id": "bf6e7ddc-3be6-4ba7-ad53-8e7010e76c86",
+          "name": "postgres-volume",
+          "mountPath": "/var/lib/postgresql/data",
+          "sizeMB": 500,
+          "region": "sfo",
+          "state": "live"
+        }
+      ],
+      "tcpProxies": [],
+      "staged": null
+    },
+    "runtime": [
+      {
+        "serviceId": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+        "serviceName": "robinhood-meme-terminal",
+        "state": "online",
+        "statusText": "Online",
+        "activeDeployments": [
+          {
+            "id": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+            "status": "SUCCESS",
+            "createdAt": "2026-11-17T20:21:40.444Z",
+            "statusUpdatedAt": "2026-11-17T20:24:30.173Z"
+          }
+        ],
+        "replicaStatus": {
+          "running": 1,
+          "crashed": 0,
+          "total": 1
+        },
+        "cronJob": null,
+        "issues": {
+          "warningCount": 0,
+          "criticalCount": 0
+        },
+        "recentFailures": 0,
+        "recentFailedDeployments": [],
+        "hasIssues": false,
+        "isCronJob": false,
+        "hasVolume": false
+      },
+      {
+        "serviceId": "a1ef7853-e21a-401e-87c9-c99002228507",
+        "serviceName": "Postgres",
+        "state": "online",
+        "statusText": "Online",
+        "activeDeployments": [
+          {
+            "id": "c91c8f93-2812-4837-9aa2-94c3fc2d351a",
+            "status": "SUCCESS",
+            "createdAt": "2026-11-14T06:40:39.751Z",
+            "statusUpdatedAt": "2026-11-14T06:40:46.260Z"
+          }
+        ],
+        "replicaStatus": {
+          "running": 1,
+          "crashed": 0,
+          "total": 1
+        },
+        "cronJob": null,
+        "issues": {
+          "warningCount": 0,
+          "criticalCount": 0
+        },
+        "recentFailures": 0,
+        "recentFailedDeployments": [],
+        "hasIssues": false,
+        "isCronJob": false,
+        "hasVolume": true
+      }
+    ],
+    "pendingWork": [
+      {
+        "id": "deploy:99de2e4b-39a5-42a0-bb72-a446e731c8d0",
+        "kind": "Deployment",
+        "status": "applying",
+        "changes": [
+          {
+            "kind": "deployment",
+            "serviceId": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+            "status": "REMOVING",
+            "reason": "deploy"
+          }
+        ],
+        "startedAt": "2026-08-26T21:52:19.719Z",
+        "workflowId": "deploy/99de2e4b-39a5-42a0-bb72-a446e731c8d0"
+      }
+    ],
+    "staleControlPlaneOperation": "Provider returns a REMOVING deployment operation from 2026-08-26; it is not a new staged change and does not identify this Task091 work."
+  },
+  "limits": [
+    "This verifies provider identity and binding metadata, not current credential equality or a new hosted discovery acceptance; Task090 acceptance remains intact.",
+    "One worker replica and advancing checkpoints do not directly prove a current pg_locks holder.",
+    "No deployment, environment mutation, SSH key registration, TCP proxy, SQL, backup creation or financial action was performed."
+  ]
+}

@@ -1,0 +1,112 @@
+{
+  "schemaVersion": 1,
+  "type": "ISOLATED_ADMISSION_SIGNATURE_BOUNDARY_ACCEPTANCE",
+  "compiler": {
+    "command": "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task090-tools\\solc-0.8.26.exe",
+    "prefix": [],
+    "executablePlatform": "win32-x64",
+    "executableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67"
+  },
+  "forgeVersion": "forge Version: 1.7.1\nCommit SHA: 4072e48705af9d93e3c0f6e29e93b5e9a40caed8\nBuild Timestamp: 2026-05-08T07:54:39.315067700Z (1778226879)\nBuild Profile: dist\n",
+  "forgeSha256": "6df26c16a6e53519abdd09fcdacf9af1ecdb50e216ee1816fa8012b5a553ef48",
+  "sourceBase": "27f19787ed0a2d904ba4508d2adfab1773e82e67",
+  "testSource": {
+    "path": "packages/contracts/test/Task091AdmissionAcceptance.t.sol",
+    "sha256": "4ab36acbafdc6e23862e63e66937cb50378366b75ed5dec13306d8e393d176cc"
+  },
+  "liveRpc": false,
+  "syntheticAccountsAndStorage": true,
+  "productionWrites": false,
+  "signatures": "KNOWN_TEST_KEY_9_ONLY_IN_LOCAL_VM",
+  "profiles": [
+    {
+      "profile": "default31337",
+      "chainId": 31337,
+      "economics": "UNTRANSFORMED_31337_1_ETH_UNIT_PROFILE",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "names": [
+        "testCanonicalInitializationCannotBeFrontRunAndUnrelatedPoolCannotRedirectGraduation()",
+        "testValidEoaPermitDoesNotAuthorizeContractEngineOrSignatureTransfer()",
+        "testUnadmittedCallerCannotFundOrAttachAnotherTokenToEngine()",
+        "testOriginalNftSignatureAndSubscriptionPathsCannotAcquireEngineAuthority()"
+      ],
+      "command": {
+        "program": "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task090-tools\\foundry-1.7.1\\forge.exe",
+        "args": [
+          "test",
+          "--root",
+          "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\packages\\contracts",
+          "--offline",
+          "--use",
+          "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task090-tools\\solc-0.8.26.exe",
+          "--out",
+          "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task091-security-tools\\admission-run\\build",
+          "--cache-path",
+          "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task091-security-tools\\admission-run\\cache",
+          "--threads",
+          "1",
+          "--match-contract",
+          "^Task091AdmissionAcceptanceTest$",
+          "--match-test",
+          "^(testCanonicalInitializationCannotBeFrontRunAndUnrelatedPoolCannotRedirectGraduation|testValidEoaPermitDoesNotAuthorizeContractEngineOrSignatureTransfer|testUnadmittedCallerCannotFundOrAttachAnotherTokenToEngine|testOriginalNftSignatureAndSubscriptionPathsCannotAcquireEngineAuthority)",
+          "--json",
+          "-vvvv"
+        ]
+      },
+      "raw": {
+        "file": "default31337.json.gz",
+        "compressedSha256": "17c27ce24ecc0a88f3dc8892be668f354d6801992cb82dde95b3031c0f606406",
+        "expandedSha256": "bc02bd6153718a7f4d1dc2c2344621e82be1659d90a156d240b86d3615c1ab36",
+        "compressedBytes": 1985859,
+        "expandedBytes": 10557330
+      }
+    },
+    {
+      "profile": "canonical4663",
+      "chainId": 4663,
+      "economics": "EXACT_4663_CREATION_BYTES_2_ETH_GRADUATION",
+      "passed": 4,
+      "failed": 0,
+      "skipped": 0,
+      "names": [
+        "testCanonicalInitializationCannotBeFrontRunAndUnrelatedPoolCannotRedirectGraduation()",
+        "testValidEoaPermitDoesNotAuthorizeContractEngineOrSignatureTransfer()",
+        "testUnadmittedCallerCannotFundOrAttachAnotherTokenToEngine()",
+        "testOriginalNftSignatureAndSubscriptionPathsCannotAcquireEngineAuthority()"
+      ],
+      "command": {
+        "program": "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task090-tools\\foundry-1.7.1\\forge.exe",
+        "args": [
+          "test",
+          "--root",
+          "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\packages\\contracts",
+          "--offline",
+          "--use",
+          "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task090-tools\\solc-0.8.26.exe",
+          "--out",
+          "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task091-security-tools\\admission-run\\build",
+          "--cache-path",
+          "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task091-security-tools\\admission-run\\cache",
+          "--threads",
+          "1",
+          "--match-contract",
+          "^Task091AdmissionAcceptanceTest$",
+          "--match-test",
+          "^(testCanonicalInitializationCannotBeFrontRunAndUnrelatedPoolCannotRedirectGraduation|testValidEoaPermitDoesNotAuthorizeContractEngineOrSignatureTransfer|testUnadmittedCallerCannotFundOrAttachAnotherTokenToEngine|testOriginalNftSignatureAndSubscriptionPathsCannotAcquireEngineAuthority)",
+          "--json",
+          "-vvvv"
+        ]
+      },
+      "raw": {
+        "file": "canonical4663.json.gz",
+        "compressedSha256": "f2c45a9f07ea9c6206f88de6fd09bc67893ee5441c44670810e523f78234371b",
+        "expandedSha256": "fe19024be456636b2c3703173186ecb2e89adc4c5ab26591bb9b9dbf08368c55",
+        "compressedBytes": 5217627,
+        "expandedBytes": 31217156
+      }
+    }
+  ],
+  "result": "PASS"
+}

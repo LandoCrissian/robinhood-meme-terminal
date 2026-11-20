@@ -1,0 +1,24 @@
+{
+  "args": [
+    "test",
+    "--root",
+    "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\packages\\contracts",
+    "--offline",
+    "--use",
+    "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task090-tools\\solc-0.8.26.exe",
+    "--out",
+    "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task091-security-tools\\admission-run\\build",
+    "--cache-path",
+    "C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\task091-security-tools\\admission-run\\cache",
+    "--threads",
+    "1",
+    "--match-contract",
+    "^Task091AdmissionAcceptanceTest$",
+    "--match-test",
+    "^(testCanonicalInitializationCannotBeFrontRunAndUnrelatedPoolCannotRedirectGraduation|testValidEoaPermitDoesNotAuthorizeContractEngineOrSignatureTransfer|testUnadmittedCallerCannotFundOrAttachAnotherTokenToEngine|testOriginalNftSignatureAndSubscriptionPathsCannotAcquireEngineAuthority)",
+    "--json",
+    "-vvvv"
+  ],
+  "status": 0,
+  "signal": null
+}

@@ -1,0 +1,98 @@
+{
+  "schemaVersion": 1,
+  "scope": "OFFLINE_ONLY_EXACT_FOUR_PRODUCTION_SOURCE_PUBLICATION_REQUESTS",
+  "preparedAt": "2026-11-20T20:42:54.852Z",
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "compilerArchiveSha256": "c3f3b851e6d96fe89515e5f6517f4b5716dea8c81e05090841ed663d8cc7dd04",
+  "sourcePlanSha256": "c333d4f60e4815fb86a719a5678da91b5331635213f8026bd7d6bc3fdfdd43d8",
+  "submitted": false,
+  "networkRequests": 0,
+  "proof": "All8 original production initcode and runtime hashes, addresses and original guard salt reconstruct unchanged; current14pin public runtime capture corroborates each target.",
+  "sourcePublicationCreatesContracts": false,
+  "sourcePublicationFinancialActivation": false,
+  "officialApiDocumentation": "https://docs.blockscout.com/devs/verification/blockscout-smart-contract-verification-api",
+  "workflow": "Existing per-instance Contract -> Verify & publish -> Solidity Standard JSON input, or reviewed per-instance contract API form. Upload original decompressed Standard JSON and use exact request constructor arguments. No duplicate contract deployment.",
+  "authentication": "No API key included. Current central Blockscout API requires an API key; do not use or create one. Per-instance UI/API current auth, rate limits and acceptance remain untested. Stop on403/429/CAPTCHA/paywall; do not bypass or replay rapidly.",
+  "acceptance": "A verification-started/job/pass response alone is insufficient. Require current canonical metadata full-match, original compiler/source/constructor input, and matching deployed runtime. Existing4 unverified records remain unresolved until observed.",
+  "requests": [
+    {
+      "id": "RMTLaunchCurveDeploymentV2",
+      "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+      "fullyQualifiedName": "src/RMTLaunchCurveDeploymentV2.sol:RMTLaunchCurveDeploymentV2",
+      "constructorArguments": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e4095100000000000000000000000058daec3116aae6d93017baaea7749052e8a04fa7000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3bd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626c873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b25208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca00000000000000000000000000000000000000000000000000000000000051df000000000000000000000000af9f10258b091719618c19d057f9cdab72effd8b0000000000000000000000008d44078642ce938fd799b23087bcdd6114a302e5000000000000000000000000f1113714dda31f31532995d2525e034271425398000000000000000000000000cb25a3df74729f7104c4f924cb04f687f69391c6c0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be00000000000000000000000000000000000000000000000000016bcc41e90000",
+      "initcodeHash": "0xda021596047c40c0c35467e319385e87d95bd6781dbf407ec5cc7b8c3778c50a",
+      "runtimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+      "transport": {
+        "method": "POST",
+        "url": "https://robinhoodchain.blockscout.com/api?module=contract&action=verifysourcecode",
+        "contentType": "multipart/form-data"
+      }
+    },
+    {
+      "id": "RMTV4CurveInitializationGuardV1",
+      "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+      "fullyQualifiedName": "src/RMTV4CurveInitializationGuardV1.sol:RMTV4CurveInitializationGuardV1",
+      "constructorArguments": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e4095100000000000000000000000010e540536f10ed36e5fc6638638f1d862e552d32",
+      "initcodeHash": "0x04dd135b023e29d4509f2e32ebb8cfbee5c7504111a6166f9522b995c5361551",
+      "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+      "transport": {
+        "method": "POST",
+        "url": "https://robinhoodchain.blockscout.com/api?module=contract&action=verifysourcecode",
+        "contentType": "multipart/form-data"
+      }
+    },
+    {
+      "id": "RMTV4CurveGraduationV1",
+      "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+      "fullyQualifiedName": "src/RMTV4CurveGraduationV1.sol:RMTV4CurveGraduationV1",
+      "constructorArguments": "0x0000000000000000000000008366a39cc670b4001a1121b8f6a443a643e4095100000000000000000000000058daec3116aae6d93017baaea7749052e8a04fa7000000000000000000000000000000000022d473030f116ddee9f6b43ac78ba3bd3881180b547f5fe817545743cfb4343e96b1bc6640dcd70c106b0066e95626c873e135dc9aaec88489cfbad146b4cb49d6a32e0d80326377784b7ba17670b25208783f52488f7d3493e5e38311ab707c1d75457fe472a19b0b4d57d66a7fca0000000000000000000000007281e1f9d8764ae6533b374dfd08ab2ecbc273c3000000000000000000000000998f3c0ce20cff92655d495a159b1ca37c162000",
+      "initcodeHash": "0x7489e1c044eb7971f7cf148a747025539c61ef1b2f6d07b5776ce109691a62b7",
+      "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+      "transport": {
+        "method": "POST",
+        "url": "https://robinhoodchain.blockscout.com/api?module=contract&action=verifysourcecode",
+        "contentType": "multipart/form-data"
+      }
+    },
+    {
+      "id": "RMTLaunchCurveFactoryV2",
+      "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+      "fullyQualifiedName": "src/RMTLaunchCurveFactoryV2.sol:RMTLaunchCurveFactoryV2",
+      "constructorArguments": "0x00000000000000000000000010e540536f10ed36e5fc6638638f1d862e552d32000000000000000000000000af9f10258b091719618c19d057f9cdab72effd8b0000000000000000000000008d44078642ce938fd799b23087bcdd6114a302e5000000000000000000000000f1113714dda31f31532995d2525e034271425398000000000000000000000000cb25a3df74729f7104c4f924cb04f687f69391c6c0894c78000f427a4a1c5b1ef9774dea3dcc53c93be42cdd196ef4b072bff0be00000000000000000000000000000000000000000000000000016bcc41e90000",
+      "initcodeHash": "0xa9a337271cd3a91f9de691800b98526bd612de1cace33c3f18e41df0c1aabbfa",
+      "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+      "transport": {
+        "method": "POST",
+        "url": "https://robinhoodchain.blockscout.com/api?module=contract&action=verifysourcecode",
+        "contentType": "multipart/form-data"
+      }
+    }
+  ],
+  "files": [
+    {
+      "path": "solc-standard-input-4663.json.gz",
+      "bytes": 71321,
+      "sha256": "4357a7ee57e34f2dce8b0e1ecb0ceb8cc04b461f64f1257f39e5bc71b5701a89"
+    },
+    {
+      "path": "RMTLaunchCurveDeploymentV2.request.json.gz",
+      "bytes": 73503,
+      "sha256": "36493a493886cffd35008c3321f4f7038f1736426b12f9f7f359dddcfa68f547"
+    },
+    {
+      "path": "RMTV4CurveInitializationGuardV1.request.json.gz",
+      "bytes": 72695,
+      "sha256": "9ace62ea9a7901e44820663467995f605a4fab3b46ae30b5317087b1f96e780c"
+    },
+    {
+      "path": "RMTV4CurveGraduationV1.request.json.gz",
+      "bytes": 73217,
+      "sha256": "045fe829a3fa0e581f9c6b0bc013b4caec5a5655254bd45ec03e7caa0beb4e87"
+    },
+    {
+      "path": "RMTLaunchCurveFactoryV2.request.json.gz",
+      "bytes": 73043,
+      "sha256": "de9e81ddc499f47d90013e487af400e74b78dd2fdf0ecf8a436eab47c43150b4"
+    }
+  ]
+}
