@@ -69,7 +69,8 @@ export function parseProductionDiscovery(raw: unknown, token?: string, now = Dat
 export type ProductionReadDiagnostic = {
   reason: "config_missing" | "credential_invalid" | "origin_rejected" | "token_invalid"
     | "unauthorized" | "forbidden" | "rate_limited" | "upstream_http" | "network"
-    | "response_body" | "response_schema" | "stale_checkpoint" | "stale_upstream";
+    | "response_body" | "response_schema" | "stale_checkpoint" | "stale_upstream"
+    | "profile_disabled" | "fixture_active" | "authority_rejected";
   status?: number;
 };
 type ProductionReadOptions = {
@@ -78,17 +79,20 @@ type ProductionReadOptions = {
 };
 let lastDiagnosticAt = -Infinity;
 
+function emitProductionDiagnostic(diagnostic: ProductionReadDiagnostic, onDiagnostic?: ProductionReadOptions["onDiagnostic"]) {
+  if (onDiagnostic) onDiagnostic(diagnostic);
+  else if (Date.now() - lastDiagnosticAt >= 60_000) {
+    lastDiagnosticAt = Date.now();
+    console.warn(JSON.stringify({ event: "production_discovery_degraded", ...diagnostic }));
+  }
+}
+
 // Reuses the existing Railway origin and bearer credential; neither is returned
 // to the browser. This feed is never merged with historical V4/V6 registrations.
 export async function readProductionDiscovery(token?: string, options: ProductionReadOptions = {}): Promise<ProductionDiscovery> {
   const env = options.env ?? process.env;
   const report = (reason: ProductionReadDiagnostic["reason"], status?: number) => {
-    const diagnostic = { reason, ...(status === undefined ? {} : { status }) };
-    if (options.onDiagnostic) options.onDiagnostic(diagnostic);
-    else if (Date.now() - lastDiagnosticAt >= 60_000) {
-      lastDiagnosticAt = Date.now();
-      console.warn(JSON.stringify({ event: "production_discovery_degraded", ...diagnostic }));
-    }
+    emitProductionDiagnostic({ reason, ...(status === undefined ? {} : { status }) }, options.onDiagnostic);
     return unavailable;
   };
   const endpoint = env.RMT_LAUNCH_HISTORY_INDEXER_URL;
@@ -140,25 +144,34 @@ export function productionDirectory(data: ProductionDiscovery): NewEngineDirecto
   return { status: "ready", freshUntil: Date.parse(data.checkpoint.timestamp) + 120_000, launches: data.launches.map((registration) => ({ registration, state: "created" })) };
 }
 
+function productionDiscoveryGateReason(headers: Headers, env: Record<string, string | undefined>): ProductionReadDiagnostic["reason"] | undefined {
+  if (env.RMT_CURVE_PRODUCTION_DISCOVERY !== curveProductionProfile) return "profile_disabled";
+  if (env.RMT_CURVE_FIXTURE) return "fixture_active";
+  if (headers.get("host") !== "www.rmtlaunch.fun" || headers.get("x-forwarded-proto") !== "https" || headers.has("forwarded")
+      || (headers.has("x-forwarded-host") && headers.get("x-forwarded-host") !== "www.rmtlaunch.fun")) return "authority_rejected";
+  return undefined;
+}
+
 export function configuredProductionDiscovery(headers: Headers, env: Record<string, string | undefined> = process.env) {
-  return env.RMT_CURVE_PRODUCTION_DISCOVERY === curveProductionProfile && !env.RMT_CURVE_FIXTURE
-    && headers.get("host") === "www.rmtlaunch.fun" && headers.get("x-forwarded-proto") === "https" && !headers.has("forwarded")
-    && (!headers.has("x-forwarded-host") || headers.get("x-forwarded-host") === "www.rmtlaunch.fun");
+  return productionDiscoveryGateReason(headers, env) === undefined;
 }
 
 export function createProductionDiscoveryHandler(options: {
   env?: Record<string, string | undefined>;
   read?: typeof readProductionDiscovery;
   now?: () => number;
+  onDiagnostic?: ProductionReadOptions["onDiagnostic"];
 } = {}) {
   const env = options.env ?? process.env;
   const read = options.read ?? readProductionDiscovery;
   const now = options.now ?? Date.now;
   return async function productionDiscoveryResponse(request: Request, token?: string) {
     const headers = new Headers({ "Cache-Control": "private, no-store", "Netlify-CDN-Cache-Control": "no-store", "Netlify-Vary": "query" });
-    if (!configuredProductionDiscovery(request.headers, env) || (request.method !== "GET" && request.method !== "HEAD")) return Response.json({ status: "unavailable" }, { status: 404, headers });
+    const gateReason = productionDiscoveryGateReason(request.headers, env);
+    if (gateReason) emitProductionDiagnostic({ reason: gateReason }, options.onDiagnostic);
+    if (gateReason || (request.method !== "GET" && request.method !== "HEAD")) return Response.json({ status: "unavailable" }, { status: 404, headers });
     if (new URL(request.url).search || (token && !address(token))) return Response.json({ status: "invalid" }, { status: 400, headers });
-    const observed = await read(token, { env, now: now() });
+    const observed = await read(token, { env, now: now(), onDiagnostic: options.onDiagnostic });
     // Age and future-skew validity can both change while awaiting a read.
     const publishedAt = now();
     const data = !Number.isFinite(publishedAt) || (observed.status !== "unavailable"

@@ -1,0 +1,9 @@
+
+> robinhood-meme-terminal@ typecheck C:\Users\RMT\Documents\Codex\2026-11-19\continue-rmt-launch-development-using-the\repository
+> pnpm --filter @rmt/launch-website --filter indexer typecheck
+
+Scope: 2 of 3 workspace projects
+apps/launch-website typecheck$ tsc --noEmit
+apps/indexer typecheck$ tsc -p tsconfig.json --noEmit
+apps/indexer typecheck: Done
+apps/launch-website typecheck: Done

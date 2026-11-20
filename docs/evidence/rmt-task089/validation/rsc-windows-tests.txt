@@ -1,0 +1,64 @@
+TAP version 13
+# Subtest: empty pending snapshot requires no new transaction refresh
+ok 1 - empty pending snapshot requires no new transaction refresh
+  ---
+  duration_ms: 2.2114
+  type: 'test'
+  ...
+# Subtest: headers leave a captured stream pending until its body finishes
+ok 2 - headers leave a captured stream pending until its body finishes
+  ---
+  duration_ms: 1.2894
+  type: 'test'
+  ...
+# Subtest: orphan response/completion cannot release an actually pending request
+ok 3 - orphan response/completion cannot release an actually pending request
+  ---
+  duration_ms: 0.243
+  type: 'test'
+  ...
+# Subtest: foreign, other-token, non-RSC and POST requests are outside this action barrier
+ok 4 - foreign, other-token, non-RSC and POST requests are outside this action barrier
+  ---
+  duration_ms: 0.2893
+  type: 'test'
+  ...
+# Subtest: prefetch and already terminal history do not add new prerequisites
+ok 5 - prefetch and already terminal history do not add new prerequisites
+  ---
+  duration_ms: 0.374
+  type: 'test'
+  ...
+# Subtest: a legitimate token transition does not wait on an old token's stream
+ok 6 - a legitimate token transition does not wait on an old token's stream
+  ---
+  duration_ms: 0.1917
+  type: 'test'
+  ...
+# Subtest: failure is terminal quiescence and remains a failed diagnostic row
+ok 7 - failure is terminal quiescence and remains a failed diagnostic row
+  ---
+  duration_ms: 0.561
+  type: 'test'
+  ...
+# Subtest: HTTP error quiescence does not assert authentication, freshness or data success
+ok 8 - HTTP error quiescence does not assert authentication, freshness or data success
+  ---
+  duration_ms: 0.2936
+  type: 'test'
+  ...
+# Subtest: captured streams must all terminate; a later request does not fabricate their completion
+ok 9 - captured streams must all terminate; a later request does not fabricate their completion
+  ---
+  duration_ms: 0.5562
+  type: 'test'
+  ...
+1..9
+# tests 9
+# suites 0
+# pass 9
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 83.2284

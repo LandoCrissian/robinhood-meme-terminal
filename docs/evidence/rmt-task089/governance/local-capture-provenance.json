@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "originalProducerDigest": {
+    "algorithm": "SHA256",
+    "hex": "e1acfd2f88933e4b84823008c12582ed518acd128582c0ce4536262f54691463"
+  },
+  "localProducerDigest": {
+    "algorithm": "SHA256",
+    "hex": "e5dbd05e4abdd30773e0dab2af7da4e24b062d1d13d6731fd3b62df1b2e1d031"
+  },
+  "adaptations": [
+    "Repository and fresh output path are explicit CLI arguments, resolved with node:path.",
+    "Original Linux save path uses that explicit output argument.",
+    "Self-byte identity uses import.meta.url rather than the old Linux temporary filename.",
+    "Final console summary uses the explicit output variable."
+  ],
+  "rpcMethodsTargetsGettersOrAuthenticationChanged": false,
+  "pythonUsed": false,
+  "upstashExecution": false,
+  "executionPlatform": "win32",
+  "nodeVersion": "v22.23.2",
+  "dependency": "repository pinned viem 2.55.5",
+  "originalCapturePreserved": true
+}

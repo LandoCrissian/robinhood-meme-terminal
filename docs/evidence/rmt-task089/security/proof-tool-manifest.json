@@ -1,0 +1,41 @@
+{
+  "schemaVersion": 1,
+  "package": "z3-solver",
+  "version": "4.13.4.0",
+  "source": "https://pypi.org/pypi/z3-solver/4.13.4.0/json",
+  "installedWheel": "z3_solver-4.13.4.0-py3-none-manylinux_2_34_aarch64.whl",
+  "installedWheelSha256": "f674d758c199006fa0a527bdf78cb31b4ba5baaaef6c6c0fa80fb063d3834a6c",
+  "releaseWheels": [
+    {
+      "filename": "z3_solver-4.13.4.0-py3-none-macosx_13_0_arm64.whl",
+      "sha256": "39ba75b867d6afadabc4812b999c9d96656da07d152510452e71ae9374e98926"
+    },
+    {
+      "filename": "z3_solver-4.13.4.0-py3-none-macosx_13_0_x86_64.whl",
+      "sha256": "6f3d3eff878b5b3c0d6e7f4237c869a489288fbdd8a2d878046ce977339a1a7a"
+    },
+    {
+      "filename": "z3_solver-4.13.4.0-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+      "sha256": "2fb8a857adf1064f89581c424fd729ee3e8bad95f4ebf0fb4c1210f65b831f37"
+    },
+    {
+      "filename": "z3_solver-4.13.4.0-py3-none-manylinux_2_34_aarch64.whl",
+      "sha256": "f674d758c199006fa0a527bdf78cb31b4ba5baaaef6c6c0fa80fb063d3834a6c"
+    },
+    {
+      "filename": "z3_solver-4.13.4.0-py3-none-win32.whl",
+      "sha256": "d23cb6d7c67ce3a4e57b8715e2be0c0fa350a282e641475e5e559521651471a0"
+    },
+    {
+      "filename": "z3_solver-4.13.4.0-py3-none-win_amd64.whl",
+      "sha256": "fafb65d7bb04db93e4a46f4357042fd53b420b412db66f0a0053612ed15024ca"
+    }
+  ],
+  "capturedProofEnvironment": {
+    "pythonVersion": "3.11.2",
+    "implementation": "CPython",
+    "machine": "aarch64",
+    "z3Version": "4.13.4"
+  },
+  "pythonVersionPolicy": "Captured provenance is retained exactly. Verification supports CPython3.11.x and3.12.x; pythonVersion is the sole allowed difference in the proof result. Every semantic/source/solver/script/SMT field must compare exactly."
+}

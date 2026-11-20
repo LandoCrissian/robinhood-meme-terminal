@@ -1,0 +1,186 @@
+{
+  "schemaVersion": 1,
+  "baseCommit": "78a76feb592ac136dbf74d4823c21db64a6d0313",
+  "reviewedDeployedArtifactSource": "4fdfbecdaaa5a846eae6441c224dc0be0de32e85",
+  "deployedFunctionArchiveDigest": {
+    "algorithm": "SHA256",
+    "hex": "f8f7c3cd291bf95d9e088e71f0e5c1c4a617613e3c72c349c8c551f58800032d"
+  },
+  "liveCommitRefUnavailable": true,
+  "nodeVersion": "22.16.0",
+  "pnpmVersion": "10.12.1",
+  "commands": {
+    "baseline": "pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json --test lib/server/launch-data.test.ts lib/server/launch-api.test.ts lib/server/production-discovery.test.ts",
+    "before": "pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json --test lib/server/production-discovery.test.ts",
+    "after": "pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json --test lib/server/launch-data.test.ts lib/server/launch-api.test.ts lib/server/production-discovery.test.ts",
+    "full": "pnpm --filter @rmt/launch-website test:history",
+    "typecheck": "pnpm --filter @rmt/launch-website typecheck"
+  },
+  "results": {
+    "baseline": {
+      "tests": 44,
+      "passed": 44,
+      "failed": 0,
+      "skipped": 0
+    },
+    "before": {
+      "tests": 21,
+      "passed": 18,
+      "failed": 3,
+      "skipped": 0
+    },
+    "after": {
+      "tests": 47,
+      "passed": 47,
+      "failed": 0,
+      "skipped": 0
+    },
+    "full": {
+      "tests": 327,
+      "passed": 327,
+      "failed": 0,
+      "skipped": 0
+    },
+    "typecheck": "PASS"
+  },
+  "candidateSourceBindings": [
+    {
+      "path": "apps/launch-website/lib/server/production-discovery.ts",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "2a1d13299bb37c1c11f311680a7b6e5395a56e170c25862e97125134feee8ab4"
+      }
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-discovery.test.ts",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "3e339553a93ca37e10a3d6198cd86eb9caa9697ad90528563fc4e3e421723093"
+      }
+    },
+    {
+      "path": "apps/launch-website/lib/server/launch-data.ts",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "37b5ca4429e4a1d440da3ca260250bd2b25507a1e5e59dfbc6d59593c15c6a9b"
+      }
+    },
+    {
+      "path": "apps/launch-website/lib/server/launch-api.ts",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "dd8e588dbc85835b79e1f6510f191a3de6fd05b834a4e245f08010e648eb167d"
+      }
+    },
+    {
+      "path": "apps/launch-website/lib/server/indexer-origin.ts",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "aebc1f33b2d4a4a60ce845e3077242053d48e18d7c7e9474bb383e5868383c7d"
+      }
+    }
+  ],
+  "oldSourceBindings": [
+    {
+      "path": "apps/launch-website/lib/server/launch-data.ts",
+      "gitBlob": "d9fa14d899dc895acb03d148800a4de72cb000c4",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "f9a0161f033c43793753e6e8bf01139832dc71bda2c03a4708808ade04e30e4b"
+      }
+    },
+    {
+      "path": "apps/launch-website/lib/server/launch-api.ts",
+      "gitBlob": "ca5bc9af613c10dc3fa47d53bf5d96e81b1ec27c",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "24783a329c96dd8e89856a6446ba43cfb03edc5d1cc83e6e6dff4676ae22442c"
+      }
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-discovery.ts",
+      "gitBlob": "b04e325b2a61d26ef72b4c2b67df008f4fc5c86a",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "3f5b541ff514eab0ce6705a322b72f425318ccc8d47fa84e6927653faaac55a8"
+      }
+    }
+  ],
+  "productionChanged": false,
+  "frozenCredentialValueOrFingerprintObserved": false,
+  "preciseLiveFallbackTrigger": "UNKNOWN",
+  "configurationDeploymentApproved": false,
+  "financialActivationApproved": false,
+  "evidenceBindings": [
+    {
+      "path": "README.md",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "479b2d0cc9d6383abcabfac45a093c7024ff6c048df00d1d42a0f15f68d909e3"
+      }
+    },
+    {
+      "path": "capture-readonly.py",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "a5698587355020e180f413eac6b3009cf6b69f99341b69d1e9ecc426d1ebb0ee"
+      }
+    },
+    {
+      "path": "focused-discovery-tests.txt.gz",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "1d0bf5a70e7e8b2d75102007a727dbe68c086e58e736c7b296b821f6a0359dba"
+      }
+    },
+    {
+      "path": "gate-after.txt.gz",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "fc6cd59535a3259ff271b9bb3930de205d151d6c0ccd6934fba59d87c6afab27"
+      }
+    },
+    {
+      "path": "gate-before.txt.gz",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "836495e326b3fbcc09494614823e5d636f8c2742c3586c8abc902c8f1a078de6"
+      }
+    },
+    {
+      "path": "gate-typecheck.txt.gz",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "410ebe3f18b1f4ede126a094a51446276b019ba343717d685e66810c0e05121a"
+      }
+    },
+    {
+      "path": "normal-reads.json",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "2992a40a7aacfa00d369522d9f320913fcf19e207ddc47726374a4ddf455c4f7"
+      }
+    },
+    {
+      "path": "provider-metadata.json",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "fde4de46c5ea73895aa05f1b3bae47ce5b0e6a9dc51c17f9b3c2c7727b752d19"
+      }
+    },
+    {
+      "path": "verify-evidence.py",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "3b65e28e7584da9d7690b88e2c03cefd24f9fec72f1fe679a5cb7c501e91a69b"
+      }
+    },
+    {
+      "path": "website-full.txt.gz",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "15ba6775f4e0a768ac906f753f813198062be3d2a46a46919b0253519a00b4cc"
+      }
+    }
+  ]
+}

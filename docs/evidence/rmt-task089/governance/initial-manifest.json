@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK089_BOUNDED_GOVERNANCE_STATUS_AND_SCHEDULE_CANONICALITY",
+  "observationDigest": {
+    "algorithm": "SHA256",
+    "hex": "b2f87b57b671cbf91115172f9aaf0884833418389a40649867fc38f4f11023c9"
+  },
+  "producerDigest": {
+    "algorithm": "SHA256",
+    "hex": "e1acfd2f88933e4b84823008c12582ed518acd128582c0ce4536262f54691463"
+  },
+  "protocolEvidenceDigest": {
+    "algorithm": "SHA256",
+    "hex": "c3bf14e462929d8471121cae57c9fd2dbd8fcbd1a4a3f314fdf0cf2f3efa0120"
+  },
+  "scheduleEvidenceDigest": {
+    "algorithm": "SHA256",
+    "hex": "6f0e016fcff52bdb589abd1b917edf9c1f24b12b95cc804288c4a30116673c15"
+  },
+  "sourceBindings": [
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+      "sha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+      "sha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "sha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8"
+    }
+  ],
+  "notFinancialAuthorization": true,
+  "liveVulnerabilityTest": false,
+  "signingOrExecution": false
+}

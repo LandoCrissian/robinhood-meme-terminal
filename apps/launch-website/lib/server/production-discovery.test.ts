@@ -325,3 +325,76 @@ test("block timestamps and decimal identities cannot enter the public schema thr
   Object.assign(sameHeight.launches[0].checkpoint, sameHeight.checkpoint);
   assert.equal(parseProductionDiscovery(sameHeight, undefined, now).status, "unavailable");
 });
+
+test("disabled discovery gates emit only fixed reasons while keeping the same public rejection and no backend read", async () => {
+  const trusted = { host: "www.rmtlaunch.fun", "x-forwarded-proto": "https" };
+  const configured = { RMT_CURVE_PRODUCTION_DISCOVERY: curveProductionProfile,
+    RMT_LAUNCH_HISTORY_INDEXER_URL: "https://sensitive-backend.invalid/",
+    RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: "sensitive-credential-marker" };
+  const cases: [Record<string, string>, Record<string, string>, string][] = [
+    [{ ...configured, RMT_CURVE_PRODUCTION_DISCOVERY: "sensitive-disabled-profile" }, trusted, "profile_disabled"],
+    [{ ...configured, RMT_CURVE_FIXTURE: "sensitive-fixture-mode" }, trusted, "fixture_active"],
+    [configured, { ...trusted, host: "sensitive-host.invalid" }, "authority_rejected"],
+    [configured, { ...trusted, "x-forwarded-proto": "http" }, "authority_rejected"],
+    [configured, { ...trusted, forwarded: "sensitive-forwarded-marker" }, "authority_rejected"],
+    [configured, { ...trusted, "x-forwarded-host": "sensitive-forwarded-host.invalid" }, "authority_rejected"],
+  ];
+  for (const [env, headers, reason] of cases) {
+    let reads = 0;
+    const diagnostics: unknown[] = [];
+    const respond = createProductionDiscoveryHandler({ env,
+      onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+      read: async () => { reads++; return parseProductionDiscovery(feed(), undefined, now); } });
+    const response = await respond(new Request("https://www.rmtlaunch.fun/api/launchpad/new-engine", { headers }));
+    assert.equal(response.status, 404);
+    assert.deepEqual(await response.json(), { status: "unavailable" });
+    assert.equal(response.headers.get("cache-control"), "private, no-store");
+    assert.equal(response.headers.get("netlify-cdn-cache-control"), "no-store");
+    assert.deepEqual(diagnostics, [{ reason }]);
+    assert.equal(reads, 0);
+    assert.equal(configuredProductionDiscovery(new Headers(headers), env), false);
+    assert.doesNotMatch(JSON.stringify(diagnostics), /sensitive-|invalid|https|forwarded/);
+  }
+});
+
+test("approved discovery forwards only nonsecret read diagnostics without exposing them in its response", async () => {
+  const diagnostics: unknown[] = [];
+  const env = { RMT_CURVE_PRODUCTION_DISCOVERY: curveProductionProfile,
+    RMT_LAUNCH_HISTORY_INDEXER_URL: "https://sensitive-backend.invalid/",
+    RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: "sensitive-credential-marker" };
+  const respond = createProductionDiscoveryHandler({ env, now: () => now,
+    onDiagnostic: (diagnostic) => diagnostics.push(diagnostic),
+    read: (token, options) => readProductionDiscovery(token, { ...options,
+      fetch: async (_url, init) => {
+        assert.equal(new Headers(init?.headers).get("authorization"), "Bearer sensitive-credential-marker");
+        return new Response("sensitive-upstream-body", { status: 401 });
+      } }) });
+  const response = await respond(new Request("https://www.rmtlaunch.fun/api/launchpad/new-engine",
+    { headers: { host: "www.rmtlaunch.fun", "x-forwarded-proto": "https" } }));
+  assert.equal(response.status, 503);
+  assert.deepEqual(await response.json(), { status: "unavailable", launches: [] });
+  assert.deepEqual(diagnostics, [{ reason: "unauthorized", status: 401 }]);
+  assert.doesNotMatch(JSON.stringify(diagnostics), /sensitive-|invalid|https/);
+});
+
+test("default gate rejection shares the existing one-per-minute server diagnostic budget", async () => {
+  const actualNow = Date.now, actualWarn = console.warn;
+  const messages: unknown[] = [];
+  let at = actualNow() + 240_000;
+  Date.now = () => at;
+  console.warn = (message: unknown) => { messages.push(message); };
+  try {
+    const respond = createProductionDiscoveryHandler({ env: {} });
+    const request = () => new Request("https://www.rmtlaunch.fun/api/launchpad/new-engine",
+      { headers: { host: "www.rmtlaunch.fun", "x-forwarded-proto": "https" } });
+    for (let attempt = 0; attempt < 3; attempt++) assert.equal((await respond(request())).status, 404);
+    assert.equal(messages.length, 1);
+    at += 60_000;
+    await respond(request());
+    assert.equal(messages.length, 2);
+    assert.deepEqual(messages.map((message) => JSON.parse(String(message))), [
+      { event: "production_discovery_degraded", reason: "profile_disabled" },
+      { event: "production_discovery_degraded", reason: "profile_disabled" },
+    ]);
+  } finally { Date.now = actualNow; console.warn = actualWarn; }
+});

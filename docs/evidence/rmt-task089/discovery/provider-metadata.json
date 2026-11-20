@@ -1,0 +1,146 @@
+{
+  "schemaVersion": 1,
+  "scope": "BOUNDED_OWNER_SERVICE_READ_ONLY_METADATA",
+  "netlify": {
+    "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+    "publishedDeploy": "6afd4265956a469adeb55747",
+    "state": "ready",
+    "context": "production",
+    "title": "Task071 approved website-only PR666 a71b2dbd; Linux artifact 4fdfbecd",
+    "createdAt": "2026-11-18T06:15:01.017Z",
+    "publishedAt": "2026-11-18T06:15:09.934Z",
+    "commitRef": null,
+    "sourceZipAvailable": false,
+    "functions": [
+      {
+        "name": "___netlify-server-handler",
+        "contentDigest": {
+          "algorithm": "SHA256",
+          "hex": "f8f7c3cd291bf95d9e088e71f0e5c1c4a617613e3c72c349c8c551f58800032d"
+        },
+        "runtime": "nodejs22.x",
+        "adapter": "@netlify/plugin-nextjs@5.16.8",
+        "functionVersionId": "93b09b9d8d05bbd1baaaff4e342d79ad612d75a374707c8907be8442c35216d8",
+        "region": "us-east-2"
+      }
+    ],
+    "siteVariableListing": {
+      "decodeLevels": 2,
+      "entries": 0,
+      "provesFrozenFunctionEnvironment": false
+    },
+    "teamVariablePresence": {
+      "RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN": "NO_ENV_VAR_FOUND_MATCHING_KEY",
+      "RMT_CURVE_PRODUCTION_DISCOVERY": "NO_ENV_VAR_FOUND_MATCHING_KEY"
+    },
+    "frozenFunctionEnvironment": {
+      "status": "NOT_EXPOSED_BY_AVAILABLE_CONNECTOR_READ_OPERATIONS",
+      "secretValueOrFingerprintObserved": false
+    }
+  },
+  "railway": {
+    "projectId": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+    "environmentId": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+    "serviceId": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+    "deployment": {
+      "id": "b48f0e6e-a34b-4a26-b95f-d4b978562282",
+      "status": "SUCCESS",
+      "createdAt": "2026-11-17T20:21:40.444Z",
+      "url": null
+    },
+    "state": "live",
+    "pendingStagedChanges": false,
+    "variableNames": [
+      "DATABASE_URL",
+      "RMT_ARCHIVE_RPC_URL",
+      "RMT_CURVE_PRODUCTION_BINDING",
+      "RMT_FACTORY_ADDRESS",
+      "RMT_FACTORY_START_BLOCK",
+      "RMT_INDEXER_CHUNK_SIZE",
+      "RMT_INDEXER_READ_TOKEN",
+      "RMT_RPC_URL"
+    ],
+    "numReplicas": 1,
+    "tracing": false,
+    "indexerVolumeMounts": 0,
+    "originalPostgresVolume": [
+      {
+        "id": "bf6e7ddc-3be6-4ba7-ad53-8e7010e76c86",
+        "serviceId": "a1ef7853-e21a-401e-87c9-c99002228507",
+        "mountPath": "/var/lib/postgresql/data",
+        "state": "live",
+        "sizeMB": 500
+      }
+    ],
+    "currentWriterLease": {
+      "status": "NOT_DIRECTLY_OBSERVED",
+      "healthIncludesLeaseOwner": false,
+      "matchingLeaseLogs": 0
+    },
+    "backupInventory": {
+      "status": "NOT_EXPOSED_BY_AVAILABLE_CONNECTOR_READ_OPERATIONS",
+      "originalVolumeAccessed": false
+    }
+  },
+  "requestCorrelation": {
+    "window": {
+      "from": "2026-11-20T14:07:00Z",
+      "to": "2026-11-20T14:10:00Z"
+    },
+    "netlifyRequestId": "01M7WMJ8TXCD5FYN5NQZRB31F4",
+    "status": 200,
+    "cache": {
+      "hit": false,
+      "caches": {
+        "durable": {
+          "hit": false,
+          "stored": true,
+          "ttl": -4598,
+          "stale": true,
+          "swr": false
+        },
+        "edge": {
+          "hit": false,
+          "stale": false
+        }
+      }
+    },
+    "operations": [
+      {
+        "type": "edge_function",
+        "name": "___netlify-edge-handler-middleware",
+        "durationNs": 5969735587
+      },
+      {
+        "type": "edge_function",
+        "name": "launch-discovery-limit",
+        "durationNs": 5969735587
+      },
+      {
+        "type": "function",
+        "name": "___netlify-server-handler",
+        "durationNs": 4552331233
+      }
+    ],
+    "categorizedFailureReasonPresent": false,
+    "railwayHttp": [
+      {
+        "timestamp": "2026-11-20T14:08:09.005059283Z",
+        "path": "/health",
+        "method": "GET",
+        "status": 200,
+        "durationMs": 228
+      }
+    ],
+    "noCorrelatedProtectedReadObserved": true,
+    "absenceProvesRootCause": false
+  },
+  "rootCause": {
+    "preciseDeployedFallbackTrigger": "UNKNOWN",
+    "knownMechanism": "Old reader silently falls back to checked-in stale snapshot; old HTTP handler makes verified snapshots durable-cache eligible; new-engine request is rejected before authenticated read under the reviewed artifact source's route guard.",
+    "diagnosticDeploymentRequiredForPreciseRuntimeCause": true
+  },
+  "productionMutations": false,
+  "authenticationBypass": false,
+  "secretValuesExposed": false
+}

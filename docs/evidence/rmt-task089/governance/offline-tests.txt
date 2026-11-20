@@ -1,0 +1,40 @@
+TAP version 13
+# Subtest: archived governance observation and exact executed producer retain their byte identities
+ok 1 - archived governance observation and exact executed producer retain their byte identities
+  ---
+  duration_ms: 2.2671
+  type: 'test'
+  ...
+# Subtest: every retained RPC is bounded metadata, the exact Schedule receipt or one public view getter
+ok 2 - every retained RPC is bounded metadata, the exact Schedule receipt or one public view getter
+  ---
+  duration_ms: 1.8241
+  type: 'test'
+  ...
+# Subtest: both witnesses independently bind getter values, bytecode pins and the same canonical block
+ok 3 - both witnesses independently bind getter values, bytecode pins and the same canonical block
+  ---
+  duration_ms: 10.4638
+  type: 'test'
+  ...
+# Subtest: the captured pending window is inclusive and remains a read-only publication risk
+ok 4 - the captured pending window is inclusive and remains a read-only publication risk
+  ---
+  duration_ms: 0.277
+  type: 'test'
+  ...
+# Subtest: fresh local capture preserves the initial observation and exact path-only producer provenance
+ok 5 - fresh local capture preserves the initial observation and exact path-only producer provenance
+  ---
+  duration_ms: 2.9465
+  type: 'test'
+  ...
+1..5
+# tests 5
+# suites 0
+# pass 5
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 839.1156

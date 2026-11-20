@@ -1,0 +1,9 @@
+# Local recovery and execution limit
+
+At 2026-11-20T15:20:11Z the Upstash account's monthly 5 CPU-hour quota automatically paused all three isolated Task 089 sandboxes. A subsequent ordinary execution returned HTTP 403 with `Monthly compute limit reached (5 CPU-hours). Please upgrade your plan by adding a payment method.` No upgrade, payment method, billing change, resume, fork or alternative box execution was attempted.
+
+The pre-pause source ZIP was 206239 bytes, SHA-256 `79aa04adf8d4034f229f9ef8a184b7e58bc8919b6960cb52558aad4be53b2a25`. Its original [IN_PROGRESS state record](snapshot-state.json) is preserved unchanged. It was a recovery snapshot with incomplete report sections, not a release artifact. Final previously exported source packets were reapplied after extraction onto exact Task 088 base `78a76feb592ac136dbf74d4823c21db64a6d0313`, with eight final file hashes checked. The candidate contains the final source, completed evidence reports and explicit remaining gaps.
+
+The available read-only box tools expose status/logs but no filesystem download. Journey raw reports, images and the synthetic backup were not exported before the pause; printed pass summaries are observations, not substitutes for those files. Completed backup-drill cleanup was observed separately. In-flight lifecycle cleanup at automatic pause was not confirmed. No original Railway volume/database was accessed or modified.
+
+Permitted work continued locally on Windows and through the public repository's ordinary standard GitHub-hosted Linux CI. No paid/larger runner or alternate cloud sandbox was provisioned. Windows compiler-test output retains the OS denial of symlink creation; its assertion was not skipped or weakened. Linux CI reruns the same test, offline proofs, isolated PostgreSQL drill, all four core browser/layout combinations and existing website/profile regressions. Exact candidate CI results and artifact identities belong in the PR body after completion.

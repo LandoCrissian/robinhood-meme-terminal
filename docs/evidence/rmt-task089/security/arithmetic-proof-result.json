@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "78a76feb592ac136dbf74d4823c21db64a6d0313",
+  "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "sourceDigests": {
+    "lib/v4-core/src/libraries/FullMath.sol": "a9607255a6fd604d9c92f6b7416811c38b9d86e5dfdb0c345a494ebd35f7a4a3",
+    "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/Math.sol": "a6ee779fc42e6bf01b5e6a963065706e882b016affbedfd8be19a71ea48e6e15",
+    "lib/v4-core/src/libraries/BitMath.sol": "e8a45eb3d57f9427fc47bbb2543c1a6a5f394113b378123ac7ca9f113a7502b4"
+  },
+  "z3Version": "4.13.4",
+  "pythonVersion": "3.11.2",
+  "proofScriptSha256": "66c5b2f9de958a64ad4423c50a3bdaa454928241c52a0ed9db1f635bd9eab87a",
+  "msb": {
+    "completeInputDomain": "all nonzero uint256",
+    "contiguousIntervals": 32,
+    "residualInputsPerInterval": 255,
+    "sourceTailEvaluations": 8160,
+    "partitionSha256": "31777f39aea7dde2049fc47a06d907b61cac2134f71eaff019b1806e579e1d60",
+    "result": "PROVED"
+  },
+  "lsb": {
+    "completeInputDomain": "all nonzero uint256",
+    "isolationSolverResult": "unsat",
+    "isolationQuerySha256": "7edaec5f22f83f71f446622e63241caf65db94ae68e0df16a7b1545b510ea262",
+    "exhaustiveIsolatedInputs": 256,
+    "result": "PROVED"
+  },
+  "fullMathInverse": {
+    "completeSeedDomain": "all eight odd residues modulo16; therefore all odd uint256 denominators",
+    "seedSolverResult": "unsat",
+    "seedQuerySha256": "d4508a3b67611813c9069de6bc2e2982be43ab9fae71c5465aa9875182d5957f",
+    "refinements": 6,
+    "finalInverseBits": 256,
+    "identity": "1-d*(i*(2-d*i))=(1-d*i)^2",
+    "result": "PROVED"
+  },
+  "openZeppelinInverse": {
+    "completeSeedDomain": "all eight odd residues modulo16; therefore all odd uint256 denominators",
+    "seedSolverResult": "unsat",
+    "seedQuerySha256": "d4508a3b67611813c9069de6bc2e2982be43ab9fae71c5465aa9875182d5957f",
+    "refinements": 6,
+    "finalInverseBits": 256,
+    "identity": "1-d*(i*(2-d*i))=(1-d*i)^2",
+    "result": "PROVED"
+  },
+  "reportedExpressionsIndependentlyDisproven": 4,
+  "statefulFindingsCleared": 0,
+  "rawHighFindingCountUnchanged": 22,
+  "rawStrictScannerExitUnchanged": 1,
+  "financialGate": "BLOCKED_NO_BROADCAST",
+  "limits": [
+    "This proves the four reported expressions only, not whole dependency implementations, compiler correctness, source-to-deployed identity or all protocol properties.",
+    "The 18 stateful balance findings remain unresolved in this new stage-specific disposition; finite passing synthetic tests are supporting evidence, not a proof of absence."
+  ]
+}

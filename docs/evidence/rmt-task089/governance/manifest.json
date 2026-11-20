@@ -1,0 +1,89 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK089_FRESH_LOCAL_BOUNDED_GOVERNANCE_STATUS_AND_SCHEDULE_CANONICALITY",
+  "observationDigest": {
+    "algorithm": "SHA256",
+    "hex": "61fad15bbf545da19b91e69df7125a13cb8c69d184d7a14495e8404c06b4bf91"
+  },
+  "producerDigest": {
+    "algorithm": "SHA256",
+    "hex": "e5dbd05e4abdd30773e0dab2af7da4e24b062d1d13d6731fd3b62df1b2e1d031"
+  },
+  "protocolEvidenceDigest": {
+    "algorithm": "SHA256",
+    "hex": "c3bf14e462929d8471121cae57c9fd2dbd8fcbd1a4a3f314fdf0cf2f3efa0120"
+  },
+  "scheduleEvidenceDigest": {
+    "algorithm": "SHA256",
+    "hex": "6f0e016fcff52bdb589abd1b917edf9c1f24b12b95cc804288c4a30116673c15"
+  },
+  "sourceBindings": [
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+      "sha256": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+      "sha256": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c"
+    },
+    {
+      "path": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "sha256": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8"
+    }
+  ],
+  "notFinancialAuthorization": true,
+  "liveVulnerabilityTest": false,
+  "signingOrExecution": false,
+  "captureSequence": 2,
+  "captureEnvironment": {
+    "platform": "win32",
+    "nodeVersion": "v22.23.2",
+    "dependency": "repository-pinned viem 2.55.5",
+    "upstashExecution": false,
+    "pythonUsed": false
+  },
+  "initialFiles": [
+    {
+      "path": "initial-capture-getters.mjs.gz",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "db6bd96dcd53f961df717011630d9a5aaebbed2369cbb8230d43b7baf8356db7"
+      }
+    },
+    {
+      "path": "initial-read-state.json.gz",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "559df69bee107b3d385a0992818fdd52586c2c0d1ad4e0983f2c0863f16e9b5a"
+      }
+    },
+    {
+      "path": "initial-manifest.json",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "8f6cf69b2a09bfc883e446b6d22b7c1ea093a3f1e822e1ad0939a257a477573b"
+      }
+    },
+    {
+      "path": "initial-README.md",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "c5e45ba972ad86eacdc14ae449c1bb8af1541fcaac6e52f2c8c7993994ea272e"
+      }
+    },
+    {
+      "path": "initial-offline-tests.txt",
+      "digest": {
+        "algorithm": "SHA256",
+        "hex": "5559c094a362bffc005b3a72d8533cce23aec233dd3d887402c5c8145bfc5a07"
+      }
+    }
+  ],
+  "provenanceFile": {
+    "path": "local-capture-provenance.json",
+    "digest": {
+      "algorithm": "SHA256",
+      "hex": "172e9a37dd035090a9c739ac7be300d360da3f802ba2259215a0aa09f21978d5"
+    }
+  }
+}

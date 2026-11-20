@@ -1,0 +1,7 @@
+
+> robinhood-meme-terminal@ check:repo C:\Users\RMT\Documents\Codex\2026-11-19\continue-rmt-launch-development-using-the\repository
+> knip --include files,dependencies
+
+Configuration hints (2)
+docs/evidence/rmt-task084/browser/replay-raw-proofs.mjs                   knip.json  Remove redundant entry pattern
+docs/evidence/rmt-task084/browser/source-73fc6d0/replay-raw-proofs.mjs    knip.json  Remove redundant entry pattern

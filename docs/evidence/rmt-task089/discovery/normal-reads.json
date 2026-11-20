@@ -1,0 +1,96 @@
+{
+  "schemaVersion": 1,
+  "noAuthenticationHeaders": true,
+  "syntheticRequestUserAgent": true,
+  "productionMutations": false,
+  "requests": [
+    {
+      "label": "website-history",
+      "startedAt": "2026-11-20T14:08:02.327413+00:00",
+      "finishedAt": "2026-11-20T14:08:08.370218+00:00",
+      "path": "/api/launchpad/launches",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 6043,
+      "bodySha256": "a27412e159571c2b624106202002962cd735027dcce3b5e8fab7bb0e83a5dddd",
+      "bytes": 3825,
+      "headers": {
+        "age": "7",
+        "cache-control": "private,no-store",
+        "cache-status": "\"Netlify Durable\"; fwd=stale; ttl=-4598; stored, \"Netlify Edge\"; fwd=miss; fwd-status=200; stored",
+        "content-type": "application/json",
+        "x-nf-request-id": "01M7WMJ8TXCD5FYN5NQZRB31F4"
+      },
+      "bodySummary": {
+        "coverage": "verified-snapshot",
+        "status": "stale",
+        "checkpoint": {
+          "blockNumber": "113899119",
+          "blockHash": "0x0a20d4db277fe2c689ffd68763710c54a59d833dab097f2994c6aa7937ccc10c",
+          "timestamp": "2026-11-14T04:26:14.000Z"
+        },
+        "observedAt": "2026-11-14T04:26:14.000Z",
+        "chainId": 4663,
+        "finality": "l1-unverified"
+      }
+    },
+    {
+      "label": "website-new-engine",
+      "startedAt": "2026-11-20T14:08:08.370311+00:00",
+      "finishedAt": "2026-11-20T14:08:08.688673+00:00",
+      "path": "/api/launchpad/new-engine",
+      "method": "GET",
+      "status": 404,
+      "durationMs": 318,
+      "bodySha256": "774a5957e1e1b76e5ba7d6a9b803e215b28d31ac0fae1df873a96758e7fb35ef",
+      "bytes": 24,
+      "headers": {
+        "age": "0",
+        "cache-control": "private,no-store",
+        "cache-status": "\"Netlify Durable\"; fwd=bypass, \"Netlify Edge\"; fwd=miss; fwd-status=404",
+        "content-type": "application/json",
+        "x-nf-request-id": "01M7WMJEQ6F629508VXFADG9QR"
+      },
+      "bodySummary": {
+        "status": "unavailable"
+      }
+    },
+    {
+      "label": "railway-health",
+      "startedAt": "2026-11-20T14:08:08.688747+00:00",
+      "finishedAt": "2026-11-20T14:08:09.041690+00:00",
+      "path": "/health",
+      "method": "GET",
+      "status": 200,
+      "durationMs": 353,
+      "bodySha256": "267f251f6fe4b84709c42b6ed8bd466b45aaa1b57ff497fa25ece34871826b51",
+      "bytes": 818,
+      "headers": {
+        "cache-control": "no-store",
+        "content-type": "application/json; charset=utf-8",
+        "x-railway-request-id": "MhDTziZwRSyoyTzhjq4OvQ"
+      },
+      "bodySummary": {
+        "chainId": 4663,
+        "indexedThrough": "119107514",
+        "latestBlock": "119107534",
+        "ok": true,
+        "lagBlocks": "20",
+        "initialSyncComplete": true,
+        "lastSyncAt": "2026-11-20T14:08:08.653Z",
+        "curveLaunchpad": {
+          "status": "ready",
+          "checkpoint": {
+            "blockNumber": "119107193",
+            "blockHash": "0xca8ea99f4b8ec69e85d773004a6277a897decd45144a48087f4b7c25ad7b2e90",
+            "timestamp": "2026-11-20T14:07:32.000Z"
+          },
+          "revision": 13660,
+          "verifiedAt": 1795183656108,
+          "caughtUp": true
+        },
+        "errorPresent": false
+      }
+    }
+  ]
+}

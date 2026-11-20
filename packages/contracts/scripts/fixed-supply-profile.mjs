@@ -1,11 +1,11 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { parseArgs } from "node:util";
+import {executePinnedSolc, verifiedSolcExecution} from "./pinned-solc.mjs";
 
 const repo = fileURLToPath(new URL("../../../", import.meta.url));
 const root = join(repo, "packages/contracts");
@@ -37,17 +37,12 @@ export const rmtFixture = Object.freeze(firstProject.fixtureOnly);
 
 const historical = JSON.parse(read(new URL("../../../docs/evidence/rmt-task043/4663-rotation-profile.json", import.meta.url)));
 const pins = Object.fromEntries(historical.sourceSha256.filter(([name]) => name.startsWith("lib/")));
-const compilerHashes = {
-  "darwin-x64": "0ff016aef2396b12d1fc65429d8ea6cf53c2ee4b041bb8925644615ee1c30ab9",
-  "linux-x64": "d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef",
-  "win32-x64": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
-};
 
-export function buildFixedSupplyInput({ solc, lib = join(root, "lib"), chainId }) {
+export function buildFixedSupplyInput({ solc, solcEmulator, lib = join(root, "lib"), chainId }) {
   assert.ok(chainId === 31337 || chainId === 4663, "Only explicit local and 4663 review profiles are defined");
-  const platform = process.platform + "-" + process.arch;
-  const executableSha256 = sha256(readFileSync(solc));
-  assert.equal(executableSha256, compilerHashes[platform], "Wrong pinned solc executable");
+  const execution = verifiedSolcExecution({solc, solcEmulator});
+  const platform = execution.executablePlatform;
+  const executableSha256 = execution.executableSha256;
   const files = readdirSync(join(root, "src"), { recursive: true })
     .filter((name) => name.endsWith(".sol") && !/^RMTLaunchProjectRegistryV[12]\.sol$/.test(name)).map((name) => "src/" + name.replaceAll("\\", "/")).sort();
   const sources = Object.fromEntries(files.map((file) => [file, { content: read(join(root, file)) }]));
@@ -75,6 +70,7 @@ export function buildFixedSupplyInput({ solc, lib = join(root, "lib"), chainId }
   const manifest = {
     profile, chainId, status: "BLOCKED_NO_BROADCAST", broadcastAuthorized: false, terms: termEvidence,
     compilerVersion: historical.compilerVersion, executablePlatform: platform, executableSha256,
+    ...(execution.emulation ? {compilerExecution: execution.emulation} : {}),
     originalSourceSha256, transformations,
     sourceSha256: Object.entries(sources).map(([file, { content }]) => [file, sha256(content)]),
     compilerSettings: historical.compilerSettings,
@@ -99,10 +95,7 @@ export function compileFixedSupplyProfile(options) {
     extended.settings.outputSelection["*"] = { "": ["ast"] };
     compilerInput = JSON.stringify(extended);
   }
-  const compiled = JSON.parse(execFileSync(resolve(options.solc), ["--standard-json", "--no-import-callback"], {
-    cwd: root, input: compilerInput, encoding: "utf8", maxBuffer: 32 * 1024 * 1024, timeout: 240_000, windowsHide: true,
-    env: process.env.SystemRoot ? { SystemRoot: process.env.SystemRoot } : {},
-  }));
+  const compiled = JSON.parse(executePinnedSolc({...options, cwd: root}, compilerInput));
   const errors = (compiled.errors ?? []).filter(({ severity }) => severity === "error");
   assert.equal(errors.length, 0, errors.map(({ formattedMessage }) => formattedMessage).join("\n"));
   const artifacts = {};
