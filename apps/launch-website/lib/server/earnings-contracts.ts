@@ -4,6 +4,8 @@ import { launchTokenSupplyWei } from "../launch-terms";
 import { testV4Pins } from "../test-v4";
 import { fixtureAddress, fixtureHash, fixtureRpc, verifyCurveFixture, type CurveFixture } from "./curve-fixture";
 import { curveProductionDeployment, curveProductionPins, productionReaders } from "./curve-production";
+import { readProductionFactoryBirthCode } from "./production-birth";
+import { proveProductionProjectBirth, readProductionProjectBirthCode } from "./production-project-birth";
 
 export type EarningsRpc = ReturnType<typeof fixtureRpc>;
 export type EarningsPoint = { blockNumber: string; blockHash: Hex; timestamp: string };
@@ -17,6 +19,9 @@ export type EarningsReadContext = {
   deploymentBlock: bigint; deploymentBlockHash: Hex; checkpoint: EarningsPoint;
   graduation: { address: Address; runtimeHash: Hex; guard: Address; guardRuntimeHash: Hex };
   poolManager: { address: Address; runtimeHash: Hex }; positionManager: { address: Address; runtimeHash: Hex };
+  // Server-owned compatibility policy. Only the separately gated production
+  // adapter opts in; an HTTP body or fixture/environment switch cannot set it.
+  feePolicy?: "nitro-zero-poster-corroborated-v1";
   // Internal receipt verification only. Public balance readers never set this.
   historicalReceipt?: true;
 };
@@ -99,7 +104,9 @@ export async function verifyEarningsContext(context: EarningsReadContext) {
   const number = BigInt(context.checkpoint.blockNumber);
   const [chain, deployment, observed, latest, factoryAtDeployment, factory, registry, engine, guard] = await Promise.all([
     context.rpc.getChainId(), context.rpc.getBlock({ blockNumber: context.deploymentBlock }), context.rpc.getBlock({ blockNumber: number }),
-    context.rpc.getBlock({ blockTag: "latest" }), context.rpc.getCode({ address: context.factory, blockNumber: context.deploymentBlock }),
+    context.rpc.getBlock({ blockTag: "latest" }), context.chainId === 4663 && same(context.factory, curveProductionPins.factory[0])
+      && context.deploymentBlock === curveProductionDeployment.blockNumber && same(context.deploymentBlockHash, curveProductionDeployment.blockHash)
+      ? readProductionFactoryBirthCode(context.rpc, number) : context.rpc.getCode({ address: context.factory, blockNumber: context.deploymentBlock }),
     context.rpc.getCode({ address: context.factory, blockNumber: number }), context.rpc.getCode({ address: context.registry, blockNumber: number }),
     context.rpc.getCode({ address: context.graduation.address, blockNumber: number }), context.rpc.getCode({ address: context.graduation.guard, blockNumber: number }),
   ]);
@@ -136,6 +143,10 @@ async function readUnchecked(context: EarningsReadContext, registration: Earning
   // immutable revenue ledger. A migration changes activeCurve, not this address.
   must(same(getContractAddress({ from: origin, nonce: 1n }), ledger));
   const number = BigInt(context.checkpoint.blockNumber), read = earningsContractReader(context);
+  const readCodeAtCreation = (address: Address) => context.chainId === 4663 && same(context.factory, curveProductionPins.factory[0])
+    && context.deploymentBlock === curveProductionDeployment.blockNumber && same(context.deploymentBlockHash, curveProductionDeployment.blockHash)
+    ? readProductionProjectBirthCode(context.rpc, address, BigInt(registration.creation.blockNumber))
+    : context.rpc.getCode({ address, blockNumber: BigInt(registration.creation.blockNumber) }).then(code => ({ pruned: false, code }));
   const [receipt, creationBlock, originInFactory, active, project, originalLedger, asset, originCreator, ledgerCurve, activeAccrual,
     operations, reserve, policyCreator, treasury, share, accrued, claimed, credit, buckets, tokenSupply, tokenNow, tokenAtCreation,
     ledgerNow, ledgerAtCreation, beneficiaryCode, nativeHeld] = await Promise.all([
@@ -149,8 +160,8 @@ async function readUnchecked(context: EarningsReadContext, registration: Earning
     read<bigint>(ledger, earningsAbi, "totalAccrued"), read<bigint>(ledger, earningsAbi, "totalClaimed"), read<bigint>(ledger, earningsAbi, "claimable", [beneficiary]),
     Promise.all([0n, 1n, 2n, 3n].map(index => read<bigint>(ledger, earningsAbi, "bucketAccrued", [index]))),
     read<bigint>(token, erc20Abi, "totalSupply"), context.rpc.getCode({ address: token, blockNumber: number }),
-    context.rpc.getCode({ address: token, blockNumber: BigInt(registration.creation.blockNumber) }), context.rpc.getCode({ address: ledger, blockNumber: number }),
-    context.rpc.getCode({ address: ledger, blockNumber: BigInt(registration.creation.blockNumber) }), context.rpc.getCode({ address: beneficiary, blockNumber: number }),
+    readCodeAtCreation(token), context.rpc.getCode({ address: ledger, blockNumber: number }),
+    readCodeAtCreation(ledger), context.rpc.getCode({ address: beneficiary, blockNumber: number }),
     context.rpc.getBalance({ address: ledger, blockNumber: number }),
   ]);
   must(receipt.status === "success" && same(receipt.transactionHash, registration.creation.transactionHash)
@@ -171,8 +182,13 @@ async function readUnchecked(context: EarningsReadContext, registration: Earning
   must(same(originInFactory, origin) && same(originalLedger, ledger) && same(asset, token) && same(originCreator, registration.creator)
     && same(ledgerCurve, origin) && same(project[0], context.factory) && same(project[1], active) && same(activeAccrual, active)
     && project[2] >= 1 && project[2] <= 0xffffffff && same(policyCreator, registration.creator) && same(treasury, registration.treasury ?? zeroAddress)
-    && share === registration.treasuryShareBps && tokenSupply === launchTokenSupplyWei && tokenNow && tokenAtCreation && ledgerNow && ledgerAtCreation
-    && same(keccak256(tokenNow), keccak256(tokenAtCreation)) && same(keccak256(ledgerNow), keccak256(ledgerAtCreation)));
+    && share === registration.treasuryShareBps && tokenSupply === launchTokenSupplyWei && tokenNow && ledgerNow
+    && (tokenAtCreation.pruned || tokenAtCreation.code && same(keccak256(tokenNow), keccak256(tokenAtCreation.code)))
+    && (ledgerAtCreation.pruned || ledgerAtCreation.code && same(keccak256(ledgerNow), keccak256(ledgerAtCreation.code))));
+  if (tokenAtCreation.pruned || ledgerAtCreation.pruned) await proveProductionProjectBirth(context, registration, tokenNow, ledgerNow, {
+    curve: origin, creator: addr(registration.creator), treasury: addr(registration.treasury ?? zeroAddress), treasuryShareBps: share,
+    operatingRecipient: addr(operations), futureReserveRecipient: addr(reserve),
+  });
   const activeLedger = await read<string>(addr(active), earningsAbi, "revenueLedger");
   const [ledgerOperations, ledgerReserve] = await Promise.all([read<string>(ledger, earningsAbi, "operatingRecipient"), read<string>(ledger, earningsAbi, "futureReserveRecipient")]);
   must(same(activeLedger, ledger) && same(ledgerOperations, operations) && same(ledgerReserve, reserve)

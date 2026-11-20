@@ -1,0 +1,5 @@
+
+> indexer@0.1.0 test:worker-http C:\Users\RMT\Documents\Codex\2026-11-19\continue-rmt-launch-development-using-the\repository\apps\indexer
+> node dist/worker-http-smoke.js
+
+Worker readiness, authorization, single writer, and durable restart smoke passed.

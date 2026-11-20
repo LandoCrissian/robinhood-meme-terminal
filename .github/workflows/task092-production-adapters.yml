@@ -1,0 +1,233 @@
+name: Task092 production adapter acceptance
+
+on:
+  pull_request:
+    paths:
+      - "apps/launch-website/**"
+      - "apps/indexer/**"
+      - "scripts/production-adapters/**"
+      - "scripts/release/website-financial-preflight*"
+      - "docs/evidence/rmt-task092/**"
+      - ".github/workflows/task092-production-adapters.yml"
+      - ".github/scripts/run-task092-postgres.sh"
+      - "packages/contracts/**"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  server-and-postgres:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - run: pnpm install --frozen-lockfile
+      - name: Bind exact candidate and check both applications
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${{ github.event.pull_request.head.sha || github.sha }}"
+          git rev-parse HEAD 'HEAD^{tree}' | tee "$RUNNER_TEMP/task092-source.log"
+          pnpm typecheck
+          pnpm --filter indexer build
+      - name: Verify production financial review and settlement adapters without production RPCs
+        run: |
+          set -euo pipefail
+          pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json --test \
+            lib/server/production-financial.test.ts lib/server/production-financial-boundary.test.ts lib/server/production-birth.test.ts lib/server/production-project-birth.test.ts lib/server/production-lifecycle.test.ts \
+            lib/server/production-trading-wallet.test.ts lib/server/production-nonce.test.ts lib/server/production-creation-recovery.test.ts lib/server/production-earnings.test.ts lib/server/production-claim-wallet.test.ts lib/server/production-claims-zero-poster.test.ts lib/server/nitro-zero-poster.test.ts \
+            2>&1 | tee "$RUNNER_TEMP/task092-server-tests.log"
+          node --test docs/evidence/rmt-task092/source/verify-source.test.mjs \
+            docs/evidence/rmt-task092/governance/replay.test.mjs docs/evidence/rmt-task092/governance/final.test.mjs docs/evidence/rmt-task092/operations/replay.test.mjs \
+            2>&1 | tee "$RUNNER_TEMP/task092-public-evidence-tests.log"
+          node --test scripts/release/website-financial-preflight.test.mjs \
+            2>&1 | tee "$RUNNER_TEMP/task092-financial-preflight-tests.log"
+      - name: Prepare exact signed-archive PostgreSQL18.6 fixture
+        run: bash .github/scripts/prepare-postgres-18.sh
+      - name: Verify durable canonical activity, creation compatibility and authenticated HTTP recovery
+        run: bash .github/scripts/run-task092-postgres.sh
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: task092-server-postgres-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 7
+          path: |
+            ${{ runner.temp }}/task092-*.log
+            ${{ env.RMT_PG18_EVIDENCE }}/provenance.json
+            ${{ env.RMT_PG18_EVIDENCE }}/versions-and-runtime.txt
+
+  linux-financial-artifact:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      NEXT_TELEMETRY_DISABLED: "1"
+      NETLIFY_TELEMETRY_DISABLED: "1"
+      RMT_PROFILES_MODE: ""
+      RMT_CURVE_PRODUCTION_EXECUTION: ""
+      RMT_CURVE_PRODUCTION_PREPARATION: ""
+      RMT_CURVE_PRODUCTION_TRADING: ""
+      RMT_CURVE_PRODUCTION_CLAIMS: ""
+      RMT_CURVE_PRODUCTION_FINANCIAL_RELEASE: ""
+      RMT_CURVE_PRODUCTION_FINANCIAL_RELEASE_SHA256: ""
+      RMT_CURVE_PRODUCTION_RELEASE_SHA256: ""
+      RMT_WEBSITE_PREVIEW_SECRET_MARKER: rmt-task092-linux-synthetic-marker
+      RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: rmt-task092-linux-synthetic-marker
+      RMT_LAUNCH_HISTORY_INDEXER_URL: https://indexer.invalid/
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website... --filter robinhood-meme-terminal
+      - name: Verify all financial flags fail closed before building
+        run: |
+          set -euo pipefail
+          node --test scripts/release/website-financial-preflight.test.mjs
+          node scripts/release/website-financial-preflight.mjs --output "$RUNNER_TEMP/task092-financial-source.json"
+      - name: Install unchanged reviewed Linux artifact tools outside application dependencies
+        run: |
+          set -euo pipefail
+          task092_tools="$RUNNER_TEMP/rmt-netlify-release-tools"
+          npm install --prefix "$task092_tools" --save-exact --no-audit --no-fund netlify-cli@27.14.2 @netlify/plugin-nextjs@5.16.8
+          mkdir -p apps/launch-website/node_modules/@netlify
+          ln -s "$task092_tools/node_modules/@netlify/plugin-nextjs" apps/launch-website/node_modules/@netlify/plugin-nextjs
+          node -e "const fs=require('node:fs'),path=require('node:path'),crypto=require('node:crypto'); const root=process.argv[1]; const names=['netlify-cli','@netlify/plugin-nextjs']; const versions=Object.fromEntries(names.map(n=>[n,JSON.parse(fs.readFileSync(path.join(root,'node_modules',n,'package.json'))).version])); if(versions['netlify-cli']!=='27.14.2'||versions['@netlify/plugin-nextjs']!=='5.16.8')throw Error('Tool version mismatch'); console.log(JSON.stringify({versions,lockSha256:crypto.createHash('sha256').update(fs.readFileSync(path.join(root,'package-lock.json'))).digest('hex')},null,2));" "$task092_tools" > "$RUNNER_TEMP/task092-build-tools.json"
+      - name: Build and inspect actual Linux server routes and edge rules without deployment
+        run: |
+          set -euo pipefail
+          test -z "${NETLIFY_AUTH_TOKEN:-}"
+          test ! -e .netlify/state.json
+          "$RUNNER_TEMP/rmt-netlify-release-tools/node_modules/.bin/netlify" build --offline --context deploy-preview --filter @rmt/launch-website
+          git diff --exit-code -- netlify.toml package.json pnpm-lock.yaml apps/launch-website/package.json
+          node scripts/release/website-preflight.mjs --artifacts --output "$RUNNER_TEMP/task092-linux-artifact-base.json"
+          node scripts/release/website-financial-preflight.mjs --artifacts --output "$RUNNER_TEMP/task092-linux-financial-artifact.json"
+          python3 scripts/release/website-bundle.py collect --workspace "$GITHUB_WORKSPACE" \
+            --output "$RUNNER_TEMP/task092-linux-bundle.zip" --report "$RUNNER_TEMP/task092-linux-artifact-base.json" \
+            --tools "$RUNNER_TEMP/task092-build-tools.json" > "$RUNNER_TEMP/task092-linux-bundle.json"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: task092-linux-financial-artifact-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 7
+          path: |
+            ${{ runner.temp }}/task092-financial-source.json
+            ${{ runner.temp }}/task092-build-tools.json
+            ${{ runner.temp }}/task092-linux-artifact-base.json
+            ${{ runner.temp }}/task092-linux-financial-artifact.json
+            ${{ runner.temp }}/task092-linux-bundle.zip
+            ${{ runner.temp }}/task092-linux-bundle.json
+
+  core-contract-regressions:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website...
+      - run: bash scripts/install-v4-deps.sh
+        working-directory: packages/contracts
+      - name: Obtain and verify original native compiler
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --max-time 60 --proto '=https' --tlsv1.2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' --output "$RUNNER_TEMP/solc-0.8.26"
+          chmod 700 "$RUNNER_TEMP/solc-0.8.26"
+          node packages/contracts/scripts/pinned-solc-smoke.mjs --solc "$RUNNER_TEMP/solc-0.8.26"
+          node docs/evidence/rmt-task092/source/recompile-bootstrap.mjs --solc "$RUNNER_TEMP/solc-0.8.26" --output "$RUNNER_TEMP/task092-bootstrap-native.json"
+          node docs/evidence/rmt-task092/source/prepare-project-templates.mjs --solc "$RUNNER_TEMP/solc-0.8.26" \
+            --artifact "$RUNNER_TEMP/task092-project-runtime-templates.json" --report "$RUNNER_TEMP/task092-project-template-reproduction.json"
+          cmp "$RUNNER_TEMP/task092-project-runtime-templates.json" apps/launch-website/lib/server/production-project-templates.json
+      - name: Preserve complete unchanged core Foundry suite
+        run: |
+          set -euo pipefail
+          forge test --root packages/contracts --offline --use "$RUNNER_TEMP/solc-0.8.26" --threads 1 \
+            --out "$RUNNER_TEMP/task092-core-build" --cache-path "$RUNNER_TEMP/task092-core-cache" \
+            --fuzz-runs 512 --json > "$RUNNER_TEMP/task092-core-foundry.json"
+          node --input-type=module - "$RUNNER_TEMP/task092-core-foundry.json" <<'NODE'
+          import assert from 'node:assert/strict';
+          import {readFileSync} from 'node:fs';
+          const suites=JSON.parse(readFileSync(process.argv[2],'utf8'));
+          const tests=Object.values(suites).flatMap(s=>Object.values(s.test_results));
+          assert.equal(tests.length,142,'Full core suite count changed');
+          for(const result of tests)assert.equal(result.status,'Success');
+          console.log(JSON.stringify({passed:tests.length,failed:0,skipped:0,liveRpc:false,productionExecution:false}));
+          NODE
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: task092-core-foundry-${{ github.event.pull_request.head.sha || github.sha }}
+          path: |
+            ${{ runner.temp }}/task092-core-foundry.json
+            ${{ runner.temp }}/task092-bootstrap-native.json
+            ${{ runner.temp }}/bootstrap-native-artifact.json.gz
+            ${{ runner.temp }}/task092-project-runtime-templates.json
+            ${{ runner.temp }}/task092-project-template-reproduction.json
+          retention-days: 7
+
+  wallet-browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        browser: [chromium, webkit]
+        viewport: [mobile, desktop]
+        fee: [positive, zero-poster]
+    env:
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - run: pnpm install --frozen-lockfile
+      - name: Prepare approved website and real browser engine
+        run: |
+          bash .github/scripts/prepare-browser-apt.sh
+          pnpm exec playwright install --with-deps ${{ matrix.browser }}
+      - name: Verify production adapter wallet review and recovery in isolated synthetic browser
+        run: |
+          pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json ../../scripts/production-adapters/browser.ts \
+            --browser "${{ matrix.browser }}" --viewport "${{ matrix.viewport }}" --fee-mode "${{ matrix.fee }}" --output "$RUNNER_TEMP/task092-browser"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: task092-browser-${{ matrix.browser }}-${{ matrix.viewport }}-${{ matrix.fee }}-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/task092-browser/
+          retention-days: 7

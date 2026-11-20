@@ -1,0 +1,68 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK092_OFFLINE_REPLAY_OF_NORMAL_PUBLIC_EXPLORER_METADATA",
+  "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+  "contracts": [
+    {
+      "id": "RMTLaunchCurveDeploymentV2",
+      "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+      "status": "CANONICAL_INPUT_AND_RUNTIME_MATCH_EXPLORER_SOURCE_PENDING",
+      "runtimeHash": "0xa42587c77a2e9002be762c26229a150eca01d9076463f1cd93f608080ad0b400",
+      "initcodeHash": "0xda021596047c40c0c35467e319385e87d95bd6781dbf407ec5cc7b8c3778c50a",
+      "fullyVerified": false,
+      "observedAt": "2026-11-20T22:16:30.1050036Z",
+      "metadataSha256": "a61561659dc6d460457674d6f679e1e3bb3270c6cdbec7c30b8171333e7d0cbf"
+    },
+    {
+      "id": "RMTV4CurveInitializationGuardV1",
+      "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+      "status": "EXPLORER_FULL_SOURCE_CONSTRUCTOR_INITCODE_RUNTIME_MATCH",
+      "fullyVerified": true,
+      "reportedSourceFiles": 19,
+      "compilerVersion": "v0.8.26+commit.8a97fa7a",
+      "verifiedAt": "2026-11-20T20:48:17.378405Z",
+      "constructorBytes": 64,
+      "runtimeHash": "0xdb92a74276834e63bf191ffe23ae5925f8cd4aaac9b1aa6cf872ae8f55c38a3e",
+      "initcodeHash": "0x04dd135b023e29d4509f2e32ebb8cfbee5c7504111a6166f9522b995c5361551",
+      "observedAt": "2026-11-20T21:52:53.9237062Z",
+      "metadataSha256": "bdf24d0e6c627088a7850b37bfbb20fc16ef210d9072bda8647a2b571615dd00"
+    },
+    {
+      "id": "RMTV4CurveGraduationV1",
+      "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+      "status": "EXPLORER_FULL_SOURCE_CONSTRUCTOR_INITCODE_RUNTIME_MATCH",
+      "fullyVerified": true,
+      "reportedSourceFiles": 42,
+      "compilerVersion": "v0.8.26+commit.8a97fa7a",
+      "verifiedAt": "2026-11-20T20:48:17.205201Z",
+      "constructorBytes": 256,
+      "runtimeHash": "0x24f5b57ef0091e5830747efee6b8372abebe61226dbaadeb04860a4461ede849",
+      "initcodeHash": "0x7489e1c044eb7971f7cf148a747025539c61ef1b2f6d07b5776ce109691a62b7",
+      "observedAt": "2026-11-20T21:53:15.2863376Z",
+      "metadataSha256": "9a67e90023a8b6834e675b21bfab0ac094ef759494019d5169f636dae69f405c"
+    },
+    {
+      "id": "RMTLaunchCurveFactoryV2",
+      "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+      "status": "EXPLORER_FULL_SOURCE_CONSTRUCTOR_INITCODE_RUNTIME_MATCH",
+      "fullyVerified": true,
+      "reportedSourceFiles": 27,
+      "compilerVersion": "v0.8.26+commit.8a97fa7a",
+      "verifiedAt": "2026-11-20T20:48:41.233440Z",
+      "constructorBytes": 224,
+      "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+      "initcodeHash": "0xa9a337271cd3a91f9de691800b98526bd612de1cace33c3f18e41df0c1aabbfa",
+      "observedAt": "2026-11-20T21:53:16.0922106Z",
+      "metadataSha256": "969cb9cd08e2978ff727e05212cbd8b7d1442bc0dafd24b30174d21298e0f615"
+    }
+  ],
+  "fullyVerified": 3,
+  "remaining": [
+    "RMTLaunchCurveDeploymentV2"
+  ],
+  "submissionParameterDisposition": "Original per-instance Standard JSON fields match official Blockscout RPC documentation; no demonstrated parameter error",
+  "posts": 0,
+  "signing": false,
+  "broadcast": false,
+  "deployments": 0
+}

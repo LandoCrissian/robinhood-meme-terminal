@@ -1,0 +1,203 @@
+{
+  "schemaVersion": 1,
+  "scope": "ISOLATED_ANVIL_4663_PRODUCTION_ADAPTER_CONTINUOUS_EVM_ACCEPTANCE",
+  "finalAttempt": 19,
+  "finalRawSha256": "a8171c09d0e9632e4925a085a8b3f7e3cbb211c2508e50549bbebdfad2d14a66",
+  "archiveSha256": "699c5652a388257121875fb8659efbae3c05ffccf3e45495dbf9aeba394974a5",
+  "source": {
+    "commit": "86b7953ca2cdd74de87e2ceb89d93623c2194e89",
+    "committedTree": "0f25870cc78cc28e72e9e27c785f52cf2fed6d8b",
+    "allSourceStableDuringRun": true,
+    "runtimeSourceStableDuringRun": true,
+    "changedUnloadedFiles": [],
+    "evidence": "Exact initial/completion per-file hashes remain in the unmodified compressed raw report"
+  },
+  "attempts": [
+    {
+      "attempt": 1,
+      "name": "task092-production-adapter-evm-1.json",
+      "sha256": "ed16a5ae47fa9190495f2f00cfbba5cef5b66da4a7701eb8c2537623c919ec51",
+      "status": "failed",
+      "startedAt": "2026-11-20T22:17:15.536Z",
+      "finishedAt": "2026-11-20T22:17:16.923Z",
+      "steps": 0,
+      "failure": "Isolated fork unavailable: 2026-11-20T22:17:16.736925Z  WARN foundry_fork_db::cache: Failed to read cache file err=Os { code: 3, kind: NotFound, message: \"The system cannot find the path specified.\" } path=\"C:\\\\Users\\\\RMT\\\\.foundry\\\\cache\\\\rpc\\\\4663\\\\119385107\\\\storage.json\"\n2026-11-20T22:17:16.807845Z ERROR sharedbackend: Failed to send/recv `basic` err=failed to get account for 0x70997970C51812dc3A010C7d01b50e0d17dc79C8: server returned an error response: error code -32000: historical state 43bf97d53dea610f1d220b10131d4bdb5db873abb0b44746e8c56d46edbcd291 is not available address=0x70997970C51812dc3A010C7d01b50e0d17dc79C8\n2026-11-20T22:17:16.809025Z ERROR sharedbackend: Failed to send/recv `basic` err=failed to get account for 0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC: server returned an error response: error code -32000: historical state 43bf97d53dea610f1d220b10131d4bdb5db873abb0b44746e8c56d46edbcd291 is not available address=0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC\n2026-11-20T22:17:16.816129Z ERROR sharedbackend: Failed to send/recv `basic` err=failed to get account for 0x90F79bf6EB2c4f870365E785982E1f101E93b906: server returned an error response: error code -32000: historica"
+    },
+    {
+      "attempt": 2,
+      "name": "task092-production-adapter-evm-2.json",
+      "sha256": "0a7177c05a8654e6b98fa17b882d94660b4f16b293a2832716184601fa32849c",
+      "status": "failed",
+      "startedAt": "2026-11-20T22:17:56.232Z",
+      "finishedAt": "2026-11-20T22:18:14.244Z",
+      "steps": 1,
+      "failure": "Production trading evidence unavailable or conflicting"
+    },
+    {
+      "attempt": 3,
+      "name": "task092-production-adapter-evm-3.json",
+      "sha256": "e2d1eda8626baea6f288c40751ad4066aae3cff9b1b9f844439a4266e20ebef7",
+      "status": "failed",
+      "startedAt": "2026-11-20T22:19:21.114Z",
+      "finishedAt": "2026-11-20T22:19:24.828Z",
+      "steps": 1,
+      "failure": "Production trading evidence unavailable or conflicting"
+    },
+    {
+      "attempt": 4,
+      "name": "task092-production-adapter-evm-4.json",
+      "sha256": "c022be3771b0d9d5902341e9faf624a643a03818b7116edbc213b68d07d0e82d",
+      "status": "failed",
+      "startedAt": "2026-11-20T22:20:19.565Z",
+      "finishedAt": "2026-11-20T22:20:23.323Z",
+      "steps": 1,
+      "failure": "Production trading evidence unavailable or conflicting"
+    },
+    {
+      "attempt": 5,
+      "name": "task092-production-adapter-evm-5.json",
+      "sha256": "eda197c2ff1bc9769450ebc67f3ae93547746604174d775daa5bed0a205c971d",
+      "status": "failed",
+      "startedAt": "2026-11-20T22:20:50.113Z",
+      "finishedAt": "2026-11-20T22:20:50.649Z",
+      "steps": 0,
+      "failure": "Isolated fork unavailable: error: unexpected argument '--allow-block-timestamp-same-as-parent' found\n\nUsage: anvil.exe --host <IP_ADDR> --port <NUM> --chain-id <CHAIN_ID> --fork-url <URL> --fork-block-number <BLOCK> --hardfork <HARDFORK> --accounts <NUM>\n\nFor more information, try '--help'.\n"
+    },
+    {
+      "attempt": 6,
+      "name": "task092-production-adapter-evm-6.json",
+      "sha256": "1d3ba4e1bf3715898ade6b0a0391959a8bf08acd77be5766688e71097d1b227b",
+      "status": "passed",
+      "startedAt": "2026-11-20T22:21:03.338Z",
+      "finishedAt": "2026-11-20T22:21:12.627Z",
+      "steps": 5
+    },
+    {
+      "attempt": 7,
+      "name": "task092-production-adapter-evm-7.json",
+      "sha256": "67b6fa98b5c352b6b857d39f7bbd96bab1bec6bdb0e91b8669aa6866b16fefea",
+      "status": "failed",
+      "startedAt": "2026-11-20T22:23:50.724Z",
+      "finishedAt": "2026-11-20T22:24:01.911Z",
+      "steps": 3,
+      "failure": "graduate: {\"status\":\"pending\",\"transactionHash\":\"0x28fad8aed64287a7ed818dc18760161c7a046ee2fb028419176d167482995391\",\"indexed\":false,\"settlementPending\":true}\n+ actual - expected\n\n+ 'pending'\n- 'confirmed'\n"
+    },
+    {
+      "attempt": 8,
+      "name": "task092-production-adapter-evm-8.json",
+      "sha256": "26f11cded572cac5329b84d831ddb33b84fde45ba441f68ad86824ddd744d4f8",
+      "status": "passed",
+      "startedAt": "2026-11-20T22:24:44.448Z",
+      "finishedAt": "2026-11-20T22:24:55.325Z",
+      "steps": 5
+    },
+    {
+      "attempt": 9,
+      "name": "task092-production-adapter-evm-9.json",
+      "sha256": "6b67b1c1f0a933e4011fb29d10c30231f2db3038f47717eac6169623676264ee",
+      "status": "failed",
+      "startedAt": "2026-11-20T22:26:05.888Z",
+      "finishedAt": "2026-11-20T22:26:11.570Z",
+      "steps": 2,
+      "failure": "curve-claim: {\"status\":\"unavailable\",\"executionEnabled\":false,\"reason\":\"Fresh authenticated discovery, release approval, wallet authority and independent chain evidence are required.\"}\n\n503 !== 200\n"
+    },
+    {
+      "attempt": 10,
+      "name": "task092-production-adapter-evm-10.json",
+      "sha256": "b34c3f5427dd8237689eb73da0c36266ab9b57e50cc9e115f24ff50b83c243af",
+      "status": "failed",
+      "startedAt": "2026-11-20T22:26:43.327Z",
+      "finishedAt": "2026-11-20T22:26:51.970Z",
+      "steps": 2,
+      "failure": "{\"schemaVersion\":1,\"status\":\"verification\",\"executionEnabled\":false,\"settlement\":{\"schemaVersion\":1,\"profile\":\"rmt-claim-settlement-v1\",\"chainId\":4663,\"scope\":\"production-read-only\",\"stage\":\"indexing-pending\",\"executionEnabled\":false,\"intentHash\":\"0x8b36955087e4d28f500c8a5295a8c178e05b43e29f51a124833f3c61ac15542f\",\"reviewHash\":\"0x91eef301e1a5339b28c025b65c45304d6fe303d1fbe5b2207943fc5a0ca3298b\",\"receiptObserved\":true,\"providers\":{\"status\":\"agree\",\"ids\":[\"official\",\"pocket\"]},\"finality\":{\"status\":\"unverified\",\"policy\":null,\"l1Finality\":\"unverified\",\"productionPolicySupported\":false,\"reason\":\"No accepted Ethereum L1 execution-finality policy is implemented; finalized batch posting alone is insufficient\"},\"transactionHash\":\"0xcef73bb7ff2e3a42bf95d9b0463f6ccf75532c8ee95ab072b39473cceaa8659c\",\"canonicalAt\":{\"blockNumber\":\"119403895\",\"blockHash\":\"0x81db0c37822391dfe35b9a95b74c58c9f3f6455dc0b771a779b0344c824240f6\",\"timestamp\":\"2026-11-20T22:26:50.000Z\"},\"outerReceiptStatus\":\"success\",\"innerExecution\":\"success\",\"reason\":\"exact-canonical-fee-activity-not-indexed\",\"amounts\":{\"nativeWei\":\"18000000000000000\",\"tokenWei\":\"0\"},\"activity\":{\"schemaVersion\":1,\"chainId\":4663,\"factory\":\"0x7281e1F9D876"
+    },
+    {
+      "attempt": 11,
+      "name": "task092-production-adapter-evm-11.json",
+      "sha256": "569062ece2c7c99df775d5e5b145ad8e6cc638d649fe1b97cbbb671094b9fc22",
+      "status": "passed",
+      "startedAt": "2026-11-20T22:27:30.407Z",
+      "finishedAt": "2026-11-20T22:28:05.695Z",
+      "steps": 19
+    },
+    {
+      "attempt": 12,
+      "name": "task092-production-adapter-evm-12.json",
+      "sha256": "ce07a874d7e04f9c5309fb337e7987a3885cfd28a2a00fc8d447bee917134a51",
+      "status": "passed",
+      "startedAt": "2026-11-20T22:29:06.961Z",
+      "finishedAt": "2026-11-20T22:30:03.229Z",
+      "steps": 21
+    },
+    {
+      "attempt": 13,
+      "name": "task092-production-adapter-evm-13.json",
+      "sha256": "f4ed82a604e74e2e99eb7fe39f55b6d39b0ebe05acb476d3a697a0a7067a81de",
+      "status": "passed",
+      "startedAt": "2026-11-20T22:31:23.705Z",
+      "finishedAt": "2026-11-20T22:32:11.814Z",
+      "steps": 22
+    },
+    {
+      "attempt": 14,
+      "name": "task092-production-adapter-evm-14.json",
+      "sha256": "afb59e08f86ff15d3c76cc569e968ebf47ee542dff9038fe0bfa7a59802006e7",
+      "status": "passed",
+      "startedAt": "2026-11-20T22:33:30.285Z",
+      "finishedAt": "2026-11-20T22:34:19.475Z",
+      "steps": 22
+    },
+    {
+      "attempt": 15,
+      "name": "task092-production-adapter-evm-15.json",
+      "sha256": "002b8061b7b2c76076c4958751caaa42e32ed2aa11081f8802bad6592a823f2b",
+      "status": "passed",
+      "startedAt": "2026-11-20T22:46:57.749Z",
+      "finishedAt": "2026-11-20T22:48:30.108Z",
+      "steps": 22
+    },
+    {
+      "attempt": 16,
+      "name": "task092-production-adapter-evm-16.json",
+      "sha256": "44d3e5b6b99699cc3ba294dc670605b3ed5984c752f6a17e4a77108d4c7860dd",
+      "status": "passed",
+      "startedAt": "2026-11-20T22:50:05.414Z",
+      "finishedAt": "2026-11-20T22:51:39.424Z",
+      "steps": 22
+    },
+    {
+      "attempt": 17,
+      "name": "task092-production-adapter-evm-17.json",
+      "sha256": "b07c06e323c0f7fe39bc4396d5eea14a322707ba7d4e3c70376a127e27a164ed",
+      "status": "failed",
+      "startedAt": "2026-11-20T22:54:23.074Z",
+      "finishedAt": "2026-11-20T22:54:23.945Z",
+      "steps": 0,
+      "failure": "connect ECONNREFUSED 127.0.0.1:55492"
+    },
+    {
+      "attempt": 18,
+      "name": "task092-production-adapter-evm-18.json",
+      "sha256": "1cd872b75783dca1d3c5412d7b217c1fdec66577c167d4952bb34fa5f73489d1",
+      "status": "passed",
+      "startedAt": "2026-11-20T22:55:09.677Z",
+      "finishedAt": "2026-11-20T22:56:45.671Z",
+      "steps": 22
+    },
+    {
+      "attempt": 19,
+      "name": "task092-production-adapter-evm-19.json",
+      "sha256": "a8171c09d0e9632e4925a085a8b3f7e3cbb211c2508e50549bbebdfad2d14a66",
+      "status": "passed",
+      "startedAt": "2026-11-20T23:14:00.760Z",
+      "finishedAt": "2026-11-20T23:15:38.924Z",
+      "steps": 22
+    }
+  ],
+  "rawRetention": "Every original JSON remains outside the checkout in the task workspace; none was overwritten or removed",
+  "limitations": [
+    "All tokens, accounts, balances, publication storage and transactions exist only on a verified loopback Anvil fork.",
+    "Two read adapters observe one isolated EVM; this does not establish independent mainnet consensus.",
+    "Anvil uses value/calldata-specific synthetic C8 execution estimates and synthetic native ArbGasInfo zero-poster measurements matching the observed production policy shape. These are not live mainnet transaction fee acceptance."
+  ]
+}

@@ -1,0 +1,65 @@
+[
+  {
+    "attempt": ".task092-browser-chromium-mobile-01",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "disabled",
+    "reason": "locator.click: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Connect trading wallet', exact: true })\u001b[22m\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:129:50)",
+    "sha256": "c20245b740844390a4f99444da4800d80490b3d8debb76183bd6f3b6a3e4fab3"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-02",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "trading",
+    "reason": "locator.fill: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByLabel('Trade amount', { exact: true })\u001b[22m\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:138:66)",
+    "sha256": "60b96f3ad4abcfbea47cd4b5f5c93793b435a68a296e20048a93b315693e2ac7"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-03",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "eoa",
+    "reason": "locator.waitFor: Error: strict mode violation: getByText(/Wallet request rejected/) resolved to 2 elements:\n    1) <p role=\"status\">Wallet request rejected. No retry or signature wi…</p> aka getByText('Wallet request rejected. No')\n    2) <p role=\"status\" class=\"lpInlineNotice\">Wallet request rejected. The reviewed request is …</p> aka getByText('Wallet request rejected. The')\n\nCall log:\n\u001b[2m  - waiting for getByText(/Wallet request rejected/) to be visible\u001b[22m\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:162:131)",
+    "sha256": "ad85380be96d5c5c835d665c5d0a8c32ccca006b4f63006964a5f1d1b798bb57"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-04",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "eoa",
+    "reason": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 2\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:165:18)",
+    "sha256": "d55779abcce16081877118e2a916c21f96598f74844cee577f903eeddc7fd221"
+  },
+  {
+    "attempt": ".task092-browser-chromium-mobile-05",
+    "status": "incomplete",
+    "browser": "chromium",
+    "viewport": "mobile",
+    "failedMode": "metamask-7702",
+    "reason": "locator.waitFor: Timeout 30000ms exceeded.\nCall log:\n\u001b[2m  - waiting for getByRole('button', { name: 'Recover profiled claim receipt', exact: true }) to be visible\u001b[22m\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:165:117)",
+    "sha256": "f4101b380b0b4e9b01af32ef351feb6443bc671caca18b8e8c9fadcb7b60a128"
+  },
+  {
+    "attempt": ".task092-browser-webkit-desktop-01",
+    "status": "incomplete",
+    "browser": "webkit",
+    "viewport": "desktop",
+    "failedMode": "eoa",
+    "reason": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 0\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:158:95)",
+    "sha256": "8c668d3f55182c8b6967fbc9872dff9d52e0ee4c4dc09313364236b451fa4f20"
+  },
+  {
+    "attempt": ".task092-browser-webkit-mobile-01",
+    "status": "incomplete",
+    "browser": "webkit",
+    "viewport": "mobile",
+    "failedMode": "eoa",
+    "reason": "AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:\n\n1 !== 0\n\n    at main (C:\\Users\\RMT\\Documents\\Codex\\2026-11-19\\continue-rmt-launch-development-using-the\\repository\\scripts\\production-adapters\\browser.ts:158:95)",
+    "sha256": "d08f428b026676ea0990cbbca5060d0f31882cc587cc16065fe1f9679879653c"
+  }
+]

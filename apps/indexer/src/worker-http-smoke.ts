@@ -123,6 +123,14 @@ try {
   assert.equal((await fetch(url + "/curve-launches", { headers: { Authorization: "Bearer invalid" } })).status, 401);
   assert.equal((await fetch(url + "/curve-launches", { method: "POST", headers: auth })).status, 405);
   assert.equal((await fetch(url + "/curve-launches?limit=51", { headers: auth })).status, 400);
+  const activityPath = "/curve-activity?transactionHash=0x" + "1".repeat(64) + "&token=" + address("5");
+  assert.equal((await fetch(url + activityPath)).status, 401);
+  assert.equal((await fetch(url + activityPath, { headers: { Authorization: "Bearer invalid" } })).status, 401);
+  assert.equal((await fetch(url + activityPath, { method: "POST", headers: auth })).status, 405);
+  assert.equal((await fetch(url + "/curve-activity?transactionHash=bad", { headers: auth })).status, 400);
+  const missingActivity = await fetch(url + activityPath, { headers: auth });
+  assert.equal(missingActivity.status, 503);
+  assert.equal((await missingActivity.json() as { status: string }).status, "unavailable");
   const undeployed = await fetch(url + "/curve-launches", { headers: auth });
   assert.equal(undeployed.status, 404);
   assert.equal((await undeployed.json() as { status: string }).status, "undeployed");

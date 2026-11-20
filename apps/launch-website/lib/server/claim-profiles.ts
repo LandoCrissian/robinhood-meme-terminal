@@ -1,6 +1,6 @@
 import { decodeFunctionResult, encodeFunctionData, getAddress, hashTypedData, keccak256, parseAbi, recoverAddress, toHex, zeroAddress,
   type Address, type Hex } from "viem";
-import { claimDelegatePin, claimExecutionIdentity, claimExecutionProfile, claimExecutionReviewHash, isClaimExecutionReview,
+import { claimDelegatePin, claimExecutionIdentity, claimExecutionProfile, claimExecutionReviewHash, isClaimExecutionReview, productionClaimFeePolicy,
   type ClaimExecutionReview, type ClaimFeeEvidence, type ClaimOuterTransaction, type ClaimSafeTransaction,
   type ClaimWalletEvidence, type ClaimWalletKind } from "../claim-profiles";
 import { encodeEarningsClaim, isEarningsClaimOperation, isEarningsClaimRequest, sameEarningsClaimRequest,
@@ -9,6 +9,7 @@ import { earningsClaimReadiness } from "./earnings-claims";
 import { readEarningsContracts, readFactoryCreationFees, verifyEarningsContext, productionEarningsContext,
   type EarningsReadContext, type EarningsRegistration } from "./earnings-contracts";
 import { productionReaders } from "./curve-production";
+import { readNitroZeroPosterPolicy } from "./nitro-zero-poster";
 
 export { claimDelegatePin } from "../claim-profiles";
 export const claimSafePins = Object.freeze({ singleton: "0x29fcB43b46531BcA003ddC8FCB67FFE91900C762" as Address,
@@ -40,6 +41,7 @@ function must(value: unknown, reason = "Wallet profile evidence unavailable or c
 const uintNonce = (n: number) => { must(Number.isSafeInteger(n) && n >= 0); return BigInt(n); };
 
 export function claimContextIsAllowed(context: EarningsReadContext, receipt = false) {
+  if (context.feePolicy !== undefined && (context.chainId !== 4663 || context.feePolicy !== productionClaimFeePolicy)) return false;
   if (context.chainId === 31337) return receipt || !context.historicalReceipt;
   if (context.chainId !== 4663 || (!receipt && context.historicalReceipt)) return false;
   const expected = productionEarningsContext(context.rpc, context.checkpoint);
@@ -132,28 +134,39 @@ async function safeWallet(context: EarningsReadContext, actor: Address, at: bigi
 
 export async function estimateClaimExecutionFees(context: EarningsReadContext, outer: ClaimOuterTransaction, kind: ClaimWalletKind = "eoa"): Promise<ClaimFeeEvidence> {
   try {
+    must(context.feePolicy === undefined || context.chainId === 4663 && context.feePolicy === productionClaimFeePolicy);
     const at = BigInt(context.checkpoint.blockNumber), rpc = context.rpc;
     const request = { account: outer.from, to: outer.to, data: outer.data, value: 0n, blockNumber: at } as const;
     const [execution, price, header, balance, simulation] = await Promise.all([rpc.estimateGas(request), rpc.getGasPrice(), rpc.getBlock({ blockNumber: at }), rpc.getBalance({ address: outer.from, blockNumber: at }), rpc.call(request)]);
     must(header.hash && same(header.hash, context.checkpoint.blockHash) && execution >= 21000n && execution <= 30_000_000n && price > 0n);
     if (kind === "safe-1.4.1") must(simulation.data && decodeFunctionResult({ abi: safeAbi, functionName: "execTransaction", data: simulation.data }) === true, "Safe simulation did not prove successful inner execution");
     let total = execution, poster = 0n, base = price, l1Base = 0n;
+    let zeroPosterPolicy: Awaited<ReturnType<typeof readNitroZeroPosterPolicy>> | undefined;
     if (context.chainId === 4663) {
       const raw = await rpc.call({ account: outer.from, to: nitro, data: encodeFunctionData({ abi: nitroAbi, functionName: "gasEstimateComponents", args: [outer.to, false, outer.data] }), value: 0n, blockNumber: at });
       must(raw.data); const values = decodeFunctionResult({ abi: nitroAbi, functionName: "gasEstimateComponents", data: raw.data });
       [total, poster, base, l1Base] = values;
-      must(total >= 21000n && total <= 30_000_000n && poster > 0n && poster < total && base > 0n && l1Base > 0n, "Nitro L1 data fee unavailable");
+      must(total >= 21000n && total <= 30_000_000n && base > 0n, "Nitro execution fee unavailable");
+      if (poster === 0n && l1Base === 0n && context.feePolicy === productionClaimFeePolicy) {
+        zeroPosterPolicy = await readNitroZeroPosterPolicy(rpc, at);
+        must(same(zeroPosterPolicy.blockHash, context.checkpoint.blockHash)
+          && zeroPosterPolicy.blockNumber === context.checkpoint.blockNumber, "Native zero-poster policy differs from transaction fee evidence");
+      } else must(poster > 0n && poster < total && l1Base > 0n, "Nitro L1 data fee unavailable");
     }
     const tip = context.chainId === 4663 ? await rpc.estimateMaxPriorityFeePerGas() : 0n;
     must(tip >= 0n && tip <= 10n ** 12n);
     const gas = ((total > execution ? total : execution) * 125n + 99n) / 100n;
-    const maxFee = price > base * 2n + tip ? price : base * 2n + tip;
+    const observedMaximum = zeroPosterPolicy ? [price, base, BigInt(zeroPosterPolicy.l2BaseFeeWei), BigInt(zeroPosterPolicy.nativeL2BaseFeeWei)]
+      .reduce((a, b) => a > b ? a : b) : base;
+    const maxFee = zeroPosterPolicy ? observedMaximum * 2n + tip : price > base * 2n + tip ? price : base * 2n + tip;
     must(gas <= 30_000_000n && balance >= gas * maxFee && same((await rpc.getBlock({ blockNumber: at })).hash!, header.hash));
-    return { status: context.chainId === 4663 ? "verified-nitro" : "synthetic-local", gasUnits: total.toString(), gasLimit: gas.toString(),
+    const evidence = { gasUnits: total.toString(), gasLimit: gas.toString(),
       l2GasUnits: (total - poster).toString(), l1PosterGasUnits: poster.toString(), baseFeeWei: base.toString(), l1BaseFeeWei: l1Base.toString(),
       estimatedL2Wei: ((total - poster) * base).toString(), estimatedL1Wei: (poster * base).toString(), estimatedTotalWei: (total * base).toString(),
       maxFeePerGasWei: maxFee.toString(), maxPriorityFeePerGasWei: tip.toString(), proposedMaximumWei: (gas * maxFee).toString(),
       observedBlockNumber: at.toString(), observedBlockHash: header.hash, includesL1Data: context.chainId === 4663 };
+    return zeroPosterPolicy ? { ...evidence, status: "verified-nitro-zero-poster", zeroPosterPolicy, gasPriceWei: price.toString() }
+      : { ...evidence, status: context.chainId === 4663 ? "verified-nitro" : "synthetic-local" };
   } catch { return { status: "unavailable", reason: context.chainId === 4663 ? "Verified transaction-specific L2/L1 gas evidence or funds unavailable" : "Synthetic execution simulation, gas or funds unavailable" }; }
 }
 
@@ -296,6 +309,8 @@ export async function revalidateClaimExecutionReview(context: EarningsReadContex
       beneficiary: normalize(review.inner.discoveryRecipient), account: review.gasPayer, kind: review.kind,
       ...(review.wallet.safe && { safeAddress: review.actor, safeSignatures: review.wallet.safe.signatures! }), prior: review });
     must(isClaimExecutionReview(latest) && latest.status === "review-only" && latest.fees.status !== "unavailable" && latest.intentHash === review.intentHash
+      && latest.fees.status === review.fees.status
+      && (latest.fees.status !== "verified-nitro-zero-poster" || BigInt(latest.fees.maxFeePerGasWei) <= BigInt(review.fees.maxFeePerGasWei))
       && claimProfileWalletDigest(latest.wallet) === claimProfileWalletDigest(review.wallet)
       && BigInt(latest.fees.gasUnits) <= BigInt(review.fees.gasLimit) && BigInt(latest.fees.baseFeeWei) + BigInt(latest.fees.maxPriorityFeePerGasWei) <= BigInt(review.fees.maxFeePerGasWei)
       && await verifyClaimExecutionProfileAt(context, review, BigInt(context.checkpoint.blockNumber), "review"));

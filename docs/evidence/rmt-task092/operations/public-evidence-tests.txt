@@ -1,0 +1,52 @@
+TAP version 13
+# Subtest: replay Task092 fresh206 exact public calls, canonical schedule and14runtime pins
+ok 1 - replay Task092 fresh206 exact public calls, canonical schedule and14runtime pins
+  ---
+  duration_ms: 64.5889
+  type: 'test'
+  ...
+# Subtest: exact unsigned publication remains review only, expires at original real deadline
+ok 2 - exact unsigned publication remains review only, expires at original real deadline
+  ---
+  duration_ms: 9.2889
+  type: 'test'
+  ...
+# Subtest: replay current114 exact authority/Safe reads and unpublished migration template
+ok 3 - replay current114 exact authority/Safe reads and unpublished migration template
+  ---
+  duration_ms: 13.5786
+  type: 'test'
+  ...
+# Subtest: current authorized Railway metadata records actual missing recovery prerequisites
+ok 4 - current authorized Railway metadata records actual missing recovery prerequisites
+  ---
+  duration_ms: 1.6707
+  type: 'test'
+  ...
+# Subtest: replay actual HTTP-200 metadata hashes and original compiler/constructor/runtime pins
+ok 5 - replay actual HTTP-200 metadata hashes and original compiler/constructor/runtime pins
+  ---
+  duration_ms: 51.713
+  type: 'test'
+  ...
+# Subtest: fresh checksum-pinned native compiler artifact reproduces the original bootstrap constructor input
+ok 6 - fresh checksum-pinned native compiler artifact reproduces the original bootstrap constructor input
+  ---
+  duration_ms: 7.7667
+  type: 'test'
+  ...
+# Subtest: reject changed source, constructor, runtime, compiler or compiler input
+ok 7 - reject changed source, constructor, runtime, compiler or compiler input
+  ---
+  duration_ms: 53.0809
+  type: 'test'
+  ...
+1..7
+# tests 7
+# suites 0
+# pass 7
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 994.2034

@@ -1,0 +1,1 @@
+Task092 production activity PostgreSQL: strict parser, explicit schema, two-provider mismatch, forged receipt, complete receipt rows, factory-global payouts, bounded Permit2-only approval discovery, restart, stale/backfill gate, conflict, atomic rollback and reorg replay passed.

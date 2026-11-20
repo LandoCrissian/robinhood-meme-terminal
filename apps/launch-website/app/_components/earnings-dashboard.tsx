@@ -32,7 +32,9 @@ function validSnapshot(raw: unknown, registration: EarningsRegistration, recipie
 }
 const pair = (eth: string, token: string, symbol: string) => <>{earningsAmount(eth)} <span aria-hidden="true">·</span> {earningsAmount(token, symbol)}</>;
 
-export function EarningsDashboard({ fixture = false, fixtureFactory, profileFixture = false }: { fixture?: boolean; fixtureFactory?: string; profileFixture?: boolean }) {
+export function EarningsDashboard({ fixture = false, fixtureFactory, profileFixture = false, productionClaims = false, productionFactory }: {
+  fixture?: boolean; fixtureFactory?: string; profileFixture?: boolean; productionClaims?: boolean; productionFactory?: string;
+}) {
   const FixtureClaims = profileFixture ? ProfileEarningsClaimWallet : TestEarningsClaimWallet;
   const { session } = useAccount();
   const signedIn = session.authenticated ? session.account.walletAddress : "";
@@ -122,7 +124,9 @@ export function EarningsDashboard({ fixture = false, fixtureFactory, profileFixt
       <button className="lpButton" type="submit" disabled={loading}>{loading ? "Checking evidence…" : "View earnings"}</button>
       <small>Public lookup. No wallet connection or sign-in required. Safe earnings belong to the Safe address.</small>
     </form>
-    <p className="lpInlineNotice">{fixture ? "Isolated Anvil 31337 · synthetic ETH and tokens only." : "Robinhood Chain 4663 · read-only. Claims and wallet signing are not activated."}</p>
+    <p className="lpInlineNotice">{fixture ? "Isolated Anvil 31337 · synthetic ETH and tokens only." : productionClaims ? "Robinhood Chain 4663 · claims require your explicit wallet confirmation." : "Robinhood Chain 4663 · read-only. Claims and wallet signing are not activated."}</p>
+    {productionClaims && productionFactory && <ProfileEarningsClaimWallet production factory={productionFactory} beneficiary={recipient} recoveryOnly
+      onSettled={(token?: string) => { const row = token && rows.find(candidate => same(candidate.token, token)); if (row) void checkProject(row); else if (!token) void checkFactory(); }} />}
     {fixture && fixtureFactory && <FixtureClaims factory={fixtureFactory} beneficiary={recipient} recoveryOnly onSettled={(token?: string) => {
       const row = token && rows.find(candidate => same(candidate.token, token));
       if (row) void checkProject(row);
@@ -154,6 +158,7 @@ export function EarningsDashboard({ fixture = false, fixtureFactory, profileFixt
             </dl>
             {snapshot.lp.status === "ready" && <p className="lpInlineNotice">Awaiting-collection amounts are gross fees earned by the original locked position. They are not this wallet&apos;s claimable balance. Other LPs&apos; fees are excluded.</p>}
             {fixture ? <FixtureClaims key={`${recipient}:${revision}:${row.token}`} factory={row.factory} token={row.token} beneficiary={recipient} snapshot={snapshot} showRecovery={false} onSettled={() => void checkProject(row)} />
+              : productionClaims ? <ProfileEarningsClaimWallet production key={`${recipient}:${revision}:${row.token}`} factory={row.factory} token={row.token} beneficiary={recipient} snapshot={snapshot} showRecovery={false} onSettled={() => void checkProject(row)} />
               : <button type="button" className="lpButton" disabled>Claims not active</button>}
             <button type="button" className="lpTextButton" disabled={check?.status === "ready" && check.refreshing} onClick={() => void checkProject(row)}>Refresh contract balances</button>
           </> : <><p className="lpInlineNotice" role="status">{check?.status === "loading" ? "Verifying contracts and beneficiary credits…" : check?.status === "unavailable" ? unavailable : "Check this project's immutable policy and current contract balances."}</p>
@@ -177,7 +182,9 @@ export function EarningsDashboard({ fixture = false, fixtureFactory, profileFixt
         <p>One factory-wide balance, paid only to immutable RMT Operations. It is separate from project revenue and is never multiplied by the number of projects. Anyone may trigger its release.</p>
         {factoryFees && typeof factoryFees === "object" ? <>
           <dl className="lpFacts"><dt>Available factory-wide</dt><dd>{earningsAmount(factoryFees.availableNativeWei)}</dd><dt>Receiving Operations wallet</dt><dd className="lpAddress">{factoryFees.recipient}</dd></dl>
-          {fixture ? <FixtureClaims beneficiary={recipient} factoryFees={factoryFees} showRecovery={false} onSettled={() => void checkFactory()} /> : <button className="lpButton" disabled>Release not active</button>}
+          {fixture ? <FixtureClaims beneficiary={recipient} factoryFees={factoryFees} showRecovery={false} onSettled={() => void checkFactory()} />
+            : productionClaims ? <ProfileEarningsClaimWallet production beneficiary={recipient} factoryFees={factoryFees} showRecovery={false} onSettled={() => void checkFactory()} />
+            : <button className="lpButton" disabled>Release not active</button>}
         </> : <><p role="status">{factoryFees === "loading" ? "Verifying factory credit…" : factoryFees === "unavailable" ? unavailable : "Factory claimed totals require complete payout event history and are not assumed to be zero."}</p>
           <button type="button" className="lpButton lpSecondary" disabled={factoryFees === "loading"} onClick={() => void checkFactory()}>Check creation fees</button></>}
       </div></details>

@@ -24,12 +24,17 @@ export type ClaimWalletEvidence = {
     expiryEnforcement: "safe-nonce-only" | "inner-contract-deadline";
   };
 };
-export type ClaimFeeEvidence = { status: "verified-nitro" | "synthetic-local"; gasUnits: string; gasLimit: string;
+export const productionClaimFeePolicy = "nitro-zero-poster-corroborated-v1";
+export type ClaimZeroPosterPolicy = { profile: "nitro-zero-poster-v1"; chainId: 4663; l1BaseFeeWei: "0"; l1CalldataUnitWei: "0";
+  l2BaseFeeWei: string; nativeL2BaseFeeWei: string; blockNumber: string; blockHash: Hex };
+type ClaimReadyFeeValues = { gasUnits: string; gasLimit: string;
   l2GasUnits: string; l1PosterGasUnits: string; baseFeeWei: string; l1BaseFeeWei: string;
   estimatedL2Wei: string; estimatedL1Wei: string; estimatedTotalWei: string;
   maxFeePerGasWei: string; maxPriorityFeePerGasWei: string; proposedMaximumWei: string;
   observedBlockNumber: string; observedBlockHash: Hex; includesL1Data: boolean;
-} | { status: "unavailable"; reason: string };
+};
+export type ClaimFeeEvidence = ClaimReadyFeeValues & ({ status: "verified-nitro" | "synthetic-local" }
+  | { status: "verified-nitro-zero-poster"; zeroPosterPolicy: ClaimZeroPosterPolicy; gasPriceWei: string }) | { status: "unavailable"; reason: string };
 
 /** An auditable unsigned review, never permission to sign or broadcast. For a
  * Safe, inner.nonce is the explicitly identified Safe nonce, while outer.nonce
@@ -119,8 +124,22 @@ export function isClaimExecutionReview(value: unknown): value is ClaimExecutionR
     if (safe && r.outer && r.outer.data !== encodeFunctionData({ abi: safeExecAbi, functionName: "execTransaction", args: [safe.transaction.to, 0n, safe.transaction.data, 0, 0n, 0n, 0n, zeroAddress, zeroAddress, safe.signatures!] })) return false;
     if (r.fees.status === "unavailable") return shape(r.fees, ["status", "reason"]) && typeof r.fees.reason === "string" && r.fees.reason.length <= 1024
       && r.status === (safe?.approvalsCollected === 0 ? "awaiting-safe-approvals" : "fee-unavailable");
-    if (!shape(r.fees, ["status", "gasUnits", "gasLimit", "l2GasUnits", "l1PosterGasUnits", "baseFeeWei", "l1BaseFeeWei", "estimatedL2Wei", "estimatedL1Wei", "estimatedTotalWei", "maxFeePerGasWei", "maxPriorityFeePerGasWei", "proposedMaximumWei", "observedBlockNumber", "observedBlockHash", "includesL1Data"])) return false;
-    if (!["verified-nitro", "synthetic-local"].includes(r.fees.status) || (r.chainId === 4663) !== (r.fees.status === "verified-nitro")
+    const zeroPoster = r.fees.status === "verified-nitro-zero-poster";
+    if (!shape(r.fees, ["status", "gasUnits", "gasLimit", "l2GasUnits", "l1PosterGasUnits", "baseFeeWei", "l1BaseFeeWei", "estimatedL2Wei", "estimatedL1Wei", "estimatedTotalWei", "maxFeePerGasWei", "maxPriorityFeePerGasWei", "proposedMaximumWei", "observedBlockNumber", "observedBlockHash", "includesL1Data"], zeroPoster ? ["zeroPosterPolicy", "gasPriceWei"] : [])) return false;
+    if (r.fees.status === "verified-nitro-zero-poster") {
+      const policy = r.fees.zeroPosterPolicy;
+      if (r.chainId !== 4663 || !shape(policy, ["profile", "chainId", "l1BaseFeeWei", "l1CalldataUnitWei", "l2BaseFeeWei", "nativeL2BaseFeeWei", "blockNumber", "blockHash"])
+        || policy.profile !== "nitro-zero-poster-v1" || policy.chainId !== 4663 || policy.l1BaseFeeWei !== "0" || policy.l1CalldataUnitWei !== "0"
+        || !decimal(policy.l2BaseFeeWei) || BigInt(policy.l2BaseFeeWei) <= 0n || !decimal(policy.nativeL2BaseFeeWei) || BigInt(policy.nativeL2BaseFeeWei) <= 0n
+        || !decimal(r.fees.gasPriceWei) || BigInt(r.fees.gasPriceWei) <= 0n
+        || policy.blockNumber !== r.observed.blockNumber || !hash(policy.blockHash) || !same(policy.blockHash, r.observed.blockHash)
+        || r.fees.l1PosterGasUnits !== "0" || r.fees.l1BaseFeeWei !== "0" || r.fees.estimatedL1Wei !== "0") return false;
+      if (![r.fees.baseFeeWei, r.fees.maxPriorityFeePerGasWei, r.fees.maxFeePerGasWei].every(decimal)) return false;
+      const maximum = [r.fees.baseFeeWei, policy.l2BaseFeeWei, policy.nativeL2BaseFeeWei, r.fees.gasPriceWei]
+        .map(BigInt).reduce((a, b) => a > b ? a : b);
+      if (BigInt(r.fees.maxFeePerGasWei) !== maximum * 2n + BigInt(r.fees.maxPriorityFeePerGasWei)) return false;
+    }
+    if (!["verified-nitro", "verified-nitro-zero-poster", "synthetic-local"].includes(r.fees.status) || (r.chainId === 4663) !== (r.fees.status === "verified-nitro" || zeroPoster)
       || r.fees.includesL1Data !== (r.chainId === 4663) || ![r.fees.gasUnits, r.fees.gasLimit, r.fees.l2GasUnits, r.fees.l1PosterGasUnits,
         r.fees.baseFeeWei, r.fees.l1BaseFeeWei, r.fees.estimatedL2Wei, r.fees.estimatedL1Wei, r.fees.estimatedTotalWei,
         r.fees.maxFeePerGasWei, r.fees.maxPriorityFeePerGasWei, r.fees.proposedMaximumWei].every(decimal)
@@ -128,7 +147,7 @@ export function isClaimExecutionReview(value: unknown): value is ClaimExecutionR
       || BigInt(r.fees.gasUnits) < 21000n || BigInt(r.fees.gasUnits) > 30_000_000n || BigInt(r.fees.gasLimit) < BigInt(r.fees.gasUnits)
       || BigInt(r.fees.gasLimit) > 30_000_000n || BigInt(r.fees.baseFeeWei) <= 0n || BigInt(r.fees.maxFeePerGasWei) <= 0n
       || BigInt(r.fees.maxPriorityFeePerGasWei) > BigInt(r.fees.maxFeePerGasWei)
-      || (r.chainId === 4663 ? BigInt(r.fees.l1PosterGasUnits) <= 0n || BigInt(r.fees.l1PosterGasUnits) >= BigInt(r.fees.gasUnits) || BigInt(r.fees.l1BaseFeeWei) <= 0n
+      || (r.chainId === 4663 ? !zeroPoster && (BigInt(r.fees.l1PosterGasUnits) <= 0n || BigInt(r.fees.l1PosterGasUnits) >= BigInt(r.fees.gasUnits) || BigInt(r.fees.l1BaseFeeWei) <= 0n)
         : r.fees.l1PosterGasUnits !== "0" || r.fees.l1BaseFeeWei !== "0")
       || r.fees.observedBlockNumber !== r.observed.blockNumber || !same(r.fees.observedBlockHash, r.observed.blockHash)
       || BigInt(r.fees.estimatedL2Wei) !== BigInt(r.fees.l2GasUnits) * BigInt(r.fees.baseFeeWei)

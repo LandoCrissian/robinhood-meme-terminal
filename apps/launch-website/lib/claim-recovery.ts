@@ -5,6 +5,9 @@ import { claimSettlementProfile, claimSettlementStages, type ClaimSettlementResu
 import { isTransactionHash } from "./test-creation";
 import { testWalletErrorCode } from "./test-wallet";
 import { assertNoPendingReclaim } from "./reclaim-recovery";
+import { isProductionWalletOrigin } from "./production-wallet";
+import { assertNoPendingProductionCreation } from "./production-creation";
+import { assertProductionNonceAboveConsumed, assertProductionNonceAvailable, recordProductionConsumedNonce } from "./production-nonce";
 
 const namespace = "rmt.claim.execution.v1";
 export const claimProfileApiPath = "/api/launchpad/test-claim-profiles";
@@ -28,6 +31,11 @@ export const claimResourceLocks = (r: ClaimExecutionReview) => [claimAccountLock
   ? [`${namespace}:${r.chainId}:safe:${r.actor.toLowerCase()}:${r.wallet.safe.nonce}`] : [])].sort();
 const terminal = (j: ClaimRecoveryJournal) => ["settled", "reverted"].includes(j.stage)
   || j.stage === "wallet-rejected" && j.review.kind !== "safe-1.4.1";
+const canonicalProductionClaim = (j: ClaimRecoveryJournal) => j.stage === "canonical-l2" && j.verification?.indexed === true
+  && j.verification.receiptObserved && j.verification.providers.status === "agree"
+  && j.verification.providers.ids.length === 2 && j.verification.providers.ids.includes("official") && j.verification.providers.ids.includes("pocket")
+  && j.verification.outerReceiptStatus === "success" && j.verification.innerExecution === "success";
+const consumedProductionClaim = (j: ClaimRecoveryJournal) => canonicalProductionClaim(j) || j.stage === "settled" || j.stage === "reverted";
 const safeSlot = (r: ClaimExecutionReview) => r.wallet.safe ? `${r.chainId}:${r.actor.toLowerCase()}:${r.wallet.safe.nonce}` : null;
 const sameSafeProposal = (a: ClaimExecutionReview, b: ClaimExecutionReview) => !!a.wallet.safe && !!b.wallet.safe
   && safeSlot(a) === safeSlot(b) && same(a.wallet.safe.transactionHash, b.wallet.safe.transactionHash);
@@ -84,6 +92,17 @@ export function listClaimJournals(storage: Storage, factory?: string): ClaimReco
     if (!validJournal(j) || claimJournalKey(j.review) !== key) throw new Error("Recorded claim identity is invalid.");
     return j;
   }).filter(j => !factory || same(j.review.inner.factory, factory)).sort((a, b) => b.createdAt - a.createdAt);
+}
+/** A proven canonical L2 payment can release the account's next nonce while
+ * its immutable journal continues to disclose unverified Ethereum L1 finality.
+ * The claim controller separately enforces per-payer and per-Safe nonce locks. */
+export function assertNoPendingProductionClaim(storage: Storage, account: string, candidateNonce?: string) {
+  const journals = listClaimJournals(storage).filter(j => j.review.chainId === 4663 && same(j.review.gasPayer, account));
+  assertProductionNonceAvailable(storage, account, candidateNonce);
+  assertProductionNonceAboveConsumed(candidateNonce, journals.filter(consumedProductionClaim).map(j => j.review.gasPayerEvidence.nonce));
+  if (journals.some(j => !terminal(j) && !canonicalProductionClaim(j))) {
+    throw new Error("Recover the original production claim before another financial request");
+  }
 }
 export function storeClaimJournal(storage: Storage, journal: ClaimRecoveryJournal) {
   if (!validJournal(journal)) throw new Error("Invalid claim recovery record");
@@ -156,33 +175,75 @@ export function applyClaimSettlement(storage: Storage, original: ClaimRecoveryJo
   const next: ClaimRecoveryJournal = { ...original, stage: result.stage,
     transactionHash: original.transactionHash ?? (boundReceipt ? result.transactionHash ?? null : null),
     verification: result, updatedAt: Math.max(now, original.updatedAt) };
+  if (next.review.chainId === 4663 && consumedProductionClaim(next)) {
+    if (!next.transactionHash) throw new Error("Canonical claim receipt identity is required before releasing its nonce");
+    // Persist the monotone shared floor before the original intent can be
+    // considered released. A failed floor write leaves its old journal intact.
+    recordProductionConsumedNonce(storage, next.review.gasPayer, next.review.gasPayerEvidence.nonce, next.transactionHash);
+  }
   storeClaimJournal(storage, next); return next;
 }
 
 type Wallet = { request(input: { method: string; params?: unknown[] }): Promise<unknown> };
-/** The only send path is a local synthetic test. Production review and recovery
- * are read-only even when an otherwise valid unsigned 4663 envelope exists. */
-export async function submitIsolatedClaim(input: { review: ClaimExecutionReview; storage: Storage; wallet: Wallet;
+type ClaimSubmissionInput = { review: ClaimExecutionReview; storage: Storage; wallet: Wallet;
   location: Pick<Location, "protocol" | "hostname" | "port">;
   revalidate(review: ClaimExecutionReview): Promise<{ status: string; reviewHash?: Hex }>;
   reconcilePrior?(journal: ClaimRecoveryJournal): Promise<ClaimSettlementResult>;
-  now?: () => number }) {
-  const { review, storage, wallet, location } = input, now = input.now ?? Date.now;
-  if (!isClaimExecutionReview(review) || review.chainId !== 31337 || review.scope !== "isolated-local" || review.status !== "review-only"
-    || !review.outer || review.fees.status !== "synthetic-local" || location.protocol !== "http:" || location.hostname !== "127.0.0.1" || !location.port) {
-    throw new Error("Financial execution is disabled outside the isolated chain-31337 test profile");
+  now?: () => number };
+
+/** Separate production entry point. The historical isolated sender retains its
+ * exact loopback-only guard. A production review is usable only after the active
+ * server approval binding and the complete unchanged review are revalidated. */
+export async function submitProductionClaim(input: Omit<ClaimSubmissionInput, "revalidate"> & {
+  approvalBinding: string;
+  revalidate(review: ClaimExecutionReview): Promise<{ status: string; executionEnabled?: boolean; approvalBinding?: string; review?: ClaimExecutionReview }>;
+}) {
+  if (!/^[a-f0-9]{64}$/.test(input.approvalBinding)) throw new Error("Financial approval binding unavailable");
+  return submitClaim({ ...input, revalidate: async review => {
+    const checked = await input.revalidate(review);
+    if (checked.status !== "revalidated" || checked.executionEnabled !== true || checked.approvalBinding !== input.approvalBinding
+      || !isClaimExecutionReview(checked.review) || checked.review.chainId !== 4663 || checked.review.reviewHash !== review.reviewHash) {
+      throw new Error("Production claim approval or reviewed transaction changed");
+    }
+    return { status: "unchanged", reviewHash: checked.review.reviewHash };
+  } }, "production");
+}
+/** The historical entry point retains its loopback-only synthetic guard. */
+export async function submitIsolatedClaim(input: ClaimSubmissionInput) { return submitClaim(input, "isolated"); }
+async function submitClaim(input: ClaimSubmissionInput, mode: "isolated" | "production") {
+  const { storage, wallet, location } = input, now = input.now ?? Date.now;
+  const review = structuredClone(input.review);
+  const isolated = mode === "isolated" && review.chainId === 31337 && review.scope === "isolated-local" && review.fees.status === "synthetic-local"
+    && location.protocol === "http:" && location.hostname === "127.0.0.1" && !!location.port;
+  const production = mode === "production" && review.chainId === 4663 && review.scope === "production-unsigned"
+    && ["verified-nitro", "verified-nitro-zero-poster"].includes(review.fees.status) && isProductionWalletOrigin(location);
+  if (!isClaimExecutionReview(review) || (!isolated && !production) || review.status !== "review-only" || !review.outer) {
+    throw new Error("Claim execution requires the approved network, origin and wallet profile");
   }
   if (now() >= review.expiresAt * 1000 || claimExecutionIdentity(review) !== review.intentHash) throw new Error("The claim review has expired");
+  // Imported after the profile gate to avoid a cycle with the trade controller's
+  // claim-journal guard. No wallet method runs during this read-only import.
+  const pendingTrade = production ? (await import("./production-trading-wallet")).assertNoPendingProductionTrade : undefined;
   const safeRetryProofs = new Set<string>();
   const assertAvailable = () => {
+    if (production) {
+      pendingTrade!(storage, review.gasPayer, review.gasPayerEvidence.nonce);
+      assertNoPendingProductionCreation(storage, review.gasPayer, review.gasPayerEvidence.nonce);
+      assertProductionNonceAvailable(storage, review.gasPayer, review.gasPayerEvidence.nonce);
+    }
     assertNoPendingReclaim(storage, review.gasPayer);
     const existing = readClaimJournal(storage, review);
     if (existing && !(existing.stage === "wallet-rejected" && !existing.transactionHash && existing.review.reviewHash === review.reviewHash)) {
       throw new Error("Recover the original claim; it cannot be submitted again");
     }
     for (const j of listClaimJournals(storage)) {
+      if (production && j.review.chainId === 4663 && same(j.review.gasPayer, review.gasPayer) && consumedProductionClaim(j)) {
+        assertProductionNonceAboveConsumed(review.gasPayerEvidence.nonce, [j.review.gasPayerEvidence.nonce]);
+      }
       if (j.review.intentHash === review.intentHash) continue;
       const rejectedRenewal = rejectedSafeRenewal(j, review);
+      if (production && j.review.chainId === 4663 && same(j.review.gasPayer, review.gasPayer)
+        && !terminal(j) && !canonicalProductionClaim(j) && !rejectedRenewal) throw new Error("Recover the original production claim before another financial request");
       if (!terminal(j) && slot(j.review) === slot(review) && !rejectedRenewal) throw new Error("Another project or claim uses this wallet nonce. Recover it before continuing.");
       if (safeSlot(review) && safeSlot(j.review) === safeSlot(review)
         && (!terminal(j) || provenSafeOuterRevert(j))) {
@@ -213,7 +274,7 @@ export async function submitIsolatedClaim(input: { review: ClaimExecutionReview;
   // an uncertain original direct-wallet broadcast.
   const checkWallet = async () => {
     const needsDelegate = review.kind === "metamask-7702" || review.gasPayerEvidence.kind === "metamask-7702";
-    const [accounts, chain, nonce, actorCode, payerCode, checkpoint, targetCode, delegateCode] = await Promise.all([
+    const [accounts, chain, nonce, actorCode, payerCode, checkpoint, targetCode, delegateCode, deployment, originalAnchor] = await Promise.all([
       wallet.request({ method: "eth_accounts" }), wallet.request({ method: "eth_chainId" }),
       wallet.request({ method: "eth_getTransactionCount", params: [review.gasPayer, "pending"] }),
       wallet.request({ method: "eth_getCode", params: [review.actor, "latest"] }),
@@ -221,9 +282,11 @@ export async function submitIsolatedClaim(input: { review: ClaimExecutionReview;
       wallet.request({ method: "eth_getBlockByNumber", params: ["0x" + BigInt(review.observed.blockNumber).toString(16), false] }),
       wallet.request({ method: "eth_getCode", params: [review.inner.to, "latest"] }),
       needsDelegate ? wallet.request({ method: "eth_getCode", params: [claimDelegatePin.address, "latest"] }) : undefined,
+      production ? wallet.request({ method: "eth_getBlockByNumber", params: [review.inner.deploymentBlockNumber, false] }) : undefined,
+      production ? wallet.request({ method: "eth_getBlockByNumber", params: [review.inner.reviewBlockNumber, false] }) : undefined,
     ]);
     const codeHash = (code: unknown) => typeof code === "string" && /^0x(?:[0-9a-f]{2}){0,24576}$/i.test(code) ? keccak256(code as Hex) : null;
-    if (!Array.isArray(accounts) || typeof accounts[0] !== "string" || !same(accounts[0], review.gasPayer) || chain !== "0x7a69"
+    if (!Array.isArray(accounts) || typeof accounts[0] !== "string" || !same(accounts[0], review.gasPayer) || chain !== review.inner.chainId
       || typeof nonce !== "string" || !/^0x[0-9a-f]+$/i.test(nonce) || BigInt(nonce) !== BigInt(review.gasPayerEvidence.nonce)
       || codeHash(actorCode) !== review.wallet.actorCodeHash || codeHash(payerCode) !== review.gasPayerEvidence.codeHash
       || codeHash(targetCode) !== review.inner.targetRuntimeHash || (needsDelegate && codeHash(delegateCode) !== claimDelegatePin.runtimeHash)
@@ -231,6 +294,16 @@ export async function submitIsolatedClaim(input: { review: ClaimExecutionReview;
       || !("number" in checkpoint) || typeof checkpoint.number !== "string" || !/^0x[0-9a-f]+$/i.test(checkpoint.number) || BigInt(checkpoint.number) !== BigInt(review.observed.blockNumber)) {
       throw new Error("Wallet account, network, nonce, runtime or reviewed checkpoint changed");
     }
+    if (production && review.fees.status === "verified-nitro-zero-poster") {
+      const observed = checkpoint as { baseFeePerGas?: unknown };
+      if (typeof observed.baseFeePerGas !== "string" || !/^0x(?:0|[1-9a-f][0-9a-f]{0,63})$/i.test(observed.baseFeePerGas)
+        || BigInt(observed.baseFeePerGas) !== BigInt(review.fees.zeroPosterPolicy.l2BaseFeeWei)) throw new Error("Wallet native fee policy checkpoint changed");
+    }
+    const anchored = (value: unknown, number: Hex, hash: Hex) => value && typeof value === "object"
+      && "number" in value && typeof value.number === "string" && /^0x[0-9a-f]+$/i.test(value.number) && BigInt(value.number) === BigInt(number)
+      && "hash" in value && typeof value.hash === "string" && same(value.hash, hash);
+    if (production && (!anchored(deployment, review.inner.deploymentBlockNumber, review.inner.deploymentBlockHash)
+      || !anchored(originalAnchor, review.inner.reviewBlockNumber, review.inner.reviewBlockHash))) throw new Error("Wallet deployment or original review anchor changed");
   };
   await checkWallet(); const verified = await input.revalidate(review);
   if (verified.status !== "unchanged" || verified.reviewHash !== review.reviewHash) throw new Error("Claim preflight changed; review fresh terms");

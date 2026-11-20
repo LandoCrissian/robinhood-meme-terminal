@@ -20,17 +20,18 @@ const asPoint = (b: { number: bigint; hash: Hex | null; timestamp: bigint }): Ea
   must(b.hash); return { blockNumber: b.number.toString(), blockHash: b.hash, timestamp: new Date(Number(b.timestamp) * 1000).toISOString() };
 };
 
-// No environment value or caller-supplied approval can activate 4663 here.
-// Production release, stage-specific risk and physical-wallet acceptance are
-// separate owner approvals. HTTP preparation/recovery and the wallet sender are
-// 31337-only. The unsigned 4663 review below is an internal, non-executable artifact.
+// The raw review below remains non-executable. Production HTTP has its own
+// separately approved release, origin and financial gates in production-earnings;
+// fixture activation and a caller-supplied approval cannot enable that adapter.
 export const productionEarningsExecutionEnabled = false;
 export function earningsClaimReadiness() {
   return { status: "blocked", chainId: 4663, executionEnabled: productionEarningsExecutionEnabled,
-    holds: ["production claim HTTP preparation/recovery and wallet sender are not implemented", "separate owner transaction activation", "production claim settlement/provider acceptance", "physical wallet acceptance"] } as const;
+    holds: ["separate owner transaction activation", "production claim settlement/provider acceptance", "physical wallet acceptance"] } as const;
 }
-export async function handleProductionEarningsClaim(_request: Request) {
-  return reply({ status: "unavailable", executionEnabled: false }, 404);
+export async function handleProductionEarningsClaim(request: Request) {
+  // Loaded only when the HTTP route is called, avoiding a profile/readiness
+  // dependency cycle. The imported handler performs every release gate itself.
+  return (await import("./production-earnings")).handleProductionEarningsClaim(request);
 }
 
 async function readFixturePayload(fixture: CurveFixture, url: URL): Promise<unknown> {

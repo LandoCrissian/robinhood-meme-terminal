@@ -1,0 +1,1 @@
+Task092 actual production worker PostgreSQL startup/sync/restart: exact one-shot+registry birth under typed pruned state; wrong/empty/quota/peer-conflict rejection; canonical empty-history activity backfill, no manual cursor seed and no production access passed.

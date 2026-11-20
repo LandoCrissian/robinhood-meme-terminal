@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "scope": "READ_ONLY_PUBLIC_NITRO_ABI_AVAILABILITY_NOT_TRANSACTION_ACCEPTANCE",
+  "observedAt": "2026-11-20T22:33:01.355Z",
+  "rpcMethods": [
+    "eth_chainId",
+    "eth_getBlockByNumber",
+    "eth_call"
+  ],
+  "financialAuthorization": false,
+  "signing": false,
+  "broadcast": false,
+  "observations": [],
+  "status": "UNAVAILABLE",
+  "reason": "The expression evaluated to a falsy value:\n\n  assert.ok(decoded[0] > decoded[1] && decoded[1] > 0n && decoded[2] > 0n && decoded[3] > 0n)\n"
+}

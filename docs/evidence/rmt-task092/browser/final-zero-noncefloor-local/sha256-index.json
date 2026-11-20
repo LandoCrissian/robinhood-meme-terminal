@@ -1,0 +1,107 @@
+{
+  "schemaVersion": 1,
+  "scope": "Final frozen nonce-floor/global-lock production adapters; isolated synthetic state and wallet; no hosted or physical acceptance",
+  "feeMode": "zero-poster",
+  "cases": 20,
+  "nativeCrossAccountLockChecks": 4,
+  "externalRequests": 0,
+  "pageErrors": 0,
+  "files": [
+    {
+      "path": "chromium-mobile/disabled-chromium-mobile.png",
+      "sha256": "c6d491cf099881d58cf888f64de21c64c667fe5efb81df72107eb4cdf86b0758"
+    },
+    {
+      "path": "chromium-mobile/eoa-chromium-mobile.png",
+      "sha256": "64d5b3a9c723babbe83cd73e20364379f16ae51a2e6ae1776e8976dd6282a6a4"
+    },
+    {
+      "path": "chromium-mobile/metamask-7702-chromium-mobile.png",
+      "sha256": "9ee4389bf4ee30b496c368f0c2e6eba5e2f76a0815c961123b69cde52e67e3fa"
+    },
+    {
+      "path": "chromium-mobile/production-adapter-browser.json",
+      "sha256": "b26325793571d9a5808b7dbb1d78eeda8b5a5e421e617988a19b906f08228457"
+    },
+    {
+      "path": "chromium-mobile/safe-1.4.1-chromium-mobile.png",
+      "sha256": "4f9e8e5a4b507a43630cdc80bb4045d47f7ff22c97bf41bb07dbeff87de486f0"
+    },
+    {
+      "path": "chromium-mobile/trading-chromium-mobile.png",
+      "sha256": "2243f8b4edd3ad0399cdff0f0b35f0c66be4b4aa773dffc95d0ab23f8b601890"
+    },
+    {
+      "path": "chromium-desktop/disabled-chromium-desktop.png",
+      "sha256": "eaf90c6d367c67da12144ed25ecb30c54473b71082758d3f18c52707b828652a"
+    },
+    {
+      "path": "chromium-desktop/eoa-chromium-desktop.png",
+      "sha256": "f39435618ea83d172f3ec43b0f4c894f3b54d975700054855a793bec3ab801cb"
+    },
+    {
+      "path": "chromium-desktop/metamask-7702-chromium-desktop.png",
+      "sha256": "911084100fab91115019a8e856c7a492f1b8e06e402ad661b0c4a1faeece962b"
+    },
+    {
+      "path": "chromium-desktop/production-adapter-browser.json",
+      "sha256": "58c2b168c05c280b98432b1eae16f4d33cc33384167db07b2f5769e550399ae2"
+    },
+    {
+      "path": "chromium-desktop/safe-1.4.1-chromium-desktop.png",
+      "sha256": "9a415626a75f6be74398ae89e9cc23ffdbbfe482e658e84054d06b7548b8609c"
+    },
+    {
+      "path": "chromium-desktop/trading-chromium-desktop.png",
+      "sha256": "65dba2e988d9d1df22837c7e0f7116a4615a9aef6f08ea4ec3852c0473b73d5e"
+    },
+    {
+      "path": "webkit-mobile/disabled-webkit-mobile.png",
+      "sha256": "e0b0b430cafb86b305889cb722725cdaa9ded359bcfe23c413c7f5fb732c60a8"
+    },
+    {
+      "path": "webkit-mobile/eoa-webkit-mobile.png",
+      "sha256": "6c51503e6faa2a5989f0149829d7f6711f5842f463e0e1e900faa66e1a79eb6e"
+    },
+    {
+      "path": "webkit-mobile/metamask-7702-webkit-mobile.png",
+      "sha256": "c7e2f74ca2cfd3ab99ccf069eebd676c87c620772da228649ad3544bb5edb641"
+    },
+    {
+      "path": "webkit-mobile/production-adapter-browser.json",
+      "sha256": "e967a6b3cc763dba631f7c4d5e68a47052f169f7630093a58cd4d1a3ba85feb2"
+    },
+    {
+      "path": "webkit-mobile/safe-1.4.1-webkit-mobile.png",
+      "sha256": "bda56411385173b604af3cc9391d93a6cd4df01d00da2b544f8c521df08ec6f9"
+    },
+    {
+      "path": "webkit-mobile/trading-webkit-mobile.png",
+      "sha256": "4432071e17ef31d6ba274e6cdffa378b735ac5f120adf15de28122a6bcca242a"
+    },
+    {
+      "path": "webkit-desktop/disabled-webkit-desktop.png",
+      "sha256": "452356a30d2d6e98b034e53f746b5b0944a8203e0df69f4a24abe5110a159673"
+    },
+    {
+      "path": "webkit-desktop/eoa-webkit-desktop.png",
+      "sha256": "379354e2544fb18c83325a9f3395578e21bddbc027cdf9cb10bc576a6f2308a5"
+    },
+    {
+      "path": "webkit-desktop/metamask-7702-webkit-desktop.png",
+      "sha256": "868b8346b789908398282a4a2dd0563ecbace1bbc9211ee97fb10a972b3f9387"
+    },
+    {
+      "path": "webkit-desktop/production-adapter-browser.json",
+      "sha256": "fb21e9d26828efab90ba60e6d03a1296b07a69b7cec246c2a083d6a2636d3b73"
+    },
+    {
+      "path": "webkit-desktop/safe-1.4.1-webkit-desktop.png",
+      "sha256": "46ef15ec77bfbf00465fb8b95000c4c9e7977d96f8771db9b8f7117ad6d9eab0"
+    },
+    {
+      "path": "webkit-desktop/trading-webkit-desktop.png",
+      "sha256": "f6d812fed5675f24508ec0573dafb7ae05efeb3e1ae54c6908486b39cc657b02"
+    }
+  ]
+}

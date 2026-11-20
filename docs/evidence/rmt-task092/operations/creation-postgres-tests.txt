@@ -1,0 +1,7 @@
+
+> indexer@0.1.0 test:curve-production C:\Users\RMT\Documents\Codex\2026-11-19\continue-rmt-launch-development-using-the\repository\apps\indexer
+> tsx src/curve-production-postgres-smoke.ts
+
+Creator earnings PostgreSQL: 53 registrations, recipient roles, stable pagination, exact token, duplicate replay, read-only restart and reorg invalidation passed.
+Production-shaped claim evidence PostgreSQL scope, actor/payer, duplicate/conflict, atomic interruption, lease restart and reorg smoke passed; no chain execution or production DDL claim.
+Production adapter PostgreSQL atomic rollback, duplicate replay, lease, restart and reorg smoke passed.

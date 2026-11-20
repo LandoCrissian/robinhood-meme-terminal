@@ -1,5 +1,7 @@
 "use client";
 
+import { productionAccountLock } from "../../lib/production-wallet";
+
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { isLaunchAddress } from "../../lib/launch-data";
@@ -10,6 +12,7 @@ import { productionCalldataMatches, isProductionWalletOrigin,
   isProductionCreationRequest, sameProductionCreationRequest,
   productionCreationPath, productionCreationJournalKey,
   productionCreationOperating, productionCreationReserve,
+  archiveCompletedProductionCreation, readCompletedProductionCreations, completedProductionCreationsKey, type CompletedProductionCreation,
   submitProductionCreation,
   assertProductionWallet, connectProductionWallet,
   productionProviderAtWindow, type ProductionWallet as Wallet,
@@ -88,6 +91,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
   const [wallet, setWallet] = useState<Wallet>();
   const [prepared, setPrepared] = useState<Prepared>();
   const [journal, setJournal] = useState<Journal>();
+  const [completed, setCompleted] = useState<CompletedProductionCreation[]>([]);
   const [result, setResult] = useState<TestCreationVerification>();
   const [message, setMessage] = useState("");
   const [treasuryAcknowledged, setTreasuryAcknowledged] = useState(false);
@@ -103,6 +107,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
     function restore() {
       try {
         setJournal(readJournal());
+        setCompleted(readCompletedProductionCreations(localStorage));
         setReady(true);
       } catch {
         setReady(false);
@@ -111,7 +116,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
     }
     restore();
     const storageChanged = (event: StorageEvent) => {
-      if (event.key !== journalKey && event.key !== null) return;
+      if (event.key !== journalKey && event.key !== completedProductionCreationsKey && event.key !== null) return;
       setResult(undefined);
       setPrepared(undefined);
       restore();
@@ -192,7 +197,9 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
     const { request, payouts, wallet: bound, draft: candidate } = prepared;
     const generation = selection.current;
     setPrepared(undefined);
-    await navigator.locks.request(journalKey, { mode: "exclusive", ifAvailable: true }, async (lock) => {
+    await navigator.locks.request(productionAccountLock(bound.account), { mode: "exclusive", ifAvailable: true }, async accountLock => {
+      if (!accountLock) throw new Error("Another financial transaction is in progress for this wallet");
+      await navigator.locks.request(journalKey, { mode: "exclusive", ifAvailable: true }, async (lock) => {
       if (!lock) throw new Error("Another tab is sending");
       const existing = readJournal();
       if (existing) {
@@ -228,6 +235,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
           setMessage("The wallet result is uncertain. Check the original request before continuing.");
         }
       }
+      });
     });
   }
 
@@ -246,7 +254,23 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
     });
   }
 
-  if (!draft && !journal && !message) return null;
+  async function continueFromCreation() {
+    const original = readJournal(); if (!original) throw new Error("No original creation to verify");
+    await navigator.locks.request(productionAccountLock(original.request.from), { mode: "exclusive", ifAvailable: true }, async accountLock => {
+      if (!accountLock) throw new Error("Another financial request is in progress");
+      await navigator.locks.request(journalKey, { mode: "exclusive", ifAvailable: true }, async journalLock => {
+        if (!journalLock) throw new Error("Another tab is checking the original creation");
+        const current = readJournal();
+        if (!current || !sameProductionCreationRequest(current.request, original.request) || current.transactionHash !== original.transactionHash) throw new Error("Original creation selection changed");
+        const verified = await verify(current);
+        archiveCompletedProductionCreation(localStorage, current, verified);
+        setCompleted(readCompletedProductionCreations(localStorage)); setJournal(undefined); setResult(undefined); setPrepared(undefined);
+        setMessage("Original creation receipt preserved. Trading and claims still require their separate approvals and wallet confirmations.");
+      });
+    });
+  }
+
+  if (!draft && !journal && !message && completed.length === 0) return null;
   const currentReview = prepared && prepared.draft === draft && prepared.wallet === wallet && same(prepared.factory, factory)
     ? prepared : undefined;
   const state = result?.status ?? "pending";
@@ -268,6 +292,8 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
       {state === "confirmed" && result?.token && <Link className="lpBack" href={`/launches/${result.token}`} prefetch={false}>Open token</Link>}
       <button type="button" className="lpButton lpSecondary" disabled={busy || !ready}
         onClick={() => void withOperation(() => recover(), "The original request is temporarily unavailable. Try again.")}>Check creation transaction</button>
+      {(state === "confirmed" && result?.indexed === true || state === "reverted") && <button type="button" className="lpButton" disabled={busy || !ready}
+        onClick={() => void withOperation(continueFromCreation, "Fresh canonical creation evidence or durable recovery storage is unavailable. The original request is retained.")}>Continue from verified creation</button>}
       {(!journal.transactionHash || state === "unavailable") && <>
         <label>Recover with transaction hash<input value={recoveryHash} onChange={(event) => setRecoveryHash(event.target.value)} autoComplete="off" maxLength={66} spellCheck={false} /></label>
         <button type="button" className="lpButton lpSecondary" disabled={busy || !ready}
@@ -303,6 +329,18 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
         </> : <button type="button" className="lpButton lpSecondary" disabled={busy || !ready}
           onClick={() => void withOperation(reviewCreation, "The accepted deployment or wallet could not be verified. Try review again.")}>Review creation</button>}
     </>}
+    {completed.length > 0 && <details className="lpRecovery"><summary>Preserved creation receipts ({completed.length})</summary><div className="lpForm">
+      {completed.map(entry => <div key={entry.transactionHash}><code className="lpAddress">{entry.transactionHash}</code>
+        <p>Original nonce {BigInt(entry.request.nonce).toString()} · {entry.verification.status} at the verified L2 checkpoint. L1 finality remains unverified.</p>
+        {entry.verification.token && <Link className="lpBack" href={`/launches/${entry.verification.token}`} prefetch={false}>Open token</Link>}
+        <button className="lpTextButton" type="button" disabled={busy || !ready} onClick={() => void withOperation(async () => {
+          const checked = await verify(entry);
+          setMessage(checked.status === "confirmed" && checked.indexed ? "The preserved creation is still canonical and indexed at the observed L2 checkpoint."
+            : checked.status === "reverted" ? "The preserved creation still has a canonical reverted receipt."
+            : "The preserved creation needs renewed canonical evidence. Its original request and consumed nonce remain protected.");
+        }, "Preserved creation evidence is unavailable. The original request remains retained.")}>Check preserved creation</button>
+      </div>)}
+    </div></details>}
     {message && <p role="alert">{message}</p>}
   </section>;
 }

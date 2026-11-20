@@ -1,0 +1,1464 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL_UNCHANGED_CORE_FOUNDRY_REGRESSION",
+  "passed": 142,
+  "failed": 0,
+  "skipped": 0,
+  "suites": [
+    {
+      "suite": "test/RMTDependencyArithmeticReview.t.sol:RMTDependencyArithmeticReviewTest",
+      "tests": [
+        {
+          "name": "testBitIndicesCoverEveryOneHotAndDenseBoundary()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 723818
+            }
+          }
+        },
+        {
+          "name": "testDivisorAndQuotientBoundariesRevert()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 13194
+            }
+          }
+        },
+        {
+          "name": "testExactWideQuotientsForAllOddDenominatorClasses()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 120010
+            }
+          }
+        },
+        {
+          "name": "testFuzzBitIndicesAgainstSimpleScan(uint256)",
+          "status": "Success",
+          "kind": {
+            "Fuzz": {
+              "first_case": {
+                "gas": 43616,
+                "stipend": 21444
+              },
+              "runs": 512,
+              "mean_gas": 14077,
+              "median_gas": 11099,
+              "failed_corpus_replays": 0
+            }
+          }
+        },
+        {
+          "name": "testFuzzExactQuotientAgainstIndependentWideProduct(uint256,uint256,uint256)",
+          "status": "Success",
+          "kind": {
+            "Fuzz": {
+              "first_case": {
+                "gas": 31438,
+                "stipend": 21964
+              },
+              "runs": 512,
+              "mean_gas": 9783,
+              "median_gas": 9474,
+              "failed_corpus_replays": 0
+            }
+          }
+        },
+        {
+          "name": "testZeroInputIsOutsideBitIndexDomain()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5617
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchAdjacentMigrationProof.t.sol:RMTLaunchAdjacentMigrationProofTest",
+      "tests": [
+        {
+          "name": "testGovernedV1ToV2ToV3PreservesAssetsCreditsAndTradeExits()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5685444
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchBondingCurveV1.t.sol:RMTLaunchBondingCurveV1Test",
+      "tests": [
+        {
+          "name": "testAtomicGraduationRefundOnlySeesFinalStateAndCanStillRevertEverything()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1659582
+            }
+          }
+        },
+        {
+          "name": "testAuthorizedAssetMigrationPreservesTokenInventoryBackingAndClaims()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2798680
+            }
+          }
+        },
+        {
+          "name": "testBuySellRoundTripReturnsBackingAndSeparatesAllFeeClaims()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 494670
+            }
+          }
+        },
+        {
+          "name": "testCannotWithdrawBackingOrAccrueFeesAsCreator()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 376759
+            }
+          }
+        },
+        {
+          "name": "testDonationsDoNotChangeQuotesBackingOrGraduationAmounts()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 585103
+            }
+          }
+        },
+        {
+          "name": "testExpiredOperationsAndPrematureGraduationFail()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 58234
+            }
+          }
+        },
+        {
+          "name": "testExplicitThresholdBuyAndGraduationSettleAtomically()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 785734
+            }
+          }
+        },
+        {
+          "name": "testFeeSplitIsIndependentOfTradeFragmentationForSameFeesCollected()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1597590
+            }
+          }
+        },
+        {
+          "name": "testFrontRunningAffectsQuoteAndFailedTradeLeavesAccountingUnchanged()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 351028
+            }
+          }
+        },
+        {
+          "name": "testFuzzQuotesRoundingAndSolvencyAtOneBillion(uint96,uint96)",
+          "status": "Success",
+          "kind": {
+            "Fuzz": {
+              "first_case": {
+                "gas": 3530805,
+                "stipend": 21428
+              },
+              "runs": 512,
+              "mean_gas": 3509058,
+              "median_gas": 3501993,
+              "failed_corpus_replays": 0
+            }
+          }
+        },
+        {
+          "name": "testGasOnlyCreatesFixedSupplyAndIsolatesSameIntentAcrossCreators()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 3271494
+            }
+          }
+        },
+        {
+          "name": "testGraduatedCurveRejectsEvenAuthorizedAssetMigration()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2768958
+            }
+          }
+        },
+        {
+          "name": "testGraduationRejectsFakeApprovalGrantOrRevocation()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 663392
+            }
+          }
+        },
+        {
+          "name": "testGraduationRejectsForcedRefundEvenWhenNativeBalanceMatches()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 666868
+            }
+          }
+        },
+        {
+          "name": "testInvalidCreationPolicyAndUnsolicitedNativeValueCannotPublishAToken()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 70624
+            }
+          }
+        },
+        {
+          "name": "testLegacySupplySelectionAndPrivilegeSelectorsCannotChangeSupply()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 3243216
+            }
+          }
+        },
+        {
+          "name": "testMigrationRejectsInsufficientBackingAndPreservesUntrackedSurpluses()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2750292
+            }
+          }
+        },
+        {
+          "name": "testOverfillRefundAndPermissionlessGraduationWithAtomicRetries()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 935744
+            }
+          }
+        },
+        {
+          "name": "testRefundFailureAndReentrancyPreserveTradeAndFeeState()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 4252059
+            }
+          }
+        },
+        {
+          "name": "testUnexpectedTransferSettlementRevertsBothCurvesAndPreservesLedger()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2849270
+            }
+          }
+        },
+        {
+          "name": "testUnregisteredDestinationAndInterruptedMigrationLeaveOldCurveTradable()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2651150
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchCreatorEarnings.t.sol:RMTLaunchCreatorEarningsTest",
+      "tests": [
+        {
+          "name": "testCurveCumulativeRoundingAndOverlappingRolesHaveOneRecipientCredit()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2003629
+            }
+          }
+        },
+        {
+          "name": "testEntireProjectShareCanBelongToIndependentTreasury()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 733933
+            }
+          }
+        },
+        {
+          "name": "testFuzzPartialClaimsConserveEveryAssetAndRole(uint96,uint96,uint8)",
+          "status": "Success",
+          "kind": {
+            "Fuzz": {
+              "first_case": {
+                "gas": 1529313,
+                "stipend": 21568
+              },
+              "runs": 512,
+              "mean_gas": 1493414,
+              "median_gas": 1440955,
+              "failed_corpus_replays": 0
+            }
+          }
+        },
+        {
+          "name": "testLpSingleAssetClaimsKeepOtherAssetAndCumulativeRights()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1340187
+            }
+          }
+        },
+        {
+          "name": "testMalformedTokenReturnRollsBackMovedBalanceAndKeepsBothCredits()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1291356
+            }
+          }
+        },
+        {
+          "name": "testOriginalCurveLedgerRetainsRightsAfterAccrualAuthorityMoves()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 836447
+            }
+          }
+        },
+        {
+          "name": "testPermissionlessCreationFeeReleasePaysSafeNotExecutorOrOwners()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 11831635
+            }
+          }
+        },
+        {
+          "name": "testRejectedNativeRollsBackTokenThenTokenOnlyAndRetryRemainPossible()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1607853
+            }
+          }
+        },
+        {
+          "name": "testRejectedTokenClaimPreservesCreditsAndNativeOnlyCanRecover()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1263137
+            }
+          }
+        },
+        {
+          "name": "testSafeCurveClaimUsesTwoOwnerSignaturesAndAttributesReceiptToSafe()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1265152
+            }
+          }
+        },
+        {
+          "name": "testSafeLpCombinedSingleAssetClaimsAndAuthorizedSpending()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2075590
+            }
+          }
+        },
+        {
+          "name": "testSafeRejectsInsufficientApprovalsReplayAndCrossSafeAuthorization()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1974571
+            }
+          }
+        },
+        {
+          "name": "testThirtyOneRealProjectsPreserveSeparateLedgersAndTreasuryEntitlements()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 117729337
+            }
+          }
+        },
+        {
+          "name": "testTokenCallbackCannotReenterClaimOrSpendAnotherBeneficiaryCredit()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1318255
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchCurveAccountingInvariant.t.sol:RMTLaunchCurveAccountingInvariantTest",
+      "tests": [
+        {
+          "name": "invariantConservesBackingInventoryAndIndependentFeeBucketsAcrossGovernedVersions()",
+          "status": "Success",
+          "kind": {
+            "Invariant": {
+              "runs": 64,
+              "calls": 2048,
+              "reverts": 0,
+              "metrics": {
+                "test/RMTLaunchCurveAccountingInvariant.t.sol:CurveAccountingHandler.sell": {
+                  "calls": 531,
+                  "reverts": 0,
+                  "discards": 0
+                },
+                "test/RMTLaunchCurveAccountingInvariant.t.sol:CurveAccountingHandler.buy": {
+                  "calls": 519,
+                  "reverts": 0,
+                  "discards": 0
+                },
+                "test/RMTLaunchCurveAccountingInvariant.t.sol:CurveAccountingHandler.claim": {
+                  "calls": 514,
+                  "reverts": 0,
+                  "discards": 0
+                },
+                "test/RMTLaunchCurveAccountingInvariant.t.sol:CurveAccountingHandler.migrate": {
+                  "calls": 484,
+                  "reverts": 0,
+                  "discards": 0
+                }
+              },
+              "failed_corpus_replays": 0,
+              "optimization_best_value": null
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchCurveCreationFeeV1.t.sol:RMTLaunchCurveCreationFeeV1Test",
+      "tests": [
+        {
+          "name": "testExactFeeCreatesZeroBackingAndClaimsOnlyFixedTreasuryCredit()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 3349270
+            }
+          }
+        },
+        {
+          "name": "testFuzzOverpaymentRefundsExactSurplus(uint96)",
+          "status": "Success",
+          "kind": {
+            "Fuzz": {
+              "first_case": {
+                "gas": 3290053,
+                "stipend": 21288
+              },
+              "runs": 512,
+              "mean_gas": 3268584,
+              "median_gas": 3268523,
+              "failed_corpus_replays": 0
+            }
+          }
+        },
+        {
+          "name": "testRefundRejectionRollsBackAndReentrantRefundCanRetrySameIntent()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6976297
+            }
+          }
+        },
+        {
+          "name": "testRejectingTreasuryCannotBlockCreationAndKeepsItsCreditForRetry()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 3302810
+            }
+          }
+        },
+        {
+          "name": "testRejectsInvalidOperatingTreasuryBindings()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 260852
+            }
+          }
+        },
+        {
+          "name": "testUnderpaymentDuplicateAndRegistryFailureKeepFeesAndIntentAtomic()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6525640
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchCurveDirectoryV1.t.sol:RMTLaunchCurveDirectoryV1Test",
+      "tests": [
+        {
+          "name": "testChangedRuntimeCannotExecuteAndApprovedReplacementCannotRewriteV1()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 322941
+            }
+          }
+        },
+        {
+          "name": "testExpiredPublicationAndDigestBoundCancellation()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 161350
+            }
+          }
+        },
+        {
+          "name": "testReplayAcrossDirectoriesAndChainsRejected()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1531932
+            }
+          }
+        },
+        {
+          "name": "testSuspensionLeavesExistingClaimsAndVersionPinsUntouched()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 223402
+            }
+          }
+        },
+        {
+          "name": "testTwoSignersAndTimelockRequiredEvenWhenRelayerChanges()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 165073
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchCurveDirectoryV2.t.sol:RMTLaunchCurveDirectoryV2Test",
+      "tests": [
+        {
+          "name": "testCancellationAndExpiryConsumeRotationNonceWithoutEpochChange()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 207788
+            }
+          }
+        },
+        {
+          "name": "testCompromisedSignerAndLostQuorumCannotRotate()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 83330
+            }
+          }
+        },
+        {
+          "name": "testIncomingAccountTypeIsRecheckedAtExecution()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 114669
+            }
+          }
+        },
+        {
+          "name": "testIncomingDeadlineMustAllowFullNotice()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 59983
+            }
+          }
+        },
+        {
+          "name": "testIncomingSignerMustAcceptExactActionAndBeEligible()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 272463
+            }
+          }
+        },
+        {
+          "name": "testOrdinaryExecutionAndCancellationHonorOnlyFirstInclusion()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 192300
+            }
+          }
+        },
+        {
+          "name": "testOrdinaryExecutionUsesExactDigestWithInclusiveExpiry()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 178907
+            }
+          }
+        },
+        {
+          "name": "testOtherTwoSignersReplaceUnavailableMemberAfterNotice()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 138075
+            }
+          }
+        },
+        {
+          "name": "testRotationDuringSuspensionPreservesPauseAndFreshResumeDelay()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 354579
+            }
+          }
+        },
+        {
+          "name": "testRotationExecutionAndCancellationHonorOnlyFirstInclusion()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 165618
+            }
+          }
+        },
+        {
+          "name": "testRotationInvalidatesPendingPublicationAndReaddedKeyCannotReplay()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 378104
+            }
+          }
+        },
+        {
+          "name": "testRotationSignaturesBindChainAndDirectory()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2319829
+            }
+          }
+        },
+        {
+          "name": "testStaleEpochCancellationCannotCancelAfterSignerIsReadded()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 287200
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchMigrationReadiness.t.sol:RMTLaunchMigrationReadinessTest",
+      "tests": [
+        {
+          "name": "testCreatorConsentDoesNotAllowExpirySuspensionOrReplay()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 505560
+            }
+          }
+        },
+        {
+          "name": "testDestinationAcceptanceCallbackCannotReenterPredecessorFactoryOrRegistry()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1104365
+            }
+          }
+        },
+        {
+          "name": "testDestinationCodePinRejectsRuntimeSubstitution()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1092725
+            }
+          }
+        },
+        {
+          "name": "testFundedAcceptanceCannotChangePredecessorTokenDebit()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1096111
+            }
+          }
+        },
+        {
+          "name": "testFundedAcceptanceCannotChangeSuccessorTokenCredit()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1097032
+            }
+          }
+        },
+        {
+          "name": "testFundedAcceptanceHidesBothRoutesAndLateRotationRollsBackAssetsAndAuthority()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 4778716
+            }
+          }
+        },
+        {
+          "name": "testFutureTemplateAdmissionRejectsUnreviewedVersionHashOrTemplateReplacement()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 3453142
+            }
+          }
+        },
+        {
+          "name": "testGovernedV2ToV3MigrationRollsBackOnFailedAcceptanceThenRetries()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6632840
+            }
+          }
+        },
+        {
+          "name": "testIncorrectAcceptedAccountingRollsBackLedgerAndAssetHandoff()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 814932
+            }
+          }
+        },
+        {
+          "name": "testLedgerCallbackCannotReenterPredecessorFactoryOrRegistry()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1078592
+            }
+          }
+        },
+        {
+          "name": "testLedgerCallbackCannotTradeAfterWriterHandoffAndCanRetry()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1285698
+            }
+          }
+        },
+        {
+          "name": "testSignerRotationRespectsCommittedMigrationAndSeparatelyReauthorizesStaleProject()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 7075881
+            }
+          }
+        },
+        {
+          "name": "testTemplateCannotPublishCandidateAfterSuspendingDirectory()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 8283043
+            }
+          }
+        },
+        {
+          "name": "testTokenCallbackCannotReenterEitherCurveFactoryOrRegistry()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1079382
+            }
+          }
+        },
+        {
+          "name": "testV2ToV3NeedsSeparateTemplateAdmissionDespiteFactoryPublication()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2959879
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchProjectRegistryV1.t.sol:RMTLaunchProjectRegistryV1Test",
+      "tests": [
+        {
+          "name": "testCancelledSignaturesCannotScheduleAReplacementProposal()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 272967
+            }
+          }
+        },
+        {
+          "name": "testMigrationFailureOrGraduationDoesNotAdvanceHistory()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 225500
+            }
+          }
+        },
+        {
+          "name": "testRequiresExactCreatorProposalTwoSignersAndPublicDelay()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 389294
+            }
+          }
+        },
+        {
+          "name": "testSuspensionDuringFactorySettlementRevertsAssetTransitionAndPreservesNotice()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 649647
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchProjectRegistryV2.t.sol:RMTLaunchProjectRegistryV2Test",
+      "tests": [
+        {
+          "name": "testCancelledCreatorConsentCannotBeReplayedAgainstIdenticalTerms()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 296206
+            }
+          }
+        },
+        {
+          "name": "testDigestBindsSignerEpochRegistryChainAndCreatorProposal()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 361895
+            }
+          }
+        },
+        {
+          "name": "testObsoleteExecutionWindowCannotEraseUnexpiredCreatorConsent()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 344143
+            }
+          }
+        },
+        {
+          "name": "testRotationClearsOnlyApprovalAndRestartsNotice()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 580908
+            }
+          }
+        },
+        {
+          "name": "testRotationWhileSuspendedRequiresDelayedResumeAndFreshMigrationNotice()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 547535
+            }
+          }
+        },
+        {
+          "name": "testSettlementCannotCommitIfFixtureExecutesMatureRotationInCallback()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 608357
+            }
+          }
+        },
+        {
+          "name": "testStaleScheduleNeverExtendsCreatorDeadlineAndAnyoneCanClearExpiry()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 406564
+            }
+          }
+        },
+        {
+          "name": "testUnscheduledSignaturesCannotReplayAfterRemovingAndReaddingSigner()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 351775
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTLaunchProjectRegistryV3.t.sol:RMTLaunchProjectRegistryV3Test",
+      "tests": [
+        {
+          "name": "testHistoricalMixedRouteAndNewCandidateCallbackBarrier()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 20992416
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTV4CurveGraduationV1.t.sol:RMTV4CurveGraduationV1Test",
+      "tests": [
+        {
+          "name": "testCanonicalTokenHasNoCallbackAndFundingStillRejectsInjectedTokenFaults()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 11151547
+            }
+          }
+        },
+        {
+          "name": "testFundingRollbackKeepsCurveBackingAndRetriableGraduation()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6490727
+            }
+          }
+        },
+        {
+          "name": "testFundingUsesCurveSpotAndRealCapitalAtOneBillion()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 19185
+            }
+          }
+        },
+        {
+          "name": "testGuardBlocksFrontRunAndOnlyRegisteredCurveCanFund()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 3275477
+            }
+          }
+        },
+        {
+          "name": "testHostilePermit2CannotReenterAndRetainedAllowanceRollsBack()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 7749394
+            }
+          }
+        },
+        {
+          "name": "testOriginalPositionFeesAccrueClaimAndKeepPrincipalLocked()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 7089313
+            }
+          }
+        },
+        {
+          "name": "testOutsideLpKeepsItsFeesAndDoesNotShareOriginalCustody()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6781558
+            }
+          }
+        },
+        {
+          "name": "testPoolBalancePerturbedDuringInventoryPullRollsBack()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6872679
+            }
+          }
+        },
+        {
+          "name": "testPositionEvidenceAndResidualAllowancesMustMatch()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5045467
+            }
+          }
+        },
+        {
+          "name": "testPositionManagerCorruptFundingRollsBackEveryBalanceAndCanRetry()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 13885186
+            }
+          }
+        },
+        {
+          "name": "testPositionManagerFundingCallbackCannotReenterOrReadTransientFees()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5147354
+            }
+          }
+        },
+        {
+          "name": "testPositionManagerHarvestRejectsReentryFeeDiversionAndPrincipalChange()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 7588521
+            }
+          }
+        },
+        {
+          "name": "testRejectingNativeBeneficiaryKeepsEthCreditAndCanClaimToken()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 4678736
+            }
+          }
+        },
+        {
+          "name": "testUnbalancedOrUnfundedMigrationRejected()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 18514
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/RMTV4SharedPoolSettlement.t.sol:RMTV4SharedPoolSettlementTest",
+      "tests": [
+        {
+          "name": "testBeneficiaryClaimCallbackRollsBackSamePoolHarvestAndSettlesOtherPool()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 15311742
+            }
+          }
+        },
+        {
+          "name": "testSharedUnlockCannotHarvestOrAlterOriginalPosition()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 11651192
+            }
+          }
+        },
+        {
+          "name": "testSharedUnlockRejectsNestedGraduationAndPrefundedBalancesAreExcluded()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 10986225
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/Task090GraduationProof.t.sol:Task090GraduationProofTest",
+      "tests": [
+        {
+          "name": "testEachDependencyRuntimeSubstitutionFailsBeforeSettlement()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5587812
+            }
+          }
+        },
+        {
+          "name": "testExactRealPermit2GraphConservesPrefundingAndOriginalPosition()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 10907289
+            }
+          }
+        },
+        {
+          "name": "testFuzzRealPermit2ConservesIndependentPrefundedBalances(uint64,uint64)",
+          "status": "Success",
+          "kind": {
+            "Fuzz": {
+              "first_case": {
+                "gas": 5232754,
+                "stipend": 21452
+              },
+              "runs": 512,
+              "mean_gas": 5210844,
+              "median_gas": 5210864,
+              "failed_corpus_replays": 0
+            }
+          }
+        },
+        {
+          "name": "testSharedUnlockWithRealPermit2RollsBackAllStateThenRetries()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6352624
+            }
+          }
+        },
+        {
+          "name": "testUnapprovedThirdPartyCannotSpendInventoryOrCaptureOriginalNft()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5299108
+            }
+          }
+        },
+        {
+          "name": "testWrongPermitExpiryRollsBackAllStateThenRetries()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6323652
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+      "tests": [
+        {
+          "name": "testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 4245899
+            }
+          }
+        },
+        {
+          "name": "testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 3624443
+            }
+          }
+        },
+        {
+          "name": "testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 2286674
+            }
+          }
+        },
+        {
+          "name": "testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1586924
+            }
+          }
+        },
+        {
+          "name": "testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 3699541
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/Task090MigrationProof.t.sol:Task090MigrationProofTest",
+      "tests": [
+        {
+          "name": "testCancelledCreatorConsentAndExpiryCannotReuseApprovalOrMoveAssets()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 988206
+            }
+          }
+        },
+        {
+          "name": "testCanonicalCallGraphHasOnlySixMutableFramesAndOneLedgerWrite()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1680137
+            }
+          }
+        },
+        {
+          "name": "testCounterfactualMutableLedgerDemonstratesTheExactLedgerCodeAssumption()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1030112
+            }
+          }
+        },
+        {
+          "name": "testFuzzCanonicalHandoffConservesSurplusesAndAlreadyEarnedClaims(uint96,uint96,uint96)",
+          "status": "Success",
+          "kind": {
+            "Fuzz": {
+              "first_case": {
+                "gas": 1021783,
+                "stipend": 21652
+              },
+              "runs": 512,
+              "mean_gas": 1000212,
+              "median_gas": 1000109,
+              "failed_corpus_replays": 0
+            }
+          }
+        },
+        {
+          "name": "testHostileAdmittedSuccessorNativeDiversionRevertsAndSameProposalCanRetry()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1497336
+            }
+          }
+        },
+        {
+          "name": "testHostileLedgerPostWriterTradeRollsBackAssetsClaimsProposalAndRoutes()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1435053
+            }
+          }
+        },
+        {
+          "name": "testMissingCreatorQuorumWrongVersionAndPauseCannotMoveAnyAssets()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1208826
+            }
+          }
+        },
+        {
+          "name": "testPostSignatureRuntimeReplacementFailsBeforeHandoffAndRestoredPinRetries()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 1221810
+            }
+          }
+        },
+        {
+          "name": "testRealAdjacentV2ToV3RetainsOriginalLedgerAndSeparateTemplateConsent()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6951779
+            }
+          }
+        }
+      ]
+    },
+    {
+      "suite": "test/Task091AdmissionAcceptance.t.sol:Task091AdmissionAcceptanceTest",
+      "tests": [
+        {
+          "name": "testCanonicalInitializationCannotBeFrontRunAndUnrelatedPoolCannotRedirectGraduation()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5020226
+            }
+          }
+        },
+        {
+          "name": "testEachDependencyRuntimeSubstitutionFailsBeforeSettlement()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5587965
+            }
+          }
+        },
+        {
+          "name": "testExactRealPermit2GraphConservesPrefundingAndOriginalPosition()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 10907402
+            }
+          }
+        },
+        {
+          "name": "testFuzzRealPermit2ConservesIndependentPrefundedBalances(uint64,uint64)",
+          "status": "Success",
+          "kind": {
+            "Fuzz": {
+              "first_case": {
+                "gas": 5232400,
+                "stipend": 21404
+              },
+              "runs": 512,
+              "mean_gas": 5210969,
+              "median_gas": 5210996,
+              "failed_corpus_replays": 0
+            }
+          }
+        },
+        {
+          "name": "testOriginalNftSignatureAndSubscriptionPathsCannotAcquireEngineAuthority()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 4987839
+            }
+          }
+        },
+        {
+          "name": "testSharedUnlockWithRealPermit2RollsBackAllStateThenRetries()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6352744
+            }
+          }
+        },
+        {
+          "name": "testUnadmittedCallerCannotFundOrAttachAnotherTokenToEngine()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 4982603
+            }
+          }
+        },
+        {
+          "name": "testUnapprovedThirdPartyCannotSpendInventoryOrCaptureOriginalNft()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5299218
+            }
+          }
+        },
+        {
+          "name": "testValidEoaPermitDoesNotAuthorizeContractEngineOrSignatureTransfer()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 5111725
+            }
+          }
+        },
+        {
+          "name": "testWrongPermitExpiryRollsBackAllStateThenRetries()",
+          "status": "Success",
+          "kind": {
+            "Unit": {
+              "gas": 6323696
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "rawSha256": "bc3673d2235e9afc1aedfedecbfe1cb0a2d07f1a688b7f36b19ad8831bb1b2be",
+  "rawRetainedOutsideRepository": "task092-local-verify/foundry.json",
+  "fuzzRuns": 512,
+  "liveRpc": false,
+  "productionExecution": false
+}

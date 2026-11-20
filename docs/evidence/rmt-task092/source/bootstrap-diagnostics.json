@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK092_BOUNDED_NORMAL_PUBLIC_BOOTSTRAP_DIAGNOSTICS",
+  "startedAt": "2026-11-20T22:19:53.5558565Z",
+  "requests": [
+    {
+      "kind": "original-legacy-job",
+      "url": "https://robinhoodchain.blockscout.com/api?module=contract&action=checkverifystatus&guid=b65380ae9a452813c4e6b0ff391cfe34fae676a56b00b16b",
+      "method": "GET",
+      "httpStatus": 200,
+      "contentType": "application/json; charset=utf-8",
+      "observedAt": "2026-11-20T22:19:54.1605834Z",
+      "responseSha256": "eae9f6b749ee41c34b9581da948048a41e5e8e0f03cc33579f2618f5878a818c",
+      "responseBody": "{\"message\":\"OK\",\"result\":\"Fail - Unable to verify\",\"status\":\"1\"}"
+    },
+    {
+      "kind": "normal-public-contract-page",
+      "url": "https://robinhoodchain.blockscout.com/address/0xb65380aE9A452813c4e6b0fF391cfE34faE676A5?tab=contract",
+      "method": "GET",
+      "httpStatus": 200,
+      "contentType": "text/html; charset=utf-8",
+      "observedAt": "2026-11-20T22:19:54.5036031Z",
+      "responseSha256": "999bed6b734bcde522c1e5bfa9a6d00ee41aa0c1673069479579dd8eab69bbb4",
+      "pageTitle": "",
+      "responseBodyRetained": false,
+      "reason": "Normal public page document does not supply a replayable verifier error; no cookies, challenge state or page session values retained"
+    }
+  ],
+  "posts": 0,
+  "retries": 0,
+  "signing": false,
+  "broadcast": false,
+  "status": "NO_SPECIFIC_V2_BACKEND_FAILURE_EXPOSED",
+  "finishedAt": "2026-11-20T22:19:54.5317305Z"
+}
