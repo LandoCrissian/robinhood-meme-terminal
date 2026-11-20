@@ -1,0 +1,240 @@
+Unused files (1)
+.github/scripts/run-core-stateful-proofs.mjs
+Unlisted dependencies (127)
+viem         docs/evidence/mobile-signing/delegated-mobile-plan.test.mjs:9:9             
+viem         docs/evidence/mobile-signing/delegated-mobile-transaction.test.mjs:8:9      
+viem         docs/evidence/mobile-signing/mobile-review-plan.test.mjs:10:9               
+viem         docs/evidence/mobile-signing/unsigned-package.test.mjs:18:9                 
+viem         docs/evidence/rmt-task079/browser-acceptance.test.mjs:9:8                   
+viem         docs/evidence/rmt-task080/browser-acceptance.test.mjs:12:8                  
+viem         docs/evidence/rmt-task081/browser/acceptance.test.mjs:15:8                  
+viem         docs/evidence/rmt-task083/acceptance/connected/connected.test.mjs:15:17     
+viem         docs/evidence/rmt-task084/browser/replay-raw-proofs.mjs:9:105               
+viem         docs/evidence/rmt-task084/browser/source-73fc6d0/replay-raw-proofs.mjs:9:108
+viem         docs/evidence/rmt-task086/collection/capture-producer.mjs:8:99              
+viem         docs/evidence/rmt-task087/bindings/capture.mjs:11:112                       
+viem         docs/evidence/rmt-task087/bindings/initial-attempt/capture.mjs:11:112       
+viem         docs/evidence/rmt-task087/bindings/review.test.mjs:16:112                   
+viem         docs/evidence/rmt-task087/chain/capture-cost.mjs:13:17                      
+viem         docs/evidence/rmt-task087/chain/cost.test.mjs:5:112                         
+viem         docs/evidence/rmt-task087/chain/review.test.mjs:10:112                      
+viem         docs/evidence/rmt-task088b/governance/read-state.test.mjs:9:8               
+viem         docs/evidence/rmt-task089/governance/read-state.test.mjs:9:8                
+viem         docs/evidence/rmt-task090/harvest/extract-proof-results.mjs:11:8            
+viem         docs/evidence/rmt-task090/harvest/verify-fixtures.mjs:12:8                  
+viem         packages/contracts/scripts/constructor-readiness.mjs:13:9                   
+viem         packages/contracts/scripts/constructor-readiness.test.mjs:10:9              
+viem         packages/contracts/scripts/delegated-mobile-constructors.mjs:7:9            
+viem         packages/contracts/scripts/delegated-mobile-transaction.mjs:5:9             
+viem         packages/contracts/scripts/deploy-fixed-supply-fixture.mjs:7:9              
+viem         packages/contracts/scripts/export-blockscout-4663.mjs:13:9                  
+viem         packages/contracts/scripts/fixed-supply-profile.mjs:13:9                    
+viem         packages/contracts/scripts/governance-publication.test.mjs:7:9              
+viem         packages/contracts/scripts/governance-transaction.fixture.mjs:11:9          
+viem         packages/contracts/scripts/mobile-review-plan.mjs:19:22                     
+viem         packages/contracts/scripts/prepare-governance-publication.mjs:13:9          
+viem         packages/contracts/scripts/prepare-governance-transaction.mjs:14:9          
+viem         packages/contracts/scripts/prepare-operations-safe.mjs:14:22                
+viem         packages/contracts/scripts/prepare-protocol-continuation.mjs:18:9           
+viem         packages/contracts/scripts/prepare-protocol-continuation.test.mjs:12:9      
+viem         packages/contracts/scripts/prepare-unsigned-4663.mjs:21:9                   
+viem         packages/contracts/scripts/probe-blockscout-4663.mjs:10:9                   
+viem         packages/contracts/scripts/protocol-constructor-readiness.mjs:17:9          
+viem         packages/contracts/scripts/protocol-constructor-readiness.test.mjs:13:9     
+viem         packages/contracts/scripts/prove-fixed-supply-funded-migrations.mjs:7:9     
+viem         packages/contracts/scripts/prove-fixed-supply-settlement-trace.mjs:5:9      
+viem         packages/contracts/scripts/rehearse-delegated-sender.mjs:11:22              
+viem         packages/contracts/scripts/rehearse-fixed-supply-4663.mjs:18:9              
+viem         packages/contracts/scripts/verify-fixed-supply-bundle.mjs:12:9              
+viem         packages/contracts/scripts/verify-governance-authorization.mjs:11:9         
+viem         packages/launchpad-common/nft-collection-resolver.test.mjs:6:8              
+viem         packages/launchpad-common/seaport-order-verifier.test.mjs:6:20              
+viem         packages/launchpad-common/seaport-vault-account-code.test.mjs:5:106         
+viem         packages/launchpad-common/seaport-vault-safe.test.mjs:5:99                  
+tsx/cjs/api  scripts/claims/fork-read-only-4663.mjs:12:9                                 
+viem         scripts/claims/fork-read-only-4663.mjs:14:9                                 
+viem         scripts/claims/local-wallet-acceptance.mjs:11:9                             
+viem         scripts/claims/probe-read-only-4663.mjs:11:9                                
+viem         scripts/nft-acquisition/browser-integration.mjs:7:7                         
+viem         scripts/nft-acquisition/deploy-fixture.mjs:7:9                              
+viem         scripts/nft-acquisition/local-integration.mjs:10:9                          
+viem         scripts/nft-marketplace/probe-4663.mjs:10:8                                 
+viem         scripts/production-readiness/check-governance-notice.mjs:12:9               
+viem         scripts/production-readiness/deployment-costs.mjs:13:9                      
+viem         scripts/production-readiness/governance-receipt.mjs:16:9                    
+viem         scripts/production-readiness/governance-receipt.test.mjs:11:9               
+viem         scripts/production-readiness/mobile-sender.mjs:21:9                         
+viem         scripts/production-readiness/mobile-sender.test.mjs:14:22                   
+viem         scripts/production-readiness/protocol-receipt.mjs:14:9                      
+viem         scripts/production-readiness/protocol-receipt.test.mjs:10:9                 
+viem         scripts/production-readiness/routing.mjs:8:9                                
+viem         scripts/production-readiness/safe.mjs:9:22                                  
+viem         scripts/production-readiness/safe.test.mjs:9:22                             
+viem         scripts/production-readiness/watch-safe.mjs:13:9                            
+viem         scripts/production-readiness/watch-safe.test.mjs:9:9                        
+viem         scripts/reclaim-v2/browser-integration.mjs:7:9                              
+viem         scripts/reclaim-v2/deploy-fixture.mjs:4:7                                   
+viem         scripts/reclaim-v2/local-integration.mjs:9:8                                
+viem         scripts/reclaim-v2/probe-revert-transport.mjs:6:7                           
+viem         scripts/reclaim-v2/read-proxy-errors.mjs:3:8                                
+viem         scripts/reclaim-v2/read-proxy-errors.test.mjs:6:8                           
+viem         scripts/reclaim/deploy-fixture.mjs:8:7                                      
+viem         scripts/reclaim/local-integration.mjs:10:7                                  
+viem         scripts/reclaim/read-only-4663.mjs:11:7                                     
+viem         scripts/reclaim/safe-integration.mjs:10:7                                   
+viem         scripts/seaport-acquisition/browser-integration.mjs:6:97                    
+pg           scripts/seaport-acquisition/browser-run.mjs:22:150                          
+viem         scripts/seaport-acquisition/browser-run.mjs:22:173                          
+viem         scripts/seaport-acquisition/browser-safe-admin.mjs:9:99                     
+viem         scripts/seaport-acquisition/browser-watcher.mjs:13:99                       
+viem         scripts/seaport-acquisition/fixture-run.mjs:20:20                           
+viem         scripts/seaport-acquisition/listing-source.mjs:6:46                         
+viem         scripts/seaport-acquisition/listing-source.test.mjs:6:99                    
+viem         scripts/seaport-acquisition/listing-watcher.test.mjs:7:104                  
+viem         scripts/seaport-acquisition/marketplace-archive.mjs:9:90                    
+viem         scripts/seaport-acquisition/marketplace-current-qualification.mjs:7:90      
+viem         scripts/seaport-acquisition/owner-supplied-order.mjs:6:17                   
+viem         scripts/seaport-acquisition/owner-supplied-order.test.mjs:6:99              
+viem         scripts/seaport-acquisition/owner-watcher-interop-fixture.mjs:8:99          
+viem         scripts/seaport-acquisition/payment-policy.mjs:2:90                         
+viem         scripts/seaport-acquisition/probe-collection-policy.mjs:8:99                
+viem         scripts/seaport-acquisition/probe-current-native-sources.mjs:9:22           
+viem         scripts/seaport-acquisition/provenance-qualify.mjs:15:90                    
+viem         scripts/seaport-acquisition/provenance-qualify.test.mjs:8:90                
+viem         scripts/seaport-acquisition/task085-connected-admission.mjs:7:99            
+viem         scripts/seaport-acquisition/task086-collection-acceptance.mjs:8:99          
+viem         scripts/seaport-verification/fixture-run.mjs:13:108                         
+viem         scripts/seaport-verification/provenance-proxy.mjs:8:95                      
+viem         scripts/seaport-verification/provenance-rebuild.mjs:14:7                    
+viem         scripts/seaport-verification/provenance-rebuild.test.mjs:9:90               
+viem         scripts/seaport-verification/replay-historical.mjs:10:102                   
+viem         scripts/seaport-verification/replay-historical.test.mjs:10:102              
+viem         scripts/security/graduation-proof.mjs:11:8                                  
+viem         scripts/security/migration-proof.mjs:13:8                                   
+viem         scripts/treasury-v2/local-integration.mjs:8:9                               
+viem         scripts/treasury-v2/routes.mjs:10:9                                         
+viem         scripts/treasury-v2/routes.test.mjs:7:9                                     
+viem         scripts/treasury/deploy-fixture.mjs:8:9                                     
+viem         scripts/treasury/local-integration.mjs:13:9                                 
+viem         scripts/visual-qa/export-rmt-governance-review.mjs:13:9                     
+viem         scripts/visual-qa/export-rmt-owner-governance.mjs:13:9                      
+viem         scripts/visual-qa/export-rmt-owner-protocol-stage.mjs:12:9                  
+viem         scripts/visual-qa/export-rmt-owner-protocol.mjs:14:9                        
+viem         scripts/visual-qa/export-rmt-owner-safe.mjs:14:9                            
+viem         scripts/visual-qa/rmt-creator-integration.mjs:40:9                          
+pg           scripts/visual-qa/rmt-creator-integration.mjs:43:9                          
+tsx/cjs/api  scripts/visual-qa/rmt-creator-integration.mjs:493:13                        
+viem         scripts/visual-qa/rmt-mobile-review.mjs:8:9                                 
+viem         scripts/visual-qa/rmt-successor-earnings-integration.mjs:11:9               
+viem         scripts/visual-qa/test-rmt-governance-review.mjs:11:9                       
+viem         scripts/visual-qa/test-rmt-owner-governance.mjs:12:9                        
+Unlisted binaries (1)
+openssl  scripts/discovery/continuity.ts
+Unresolved imports (4)
+./server.js                                       apps/launch-website/railway-start.mjs:38:18                        
+./safe-rehearsal.mjs                              docs/evidence/rmt-task047/treasury-support-fork.mjs:4:34           
+./probe-current-native-sources.mjs                docs/evidence/rmt-task086/collection/capture-producer.mjs:7:91     
+../../../../scripts/production-readiness/rpc.mjs  docs/evidence/rmt-task087/bindings/initial-attempt/capture.mjs:9:49
+Unused exports (72)
+pgdgFingerprint                                     .github/scripts/postgres-18-packages.mjs:9:14                      
+earningsPageLimit                                   apps/indexer/src/creator-earnings.ts:5:14                          
+earningsCursorMaxLength                             apps/indexer/src/creator-earnings.ts:6:14                          
+launchRowsSql                                       apps/indexer/src/launch-rows-query.ts:2:14                         
+requireNftAcquisitionEvidence             function  apps/indexer/src/nft-acquisition-fixture-evidence.ts:23:17         
+assertFixtureTreasuryReceipt              function  apps/indexer/src/project-treasury-fixture-store.ts:32:17           
+requireReclaimEvidence                    function  apps/indexer/src/reclaim-fixture-evidence.ts:26:17                 
+proveReclaimPermanentSurrender            function  apps/indexer/src/reclaim-fixture-evidence.ts:182:23                
+seaportAbi                                          apps/indexer/src/seaport-acquisition-evidence.ts:6:63              
+seaportNftAbi                                       apps/indexer/src/seaport-acquisition-evidence.ts:6:114             
+needSeaport                                         apps/indexer/src/seaport-acquisition-evidence.ts:7:14              
+seaportAcquisitionProfile                           apps/indexer/src/seaport-acquisition-types.ts:2:14                 
+claimJournalKey                                     apps/launch-website/lib/claim-recovery.ts:21:14                    
+claimAccountLock                                    apps/launch-website/lib/claim-recovery.ts:23:14                    
+earningsClaimOperations                             apps/launch-website/lib/earnings-claims.ts:9:14                    
+clearRejectedEarningsClaim                function  apps/launch-website/lib/earnings-claims.ts:149:17                  
+earningsProfile                                     apps/launch-website/lib/earnings.ts:3:14                           
+projectFeeShareBps                                  apps/launch-website/lib/launch-draft.ts:14:14                      
+syntheticDelegateRuntime                            apps/launch-website/lib/mobile-wallet-review.ts:11:14              
+nftAcquisitionJournalNamespace                      apps/launch-website/lib/nft-acquisition-recovery.ts:4:14           
+validNftAcquisitionJournal                function  apps/launch-website/lib/nft-acquisition-recovery.ts:12:17          
+nftAcquisitionSafeJournalNamespace                  apps/launch-website/lib/nft-acquisition-safe-recovery.ts:5:14      
+validNftAcquisitionSafeJournal            function  apps/launch-website/lib/nft-acquisition-safe-recovery.ts:13:17     
+assertNoPendingNftAcquisitionSafe         function  apps/launch-website/lib/nft-acquisition-safe-recovery.ts:62:17     
+nftEmptyCodeHash                                    apps/launch-website/lib/nft-acquisition.ts:60:14                   
+productionCreationOrigin                            apps/launch-website/lib/production-creation.ts:8:14                
+sameProductionHex                                   apps/launch-website/lib/production-creation.ts:13:14               
+accountChainId                                      apps/launch-website/lib/profile-wallet.ts:5:14                     
+subscribeAccountWallet                    function  apps/launch-website/lib/profile-wallet.ts:60:17                    
+profileChainId                                      apps/launch-website/lib/profiles.ts:3:14                           
+reclaimAdministrationProfile                        apps/launch-website/lib/reclaim-administration.ts:4:14             
+validReclaimSafeJournal                   function  apps/launch-website/lib/reclaim-safe-recovery.ts:13:17             
+validRetirement                                     apps/launch-website/lib/reclaim.ts:121:14                          
+validSeaportSafeJournal                   function  apps/launch-website/lib/seaport-acquisition-safe-recovery.ts:6:17  
+claimProfileFixture                                 apps/launch-website/lib/server/claim-profile-fixture.ts:12:14      
+productionEarningsExecutionEnabled                  apps/launch-website/lib/server/earnings-claims.ts:27:14            
+fixtureCodeHash                                     apps/launch-website/lib/server/earnings-test-fixture.ts:9:14       
+nftAcquisitionTerms                       function  apps/launch-website/lib/server/nft-acquisition-actions.ts:44:23    
+nftFactoryAbi                                       apps/launch-website/lib/server/nft-acquisition-fixture.ts:9:66     
+cookieValue                               function  apps/launch-website/lib/server/profiles/auth.ts:16:17              
+maximumStoredAvatarBytes                            apps/launch-website/lib/server/profiles/avatar.ts:7:14             
+accountJson                               function  apps/launch-website/lib/server/profiles/controller.ts:10:17        
+previewProjectTreasury                    function  apps/launch-website/lib/server/project-treasury-actions.ts:100:23  
+prepareProjectTreasury                    function  apps/launch-website/lib/server/project-treasury-actions.ts:117:23  
+verifyProjectTreasuryTransaction          function  apps/launch-website/lib/server/project-treasury-actions.ts:221:23  
+operationTerms                            function  apps/launch-website/lib/server/reclaim-actions.ts:23:23            
+seaportLocalRpc                                     apps/launch-website/lib/server/seaport-acquisition.ts:26:14        
+readOnlyProfile                                     apps/launch-website/railway-start.mjs:4:14                         
+BASE                                                docs/evidence/rmt-task083/security/verify-artifacts.mjs:10:14      
+directory                                           docs/evidence/rmt-task083/security/verify-artifacts.mjs:11:14      
+captureExecutionCost                      function  docs/evidence/rmt-task087/chain/capture-cost.mjs:65:23             
+nftAcquisitionProfile                               packages/launchpad-common/nft-acquisition-runtime.mjs:1:14         
+nftAcquisitionVenueDomainName                       packages/launchpad-common/nft-acquisition-runtime.mjs:2:14         
+nftAcquisitionOrder                                 packages/launchpad-common/nft-acquisition-runtime.mjs:3:14         
+nftAcquisitionPolicy                                packages/launchpad-common/nft-acquisition-runtime.mjs:4:14         
+seaportVerificationProfiles                         packages/launchpad-common/seaport-order-verifier.mjs:1:14          
+seaportOrderParametersTuple                         packages/launchpad-common/seaport-order-verifier.mjs:10:14         
+seaportVaultProfile                 rt              packages/launchpad-common/seaport-vault-runtime.mjs:2:14           
+seaportVaultRequestTuple            rt              packages/launchpad-common/seaport-vault-runtime.mjs:4:14           
+seaportOrderComponentsTuple         rt              packages/launchpad-common/seaport-vault-runtime.mjs:25:9           
+seaportSafeTxTypes                  safe            packages/launchpad-common/seaport-vault-safe.mjs:19:14             
+seaportSafeAdminEvents              safe            packages/launchpad-common/seaport-vault-safe.mjs:103:14            
+collectionReviewLimits                              scripts/seaport-acquisition/collection-policy-review.mjs:11:14     
+watcherLimits                                       scripts/seaport-acquisition/listing-watcher.mjs:9:14               
+testRealCollectionOnLocalFork             function  scripts/seaport-acquisition/task086-collection-acceptance.mjs:36:23
+readRecordedProof                         function  scripts/security/graduation-proof.mjs:82:17                        
+observeGraduationRuntimes                 function  scripts/security/graduation-proof.mjs:183:23                       
+validateCompilation                       function  scripts/security/migration-proof.mjs:68:17                         
+canonicalFixture                          function  scripts/security/migration-proof.mjs:103:17                        
+validateFixture                           function  scripts/security/migration-proof.mjs:111:17                        
+materializeMigrationBindings              function  scripts/security/migration-proof.mjs:117:17                        
+observeMigrationRuntimes                  function  scripts/security/migration-proof.mjs:237:23                        
+Unused exported types (26)
+OpeningEvidence                type  apps/indexer/src/curve-launch-evidence.ts:66:13                     
+NftAcquisitionReviewCall       type  apps/indexer/src/nft-acquisition-fixture-types.ts:37:13             
+ClaimRecoveryStage             type  apps/launch-website/lib/claim-recovery.ts:15:13                     
+EarningsBlock                  type  apps/launch-website/lib/earnings.ts:7:13                            
+EarningsCheckpoint             type  apps/launch-website/lib/earnings.ts:8:13                            
+NftAcquisitionSafeTransaction  type  apps/launch-website/lib/nft-acquisition-safe.ts:7:13                
+ClaimSettlementStage           type  apps/launch-website/lib/production-claims.ts:6:13                   
+ProfileLink                    type  apps/launch-website/lib/profiles.ts:6:13                            
+ProfilePreferences             type  apps/launch-website/lib/profiles.ts:7:13                            
+ProjectTreasuryAsset           type  apps/launch-website/lib/project-treasury.ts:21:13                   
+ProjectTreasuryRules           type  apps/launch-website/lib/project-treasury.ts:30:13                   
+ProjectTreasuryTransaction     type  apps/launch-website/lib/project-treasury.ts:55:13                   
+ReclaimSafeTransaction         type  apps/launch-website/lib/reclaim-safe.ts:7:13                        
+ReclaimEligibleItem            type  apps/launch-website/lib/reclaim.ts:64:13                            
+ReclaimCollection              type  apps/launch-website/lib/reclaim.ts:65:13                            
+ReclaimReceipt                 type  apps/launch-website/lib/reclaim.ts:68:13                            
+ReclaimWalletRequest           type  apps/launch-website/lib/reclaim.ts:118:13                           
+ReclaimNftContext              type  apps/launch-website/lib/reclaim.ts:119:13                           
+SeaportSafeCall                type  apps/launch-website/lib/seaport-acquisition-safe.ts:10:13           
+FixturePostEvent               type  apps/launch-website/lib/server/fixture-discovery.ts:22:13           
+FixturePostGraduation          type  apps/launch-website/lib/server/fixture-discovery.ts:25:13           
+NftAcquisitionDeployment       type  apps/launch-website/lib/server/nft-acquisition-fixture.ts:12:13     
+ClaimSettlementProvider        type  apps/launch-website/lib/server/production-claims-settlement.ts:26:13
+ProductionRegistration         type  apps/launch-website/lib/server/production-discovery.ts:6:13         
+ProjectTreasuryDeployment      type  apps/launch-website/lib/server/project-treasury-fixture.ts:27:13    
+SeaportLocalManifest           type  apps/launch-website/lib/server/seaport-acquisition.ts:9:13          
+Configuration hints (2)
+docs/evidence/rmt-task084/browser/replay-raw-proofs.mjs                   knip.json  Remove redundant entry pattern
+docs/evidence/rmt-task084/browser/source-73fc6d0/replay-raw-proofs.mjs    knip.json  Remove redundant entry pattern

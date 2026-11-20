@@ -1,0 +1,159 @@
+name: Focused core stateful proofs
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/core-stateful-proofs.yml"
+      - ".github/scripts/run-core-stateful-proofs.mjs"
+      - "packages/contracts/src/**"
+      - "packages/contracts/test/Task090*Proof.t.sol"
+      - "packages/contracts/test/fixtures/task090-*.json"
+      - "packages/contracts/scripts/**"
+      - "packages/contracts/foundry.toml"
+      - "packages/contracts/remappings.txt"
+      - "scripts/security/graduation-proof*"
+      - "scripts/security/migration-proof*"
+      - "docs/evidence/rmt-task090/**"
+      - "docs/evidence/rmt-task089/security/**"
+      - "docs/evidence/fixed-supply-security/4663-profile.json"
+      - "docs/evidence/mobile-signing/protocol-mainnet.json"
+      - "docs/evidence/mobile-signing/protocol-owner-plan.json"
+      - "docs/evidence/mobile-signing/protocol-directory-mainnet.json"
+      - "apps/launch-website/package.json"
+      - "package.json"
+      - "pnpm-lock.yaml"
+      - "pnpm-workspace.yaml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  focused-core-proofs:
+    name: Focused proofs (${{ matrix.profile }})
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        profile: [default31337, canonical4663]
+    defaults:
+      run:
+        shell: bash
+    env:
+      SOURCE_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      NEXT_TELEMETRY_DISABLED: "1"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: foundry-rs/foundry-toolchain@b00af27efadbc7b4ca8b82abbd903b17cc874d2a
+        with:
+          version: "1.7.1"
+      - name: Bind the checkout to the exact event head and record tools
+        run: |
+          set -euo pipefail
+          export CI_EVIDENCE="$RUNNER_TEMP/task090-stateful-${{ matrix.profile }}"
+          printf 'CI_EVIDENCE=%s\n' "$CI_EVIDENCE" >> "$GITHUB_ENV"
+          mkdir -p "$CI_EVIDENCE"
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          {
+            git rev-parse HEAD
+            git rev-parse 'HEAD^{tree}'
+            node --version
+            pnpm --version
+            forge --version
+          } | tee "$CI_EVIDENCE/source-and-tools.log"
+          node -e 'require("node:assert/strict").equal(process.versions.node.split(".")[0], "22")'
+          test "$(pnpm --version)" = "10.12.1"
+      - name: Install exact repository and Uniswap dependencies
+        run: |
+          set -euo pipefail
+          pnpm install --frozen-lockfile --filter @rmt/launch-website... 2>&1 | tee "$CI_EVIDENCE/pnpm-install.log"
+          (cd packages/contracts && bash scripts/install-v4-deps.sh) 2>&1 | tee "$CI_EVIDENCE/contract-dependencies.log"
+      - name: Verify the native Linux compiler with the existing checksum-pinned helper
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --retry 2 --max-time 60 --proto '=https' --tlsv1.2 \
+            'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' \
+            --output "$RUNNER_TEMP/solc-0.8.26"
+          chmod 700 "$RUNNER_TEMP/solc-0.8.26"
+          node packages/contracts/scripts/pinned-solc-smoke.mjs --solc "$RUNNER_TEMP/solc-0.8.26" \
+            2>&1 | tee "$CI_EVIDENCE/pinned-compiler.log"
+      - name: Verify all 44 offline source, runtime and conservation binding tests
+        id: bindings
+        run: |
+          set -euo pipefail
+          node --test --test-reporter=tap scripts/security/graduation-proof.test.mjs scripts/security/migration-proof.test.mjs \
+            2>&1 | tee "$CI_EVIDENCE/binding-tests.log"
+          node --input-type=module - "$CI_EVIDENCE/binding-tests.log" <<'NODE'
+          import assert from "node:assert/strict";
+          import {readFileSync} from "node:fs";
+          const text = readFileSync(process.argv[2], "utf8");
+          for (const line of ["tests 44", "pass 44", "fail 0", "cancelled 0", "skipped 0", "todo 0"])
+            assert.ok(text.split(/\r?\n/).includes("# " + line), "Missing exact TAP result: " + line);
+          NODE
+      - name: Recompile and bind every canonical and local fixture input offline
+        id: fixtures
+        run: |
+          set -euo pipefail
+          node docs/evidence/rmt-task090/harvest/verify-fixtures.mjs --solc "$RUNNER_TEMP/solc-0.8.26" \
+            2>&1 | tee "$CI_EVIDENCE/harvest-fixture-verification.log"
+          node scripts/security/migration-proof.mjs compile --solc "$RUNNER_TEMP/solc-0.8.26" \
+            --output "$CI_EVIDENCE/canonical-compilation.json" --fixture "$CI_EVIDENCE/canonical-fixture.json" \
+            2>&1 | tee "$CI_EVIDENCE/canonical-compile.log"
+          node --input-type=module - "$CI_EVIDENCE/canonical-fixture.json" <<'NODE' | tee "$CI_EVIDENCE/portable-fixture-identity.log"
+          import assert from "node:assert/strict";
+          import {readFileSync} from "node:fs";
+          import {verifyCompilerIdentity} from "./packages/contracts/scripts/pinned-solc.mjs";
+          const fresh = JSON.parse(readFileSync(process.argv[2], "utf8"));
+          const retained = JSON.parse(readFileSync("packages/contracts/test/fixtures/task090-migration-profile.json", "utf8"));
+          for (const {manifest} of [fresh, retained]) verifyCompilerIdentity({
+            executableSha256: manifest.executableSha256, host: manifest.executablePlatform, emulated: false});
+          const portable = fixture => {
+            const {executablePlatform, executableSha256, ...manifest} = fixture.manifest;
+            return {...fixture, manifest};
+          };
+          assert.deepEqual(portable(fresh), portable(retained), "Exact source/bytecode/compiler-input fixture drift");
+          console.log(JSON.stringify({status: "PASS", freshCompilerPlatform: fresh.manifest.executablePlatform,
+            freshCompilerSha256: fresh.manifest.executableSha256, retainedCompilerPlatform: retained.manifest.executablePlatform,
+            retainedCompilerSha256: retained.manifest.executableSha256, inputSha256: fresh.manifest.inputSha256,
+            comparison: "All fields and bytecode exact except separately verified native platform/executable identity"}));
+          NODE
+          node scripts/security/migration-proof.mjs verify --compilation "$CI_EVIDENCE/canonical-compilation.json" \
+            --fixture "$CI_EVIDENCE/canonical-fixture.json" --observation docs/evidence/rmt-task090/migration/runtime-observation.json \
+            --output "$CI_EVIDENCE/migration-runtime-binding.json" 2>&1 | tee "$CI_EVIDENCE/migration-runtime-binding.log"
+          node scripts/security/graduation-proof.mjs --verify-canonical "$CI_EVIDENCE/canonical-compilation.json" \
+            docs/evidence/rmt-task090/graduation/runtime-observation.json "$CI_EVIDENCE/graduation-runtime-binding.json" \
+            2>&1 | tee "$CI_EVIDENCE/graduation-runtime-binding.log"
+      - name: Run only the 20 focused proofs with 512 fuzz cases per fuzz test
+        id: proofs
+        if: ${{ !cancelled() && steps.bindings.outcome == 'success' && steps.fixtures.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          node .github/scripts/run-core-stateful-proofs.mjs --forge "$(command -v forge)" --solc "$RUNNER_TEMP/solc-0.8.26" \
+            --profile "${{ matrix.profile }}" --output "$CI_EVIDENCE/proofs" 2>&1 | tee "$CI_EVIDENCE/proof-runner.log"
+      - name: Independently check the fresh harvest trace and exact entitlement increments
+        if: ${{ !cancelled() && steps.proofs.outcome == 'success' }}
+        run: |
+          set -euo pipefail
+          node docs/evidence/rmt-task090/harvest/extract-proof-results.mjs --traces "$CI_EVIDENCE/proofs/harvest.json" \
+            --artifact "$CI_EVIDENCE/proofs/harvest-test-artifact.json" --output "$CI_EVIDENCE/harvest-proof-results.json" \
+            2>&1 | tee "$CI_EVIDENCE/harvest-trace-verification.log"
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: task090-stateful-${{ matrix.profile }}-${{ github.event.pull_request.head.sha || github.sha }}
+          retention-days: 7
+          path: |
+            ${{ runner.temp }}/task090-stateful-${{ matrix.profile }}/*.log
+            ${{ runner.temp }}/task090-stateful-${{ matrix.profile }}/*.json
+            ${{ runner.temp }}/task090-stateful-${{ matrix.profile }}/proofs/*.log
+            ${{ runner.temp }}/task090-stateful-${{ matrix.profile }}/proofs/*.json

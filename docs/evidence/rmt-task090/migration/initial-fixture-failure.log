@@ -1,0 +1,28 @@
+Compiling 93 files with Solc 0.8.26
+Solc 0.8.26 finished in 89.92s
+Compiler run successful!
+
+Ran 9 tests for test/Task090MigrationProof.t.sol:Task090MigrationProofTest
+[PASS] testCancelledCreatorConsentAndExpiryCannotReuseApprovalOrMoveAssets() (gas: 988121)
+[PASS] testCanonicalCallGraphHasOnlySixMutableFramesAndOneLedgerWrite() (gas: 1483011)
+[PASS] testCounterfactualMutableLedgerDemonstratesTheExactLedgerCodeAssumption() (gas: 1030052)
+[PASS] testFuzzCanonicalHandoffConservesSurplusesAndAlreadyEarnedClaims(uint96,uint96,uint96) (runs: 512, μ: 1000176, ~: 1000060)
+Logs:
+  Bound result 490000000000009513
+
+[PASS] testHostileAdmittedSuccessorNativeDiversionRevertsAndSameProposalCanRetry() (gas: 1497247)
+[FAIL: call reverted as expected, but without data] testHostileLedgerPostWriterTradeRollsBackAssetsClaimsProposalAndRoutes() (gas: 1424649)
+[PASS] testMissingCreatorQuorumWrongVersionAndPauseCannotMoveAnyAssets() (gas: 1208729)
+[PASS] testPostSignatureRuntimeReplacementFailsBeforeHandoffAndRestoredPinRetries() (gas: 1221781)
+[PASS] testRealAdjacentV2ToV3RetainsOriginalLedgerAndSeparateTemplateConsent() (gas: 6944158)
+Suite result: FAILED. 8 passed; 1 failed; 0 skipped; finished in 178.36ms (209.27ms CPU time)
+
+Ran 1 test suite in 179.70ms (178.36ms CPU time): 8 tests passed, 1 failed, 0 skipped (9 total tests)
+
+Failing tests:
+Encountered 1 failing test in test/Task090MigrationProof.t.sol:Task090MigrationProofTest
+[FAIL: call reverted as expected, but without data] testHostileLedgerPostWriterTradeRollsBackAssetsClaimsProposalAndRoutes() (gas: 1424649)
+
+Encountered a total of 1 failing tests, 8 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 1 failed test

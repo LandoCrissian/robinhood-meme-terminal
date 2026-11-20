@@ -1,0 +1,67 @@
+{
+  "schemaVersion": 1,
+  "compiler": {
+    "schemaVersion": 1,
+    "inputSha256": "7923ec6acc0666f18c7dd9d8d181eb15d5e664be841325f0787b0dd046132426",
+    "compilerSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+    "executorSha256": null,
+    "arguments": [
+      "--standard-json",
+      "--no-import-callback"
+    ]
+  },
+  "artifacts": [
+    {
+      "relativePath": "canonical-input.json.gz",
+      "uncompressedBytes": 388808,
+      "uncompressedDigest": {
+        "algorithm": "SHA-256",
+        "hex": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10"
+      },
+      "archiveBytes": 70730,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b3440ceb0d0c87290acb926cfc44818c91c530f0b2073316fe31ada97b9b7595"
+      }
+    },
+    {
+      "relativePath": "auxiliary-ast-input.json.gz",
+      "uncompressedBytes": 388825,
+      "uncompressedDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7923ec6acc0666f18c7dd9d8d181eb15d5e664be841325f0787b0dd046132426"
+      },
+      "archiveBytes": 70739,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d8ea5689bd974d7be21d38e07a305bccb327765e6b866213d7d2f01d4e8f6034"
+      }
+    },
+    {
+      "relativePath": "raw-compiler-output.json.gz",
+      "uncompressedBytes": 7141619,
+      "uncompressedDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2166e7e767ce054499845642132a8ca9d4367c7f03101239d4beaac7da962e86"
+      },
+      "archiveBytes": 764266,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4a66908446901e2c9fa35e9921f664eb3b47090edd9514bda5f15aeb071d867b"
+      }
+    },
+    {
+      "relativePath": "canonical-compilation.json.gz",
+      "uncompressedBytes": 865615,
+      "uncompressedDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1a15ab6b7963a8d1dcc3f490eb8ae52f09f3ee046870684530f60d9ce7a4207a"
+      },
+      "archiveBytes": 151726,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c3f3b851e6d96fe89515e5f6517f4b5716dea8c81e05090841ed663d8cc7dd04"
+      }
+    }
+  ]
+}

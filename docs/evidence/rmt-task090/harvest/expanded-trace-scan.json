@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "scope": "Exactly the losslessly expanded full final harvest Foundry JSON, no other files or scanner outputs",
+  "archivePath": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+  "compressedSha256": "5c8ef617e7f888a3e55170935633e5aea57fdfc110f9978f8d1b8f2410712def",
+  "compressedBytes": 3766968,
+  "expandedSha256": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429",
+  "expandedBytes": 24179364,
+  "scanner": "gitleaks 8.30.1",
+  "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
+  "policy": "unchanged repository/.gitleaks.toml",
+  "policySha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+  "rawExit": 0,
+  "rawFindingCount": 0,
+  "classifications": [],
+  "rawReport": "expanded-trace-gitleaks-redacted.json",
+  "rawLog": "expanded-trace-gitleaks-log.txt",
+  "rawExitFile": "expanded-trace-gitleaks-exit.txt",
+  "losslessDecompressionVerified": true,
+  "rulesAllowlistOrRawSeverityChanged": false,
+  "scopeLimitation": "This is a separate one-file expanded archive scan, not full repository/history clearance. The earlier 12-file source scan still has raw exit1 /7 synthetic-address findings."
+}

@@ -1,0 +1,27 @@
+Compiling 1 files with Solc 0.8.26
+Solc 0.8.26 finished in 54.83s
+Compiler run successful!
+
+Ran 6 tests for test/Task090GraduationProof.t.sol:Task090GraduationProofTest
+[PASS] testEachDependencyRuntimeSubstitutionFailsBeforeSettlement() (gas: 5577246)
+[FAIL: expected call to 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f with data 0x11da60b4, value 999999999999998913 to be called 2 times, but was called 1 time] testExactRealPermit2GraphConservesPrefundingAndOriginalPosition() (gas: 10334505)
+[PASS] testFuzzRealPermit2ConservesIndependentPrefundedBalances(uint64,uint64) (runs: 64, μ: 5207500, ~: 5207565)
+Logs:
+  Bound result 107980
+  Bound result 453070
+
+[PASS] testSharedUnlockWithRealPermit2RollsBackAllStateThenRetries() (gas: 6350084)
+[FAIL: next call did not revert as expected] testUnapprovedThirdPartyCannotSpendInventoryOrCaptureOriginalNft() (gas: 5352868)
+[PASS] testWrongPermitExpiryRollsBackAllStateThenRetries() (gas: 6304671)
+Suite result: FAILED. 4 passed; 2 failed; 0 skipped; finished in 254.18ms (126.96ms CPU time)
+
+Ran 1 test suite in 263.71ms (254.18ms CPU time): 4 tests passed, 2 failed, 0 skipped (6 total tests)
+
+Failing tests:
+Encountered 2 failing tests in test/Task090GraduationProof.t.sol:Task090GraduationProofTest
+[FAIL: expected call to 0x5615dEB798BB3E4dFa0139dFa1b3D433Cc23b72f with data 0x11da60b4, value 999999999999998913 to be called 2 times, but was called 1 time] testExactRealPermit2GraphConservesPrefundingAndOriginalPosition() (gas: 10334505)
+[FAIL: next call did not revert as expected] testUnapprovedThirdPartyCannotSpendInventoryOrCaptureOriginalNft() (gas: 5352868)
+
+Encountered a total of 2 failing tests, 4 tests succeeded
+
+Tip: Run `forge test --rerun` to retry only the 2 failed tests

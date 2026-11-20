@@ -1,0 +1,985 @@
+{
+  "schemaVersion": 1,
+  "scope": "FINAL_TASK090_FROZEN_SNAPSHOT_EXACT_PUBLIC_IDENTITIES_ONLY",
+  "base": "b79515752ef42e88850ac2cea953955a3bb03087",
+  "sourceFiles": 95,
+  "losslesslyExpandedGzipFiles": 6,
+  "rawScannerExit": 1,
+  "rawFindingCount": 18,
+  "status": "EXACT_PUBLIC_IDENTITIES_VERIFIED_RAW_SCAN_REMAINS_EXIT_1",
+  "counts": {
+    "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS": 10,
+    "EXACT_PUBLIC_SOLIDITY_TYPE_IDENTIFIER": 2,
+    "EXACT_PUBLIC_SOURCE_CONTENT_DIGEST": 6
+  },
+  "classifications": [
+    {
+      "index": 0,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/graduation/exact-conservation-and-graph.json",
+      "range": {
+        "startLine": 50,
+        "endLine": 50,
+        "startColumn": 7,
+        "endColumn": 58
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "71a9ecfbd39516480cc5a2d568a61ca72fa5e888c5be6939436ca5b1d5c4c1f0"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0x8247443a8379d5377FB38e7D7E8Bc07068515055",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/graduation/canonical-full-trace.txt",
+        "creationLine": 211,
+        "factoryReceiptLine": 254,
+        "traceContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4d53c59fb51cc4ee9849edd6fe28b5b5701d30dfa64c2a28352a90c6fcc4b748"
+        },
+        "conservationTokenMatches": true
+      }
+    },
+    {
+      "index": 1,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/graduation/final-conservation-and-graph.json",
+      "range": {
+        "startLine": 50,
+        "endLine": 50,
+        "startColumn": 7,
+        "endColumn": 58
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "71a9ecfbd39516480cc5a2d568a61ca72fa5e888c5be6939436ca5b1d5c4c1f0"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0x8247443a8379d5377FB38e7D7E8Bc07068515055",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/graduation/canonical-full-trace.txt",
+        "creationLine": 211,
+        "factoryReceiptLine": 254,
+        "traceContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4d53c59fb51cc4ee9849edd6fe28b5b5701d30dfa64c2a28352a90c6fcc4b748"
+        },
+        "conservationTokenMatches": true
+      }
+    },
+    {
+      "index": 2,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/graduation/manifest.json",
+      "range": {
+        "startLine": 135,
+        "endLine": 135,
+        "startColumn": 7,
+        "endColumn": 58
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "38bcfbd1a102f3ca5da115543d92be1e286edc113364f790ba17fc17bb3ba2dd"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0x8247443a8379d5377FB38e7D7E8Bc07068515055",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/graduation/canonical-full-trace.txt",
+        "creationLine": 211,
+        "factoryReceiptLine": 254,
+        "traceContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4d53c59fb51cc4ee9849edd6fe28b5b5701d30dfa64c2a28352a90c6fcc4b748"
+        },
+        "conservationTokenMatches": true
+      }
+    },
+    {
+      "index": 3,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/harvest/proof-results.json",
+      "range": {
+        "startLine": 231,
+        "endLine": 231,
+        "startColumn": 13,
+        "endColumn": 64
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+        "expandedContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429"
+        },
+        "successfulCanonicalTokenCreate2Receipts": 5,
+        "receipts": [
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 4,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/harvest/proof-results.json",
+      "range": {
+        "startLine": 833,
+        "endLine": 833,
+        "startColumn": 13,
+        "endColumn": 64
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+        "expandedContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429"
+        },
+        "successfulCanonicalTokenCreate2Receipts": 5,
+        "receipts": [
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 5,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/harvest/proof-results.json",
+      "range": {
+        "startLine": 1488,
+        "endLine": 1488,
+        "startColumn": 13,
+        "endColumn": 64
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+        "expandedContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429"
+        },
+        "successfulCanonicalTokenCreate2Receipts": 5,
+        "receipts": [
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 6,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/harvest/proof-results.json",
+      "range": {
+        "startLine": 2342,
+        "endLine": 2342,
+        "startColumn": 13,
+        "endColumn": 64
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+        "expandedContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429"
+        },
+        "successfulCanonicalTokenCreate2Receipts": 5,
+        "receipts": [
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 7,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/harvest/proof-results.json",
+      "range": {
+        "startLine": 2893,
+        "endLine": 2893,
+        "startColumn": 13,
+        "endColumn": 64
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+        "expandedContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429"
+        },
+        "successfulCanonicalTokenCreate2Receipts": 5,
+        "receipts": [
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 8,
+      "rule": "generic-api-key",
+      "scanPath": "expanded/docs/evidence/rmt-task090/migration/auxiliary-ast-input.json",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 96138,
+        "endColumn": 96174
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7923ec6acc0666f18c7dd9d8d181eb15d5e664be841325f0787b0dd046132426"
+      },
+      "classification": "EXACT_PUBLIC_SOLIDITY_TYPE_IDENTIFIER",
+      "publicTypeIdentifier": "RMTLaunchCurveLpFeeLedgerV1",
+      "proof": {
+        "source": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+        "line": 114,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e"
+        }
+      }
+    },
+    {
+      "index": 9,
+      "rule": "generic-api-key",
+      "scanPath": "expanded/docs/evidence/rmt-task090/migration/canonical-input.json",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 96138,
+        "endColumn": 96174
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10"
+      },
+      "classification": "EXACT_PUBLIC_SOLIDITY_TYPE_IDENTIFIER",
+      "publicTypeIdentifier": "RMTLaunchCurveLpFeeLedgerV1",
+      "proof": {
+        "source": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+        "line": 114,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "normalization": "LF",
+          "hex": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e"
+        }
+      }
+    },
+    {
+      "index": 10,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/harvest/proof-results.json",
+      "range": {
+        "startLine": 3470,
+        "endLine": 3470,
+        "startColumn": 13,
+        "endColumn": 64
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+        "expandedContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429"
+        },
+        "successfulCanonicalTokenCreate2Receipts": 5,
+        "receipts": [
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 11,
+      "rule": "generic-api-key",
+      "scanPath": "source/docs/evidence/rmt-task090/harvest/proof-results.json",
+      "range": {
+        "startLine": 4108,
+        "endLine": 4108,
+        "startColumn": 13,
+        "endColumn": 64
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8768c0cd1f72fba1c9e7bd190fa08abb4dbead2a3ad137972a6550d143343a92"
+      },
+      "classification": "EXACT_PUBLIC_SYNTHETIC_ERC20_ADDRESS",
+      "publicAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+      "proof": {
+        "source": "docs/evidence/rmt-task090/harvest/foundry-full-traces-final.json.gz",
+        "expandedContentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "4a288b8020160af7857fb2b574c3bf28066993cd63cc8d9f447aaaf37f68b429"
+        },
+        "successfulCanonicalTokenCreate2Receipts": 5,
+        "receipts": [
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          },
+          {
+            "suite": "test/Task090HarvestProof.t.sol:Task090HarvestProofTest",
+            "test": "testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal()",
+            "phase": "Setup",
+            "frame": 64,
+            "creator": "0x3c8ca53ee5661d29d3d3c0732689a4b86947eaf0",
+            "createdAddress": "0xb0a21039053dddba53ead4f8572c8de77d35d39f",
+            "runtimeBytes": 1593,
+            "runtimeContentDigest": {
+              "algorithm": "SHA-256",
+              "hex": "9990fee09e7784a42ea1b1bb5263faf70babfef0bf35ced62ed6a2f8e2f16c0a"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "index": 12,
+      "rule": "generic-api-key",
+      "scanPath": "expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 28446,
+        "endColumn": 28538
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "34f0355eba29253aa2580dc8e429b8ff102f972248b3058d9f475cee51614929"
+      },
+      "classification": "EXACT_PUBLIC_SOURCE_CONTENT_DIGEST",
+      "publicContentDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "LF",
+        "hex": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+      },
+      "proof": {
+        "source": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+        "retainedProfile": "docs/evidence/fixed-supply-security/4663-profile.json",
+        "matchingPublicManifestPointers": [
+          "/manifest/originalSourceSha256/10",
+          "/manifest/sourceSha256/10"
+        ]
+      }
+    },
+    {
+      "index": 13,
+      "rule": "generic-api-key",
+      "scanPath": "expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 2139,
+        "endColumn": 2231
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "34f0355eba29253aa2580dc8e429b8ff102f972248b3058d9f475cee51614929"
+      },
+      "classification": "EXACT_PUBLIC_SOURCE_CONTENT_DIGEST",
+      "publicContentDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "LF",
+        "hex": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+      },
+      "proof": {
+        "source": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+        "retainedProfile": "docs/evidence/fixed-supply-security/4663-profile.json",
+        "matchingPublicManifestPointers": [
+          "/manifest/originalSourceSha256/10",
+          "/manifest/sourceSha256/10"
+        ]
+      }
+    },
+    {
+      "index": 14,
+      "rule": "generic-api-key",
+      "scanPath": "expanded/docs/evidence/rmt-task090/graduation/canonical-three-artifacts.json",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 8522,
+        "endColumn": 8600
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "34f0355eba29253aa2580dc8e429b8ff102f972248b3058d9f475cee51614929"
+      },
+      "classification": "EXACT_PUBLIC_SOURCE_CONTENT_DIGEST",
+      "publicContentDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "LF",
+        "hex": "99e1afe285b5c614ebc9586ab5196db9d24a63fd924a449f5d99f490a6a6d6a9"
+      },
+      "proof": {
+        "source": "packages/contracts/lib/v4-core/src/types/PoolKey.sol",
+        "retainedProfile": "docs/evidence/fixed-supply-security/4663-profile.json",
+        "matchingPublicManifestPointers": [
+          "/manifest/sourceSha256/61"
+        ]
+      }
+    },
+    {
+      "index": 15,
+      "rule": "generic-api-key",
+      "scanPath": "expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 8539,
+        "endColumn": 8631
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1a15ab6b7963a8d1dcc3f490eb8ae52f09f3ee046870684530f60d9ce7a4207a"
+      },
+      "classification": "EXACT_PUBLIC_SOURCE_CONTENT_DIGEST",
+      "publicContentDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "LF",
+        "hex": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+      },
+      "proof": {
+        "source": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+        "retainedProfile": "docs/evidence/fixed-supply-security/4663-profile.json",
+        "matchingPublicManifestPointers": [
+          "/manifest/originalSourceSha256/10",
+          "/manifest/sourceSha256/10"
+        ]
+      }
+    },
+    {
+      "index": 16,
+      "rule": "generic-api-key",
+      "scanPath": "expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 10904,
+        "endColumn": 10996
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1a15ab6b7963a8d1dcc3f490eb8ae52f09f3ee046870684530f60d9ce7a4207a"
+      },
+      "classification": "EXACT_PUBLIC_SOURCE_CONTENT_DIGEST",
+      "publicContentDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "LF",
+        "hex": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+      },
+      "proof": {
+        "source": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+        "retainedProfile": "docs/evidence/fixed-supply-security/4663-profile.json",
+        "matchingPublicManifestPointers": [
+          "/manifest/originalSourceSha256/10",
+          "/manifest/sourceSha256/10"
+        ]
+      }
+    },
+    {
+      "index": 17,
+      "rule": "generic-api-key",
+      "scanPath": "expanded/docs/evidence/rmt-task090/migration/canonical-compilation.json",
+      "range": {
+        "startLine": 1,
+        "endLine": 1,
+        "startColumn": 17287,
+        "endColumn": 17365
+      },
+      "scannedContentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1a15ab6b7963a8d1dcc3f490eb8ae52f09f3ee046870684530f60d9ce7a4207a"
+      },
+      "classification": "EXACT_PUBLIC_SOURCE_CONTENT_DIGEST",
+      "publicContentDigest": {
+        "algorithm": "SHA-256",
+        "normalization": "LF",
+        "hex": "99e1afe285b5c614ebc9586ab5196db9d24a63fd924a449f5d99f490a6a6d6a9"
+      },
+      "proof": {
+        "source": "packages/contracts/lib/v4-core/src/types/PoolKey.sol",
+        "retainedProfile": "docs/evidence/fixed-supply-security/4663-profile.json",
+        "matchingPublicManifestPointers": [
+          "/manifest/sourceSha256/61"
+        ]
+      }
+    }
+  ],
+  "unclassified": [],
+  "scannerPolicyChanged": false,
+  "scannerIgnoreChanged": false,
+  "rawFindingsRemoved": false,
+  "cleanRawScanClaim": false,
+  "financialSecurityClearance": false,
+  "scanManifestContentDigest": {
+    "algorithm": "SHA-256",
+    "hex": "7c9c471002308fa48f44e65132b800cf36a7db440aa95ecc5c81e46d79229ed4"
+  },
+  "rawReportContentDigest": {
+    "algorithm": "SHA-256",
+    "hex": "a8640bfc502b8a7ba83fb4826d9cd2fffa4804f82853cf22c4aaa6eed898d9fc"
+  },
+  "limits": [
+    "This classifies only these exact 18 frozen-snapshot observations; it introduces no detector exception or future-match allowance.",
+    "The snapshot is scoped to changed source and all Task090 evidence, not the complete repository history.",
+    "Only the five derived final-scan outputs are excluded; producer, repository metadata and all other evidence remain in scope."
+  ]
+}

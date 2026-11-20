@@ -1,0 +1,44 @@
+{
+  "recordedAt": "2026-11-20T17:27:24.699Z",
+  "siteId": "ebdf8492-ff86-452f-b4cc-45d7865c8311",
+  "accountId": "679021997d24399b38980446",
+  "method": "official existing authenticated Netlify SDK",
+  "keys": [
+    {
+      "key": "RMT_LAUNCH_HISTORY_INDEXER_URL",
+      "is_secret": false,
+      "scopes": [
+        "functions"
+      ],
+      "contexts": [
+        "production"
+      ]
+    },
+    {
+      "key": "RMT_CURVE_PRODUCTION_DISCOVERY",
+      "is_secret": false,
+      "scopes": [
+        "functions"
+      ],
+      "contexts": [
+        "production"
+      ]
+    },
+    {
+      "key": "RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN",
+      "is_secret": true,
+      "scopes": [
+        "functions"
+      ],
+      "contexts": [
+        "production"
+      ]
+    }
+  ],
+  "credentialsMatchPrivately": true,
+  "secretPersistedToLocalFileOrPrinted": false,
+  "financialFlags": "UNSET",
+  "productionWriteAttempted": true,
+  "status": "WRITE_FAILED_OR_UNVERIFIED_STOP",
+  "httpStatus": 403
+}

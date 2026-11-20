@@ -1,0 +1,16 @@
+{
+  "recordedAt": "2026-11-20T17:08:14.804Z",
+  "requestAt": "2026-11-20T17:08:01.086Z",
+  "httpStatus": 404,
+  "requestId": "01M7WYVT9D3PFWHDAXSVGB017S",
+  "diagnostics": [
+    {
+      "event": "production_discovery_degraded",
+      "reason": "profile_disabled"
+    }
+  ],
+  "streamCharacters": 780,
+  "streamLines": 6,
+  "hasStreamError": false,
+  "rawOutputExcluded": true
+}

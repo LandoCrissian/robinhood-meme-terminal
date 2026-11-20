@@ -1,0 +1,18 @@
+Compiling 1 files with Solc 0.8.26
+Solc 0.8.26 finished in 58.83s
+Compiler run successful!
+
+Ran 6 tests for test/Task090GraduationProof.t.sol:Task090GraduationProofTest
+[PASS] testEachDependencyRuntimeSubstitutionFailsBeforeSettlement() (gas: 5577744)
+[PASS] testExactRealPermit2GraphConservesPrefundingAndOriginalPosition() (gas: 10900956)
+[PASS] testFuzzRealPermit2ConservesIndependentPrefundedBalances(uint64,uint64) (runs: 64, μ: 5207700, ~: 5207783)
+Logs:
+  Bound result 220701
+  Bound result 589688
+
+[PASS] testSharedUnlockWithRealPermit2RollsBackAllStateThenRetries() (gas: 6350357)
+[PASS] testUnapprovedThirdPartyCannotSpendInventoryOrCaptureOriginalNft() (gas: 5296136)
+[PASS] testWrongPermitExpiryRollsBackAllStateThenRetries() (gas: 6321000)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 252.94ms (127.45ms CPU time)
+
+Ran 1 test suite in 260.97ms (252.94ms CPU time): 6 tests passed, 0 failed, 0 skipped (6 total tests)

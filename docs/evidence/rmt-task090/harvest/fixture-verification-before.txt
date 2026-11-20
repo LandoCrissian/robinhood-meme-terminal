@@ -1,0 +1,23 @@
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Runtime observation archive changed
++ actual - expected
+
++ '9513f5ae793c7862f2347d81d05c7f3b9fc515cb48aa83d7b6b9dcbae553d9aa'
+- '751c7a08f486105718aaff62f0eec76c6e1ff78c4a3dcbc3e5f3037a98e6a9b1'
+
+    at file:///C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/repository/docs/evidence/rmt-task090/harvest/verify-fixtures.mjs:19:8
+    at ModuleJob.run (node:internal/modules/esm/module_job:343:25)
+    at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:681:26)
+    at async asyncRunEntryPointWithESMLoader (node:internal/modules/run_main:117:5) {
+  generatedMessage: false,
+  code: 'ERR_ASSERTION',
+  actual: '9513f5ae793c7862f2347d81d05c7f3b9fc515cb48aa83d7b6b9dcbae553d9aa',
+  expected: '751c7a08f486105718aaff62f0eec76c6e1ff78c4a3dcbc3e5f3037a98e6a9b1',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v22.23.2

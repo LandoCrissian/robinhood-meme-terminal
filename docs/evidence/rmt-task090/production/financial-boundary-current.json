@@ -1,0 +1,50 @@
+{
+  "deploy": "6b008009d57abd2faf8e0ec7",
+  "rows": [
+    {
+      "at": "2026-11-20T17:30:42.646Z",
+      "method": "GET",
+      "path": "/api/launchpad/config",
+      "status": 200,
+      "body": {
+        "status": "disabled",
+        "reason": "Wallet signing and transactions are disabled in this read-only preview."
+      },
+      "requestId": "01M7X05A5ZAVFZ46EHQD6ARQYD"
+    },
+    {
+      "at": "2026-11-20T17:30:42.909Z",
+      "method": "POST",
+      "path": "/api/launchpad/production-creation",
+      "status": 404,
+      "body": {
+        "status": "unavailable"
+      },
+      "requestId": "01M7X05BS7RQ99216GXKXXJSJH"
+    },
+    {
+      "at": "2026-11-20T17:30:43.082Z",
+      "method": "POST",
+      "path": "/api/launchpad/production-earnings",
+      "status": 404,
+      "body": {
+        "status": "unavailable",
+        "executionEnabled": false
+      },
+      "requestId": "01M7X05C100EJK1DZTQK5FFJE0"
+    },
+    {
+      "at": "2026-11-20T17:30:43.256Z",
+      "method": "POST",
+      "path": "/api/account/nonce",
+      "status": 404,
+      "body": {
+        "availability": "disabled",
+        "error": "Wallet profiles are not enabled in this environment."
+      },
+      "requestId": "01M7X05C6R8Q0GB628C5SK270Z"
+    }
+  ],
+  "walletOrBlockchainTransactions": 0,
+  "pass": true
+}

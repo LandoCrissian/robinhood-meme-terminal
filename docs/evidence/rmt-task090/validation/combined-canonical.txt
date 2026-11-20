@@ -1,0 +1,52 @@
+Compiling 143 files with Solc 0.8.26
+Solc 0.8.26 finished in 125.87s
+Compiler run successful with warnings:
+Warning (5159): "selfdestruct" has been deprecated. Note that, starting from the Cancun hard fork, the underlying opcode no longer deletes the code and data associated with an account and only transfers its Ether to the beneficiary, unless executed in the same transaction in which the contract was created (see EIP-6780). Any use in newly deployed contracts is strongly discouraged even if the new behavior is taken into account. Future changes to the EVM might further reduce the functionality of the opcode.
+  --> test/Task090HarvestProof.t.sol:74:54:
+   |
+74 |     constructor(address payable recipient) payable { selfdestruct(recipient); }
+   |                                                      ^^^^^^^^^^^^
+
+
+Ran 5 tests for test/Task090HarvestProof.t.sol:Task090HarvestProofTest
+[PASS] testCanonicalRuntimeHarvestConservesBothCurrenciesAndOriginalOnlyEntitlements() (gas: 4245899)
+[PASS] testClaimCallbackCannotReenterCreditOrCompleteSameLedgerHarvest() (gas: 3624443)
+[PASS] testRejectedNativeClaimRollsBackTokenTransferAndEveryEntitlementThenAllowsTokenOnly() (gas: 2286674)
+[PASS] testRuntimeDriftAndUnapprovedPrincipalRemovalCannotChangeSettlement() (gas: 1586924)
+[PASS] testSharedManagerUnlockRefusesHarvestWithoutChangingAnyPriorCreditOrPrincipal() (gas: 3699541)
+Suite result: ok. 5 passed; 0 failed; 0 skipped; finished in 49.88ms (16.55ms CPU time)
+
+Ran 9 tests for test/Task090MigrationProof.t.sol:Task090MigrationProofTest
+[PASS] testCancelledCreatorConsentAndExpiryCannotReuseApprovalOrMoveAssets() (gas: 988206)
+[PASS] testCanonicalCallGraphHasOnlySixMutableFramesAndOneLedgerWrite() (gas: 1680137)
+Logs:
+  TASK090_MIGRATION_VECTOR: {"balances":[297000000000000091,30,"875587619269257621596462706",19,"124412380730742378403537351",297000000000000000,"1000000000000000000000000000","124412380730742378403537275",750000000000000,0,3000000000000000,2250000000000000,400000000000000,400000000000000],"beneficiaryNative":[2100000000000000,0,150000000000000,0],"bucketAccrued":[2100000000000000,600000000000000,150000000000000,150000000000000],"canonicalBytecodes":true,"chainId":4663,"claimable":[0,600000000000000,0,150000000000000],"graduationBackingWei":"2000000000000000000","phase":"before"}
+  TASK090_MIGRATION_VECTOR: {"balances":[91,297000000000000030,57,"875587619269257621596462668","124412380730742378403537351",0,"1000000000000000000000000000","124412380730742378403537275",750000000000000,0,3000000000000000,2250000000000000,400000000000000,400000000000000],"beneficiaryNative":[2100000000000000,0,150000000000000,0],"bucketAccrued":[2100000000000000,600000000000000,150000000000000,150000000000000],"canonicalBytecodes":true,"chainId":4663,"claimable":[0,600000000000000,0,150000000000000],"graduationBackingWei":"2000000000000000000","phase":"after"}
+  TASK090_MIGRATION_VECTOR: {"balances":[91,297000000000000030,57,"875587619269257621596462668","124412380730742378403537351",0,"1000000000000000000000000000","124412380730742378403537275",0,0,3000000000000000,3000000000000000,400000000000000,400000000000000],"beneficiaryNative":[2100000000000000,600000000000000,150000000000000,150000000000000],"bucketAccrued":[2100000000000000,600000000000000,150000000000000,150000000000000],"canonicalBytecodes":true,"chainId":4663,"claimable":[0,0,0,0],"graduationBackingWei":"2000000000000000000","phase":"after-claims"}
+
+[PASS] testCounterfactualMutableLedgerDemonstratesTheExactLedgerCodeAssumption() (gas: 1030112)
+[PASS] testFuzzCanonicalHandoffConservesSurplusesAndAlreadyEarnedClaims(uint96,uint96,uint96) (runs: 512, μ: 1000081, ~: 1000131)
+Logs:
+  Bound result 490000000000007617
+
+[PASS] testHostileAdmittedSuccessorNativeDiversionRevertsAndSameProposalCanRetry() (gas: 1497336)
+[PASS] testHostileLedgerPostWriterTradeRollsBackAssetsClaimsProposalAndRoutes() (gas: 1435053)
+[PASS] testMissingCreatorQuorumWrongVersionAndPauseCannotMoveAnyAssets() (gas: 1208826)
+[PASS] testPostSignatureRuntimeReplacementFailsBeforeHandoffAndRestoredPinRetries() (gas: 1221810)
+[PASS] testRealAdjacentV2ToV3RetainsOriginalLedgerAndSeparateTemplateConsent() (gas: 30803128)
+Suite result: ok. 9 passed; 0 failed; 0 skipped; finished in 227.91ms (223.33ms CPU time)
+
+Ran 6 tests for test/Task090GraduationProof.t.sol:Task090GraduationProofTest
+[PASS] testEachDependencyRuntimeSubstitutionFailsBeforeSettlement() (gas: 5734467)
+[PASS] testExactRealPermit2GraphConservesPrefundingAndOriginalPosition() (gas: 13707342)
+[PASS] testFuzzRealPermit2ConservesIndependentPrefundedBalances(uint64,uint64) (runs: 512, μ: 5357593, ~: 5357519)
+Logs:
+  Bound result 439
+  Bound result 498
+
+[PASS] testSharedUnlockWithRealPermit2RollsBackAllStateThenRetries() (gas: 6496352)
+[PASS] testUnapprovedThirdPartyCannotSpendInventoryOrCaptureOriginalNft() (gas: 5445763)
+[PASS] testWrongPermitExpiryRollsBackAllStateThenRetries() (gas: 6467398)
+Suite result: ok. 6 passed; 0 failed; 0 skipped; finished in 462.03ms (404.05ms CPU time)
+
+Ran 3 test suites in 471.63ms (739.82ms CPU time): 20 tests passed, 0 failed, 0 skipped (20 total tests)
