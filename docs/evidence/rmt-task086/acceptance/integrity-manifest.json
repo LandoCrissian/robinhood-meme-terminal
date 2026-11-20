@@ -1,0 +1,160 @@
+{
+  "schemaVersion": 1,
+  "scope": "LOCAL31337_SYNTHETIC_ACCEPTANCE_AND_READ_ONLY_REAL_NFT_FORK_CALLS",
+  "production": false,
+  "base": "91e7c1914d2fd87287b3b4b0f243c982c1faf36f",
+  "sourceState": "UNCOMMITTED_TASK086_SOURCE_CAPTURED_AFTER_SUCCESSFUL_RUN",
+  "command": "node --max-old-space-size=384 C:/Users/RMT/AppData/Local/Temp/rmt-task086-acceptance-local4.mjs",
+  "cwd": "C:/Users/RMT/Documents/Codex/2026-11-11/rmt-task086",
+  "nodeVersion": "v22.23.2",
+  "sourceFiles": [
+    {
+      "path": "scripts/seaport-acquisition/task086-collection-acceptance.mjs",
+      "sha256": "42dea9101cee1b8bb53c2a10d18b6807c6b6301f523ec9ed616f7b3cd4dd0d01",
+      "executedByStandaloneRunner": true
+    },
+    {
+      "path": "scripts/seaport-acquisition/task086-collection-acceptance.test.mjs",
+      "sha256": "37f033cce92cca41ee00521b3949ff22c34a2f45de457e64be16f8027bfd682b",
+      "executedByStandaloneRunner": false
+    },
+    {
+      "path": "scripts/seaport-acquisition/fixture-run.mjs",
+      "sha256": "575e42d89de22b04c1ede25f406515053587fb27b8069b210e2410e888459910",
+      "executedByStandaloneRunner": true
+    },
+    {
+      "path": "scripts/seaport-acquisition/compiler.mjs",
+      "sha256": "9734c60009ed95ecc73327412e37dc89d081d4056fdf92b18b14bd78022b22f5",
+      "executedByStandaloneRunner": true
+    },
+    {
+      "path": "scripts/seaport-acquisition/browser-run.mjs",
+      "sha256": "529e4c4345275b019eae4957071e8e2fbbe1d872f90c13d842a253f2ca3d5859",
+      "executedByStandaloneRunner": false
+    }
+  ],
+  "candidateCompilerInputSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+  "compilerVersion": "0.8.26+commit.8a97fa7a",
+  "compilerExecutableSha256": "537fd8d8d4a0433a971bf456fc06f7b021cdcee27b252f74da49e0d8559aeb67",
+  "upstream": {
+    "url": "https://rpc.mainnet.chain.robinhood.com",
+    "chainId": 4663,
+    "blockNumber": "118716568",
+    "blockHash": "0xc588dcd95588262071942d67d405bb859debb213405ac4f927aacef356964845",
+    "readOnly": true
+  },
+  "members": [
+    {
+      "original": "rmt-task086-acceptance-local4/task086-collection-acceptance.json",
+      "path": "local4/task086-collection-acceptance.json.gz",
+      "rawSha256": "c1303b22ca108b34a27b245324d16bf052684a5a725c565d84477207880250b6",
+      "rawBytes": 68778,
+      "storedSha256": "a699eae07eefa903a81e1167cff915e60756ab8d811e56fad85ace932881275e",
+      "storedBytes": 7339,
+      "encoding": "gzip mtime0 original bytes"
+    },
+    {
+      "original": "rmt-task086-acceptance-local4/task086-real-collection-fork.json",
+      "path": "local4/task086-real-collection-fork.json.gz",
+      "rawSha256": "158089f4b6b63efdd9ac6f7523d01581c19663e6b2688d67f7a3a5bd7e227119",
+      "rawBytes": 5665,
+      "storedSha256": "44d8a4cdbc95446037430d6f765bd0141f947c6488d0da9376a7082310911508",
+      "storedBytes": 1893,
+      "encoding": "gzip mtime0 original bytes"
+    },
+    {
+      "original": "rmt-task086-acceptance-local4/chain/seaport-acquisition-deployment.json",
+      "path": "local4/chain/seaport-acquisition-deployment.json.gz",
+      "rawSha256": "b74ef0a2c7300ac1b68e6110abb9f0282050414f15ebe0bc401e3651536a5d12",
+      "rawBytes": 6129,
+      "storedSha256": "6aab7cc3ad582f3d1ff9ecb9d5d313bbf16e0f5f7ba56f06921c24c46e56cc24",
+      "storedBytes": 2030,
+      "encoding": "gzip mtime0 original bytes"
+    },
+    {
+      "original": "rmt-task086-acceptance-local4/chain/seaport-acquisition-fixture-evidence.json",
+      "path": "local4/chain/seaport-acquisition-fixture-evidence.json.gz",
+      "rawSha256": "abfce2e43357ab1338e784390dda4383bab02306f34c49ed0201bed346f0c2a2",
+      "rawBytes": 1047198,
+      "storedSha256": "5c0b628fd75cd95d4738e429e6ce1c68c07aeeb349645e00c53c3faa46b42ec2",
+      "storedBytes": 104462,
+      "encoding": "gzip mtime0 original bytes"
+    },
+    {
+      "original": "rmt-task086-acceptance-local4.mjs",
+      "path": "local4/standalone-runner.mjs.gz",
+      "rawSha256": "edff5feddfb997115c710a4da9e59acd51beb9685a8722adb5cb948387cb0e22",
+      "rawBytes": 1807,
+      "storedSha256": "2ea2253673d81cac3cef8c737243f53e0dd58e947b0793b3fe82eaa8ddb64a8b",
+      "storedBytes": 792,
+      "encoding": "gzip mtime0 original bytes"
+    },
+    {
+      "original": "rmt-task086-acceptance-local/native-order-admission-evidence.json",
+      "path": "failures/local/native-order-admission-evidence.json.gz",
+      "rawSha256": "75ffa55587b6d50fda4700a37cf1b2c606ffdf73b005ab8aa5efd5206f1fa5ea",
+      "rawBytes": 406,
+      "storedSha256": "f4b6f1e012c5a94bf52c565ad06992129b3b46ffa8b2ee34d03bba46c931bd12",
+      "storedBytes": 264,
+      "encoding": "gzip mtime0 original bytes"
+    },
+    {
+      "original": "rmt-task086-acceptance-local2/native-order-admission-evidence.json",
+      "path": "failures/local2/native-order-admission-evidence.json.gz",
+      "rawSha256": "9f17e87636c3d275adbd1000c32509604a0d39ff56fb47922bf1de1930bbcc8f",
+      "rawBytes": 69736,
+      "storedSha256": "909f8d9e0a8f289355c953439dd52004d69478ad014242c44d792d21b19de8ed",
+      "storedBytes": 6611,
+      "encoding": "gzip mtime0 original bytes"
+    },
+    {
+      "original": "rmt-task086-acceptance-local3/task086-collection-acceptance.json",
+      "path": "failures/local3/task086-collection-acceptance.json.gz",
+      "rawSha256": "ea7b6eae490a6d1975572a39b131ba61800124be214c2b040bc229f64fdefaf4",
+      "rawBytes": 41196,
+      "storedSha256": "b1133683886b55a6c11a04e74763bf245713a99e2a774f9c5941492a56c26945",
+      "storedBytes": 4606,
+      "encoding": "gzip mtime0 original bytes"
+    },
+    {
+      "original": "rmt-task086-acceptance-local3/standalone-failure.txt",
+      "path": "failures/local3/standalone-failure.txt.gz",
+      "rawSha256": "573882e2127a7c2998f23e31462d3dc7fe3d845a03775ccb37adbb7236fdbfba",
+      "rawBytes": 1637,
+      "storedSha256": "9d4d4666d3bf00cdf39715f56dbdac51f214adbbb7e37897b6b037ab52cb0196",
+      "storedBytes": 661,
+      "encoding": "gzip mtime0 original bytes"
+    }
+  ],
+  "limitations": [
+    "This is a standalone local fork helper run, not PostgreSQL/browser acceptance.",
+    "Source files were hashed after the successful run; source was uncommitted at execution. Browser integration was not invoked by this standalone command.",
+    "Early local/local2 reports are incomplete; their original console failure logs were not retained. Reported witness/client and host memory interruptions are not passed tests.",
+    "Local3 completes six negatives then fee-recipient configuration while ON correctly reverts InvalidPolicy. The corrected local4 helper uses OFF/configure/ON; the partial local3 attempt remains failed.",
+    "No private keys, Anvil state, PostgreSQL data, environment files, authentication logs or broad temporary trees are retained."
+  ],
+  "privacy": {
+    "status": "REVIEWED_EXACT_PUBLIC_FIXTURE_VALUES",
+    "configPath": ".gitleaks.toml",
+    "configSha256": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+    "scanner": "Gitleaks8.30.1",
+    "scannerExitCode": 1,
+    "rawFindings": 36,
+    "classifiedFindings": 36,
+    "unknown": 0,
+    "rawZeroClaimed": false,
+    "originalReport": "raw-gitleaks-report.json",
+    "originalReportSha256": "d57522db87c72db53f0d5f6084d469d220d28cc186c572f5ff5f24e25304cce9",
+    "classifications": "privacy-classifications.json",
+    "classificationsSha256": "c2e6e2731529254a80ba205ef6db011f8fe4b41f1d16551c660b98f430f89d6f",
+    "blanketExemptionsAdded": false,
+    "authoredScan": {
+      "scope": "Authored acceptance files and retained redacted report; gzip binary contents separately scanned as original plaintext",
+      "scannerExitCode": 0,
+      "rawFindings": 0,
+      "originalReport": "authored-gitleaks-report.json",
+      "originalReportSha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+    }
+  }
+}

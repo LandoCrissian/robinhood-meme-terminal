@@ -1,0 +1,1592 @@
+{
+  "schemaVersion": 1,
+  "status": "BLOCKED_NO_BROADCAST",
+  "chainId": 4663,
+  "collection": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+  "tokenId": "478",
+  "observedAt": "2026-11-20T02:39:20.147Z",
+  "productionApproved": false,
+  "productionCatalogEmpty": true,
+  "broadcast": false,
+  "realSignatures": false,
+  "exploration": {
+    "candidates": 1,
+    "maximumCandidates": 1,
+    "additionalCandidates": []
+  },
+  "providers": {
+    "official": {
+      "chainId": 4663,
+      "anchor": {
+        "number": "118715542",
+        "hash": "0x7d1b0cd49e3ef0eab841af0579691509d1f81728f995cddc56b52c3308df7a0f",
+        "timestamp": "1795142366"
+      },
+      "roles": [
+        {
+          "role": "collection",
+          "address": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+          "runtimeHash": "0xe3e252831cdd0c11e1327d04a57ddd9bfa11ef49d50edb524040d98bfb228bc4",
+          "codeBytes": 45,
+          "source": {
+            "status": "SOURCE_UNAVAILABLE",
+            "url": "https://sourcify.dev/server/v2/contract/4663/0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf?fields=all",
+            "responseSha256": "6b508c7f0631a52470182b8ec3997c70d973ac0ce07615e3ca925ef250154df3",
+            "fullRuntimeMatch": false,
+            "executableOutsideImmutablesEqual": false,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "implementation",
+          "address": "0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a",
+          "runtimeHash": "0xda60742d810ae5de9c087af2e82b05fb84e9112cfade927fca0db6490ea52519",
+          "codeBytes": 21257,
+          "source": {
+            "status": "HOSTED_4663_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+            "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "validator",
+          "address": "0x721c008fdff27bf06e7e123956e2fe03b63342e3",
+          "runtimeHash": "0xcf4eb611d0a4264a3cca483100d883e21545581c69b80e9d0cc29606d4b93dcc",
+          "codeBytes": 24012,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0x721C008fdff27BF06E7E123956E2Fe03B63342e3?fields=all",
+            "responseSha256": "f52a3735d2350c81f97193510415fa5c8b003a4e71ca3d77a1a4db044c1f57d2",
+            "fullRuntimeMatch": false,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {
+              "1959": [
+                "0x000000000000000000000000000000000000000000000000002386f26fc0ffff"
+              ],
+              "1969": [
+                "0x000000000000000000000000000000000000000000000000000004b6000029ee"
+              ],
+              "5834": [
+                "0x483558bb3370d22f0ea3b5c603e45ebc1c7710173e253dfc06990d6dac01763a"
+              ],
+              "5836": [
+                "0x0000000000000000000000000000000000000000000000000000000000001237"
+              ],
+              "5838": [
+                "0x12900c1b40e87470816fa5cb16069bf5b3df9cf052332bf21440c4318ccddcfe"
+              ],
+              "5840": [
+                "0xceebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1"
+              ],
+              "6123": [
+                "0x00000000000000000000000079a95940c17a9a8148633a11ff9d0ddcffd9c00d"
+              ],
+              "6125": [
+                "0x0000000000000000000000000000000000000000000000000000000000000001"
+              ],
+              "6133": [
+                "0x000000000000000000000000000000000000000000000000000003e40000293a"
+              ],
+              "6141": [
+                "0x000000000000000000000000000000000000000000000000000003eb00002941"
+              ],
+              "7284": [
+                "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+              ],
+              "7287": [
+                "0x000000000000000000000000721c002d2cae3522602b93a0c48e11dc573a15e3"
+              ],
+              "7290": [
+                "0x000000000000000000000000721c0086cc4f335407cc84a38ce7dcb1560476b0"
+              ]
+            },
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "seaport",
+          "address": "0x0000000000000068f116a894984e2db1123eb395",
+          "runtimeHash": "0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00",
+          "codeBytes": 23981,
+          "source": {
+            "status": "PREVIOUSLY_PINNED_GENUINE_SEAPORT_RUNTIME",
+            "url": null,
+            "responseSha256": null,
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": false,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "eoaRegistry",
+          "address": "0xe0a0004dfa318fc38298ae81a666710eadceba5c",
+          "runtimeHash": "0xfe3fbfc8531306c13a0f0ad06d65e5b2e88371c58cea45e043ad0551b764e27e",
+          "codeBytes": 1695,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0xe0a0004dfa318fc38298ae81a666710eadceba5c?fields=all",
+            "responseSha256": "30f2c6a2051759e08ffd647158e9ab550f54890bdd18b2c8ee86530c57c046f3",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {
+              "1462": [
+                "0xd3f5cd7a1487f8f0a2a12cf6e95545173640e44a3a845c5f2c9d00175aab4294"
+              ]
+            },
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "managementModule",
+          "address": "0x721c002d2cae3522602b93a0c48e11dc573a15e3",
+          "runtimeHash": "0x73c94f7afb0ba50e2a3af6f5438eb23eff5bf1bac9291ffc41340ff67c8aa541",
+          "codeBytes": 8863,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0x721c002d2cae3522602b93a0c48e11dc573a15e3?fields=all",
+            "responseSha256": "887a6c8ed4c608a8d48a22dae3ec7220736425d443be26edba72c2187312429e",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "safeDelegateModule",
+          "address": "0x721c0086cc4f335407cc84a38ce7dcb1560476b0",
+          "runtimeHash": "0x19638ae5f6bd6151d4d1098d703843151428ba0b58fa414dc98571b88b950eaa",
+          "codeBytes": 1360,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0x721c0086cc4f335407cc84a38ce7dcb1560476b0?fields=all",
+            "responseSha256": "3c5e4cc3810c4612c0d08ed1a297ec7f079c8c2c6a2508b4276856f1718a6f3a",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "ruleset",
+          "address": "0x00721ce73fde1e57a9048e0e19b7ee7c8d3f10e3",
+          "runtimeHash": "0x8815ac6b412bff918dbb4fb3d1d5c358418b3e4dcac0bac971dc2285a03ae09a",
+          "codeBytes": 3851,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0x00721ce73fde1e57a9048e0e19b7ee7c8d3f10e3?fields=all",
+            "responseSha256": "6fe13e3d6cff7853fd34bca8a00d94bc6731c03d9f03cb610c986aadb5a71457",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {
+              "57": [
+                "0x000000000000000000000000000000000000000000000000000001a200000277"
+              ],
+              "1523": [
+                "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+              ]
+            },
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        }
+      ],
+      "state": {
+        "clone": {
+          "kind": "EIP1167_FIXED_IMPLEMENTATION",
+          "implementation": "0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a",
+          "runtime": "0x363d3d373d3d3d363d7309a26fc8fcef18192e267d7a6da9dfb4be81dd6a5af43d82803e903d91602b57fd5bf3"
+        },
+        "validatorModuleBindings": {
+          "referenceChainId": 1,
+          "actualDeploymentConstructorVerified": false,
+          "overallImmutableBindingsVerified": false,
+          "modules": {
+            "eoaRegistry": {
+              "address": "0xe0a0004dfa318fc38298ae81a666710eadceba5c",
+              "referenceImmutableId": "7284",
+              "actualValues": [
+                "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+              ],
+              "currentCodeBindingVerified": true
+            },
+            "managementModule": {
+              "address": "0x721c002d2cae3522602b93a0c48e11dc573a15e3",
+              "referenceImmutableId": "7287",
+              "actualValues": [
+                "0x000000000000000000000000721c002d2cae3522602b93a0c48e11dc573a15e3"
+              ],
+              "currentCodeBindingVerified": true
+            },
+            "safeDelegateModule": {
+              "address": "0x721c0086cc4f335407cc84a38ce7dcb1560476b0",
+              "referenceImmutableId": "7290",
+              "actualValues": [
+                "0x000000000000000000000000721c0086cc4f335407cc84a38ce7dcb1560476b0"
+              ],
+              "currentCodeBindingVerified": true
+            }
+          }
+        },
+        "collectionOwner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "validator": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+        "maxSupply": "720",
+        "totalSupply": "720",
+        "seller": "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+        "tokenApproved": "0x0000000000000000000000000000000000000000",
+        "royaltyQuote": [
+          "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "100000000000000000"
+        ],
+        "erc721": true,
+        "erc1155": false,
+        "validatorOwner": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+        "validatorPolicy": {
+          "rulesetId": 0,
+          "listId": 0,
+          "customRuleset": "0x0000000000000000000000000000000000000000",
+          "globalOptions": 0,
+          "rulesetOptions": 2,
+          "tokenType": 0
+        },
+        "ruleset": "0x00721CE73fDE1e57A9048E0e19B7ee7c8D3F10E3",
+        "listOwner": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+        "sellerFrozen": false,
+        "receiverFrozen": false,
+        "operatorApprovals": {
+          "seaport": false,
+          "conduit": true
+        },
+        "operatorWhitelist": {
+          "seaport": false,
+          "conduit": false
+        },
+        "sellerWhitelisted": false,
+        "authorityAccounts": [
+          {
+            "role": "collectionOwner",
+            "address": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+            "codeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+            "codeBytes": 23,
+            "accountKind": "EIP7702_DELEGATED",
+            "signerIndependenceOrKeyControlVerified": false
+          },
+          {
+            "role": "validatorOwner",
+            "address": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+            "codeHash": "0xa8c88f963781240d1488a5daa469fefc49f2b373f9ee70fa7e360618f3ce92e0",
+            "codeBytes": 12878,
+            "accountKind": "CONTRACT_OR_UNKNOWN",
+            "signerIndependenceOrKeyControlVerified": false
+          },
+          {
+            "role": "listOwner",
+            "address": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+            "codeHash": "0xa8c88f963781240d1488a5daa469fefc49f2b373f9ee70fa7e360618f3ce92e0",
+            "codeBytes": 12878,
+            "accountKind": "CONTRACT_OR_UNKNOWN",
+            "signerIndependenceOrKeyControlVerified": false
+          }
+        ]
+      },
+      "transferChecks": [
+        {
+          "kind": "directTransferFrom",
+          "operator": "0x0000000000000068F116a894984e2DB1123eB395",
+          "from": "0x0000000000000068F116a894984e2DB1123eB395",
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "receiver": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "method": "transferFrom(address,address,uint256)",
+          "approvalPresent": false,
+          "approved": false,
+          "success": false,
+          "revertData": "0x59c896be",
+          "status": "SELLER_AUTHORIZATION_MISSING",
+          "revertSelector": "0x59c896be",
+          "errorName": "TransferCallerNotOwnerNorApproved",
+          "limitation": "An unapproved Seaport call does not prove immutable validator or receiver incompatibility.",
+          "receiverScope": "EXISTING_OPERATIONS_SAFE_CONTRACT_SAMPLE_NOT_V2_VAULT"
+        },
+        {
+          "kind": "validatorSimulation",
+          "operator": "0x0000000000000068F116a894984e2DB1123eB395",
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "receiver": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "method": "validateTransfer(address,address,address,uint256)",
+          "approvalPresent": false,
+          "approved": false,
+          "success": false,
+          "revertData": "0xe1f1d02e",
+          "errorCode": "0xe1f1d02e",
+          "errorName": "CreatorTokenTransferValidator__CallerOrFromMustBeWhitelisted",
+          "simulationResult": [
+            false,
+            "0xe1f1d02e"
+          ],
+          "receiverScope": "EXISTING_OPERATIONS_SAFE_CONTRACT_SAMPLE_NOT_V2_VAULT"
+        },
+        {
+          "kind": "directTransferFrom",
+          "operator": "0x963f00d3ff000064ffcba824b800c0000000c300",
+          "from": "0x963f00d3ff000064ffcba824b800c0000000c300",
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "receiver": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "method": "transferFrom(address,address,uint256)",
+          "approvalPresent": true,
+          "approved": true,
+          "success": false,
+          "revertData": "0xe1f1d02e",
+          "status": "TRANSFER_REJECTED_REQUIRES_POLICY_REVIEW",
+          "revertSelector": "0xe1f1d02e",
+          "errorName": "CreatorTokenTransferValidator__CallerOrFromMustBeWhitelisted",
+          "limitation": "An unapproved Seaport call does not prove immutable validator or receiver incompatibility.",
+          "receiverScope": "EXISTING_OPERATIONS_SAFE_CONTRACT_SAMPLE_NOT_V2_VAULT"
+        },
+        {
+          "kind": "validatorSimulation",
+          "operator": "0x963f00d3ff000064ffcba824b800c0000000c300",
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "receiver": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "method": "validateTransfer(address,address,address,uint256)",
+          "approvalPresent": true,
+          "approved": true,
+          "success": false,
+          "revertData": "0xe1f1d02e",
+          "errorCode": "0xe1f1d02e",
+          "errorName": "CreatorTokenTransferValidator__CallerOrFromMustBeWhitelisted",
+          "simulationResult": [
+            false,
+            "0xe1f1d02e"
+          ],
+          "receiverScope": "EXISTING_OPERATIONS_SAFE_CONTRACT_SAMPLE_NOT_V2_VAULT"
+        }
+      ],
+      "reads": [
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "owner",
+          "args": [],
+          "success": true,
+          "value": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "getTransferValidator",
+          "args": [],
+          "success": true,
+          "value": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "maxSupply",
+          "args": [],
+          "success": true,
+          "value": "720",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "totalSupply",
+          "args": [],
+          "success": true,
+          "value": "720",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "ownerOf",
+          "args": [
+            "478"
+          ],
+          "success": true,
+          "value": "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "getApproved",
+          "args": [
+            "478"
+          ],
+          "success": true,
+          "value": "0x0000000000000000000000000000000000000000",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "royaltyInfo",
+          "args": [
+            "478",
+            "1000000000000000000"
+          ],
+          "success": true,
+          "value": [
+            "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+            "100000000000000000"
+          ],
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "supportsInterface",
+          "args": [
+            "0x80ac58cd"
+          ],
+          "success": true,
+          "value": true,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "supportsInterface",
+          "args": [
+            "0xd9b67a26"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "owner",
+          "args": [],
+          "success": true,
+          "value": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "getCollectionSecurityPolicy",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf"
+          ],
+          "success": true,
+          "value": {
+            "rulesetId": 0,
+            "listId": 0,
+            "customRuleset": "0x0000000000000000000000000000000000000000",
+            "globalOptions": 0,
+            "rulesetOptions": 2,
+            "tokenType": 0
+          },
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "boundRuleset",
+          "args": [
+            0
+          ],
+          "success": true,
+          "value": "0x00721CE73fDE1e57A9048E0e19B7ee7c8D3F10E3",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "listOwners",
+          "args": [
+            0
+          ],
+          "success": true,
+          "value": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountFrozenForCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountFrozenForCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "isApprovedForAll",
+          "args": [
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0x0000000000000068F116a894984e2DB1123eB395"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountInListByCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            1,
+            "0x0000000000000068F116a894984e2DB1123eB395"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": "0x0000000000000068F116a894984e2DB1123eB395",
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "transferFrom",
+          "args": [
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": false,
+          "value": null,
+          "revertData": "0x59c896be",
+          "revertSelector": "0x59c896be"
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "validateTransferSim",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            "0x0000000000000068F116a894984e2DB1123eB395",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": true,
+          "value": [
+            false,
+            "0xe1f1d02e"
+          ],
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "validateTransfer",
+          "args": [
+            "0x0000000000000068F116a894984e2DB1123eB395",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": false,
+          "value": null,
+          "revertData": "0xe1f1d02e",
+          "revertSelector": "0xe1f1d02e"
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "isApprovedForAll",
+          "args": [
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0x963f00d3ff000064ffcba824b800c0000000c300"
+          ],
+          "success": true,
+          "value": true,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountInListByCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            1,
+            "0x963f00d3ff000064ffcba824b800c0000000c300"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": "0x963f00d3ff000064ffcba824b800c0000000c300",
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "transferFrom",
+          "args": [
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": false,
+          "value": null,
+          "revertData": "0xe1f1d02e",
+          "revertSelector": "0xe1f1d02e"
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "validateTransferSim",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            "0x963f00d3ff000064ffcba824b800c0000000c300",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": true,
+          "value": [
+            false,
+            "0xe1f1d02e"
+          ],
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "validateTransfer",
+          "args": [
+            "0x963f00d3ff000064ffcba824b800c0000000c300",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": false,
+          "value": null,
+          "revertData": "0xe1f1d02e",
+          "revertSelector": "0xe1f1d02e"
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountInListByCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            1,
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        }
+      ],
+      "canonicalRechecked": true
+    },
+    "pocket": {
+      "chainId": 4663,
+      "anchor": {
+        "number": "118715542",
+        "hash": "0x7d1b0cd49e3ef0eab841af0579691509d1f81728f995cddc56b52c3308df7a0f",
+        "timestamp": "1795142366"
+      },
+      "roles": [
+        {
+          "role": "collection",
+          "address": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+          "runtimeHash": "0xe3e252831cdd0c11e1327d04a57ddd9bfa11ef49d50edb524040d98bfb228bc4",
+          "codeBytes": 45,
+          "source": {
+            "status": "SOURCE_UNAVAILABLE",
+            "url": "https://sourcify.dev/server/v2/contract/4663/0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf?fields=all",
+            "responseSha256": "6b508c7f0631a52470182b8ec3997c70d973ac0ce07615e3ca925ef250154df3",
+            "fullRuntimeMatch": false,
+            "executableOutsideImmutablesEqual": false,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "implementation",
+          "address": "0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a",
+          "runtimeHash": "0xda60742d810ae5de9c087af2e82b05fb84e9112cfade927fca0db6490ea52519",
+          "codeBytes": 21257,
+          "source": {
+            "status": "HOSTED_4663_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+            "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "validator",
+          "address": "0x721c008fdff27bf06e7e123956e2fe03b63342e3",
+          "runtimeHash": "0xcf4eb611d0a4264a3cca483100d883e21545581c69b80e9d0cc29606d4b93dcc",
+          "codeBytes": 24012,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0x721C008fdff27BF06E7E123956E2Fe03B63342e3?fields=all",
+            "responseSha256": "f52a3735d2350c81f97193510415fa5c8b003a4e71ca3d77a1a4db044c1f57d2",
+            "fullRuntimeMatch": false,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {
+              "1959": [
+                "0x000000000000000000000000000000000000000000000000002386f26fc0ffff"
+              ],
+              "1969": [
+                "0x000000000000000000000000000000000000000000000000000004b6000029ee"
+              ],
+              "5834": [
+                "0x483558bb3370d22f0ea3b5c603e45ebc1c7710173e253dfc06990d6dac01763a"
+              ],
+              "5836": [
+                "0x0000000000000000000000000000000000000000000000000000000000001237"
+              ],
+              "5838": [
+                "0x12900c1b40e87470816fa5cb16069bf5b3df9cf052332bf21440c4318ccddcfe"
+              ],
+              "5840": [
+                "0xceebf77a833b30520287ddd9478ff51abbdffa30aa90a8d655dba0e8a79ce0c1"
+              ],
+              "6123": [
+                "0x00000000000000000000000079a95940c17a9a8148633a11ff9d0ddcffd9c00d"
+              ],
+              "6125": [
+                "0x0000000000000000000000000000000000000000000000000000000000000001"
+              ],
+              "6133": [
+                "0x000000000000000000000000000000000000000000000000000003e40000293a"
+              ],
+              "6141": [
+                "0x000000000000000000000000000000000000000000000000000003eb00002941"
+              ],
+              "7284": [
+                "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+              ],
+              "7287": [
+                "0x000000000000000000000000721c002d2cae3522602b93a0c48e11dc573a15e3"
+              ],
+              "7290": [
+                "0x000000000000000000000000721c0086cc4f335407cc84a38ce7dcb1560476b0"
+              ]
+            },
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "seaport",
+          "address": "0x0000000000000068f116a894984e2db1123eb395",
+          "runtimeHash": "0x95809b70c9659c30188db5fdd87103e24b1a55379af8c851fca393aba0224a00",
+          "codeBytes": 23981,
+          "source": {
+            "status": "PREVIOUSLY_PINNED_GENUINE_SEAPORT_RUNTIME",
+            "url": null,
+            "responseSha256": null,
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": false,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "eoaRegistry",
+          "address": "0xe0a0004dfa318fc38298ae81a666710eadceba5c",
+          "runtimeHash": "0xfe3fbfc8531306c13a0f0ad06d65e5b2e88371c58cea45e043ad0551b764e27e",
+          "codeBytes": 1695,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0xe0a0004dfa318fc38298ae81a666710eadceba5c?fields=all",
+            "responseSha256": "30f2c6a2051759e08ffd647158e9ab550f54890bdd18b2c8ee86530c57c046f3",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {
+              "1462": [
+                "0xd3f5cd7a1487f8f0a2a12cf6e95545173640e44a3a845c5f2c9d00175aab4294"
+              ]
+            },
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "managementModule",
+          "address": "0x721c002d2cae3522602b93a0c48e11dc573a15e3",
+          "runtimeHash": "0x73c94f7afb0ba50e2a3af6f5438eb23eff5bf1bac9291ffc41340ff67c8aa541",
+          "codeBytes": 8863,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0x721c002d2cae3522602b93a0c48e11dc573a15e3?fields=all",
+            "responseSha256": "887a6c8ed4c608a8d48a22dae3ec7220736425d443be26edba72c2187312429e",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "safeDelegateModule",
+          "address": "0x721c0086cc4f335407cc84a38ce7dcb1560476b0",
+          "runtimeHash": "0x19638ae5f6bd6151d4d1098d703843151428ba0b58fa414dc98571b88b950eaa",
+          "codeBytes": 1360,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0x721c0086cc4f335407cc84a38ce7dcb1560476b0?fields=all",
+            "responseSha256": "3c5e4cc3810c4612c0d08ed1a297ec7f079c8c2c6a2508b4276856f1718a6f3a",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {},
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        },
+        {
+          "role": "ruleset",
+          "address": "0x00721ce73fde1e57a9048e0e19b7ee7c8d3f10e3",
+          "runtimeHash": "0x8815ac6b412bff918dbb4fb3d1d5c358418b3e4dcac0bac971dc2285a03ae09a",
+          "codeBytes": 3851,
+          "source": {
+            "status": "REFERENCE_CHAIN1_SOURCE",
+            "url": "https://sourcify.dev/server/v2/contract/1/0x00721ce73fde1e57a9048e0e19b7ee7c8d3f10e3?fields=all",
+            "responseSha256": "6fe13e3d6cff7853fd34bca8a00d94bc6731c03d9f03cb610c986aadb5a71457",
+            "fullRuntimeMatch": true,
+            "executableOutsideImmutablesEqual": true,
+            "immutableBindings": {
+              "57": [
+                "0x000000000000000000000000000000000000000000000000000001a200000277"
+              ],
+              "1523": [
+                "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+              ]
+            },
+            "immutableBindingsVerified": false,
+            "independentlyRecompiled": false
+          }
+        }
+      ],
+      "state": {
+        "clone": {
+          "kind": "EIP1167_FIXED_IMPLEMENTATION",
+          "implementation": "0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a",
+          "runtime": "0x363d3d373d3d3d363d7309a26fc8fcef18192e267d7a6da9dfb4be81dd6a5af43d82803e903d91602b57fd5bf3"
+        },
+        "validatorModuleBindings": {
+          "referenceChainId": 1,
+          "actualDeploymentConstructorVerified": false,
+          "overallImmutableBindingsVerified": false,
+          "modules": {
+            "eoaRegistry": {
+              "address": "0xe0a0004dfa318fc38298ae81a666710eadceba5c",
+              "referenceImmutableId": "7284",
+              "actualValues": [
+                "0x000000000000000000000000e0a0004dfa318fc38298ae81a666710eadceba5c"
+              ],
+              "currentCodeBindingVerified": true
+            },
+            "managementModule": {
+              "address": "0x721c002d2cae3522602b93a0c48e11dc573a15e3",
+              "referenceImmutableId": "7287",
+              "actualValues": [
+                "0x000000000000000000000000721c002d2cae3522602b93a0c48e11dc573a15e3"
+              ],
+              "currentCodeBindingVerified": true
+            },
+            "safeDelegateModule": {
+              "address": "0x721c0086cc4f335407cc84a38ce7dcb1560476b0",
+              "referenceImmutableId": "7290",
+              "actualValues": [
+                "0x000000000000000000000000721c0086cc4f335407cc84a38ce7dcb1560476b0"
+              ],
+              "currentCodeBindingVerified": true
+            }
+          }
+        },
+        "collectionOwner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+        "validator": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+        "maxSupply": "720",
+        "totalSupply": "720",
+        "seller": "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+        "tokenApproved": "0x0000000000000000000000000000000000000000",
+        "royaltyQuote": [
+          "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "100000000000000000"
+        ],
+        "erc721": true,
+        "erc1155": false,
+        "validatorOwner": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+        "validatorPolicy": {
+          "rulesetId": 0,
+          "listId": 0,
+          "customRuleset": "0x0000000000000000000000000000000000000000",
+          "globalOptions": 0,
+          "rulesetOptions": 2,
+          "tokenType": 0
+        },
+        "ruleset": "0x00721CE73fDE1e57A9048E0e19B7ee7c8D3F10E3",
+        "listOwner": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+        "sellerFrozen": false,
+        "receiverFrozen": false,
+        "operatorApprovals": {
+          "seaport": false,
+          "conduit": true
+        },
+        "operatorWhitelist": {
+          "seaport": false,
+          "conduit": false
+        },
+        "sellerWhitelisted": false,
+        "authorityAccounts": [
+          {
+            "role": "collectionOwner",
+            "address": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+            "codeHash": "0xb09ef517c48d2bf6eed05457ff56871b2596e3fc904fc6e9795882a870c2e993",
+            "codeBytes": 23,
+            "accountKind": "EIP7702_DELEGATED",
+            "signerIndependenceOrKeyControlVerified": false
+          },
+          {
+            "role": "validatorOwner",
+            "address": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+            "codeHash": "0xa8c88f963781240d1488a5daa469fefc49f2b373f9ee70fa7e360618f3ce92e0",
+            "codeBytes": 12878,
+            "accountKind": "CONTRACT_OR_UNKNOWN",
+            "signerIndependenceOrKeyControlVerified": false
+          },
+          {
+            "role": "listOwner",
+            "address": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+            "codeHash": "0xa8c88f963781240d1488a5daa469fefc49f2b373f9ee70fa7e360618f3ce92e0",
+            "codeBytes": 12878,
+            "accountKind": "CONTRACT_OR_UNKNOWN",
+            "signerIndependenceOrKeyControlVerified": false
+          }
+        ]
+      },
+      "transferChecks": [
+        {
+          "kind": "directTransferFrom",
+          "operator": "0x0000000000000068F116a894984e2DB1123eB395",
+          "from": "0x0000000000000068F116a894984e2DB1123eB395",
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "receiver": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "method": "transferFrom(address,address,uint256)",
+          "approvalPresent": false,
+          "approved": false,
+          "success": false,
+          "revertData": "0x59c896be",
+          "status": "SELLER_AUTHORIZATION_MISSING",
+          "revertSelector": "0x59c896be",
+          "errorName": "TransferCallerNotOwnerNorApproved",
+          "limitation": "An unapproved Seaport call does not prove immutable validator or receiver incompatibility.",
+          "receiverScope": "EXISTING_OPERATIONS_SAFE_CONTRACT_SAMPLE_NOT_V2_VAULT"
+        },
+        {
+          "kind": "validatorSimulation",
+          "operator": "0x0000000000000068F116a894984e2DB1123eB395",
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "receiver": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "method": "validateTransfer(address,address,address,uint256)",
+          "approvalPresent": false,
+          "approved": false,
+          "success": false,
+          "revertData": "0xe1f1d02e",
+          "errorCode": "0xe1f1d02e",
+          "errorName": "CreatorTokenTransferValidator__CallerOrFromMustBeWhitelisted",
+          "simulationResult": [
+            false,
+            "0xe1f1d02e"
+          ],
+          "receiverScope": "EXISTING_OPERATIONS_SAFE_CONTRACT_SAMPLE_NOT_V2_VAULT"
+        },
+        {
+          "kind": "directTransferFrom",
+          "operator": "0x963f00d3ff000064ffcba824b800c0000000c300",
+          "from": "0x963f00d3ff000064ffcba824b800c0000000c300",
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "receiver": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "method": "transferFrom(address,address,uint256)",
+          "approvalPresent": true,
+          "approved": true,
+          "success": false,
+          "revertData": "0xe1f1d02e",
+          "status": "TRANSFER_REJECTED_REQUIRES_POLICY_REVIEW",
+          "revertSelector": "0xe1f1d02e",
+          "errorName": "CreatorTokenTransferValidator__CallerOrFromMustBeWhitelisted",
+          "limitation": "An unapproved Seaport call does not prove immutable validator or receiver incompatibility.",
+          "receiverScope": "EXISTING_OPERATIONS_SAFE_CONTRACT_SAMPLE_NOT_V2_VAULT"
+        },
+        {
+          "kind": "validatorSimulation",
+          "operator": "0x963f00d3ff000064ffcba824b800c0000000c300",
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "receiver": "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+          "method": "validateTransfer(address,address,address,uint256)",
+          "approvalPresent": true,
+          "approved": true,
+          "success": false,
+          "revertData": "0xe1f1d02e",
+          "errorCode": "0xe1f1d02e",
+          "errorName": "CreatorTokenTransferValidator__CallerOrFromMustBeWhitelisted",
+          "simulationResult": [
+            false,
+            "0xe1f1d02e"
+          ],
+          "receiverScope": "EXISTING_OPERATIONS_SAFE_CONTRACT_SAMPLE_NOT_V2_VAULT"
+        }
+      ],
+      "reads": [
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "owner",
+          "args": [],
+          "success": true,
+          "value": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "getTransferValidator",
+          "args": [],
+          "success": true,
+          "value": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "maxSupply",
+          "args": [],
+          "success": true,
+          "value": "720",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "totalSupply",
+          "args": [],
+          "success": true,
+          "value": "720",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "ownerOf",
+          "args": [
+            "478"
+          ],
+          "success": true,
+          "value": "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "getApproved",
+          "args": [
+            "478"
+          ],
+          "success": true,
+          "value": "0x0000000000000000000000000000000000000000",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "royaltyInfo",
+          "args": [
+            "478",
+            "1000000000000000000"
+          ],
+          "success": true,
+          "value": [
+            "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
+            "100000000000000000"
+          ],
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "supportsInterface",
+          "args": [
+            "0x80ac58cd"
+          ],
+          "success": true,
+          "value": true,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "supportsInterface",
+          "args": [
+            "0xd9b67a26"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "owner",
+          "args": [],
+          "success": true,
+          "value": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "getCollectionSecurityPolicy",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf"
+          ],
+          "success": true,
+          "value": {
+            "rulesetId": 0,
+            "listId": 0,
+            "customRuleset": "0x0000000000000000000000000000000000000000",
+            "globalOptions": 0,
+            "rulesetOptions": 2,
+            "tokenType": 0
+          },
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "boundRuleset",
+          "args": [
+            0
+          ],
+          "success": true,
+          "value": "0x00721CE73fDE1e57A9048E0e19B7ee7c8D3F10E3",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "listOwners",
+          "args": [
+            0
+          ],
+          "success": true,
+          "value": "0x591Aa9dfF01B8144DC17Cb416001D9aC84b951cd",
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountFrozenForCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountFrozenForCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "isApprovedForAll",
+          "args": [
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0x0000000000000068F116a894984e2DB1123eB395"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountInListByCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            1,
+            "0x0000000000000068F116a894984e2DB1123eB395"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": "0x0000000000000068F116a894984e2DB1123eB395",
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "transferFrom",
+          "args": [
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": false,
+          "value": null,
+          "revertData": "0x59c896be",
+          "revertSelector": "0x59c896be"
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "validateTransferSim",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            "0x0000000000000068F116a894984e2DB1123eB395",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": true,
+          "value": [
+            false,
+            "0xe1f1d02e"
+          ],
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "validateTransfer",
+          "args": [
+            "0x0000000000000068F116a894984e2DB1123eB395",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": false,
+          "value": null,
+          "revertData": "0xe1f1d02e",
+          "revertSelector": "0xe1f1d02e"
+        },
+        {
+          "from": null,
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "isApprovedForAll",
+          "args": [
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0x963f00d3ff000064ffcba824b800c0000000c300"
+          ],
+          "success": true,
+          "value": true,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountInListByCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            1,
+            "0x963f00d3ff000064ffcba824b800c0000000c300"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": "0x963f00d3ff000064ffcba824b800c0000000c300",
+          "to": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "functionName": "transferFrom",
+          "args": [
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": false,
+          "value": null,
+          "revertData": "0xe1f1d02e",
+          "revertSelector": "0xe1f1d02e"
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "validateTransferSim",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            "0x963f00d3ff000064ffcba824b800c0000000c300",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": true,
+          "value": [
+            false,
+            "0xe1f1d02e"
+          ],
+          "revertData": null,
+          "revertSelector": null
+        },
+        {
+          "from": "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "validateTransfer",
+          "args": [
+            "0x963f00d3ff000064ffcba824b800c0000000c300",
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a",
+            "0xAF9F10258b091719618c19D057F9cDAB72eFFd8b",
+            "478"
+          ],
+          "success": false,
+          "value": null,
+          "revertData": "0xe1f1d02e",
+          "revertSelector": "0xe1f1d02e"
+        },
+        {
+          "from": null,
+          "to": "0x721C008fdff27BF06E7E123956E2Fe03B63342e3",
+          "functionName": "isAccountInListByCollection",
+          "args": [
+            "0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf",
+            1,
+            "0x5EBb2e071aE9bf1B2313d1c65c99370e9564A19a"
+          ],
+          "success": true,
+          "value": false,
+          "revertData": null,
+          "revertSelector": null
+        }
+      ],
+      "canonicalRechecked": false,
+      "offlineReconstructedFromCapturedEqualResponses": true
+    }
+  },
+  "roles": [],
+  "state": null,
+  "transferChecks": [],
+  "authorityClosure": {
+    "status": "UNRESOLVED",
+    "unknowns": [
+      "RPC_RESULT_UNAVAILABLE"
+    ],
+    "mutableBoundaries": [
+      "COLLECTION_OWNER",
+      "TRANSFER_VALIDATOR_SELECTION",
+      "COLLECTION_RULESET",
+      "VALIDATOR_LISTS",
+      "ROYALTY_CONFIGURATION",
+      "MAX_SUPPLY"
+    ]
+  },
+  "order": {
+    "status": "CURRENT_ORDER_UNAVAILABLE",
+    "fullSignedPayloadAvailable": false,
+    "api": {
+      "url": "https://api.opensea.io/api/v2/listings/collection/lammbs-59693791/best?limit=1",
+      "httpStatus": 401,
+      "responseSha256": "e7435fbb1c5ad5f3795889b78db8f659dff6d30c6b8b48d4369204d05b353f74"
+    },
+    "ui": {
+      "url": "https://opensea.io/collection/lammbs-59693791",
+      "httpStatus": 200,
+      "responseSha256": "6d639c23665884cb4a7e883caa1d434991d75ef50a86ec186e01eb742f6510b3"
+    },
+    "dependency": "A voluntarily supplied already seller-authorized complete signed supported order, or explicitly authorized lawful complete-order data access.",
+    "notRequested": "No seller signature, token approval, API purchase or credentials requested.",
+    "publicUiClaim": {
+      "tokenId": "478",
+      "standard": "ERC721",
+      "collection": "0x7a543c61c021e9a5c7949fabdc2f4e0a58088daf",
+      "listingId": "a21a1b7ac30e3a16b91fbf7928fc4667",
+      "seller": "0x5ebb2e071ae9bf1b2313d1c65c99370e9564a19a",
+      "displayPriceEth": "0.00065752",
+      "quantityRemaining": "1",
+      "startTime": "2026-11-20T02:34:01.000Z",
+      "endTime": "2026-11-27T02:34:00.000Z",
+      "reportedCurrentAtObservation": true,
+      "sourceClassification": "PUBLIC_UI_LISTING_CLAIM_NOT_SIGNED_ORDER",
+      "fullOrderParametersAvailable": false,
+      "signatureAvailable": false,
+      "executionApproved": false
+    }
+  },
+  "referenceErrorSelectors": {
+    "0x59c896be": "TransferCallerNotOwnerNorApproved",
+    "0xe1f1d02e": "CreatorTokenTransferValidator__CallerOrFromMustBeWhitelisted"
+  },
+  "attemptedAnchor": {
+    "number": "118715542",
+    "hash": "0x7d1b0cd49e3ef0eab841af0579691509d1f81728f995cddc56b52c3308df7a0f",
+    "timestamp": "1795142366"
+  },
+  "corroborated": false,
+  "observationFailure": "RPC_RESULT_UNAVAILABLE",
+  "sourceResponses": {
+    "collection-4663": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf?fields=all",
+      "httpStatus": 404,
+      "responseSha256": "6b508c7f0631a52470182b8ec3997c70d973ac0ce07615e3ca925ef250154df3"
+    },
+    "collection-1": {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x7a543c61c021e9a5c7949faBdc2f4e0a58088daf?fields=all",
+      "httpStatus": 404,
+      "responseSha256": "27d17d39e28823bc8fb3b2ac65e4007680dc350260caa3d84bbc4faab91e3695"
+    },
+    "implementation-4663": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "httpStatus": 200,
+      "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43"
+    },
+    "implementation-1": {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "httpStatus": 200,
+      "responseSha256": "b834f076bda6b12e11b7d068196031fea486bab9450b64f931e79e874983fcf7"
+    },
+    "validator-4663": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x721C008fdff27BF06E7E123956E2Fe03B63342e3?fields=all",
+      "httpStatus": 404,
+      "responseSha256": "1b4163f1e95d7e06aacc8da3592dd5ec915c7a8212f30adeb6ee1d4d250286ba"
+    },
+    "validator-1": {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x721C008fdff27BF06E7E123956E2Fe03B63342e3?fields=all",
+      "httpStatus": 200,
+      "responseSha256": "f52a3735d2350c81f97193510415fa5c8b003a4e71ca3d77a1a4db044c1f57d2"
+    },
+    "eoaRegistry-4663": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0xe0a0004dfa318fc38298ae81a666710eadceba5c?fields=all",
+      "httpStatus": 404,
+      "responseSha256": "3ae7063e73bbf10abd81236372ef0eb51d43537313c8331bdb6dbc93e6b09354"
+    },
+    "eoaRegistry-1": {
+      "url": "https://sourcify.dev/server/v2/contract/1/0xe0a0004dfa318fc38298ae81a666710eadceba5c?fields=all",
+      "httpStatus": 200,
+      "responseSha256": "30f2c6a2051759e08ffd647158e9ab550f54890bdd18b2c8ee86530c57c046f3"
+    },
+    "managementModule-4663": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x721c002d2cae3522602b93a0c48e11dc573a15e3?fields=all",
+      "httpStatus": 404,
+      "responseSha256": "0e81c0e119dde4405fc1b3da178dd5d1a90d1263934fb26351a874d9fc715b59"
+    },
+    "managementModule-1": {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x721c002d2cae3522602b93a0c48e11dc573a15e3?fields=all",
+      "httpStatus": 200,
+      "responseSha256": "887a6c8ed4c608a8d48a22dae3ec7220736425d443be26edba72c2187312429e"
+    },
+    "safeDelegateModule-4663": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x721c0086cc4f335407cc84a38ce7dcb1560476b0?fields=all",
+      "httpStatus": 404,
+      "responseSha256": "cfe951b1521d32a1d92847206fcbeeb60f826ea7ed2a94392d9481e2a3b3ec16"
+    },
+    "safeDelegateModule-1": {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x721c0086cc4f335407cc84a38ce7dcb1560476b0?fields=all",
+      "httpStatus": 200,
+      "responseSha256": "3c5e4cc3810c4612c0d08ed1a297ec7f079c8c2c6a2508b4276856f1718a6f3a"
+    },
+    "ruleset-4663": {
+      "url": "https://sourcify.dev/server/v2/contract/4663/0x00721ce73fde1e57a9048e0e19b7ee7c8d3f10e3?fields=all",
+      "httpStatus": 404,
+      "responseSha256": "2c5e2c8e81dd4c3f7791d3d0867e71593ca5927dbcd4bdd642a15838b2e10592"
+    },
+    "ruleset-1": {
+      "url": "https://sourcify.dev/server/v2/contract/1/0x00721ce73fde1e57a9048e0e19b7ee7c8d3f10e3?fields=all",
+      "httpStatus": 200,
+      "responseSha256": "6fe13e3d6cff7853fd34bca8a00d94bc6731c03d9f03cb610c986aadb5a71457"
+    }
+  },
+  "finishedAt": "2026-11-20T02:39:50.029Z",
+  "readBudget": {
+    "rpcReads": 82,
+    "maxRpcReads": 160,
+    "publicGets": 16,
+    "maxPublicGets": 16,
+    "maxConcurrentPublicGets": 4,
+    "maxConcurrentRpcReads": 8,
+    "maxConcurrentPocketReads": 1,
+    "pocketReadSpacingMs": 250
+  },
+  "offlineEvidenceReconstruction": {
+    "status": "PARTIAL_POINT_ONLY_NOT_CORROBORATED",
+    "networkReads": 0,
+    "matchedCodeAndCallResponses": 37,
+    "canonicalRecheckResponseSha256": "f8f13f2d85b7818e85619d03ca0582cc15d92fdcf7300a3d4f916199c58a74d2",
+    "limitation": "The original Pocket final header response is null. Equal captured code/state does not establish a canonical witness or collection qualification."
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "source": "1be772c8787b47fbc0c791a03a694cb2a5673d86",
+  "runId": 44665764302,
+  "mode": "strict-security",
+  "jobId": 136054534422,
+  "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44665764302/job/136054534422",
+  "conclusion": "failure",
+  "artifactId": 14598045400,
+  "artifactName": "seaport-vault-strict-security-1be772c8787b47fbc0c791a03a694cb2a5673d86",
+  "zipSha256": "b6a386298898ca14a805b81d1ba6eaf4ef6a86e75ccf7b058d6bb82e085cf3e7",
+  "production": false,
+  "members": [
+    {
+      "rawSha256": "b8c63063319fcc0519b49418fd9a8b7f00f68cae79a0df29cf927ec5a92824de",
+      "storedSha256": "4d53f3188b5602a49586f158070e7b44c7699b40e1e22fb9193cf5381e855d48",
+      "path": "strict-security/seaport-acquisition-manifest.json.gz",
+      "originalMember": "seaport-acquisition-manifest.json",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 1373,
+      "rawBytes": 3353
+    },
+    {
+      "rawSha256": "3fbc55312a027e5f69b16fb927c8549efcc6674bab509c792efdc0104083c5f5",
+      "storedSha256": "5bd4aba458d5a3100924c87bcb06ca5004e4564f27d9075405608dfb2b0611fe",
+      "path": "strict-security/seaport-acquisition.json.gz",
+      "originalMember": "seaport-acquisition.json",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 8899,
+      "rawBytes": 38851
+    },
+    {
+      "rawSha256": "42b68c7caceaaa7ff65fda391691f8c8c43c6612da87e50bbd9c8cdd4979fc4b",
+      "storedSha256": "5279490f34596f418870810173d4fa3a0f39fda90e598c22daef16688d94068f",
+      "path": "strict-security/seaport-acquisition-slither.json.gz",
+      "originalMember": "seaport-acquisition-slither.json",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 64598,
+      "rawBytes": 1956487
+    }
+  ]
+}

@@ -1,0 +1,105 @@
+{
+  "schemaVersion": 1,
+  "source": "1be772c8787b47fbc0c791a03a694cb2a5673d86",
+  "runId": 44665764302,
+  "mode": "robinhood-fork-chromium",
+  "jobId": 136054534536,
+  "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44665764302/job/136054534536",
+  "conclusion": "success",
+  "artifactId": 14597961124,
+  "artifactName": "seaport-vault-robinhood-browser-chromium-1be772c8787b47fbc0c791a03a694cb2a5673d86",
+  "zipSha256": "688ea558edc1f00110c7faa77512eae387e9f58d15b9ab5d4c61b4632a00cdcf",
+  "production": false,
+  "members": [
+    {
+      "path": "robinhood-fork-chromium/task086-collection-acceptance.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 7349,
+      "originalMember": "task086-collection-acceptance.json",
+      "rawBytes": 68778,
+      "rawSha256": "6b42c72d57bd3e9c2b4ee119a1c8a53d73d869b89e9dc375d1e50511a5ff699c",
+      "storedSha256": "f52041a48bc64c27af55b50ff42b3b7b43cfcf3c258e3cdb5ec0f22991dfcc0f"
+    },
+    {
+      "path": "robinhood-fork-chromium/task086-real-collection-fork.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 1890,
+      "originalMember": "task086-real-collection-fork.json",
+      "rawBytes": 5665,
+      "rawSha256": "007fd33f1d64bb54df552bdb4c5394ae5c16e6e7935eead02e29cca33d45e64c",
+      "storedSha256": "2dcae01a6b310a08ac60291bd139fd09d5c99b24ac39d0237b25c87b3d518db2"
+    },
+    {
+      "path": "robinhood-fork-chromium/native-order-admission-evidence.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 14193,
+      "originalMember": "native-order-admission-evidence.json",
+      "rawBytes": 182464,
+      "rawSha256": "4404703fbc2e8ed96730b541fbb1cf8399eee40a6c634314ffdaf28908c49b8d",
+      "storedSha256": "9368d6e87491ea36c9c767f77689482b661cca1036427790e4a96a28ef655e58"
+    },
+    {
+      "path": "robinhood-fork-chromium/seaport-listing-watcher-evidence.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 4132,
+      "originalMember": "seaport-listing-watcher-evidence.json",
+      "rawBytes": 38830,
+      "rawSha256": "b0d88e394b0afa0be0c0d1f1450e850284d914efc57bd690e27b3c83b410e9d1",
+      "storedSha256": "ee63a627d3772259c6103724ec9b6a6aa5ef5d439de02346378372156f1e043c"
+    },
+    {
+      "path": "robinhood-fork-chromium/seaport-safe-admin-evidence.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 86929,
+      "originalMember": "seaport-safe-admin-evidence.json",
+      "rawBytes": 867779,
+      "rawSha256": "a6b785184d96f9ffb37b2ef2ae44d56a3c1a344dc4f2891b2cad54ebaaae99ab",
+      "storedSha256": "d666fee887c198e14a5a2ceb689b3573a4cd10092b109fffe4c5755b2de59107"
+    },
+    {
+      "path": "robinhood-fork-chromium/seaport-browser-evidence.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 7157,
+      "originalMember": "seaport-browser-evidence.json",
+      "rawBytes": 123890,
+      "rawSha256": "c6017a6a9ac94780679cb9f9cbb402c2f9c82b187a00a1616657910a8d73cde9",
+      "storedSha256": "3e4adb109e83c525c6bd5236fdd5d20aaba145b29454360988ad0939bc32bcb0"
+    },
+    {
+      "path": "robinhood-fork-chromium/indexer-acceptance.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 586,
+      "originalMember": "indexer-acceptance.json",
+      "rawBytes": 1082,
+      "rawSha256": "61b01fbcb7dcc380ea3dc2df79fa5554031cafc932c05ee77046f48e8f2f495f",
+      "storedSha256": "6083dd093a900c71d7b4127c70ed10f24341db23821bfb5ae6b2a41a0bbba90d"
+    },
+    {
+      "path": "robinhood-fork-chromium/worker-diagnostics.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 321,
+      "originalMember": "worker-diagnostics.json",
+      "rawBytes": 498,
+      "rawSha256": "63c8693fa5f49f9c0e9d50da2ebd73b522e10b43668f092228eb5e390a0ae053",
+      "storedSha256": "415bfad110dbdfe0628c95037af3e4069cd498d0a98ca69514715e677fd1b739"
+    },
+    {
+      "path": "robinhood-fork-chromium/chain/seaport-acquisition-deployment.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 2082,
+      "originalMember": "chain/seaport-acquisition-deployment.json",
+      "rawBytes": 6129,
+      "rawSha256": "2ebea584271b020a5743e863e9ebca4bd97ea201b09d97e4da37dd9af2ca07f1",
+      "storedSha256": "23a00423e223d81e933f6d98eb88db1ba568ae5fa39b553b4a953c2aad9d39d4"
+    },
+    {
+      "path": "robinhood-fork-chromium/chain/seaport-acquisition-fixture-evidence.json.gz",
+      "encoding": "gzip original UTF8 bytes",
+      "storedBytes": 119191,
+      "originalMember": "chain/seaport-acquisition-fixture-evidence.json",
+      "rawBytes": 1142509,
+      "rawSha256": "38904b40d7c664846137514aa9035bde6905b3a0d9e86ff247071ea790327c60",
+      "storedSha256": "b69c79099f561ceea6c0df2e1f0efaee3a19d2975f3ae17968a796d456f1ee8f"
+    }
+  ]
+}

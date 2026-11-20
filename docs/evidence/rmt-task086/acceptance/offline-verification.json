@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-11-20T02:54:36.974Z",
+  "command": "node --test docs/evidence/rmt-task086/acceptance/replay.test.mjs",
+  "exitCode": 0,
+  "nodeVersion": "v22.23.2",
+  "replaySourceSha256": "37f1a3a0c52809a30dcc3a090b26e9be8e031b9656ae08cd2cc7729a0d721924",
+  "stdoutSha256": "686e1f0b20d9f31f5c73c5f9cc6f00461534c88e8a7cd5a7d9e25d29c9c04414",
+  "result": {
+    "status": "PASS",
+    "scope": "OFFLINE_RETAINED_EVIDENCE_VERIFICATION_NOT_NEW_CHAIN_EXECUTION",
+    "production": false,
+    "originalFiles": 9,
+    "receipts": 86,
+    "baselineCases": 11,
+    "negativeRollbackCases": 7,
+    "verifiedSyntheticSellerSignatures": 1,
+    "retainedRealTransferValidatorCallPairs": 3,
+    "partialAttempts": 3
+  },
+  "limitations": [
+    "Offline verification reuses retained local evidence and is not a new chain execution.",
+    "The standalone successful fixture does not execute browser or PostgreSQL acceptance.",
+    "Three retained transfer/validator request-response pairs are not a count of all read-only RPC calls."
+  ]
+}

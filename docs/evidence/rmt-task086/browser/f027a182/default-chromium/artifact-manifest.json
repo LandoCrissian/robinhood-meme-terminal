@@ -1,0 +1,150 @@
+{
+  "schemaVersion": 1,
+  "source": "f027a1829b3f44200224ee1ba838de5689957560",
+  "runId": 44663675748,
+  "mode": "default-chromium",
+  "jobId": 136047693108,
+  "jobUrl": "https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/44663675748/job/136047693108",
+  "conclusion": "success",
+  "artifactId": 14597510834,
+  "artifactName": "seaport-vault-browser-chromium-f027a1829b3f44200224ee1ba838de5689957560",
+  "zipSha256": "9f1ca64e739e49c0e912a7775820170f004f8493c423d375d46a0dff1e18e264",
+  "production": false,
+  "members": [
+    {
+      "storedBytes": 6121,
+      "storedSha256": "2d47ee1ba30d3f638dc50906a2d2a408565730421e0a08c97557d02c6540db8f",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 63272,
+      "rawSha256": "2fc8ed6b1535ab153771fc0cd3e3382dfe8340e505331d93d36b96e0c070bce9",
+      "originalMember": "task086-collection-acceptance.json",
+      "path": "default-chromium/task086-collection-acceptance.json.gz"
+    },
+    {
+      "storedBytes": 275,
+      "storedSha256": "6d44f01ea2407a68e841a609216986d54f4c5971b3a68f7e42c9942c74068eb3",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 411,
+      "rawSha256": "66193c5733bd4e686ab38d7698773dd97be7c5bc63168719867d368dc959179f",
+      "originalMember": "task086-real-collection-fork.json",
+      "path": "default-chromium/task086-real-collection-fork.json.gz"
+    },
+    {
+      "storedBytes": 14340,
+      "storedSha256": "3b47595df903034c0889f8c573cbb4cbb59a580186941cd0ec1aefeb5184c6e6",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 182444,
+      "rawSha256": "bbee9ab5114a9530965248d72437d4836e3b1bd086a671fbf0bca28652e1ada9",
+      "originalMember": "native-order-admission-evidence.json",
+      "path": "default-chromium/native-order-admission-evidence.json.gz"
+    },
+    {
+      "storedBytes": 4188,
+      "storedSha256": "053885073770edcc98b00f59203a647e0a634127d58d409348f6be2c3879c8fd",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 38817,
+      "rawSha256": "bb938e01fe6f26325a402a83bc3bd259fa027b7aedcc5080c5d5fa0ba0c2ef0e",
+      "originalMember": "seaport-listing-watcher-evidence.json",
+      "path": "default-chromium/seaport-listing-watcher-evidence.json.gz"
+    },
+    {
+      "storedBytes": 81625,
+      "storedSha256": "3acb3f41885f811300c6a8597d69cd9e91411517bb923ed77ca6f5d1d1fd157c",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 802778,
+      "rawSha256": "9ae70515d5e0649376a40fa23f0a8364dfcdebebcb76a17abd0c51acebde612d",
+      "originalMember": "seaport-safe-admin-evidence.json",
+      "path": "default-chromium/seaport-safe-admin-evidence.json.gz"
+    },
+    {
+      "storedBytes": 7165,
+      "storedSha256": "71456329d0cba5326f53df419ed1d38b714a96198e9dcb69c7ab627281cbfa63",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 123873,
+      "rawSha256": "6fee0369858c8a99259cc1327be7e14a0fbf3587d33182c9409b7a85bf70cdcd",
+      "originalMember": "seaport-browser-evidence.json",
+      "path": "default-chromium/seaport-browser-evidence.json.gz"
+    },
+    {
+      "storedBytes": 589,
+      "storedSha256": "4828daf7337e0e871f8d74d8ad47c237a5990e48aabbef72359aeaffcfee12e2",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 1081,
+      "rawSha256": "d17a82e64cb2d8540937d4324ea8af363e453edaaa5cd9b4b5603f17b91d6fd7",
+      "originalMember": "indexer-acceptance.json",
+      "path": "default-chromium/indexer-acceptance.json.gz"
+    },
+    {
+      "storedBytes": 321,
+      "storedSha256": "c94348a8e9ae451c62643920b901ae4485154437b5331fc77b2a47918a315376",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 495,
+      "rawSha256": "1eccafbea0d6331b898be463bc0a59cf6e8e30cae5a6b768b0ea8b654dce2525",
+      "originalMember": "worker-diagnostics.json",
+      "path": "default-chromium/worker-diagnostics.json.gz"
+    },
+    {
+      "storedBytes": 2100,
+      "storedSha256": "527b46c4ed2ee929e0d26c054038b5e52df46345105e9c07f55425fe48897820",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 6128,
+      "rawSha256": "0ff7de39284237798c31e9558402c7fdd91e8916cef537d90c47bf169f7ba250",
+      "originalMember": "chain/seaport-acquisition-deployment.json",
+      "path": "default-chromium/chain/seaport-acquisition-deployment.json.gz"
+    },
+    {
+      "storedBytes": 200234,
+      "storedSha256": "c8edeba6e2d705998e712e818a3432c2aa76d5d102b0c2f32fb2c305b48d6846",
+      "encoding": "gzip original UTF8 bytes",
+      "rawBytes": 1484910,
+      "rawSha256": "a292ccbb213381542816af3f6178431971f771eef2f21999a79f40504fd7cf9f",
+      "originalMember": "chain/seaport-acquisition-fixture-evidence.json",
+      "path": "default-chromium/chain/seaport-acquisition-fixture-evidence.json.gz"
+    },
+    {
+      "storedBytes": 367024,
+      "storedSha256": "562a6b3bffe0e90b3eec292e5c6e892b87840891bc3fbe9732dd7ff9e5bd214d",
+      "encoding": "original PNG bytes",
+      "rawBytes": 367024,
+      "rawSha256": "562a6b3bffe0e90b3eec292e5c6e892b87840891bc3fbe9732dd7ff9e5bd214d",
+      "originalMember": "safe-admin-desktop.png",
+      "path": "default-chromium/safe-admin-desktop.png"
+    },
+    {
+      "storedBytes": 311781,
+      "storedSha256": "efc654978e230a4f9206d2e5ba726d3ebe6867c673a760d7258189fba61ab553",
+      "encoding": "original PNG bytes",
+      "rawBytes": 311781,
+      "rawSha256": "efc654978e230a4f9206d2e5ba726d3ebe6867c673a760d7258189fba61ab553",
+      "originalMember": "safe-admin-portrait.png",
+      "path": "default-chromium/safe-admin-portrait.png"
+    },
+    {
+      "storedBytes": 199899,
+      "storedSha256": "7b72ea6af625ade01af930e30d2ed1387ddfcff26037a3af6ee3c5d769e00db5",
+      "encoding": "original PNG bytes",
+      "rawBytes": 199899,
+      "rawSha256": "7b72ea6af625ade01af930e30d2ed1387ddfcff26037a3af6ee3c5d769e00db5",
+      "originalMember": "safe-admin-landscape.png",
+      "path": "default-chromium/safe-admin-landscape.png"
+    },
+    {
+      "storedBytes": 124198,
+      "storedSha256": "ad223abe48a3529fca1af63d9e38c29df434286871bd66a9cf527ef70475ae9c",
+      "encoding": "original PNG bytes",
+      "rawBytes": 124198,
+      "rawSha256": "ad223abe48a3529fca1af63d9e38c29df434286871bd66a9cf527ef70475ae9c",
+      "originalMember": "safe-network-cost-review.png",
+      "path": "default-chromium/safe-network-cost-review.png"
+    },
+    {
+      "storedBytes": 286094,
+      "storedSha256": "76cd7c14918c2958ebd71722c2974b6705d119a015375bafa1844445f9eafbaa",
+      "encoding": "original PNG bytes",
+      "rawBytes": 286094,
+      "rawSha256": "76cd7c14918c2958ebd71722c2974b6705d119a015375bafa1844445f9eafbaa",
+      "originalMember": "safe-two-owner-call-review.png",
+      "path": "default-chromium/safe-two-owner-call-review.png"
+    }
+  ]
+}

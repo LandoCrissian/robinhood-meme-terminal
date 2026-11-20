@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "recordedAtUtc": "2026-11-20T03:20:34.733Z",
+  "source": "1be772c8787b47fbc0c791a03a694cb2a5673d86",
+  "scope": "INDEPENDENT_READ_ONLY_EVIDENCE_REVIEW_NOT_SECURITY_AUDIT",
+  "status": "PASS",
+  "offlineTests": {
+    "passed": 3,
+    "failed": 0
+  },
+  "checks": {
+    "freshFourModeCountsMatchRetainedProofs": true,
+    "all60DiagnosticProposalReviewHashPairsBound": true,
+    "all492PrivacyMatchesExactPublicValues": true,
+    "privacyUnknown": 0,
+    "strictOriginals101Detectors48Findings23High": true,
+    "strictFailureUnwaived": true,
+    "originalFailedWebKitAndUnresolvedCausePreserved": true
+  },
+  "resolvedReviewFinding": "Added explicit initial wallet diagnostic proposalHash/reviewHash equality to canonical execution identities; no original evidence changed.",
+  "outstandingMaterialFindings": []
+}

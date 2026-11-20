@@ -1,0 +1,17 @@
+{
+  "assessmentMode": "HISTORICAL_CAPTURE_AT_RECORDED_FINISH_NOT_CURRENT_LIVE_STATE",
+  "observationFile": "collection-policy-observation.json",
+  "evaluatedAt": "2026-11-20T02:39:50.029Z",
+  "review": {
+    "schemaVersion": 1,
+    "status": "UNAVAILABLE",
+    "reason": "COLLECTION_ANCHOR_UNAVAILABLE",
+    "productionStatus": "NO_GO",
+    "executionApproved": false,
+    "executionEnabled": false,
+    "ownerApprovalRecorded": false,
+    "productionCatalogEntry": false,
+    "evidenceFingerprint": "0x4eab45c95e1dbd30109370b5d5eba4a854a8ea71cd853b92599d25464ba9398d",
+    "ownerApprovalReady": false
+  }
+}
