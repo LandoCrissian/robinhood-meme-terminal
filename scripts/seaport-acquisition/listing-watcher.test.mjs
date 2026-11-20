@@ -1,7 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import {createHash} from "node:crypto";
 import {createRequire} from "node:module";
-import {createReadOnlySeaportWatcher} from "./listing-watcher.mjs";
+import {createReadOnlySeaportWatcher,watcherBinding} from "./listing-watcher.mjs";
 import {seaportVaultSignatures} from "../../packages/launchpad-common/seaport-vault-runtime.mjs";
 const require=createRequire(new URL("../../apps/indexer/package.json",import.meta.url)),codecs=require("viem");
 const a=n=>"0x"+n.toString(16).padStart(40,"1"),h=n=>"0x"+n.toString(16).padStart(64,"1"),zero="0x"+"00".repeat(20),z="0x"+"00".repeat(32);
@@ -44,3 +45,28 @@ test("a consumed order or disabled collection invalidates an old unsigned propos
 test("public observations use independently verified chain identity, never a discovery label",async()=>{const f=fixture(),verify=f.options.verifyEntry;f.options.verifyEntry=async(...args)=>{const p=await verify(...args),observed={...p.observed};delete observed.chainId;return{...p,status:"CURRENT_ORDER_INDEPENDENTLY_VERIFIED",observed:undefined,verified:{...p.verified,chainId:31337,observed}};};assert.equal((await f.watcher().tick()).status,"PREPARED");const wrong=fixture(),v=wrong.options.verifyEntry;wrong.options.verifyEntry=async(...args)=>{const p=await v(...args);p.observed.chainId=4663;return p;};assert.equal((await wrong.watcher().tick()).status,"UNAVAILABLE");});
 
 test("provider outages durably throttle attempts across process restart while retaining pending original intent",async()=>{const f=fixture(),read=f.options.readState;let calls=0;f.options.readState=async()=>{calls++;throw Error("provider offline");};assert.equal((await f.watcher().tick()).status,"UNAVAILABLE");assert.equal(f.saved().records.length,0);assert.equal((await f.watcher().tick()).reason,"POLL_INTERVAL");assert.equal(calls,1);f.control.clock+=60001;f.state.canonical.timestamp=String(Number(f.state.canonical.timestamp)+60);f.options.readState=read;assert.equal((await f.watcher().tick()).status,"PREPARED");const request=structuredClone(f.saved().records[0].request);f.control.clock+=60001;f.options.readState=async()=>{calls++;throw Error("provider offline");};assert.equal((await f.watcher().tick()).status,"UNAVAILABLE");assert.equal(f.saved().records[0].status,"PENDING_EVIDENCE");assert.deepEqual(f.saved().records[0].request,request);assert.equal((await f.watcher().tick()).reason,"POLL_INTERVAL");assert.equal(f.counters.prepare,1);});
+
+function nativeFixture(){
+ const f=fixture(),verify=f.options.verifyEntry,discover=f.options.discover;
+ f.options.configuration.profile="seaport-watch-native-31337-v1";
+ f.options.configuration.nativeAdmission={sourceId:"owner-supplied",policyCatalogHash:h(42)};
+ f.options.discover=async(...args)=>{const feed=await discover(...args);return{...feed,entries:feed.entries?.map(e=>({...e,sourceId:"owner-supplied"}))};};
+ f.options.verifyEntry=async(...args)=>{const p=await verify(...args);return{...p,nativeAdmission:{profile:"rmt-native-order-admission-v1",sourceId:"owner-supplied",policyCatalogHash:h(42),native:true,totalWei:"1000",orderHash:p.orderHash,collectionPolicyHash:h(43),rawSha256:"0x"+createHash("sha256").update(args[0].rawUtf8).digest("hex"),collection:{address:a(6),standard:721,runtimeHash:h(6),sourceInputSha256:h(7)},observed:p.observed,productionApproved:false}};};
+ return f;
+}
+test("native watcher has a distinct durable identity bound to the exact source and full policy catalog",async()=>{
+ const old=fixture(),f=nativeFixture(),first=await f.watcher().tick();assert.equal(first.status,"PREPARED");assert.notEqual(first.bindingHash,(await old.watcher().tick()).bindingHash);
+ const changed=nativeFixture();changed.options.configuration.nativeAdmission.policyCatalogHash=h(45);assert.notEqual(first.bindingHash,changed.watcher().bindingHash);assert.equal((await changed.watcher().tick()).reason,"NATIVE_SOURCE_POLICY_UNVERIFIED");
+ const missing=nativeFixture();delete missing.options.configuration.nativeAdmission;assert.throws(()=>missing.watcher(),/NATIVE_SOURCE_POLICY_UNASSIGNED/);
+ old.options.configuration.nativeAdmission=f.options.configuration.nativeAdmission;assert.throws(()=>watcherBinding(old.options.configuration),/NATIVE_PROFILE_REQUIRED/);
+});
+test("native watcher rejects legacy verification labels, forged source policy and ERC20 payment before preparation",async()=>{
+ const changes=[p=>delete p.nativeAdmission,p=>p.nativeAdmission.sourceId="opensea",p=>p.nativeAdmission.policyCatalogHash=h(99),p=>p.nativeAdmission.native=false,p=>p.nativeAdmission.totalWei="999",p=>p.nativeAdmission.orderHash=h(99),p=>delete p.nativeAdmission.collectionPolicyHash,p=>p.nativeAdmission.rawSha256=h(99),p=>p.nativeAdmission.collection.runtimeHash=h(99),p=>p.nativeAdmission.collection.standard=1155,p=>p.nativeAdmission.observed={...p.observed,blockNumber:"9"},p=>p.nativeAdmission.productionApproved=true,p=>p.publicListingVerified=true,p=>p.status="CURRENT_ORDER_INDEPENDENTLY_VERIFIED",p=>{for(const c of p.order.parameters.consideration)c.itemType=1;},p=>p.order.parameters.consideration[0].identifierOrCriteria="7"];
+ for(const change of changes){const f=nativeFixture(),verify=f.options.verifyEntry;f.options.verifyEntry=async(...args)=>{const p=await verify(...args);change(p);return p;};const result=await f.watcher().tick();assert.equal(result.status,"UNAVAILABLE");assert.equal(f.counters.prepare,0);assert.equal(f.saved().records.length,0);}
+ const source=nativeFixture();source.options.discover=async()=>({status:"AVAILABLE",entries:[{sourceKind:"PUBLIC",sourceId:"opensea"}]});assert.equal((await source.watcher().tick()).reason,"NATIVE_SOURCE_UNADMITTED");assert.equal(source.counters.verify,0);
+});
+test("native pending requests retain their identity and require the same source policy on recovery",async()=>{
+ const f=nativeFixture(),w=f.watcher();assert.equal((await w.tick()).status,"PREPARED");const saved=structuredClone(f.saved().records[0]),verify=f.options.verifyEntry;
+ f.options.verifyEntry=async(...args)=>{const p=await verify(...args);p.nativeAdmission.policyCatalogHash=h(99);return p;};assert.equal((await f.watcher().tick({force:true})).status,"UNAVAILABLE");assert.equal(f.saved().records[0].status,"PENDING_EVIDENCE");assert.deepEqual(f.saved().records[0].request,saved.request);
+ f.options.verifyEntry=verify;assert.equal((await f.watcher().tick({force:true})).reason,"ORDER_ALREADY_PREPARED");assert.equal(f.counters.prepare,1);
+});

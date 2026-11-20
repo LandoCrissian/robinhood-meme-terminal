@@ -1,0 +1,109 @@
+{
+  "schemaVersion": 1,
+  "scope": "HOSTED_SOURCE_EXCERPTS_NOT_INDEPENDENT_COMPILATION_OR_COLLECTION_ADMISSION",
+  "sources": [
+    {
+      "sourceUrl": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+      "path": "src/clones/ERC721ACloneable.sol",
+      "sourceSha256": "5ac545ace84a51ea70cf2cab24b33cafc101636e177a019f0ddd3acec330e0a9",
+      "excerpts": [
+        {
+          "line": 552,
+          "text": "     *\n     * See {setApprovalForAll}.\n     */\n    function isApprovedForAll(address owner, address operator)\n        public\n        view\n        virtual\n        override\n        returns (bool)\n    {\n        return _operatorApprovals[owner][operator];\n    }\n\n    /**\n     * @dev Returns whether `tokenId` exists.\n     *\n     * Tokens can be managed by their owner or approved accounts via {approve} or {setApprovalForAll}.\n     *\n     * Tokens start existing when they are minted. See {_mint}.\n     */\n    function _exists(uint256 tokenId) internal view virtual returns (bool) {\n        return\n            _startTokenId() <= tokenId &&\n            tokenId < _currentIndex && // If within bounds,\n            _packedOwnerships[tokenId] & _BITMASK_BURNED == 0; // and not burned.\n    }\n\n    /**\n     * @dev Returns whether `msgSender` is equal to `approvedAddress` or `owner`.\n     */\n    function _isSenderApprovedOrOwner(\n        address approvedAddress,\n        address owner,"
+        },
+        {
+          "line": 627,
+          "text": "     *\n     * Emits a {Transfer} event.\n     */\n    function transferFrom(\n        address from,\n        address to,\n        uint256 tokenId\n    ) public virtual override {\n        uint256 prevOwnershipPacked = _packedOwnershipOf(tokenId);\n\n        if (address(uint160(prevOwnershipPacked)) != from)\n            revert TransferFromIncorrectOwner();\n\n        (\n            uint256 approvedAddressSlot,\n            address approvedAddress\n        ) = _getApprovedSlotAndAddress(tokenId);\n\n        // The nested ifs save around 20+ gas over a compound boolean condition.\n        if (\n            !_isSenderApprovedOrOwner(\n                approvedAddress,\n                from,\n                _msgSenderERC721A()\n            )\n        ) {\n            if (!isApprovedForAll(from, _msgSenderERC721A()))\n                revert TransferCallerNotOwnerNorApproved();\n        }\n\n        if (to == address(0)) revert TransferToZeroAddress();\n\n        _beforeTokenTransfers(from, to, tokenId, 1);"
+        },
+        {
+          "line": 759,
+          "text": "     * - When `to` is zero, `tokenId` will be burned by `from`.\n     * - `from` and `to` are never both zero.\n     */\n    function _beforeTokenTransfers(\n        address from,\n        address to,\n        uint256 startTokenId,\n        uint256 quantity\n    ) internal virtual {}\n\n    /**\n     * @dev Hook that is called after a set of serially-ordered token IDs\n     * have been transferred. This includes minting.\n     * And also called after one token has been burned.\n     *\n     * `startTokenId` - the first token ID to be transferred.\n     * `quantity` - the amount to be transferred.\n     *\n     * Calling conditions:\n     *\n     * - When `from` and `to` are both non-zero, `from`'s `tokenId` has been\n     * transferred to `to`.\n     * - When `from` is zero, `tokenId` has been minted for `to`.\n     * - When `to` is zero, `tokenId` has been burned by `from`.\n     * - `from` and `to` are never both zero.\n     */\n    function _afterTokenTransfers(\n        address from,\n        address to,\n        uint256 startTokenId,\n        uint256 quantity\n    ) internal virtual {}\n"
+        }
+      ]
+    },
+    {
+      "sourceUrl": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+      "path": "src/clones/ERC721SeaDropCloneable.sol",
+      "sourceSha256": "e896987709784c93316c8c648b17c5c9996e8c5c3b7658f3a51ffa537e93d5f1",
+      "excerpts": [
+        {
+          "line": 77,
+          "text": "     * @notice Deploy the token contract with its name, symbol,\n     *         and allowed SeaDrop addresses.\n     */\n    function initialize(\n        string calldata __name,\n        string calldata __symbol,\n        address[] calldata allowedSeaDrop,\n        address initialOwner\n    ) public initializer {\n        __ERC721ACloneable__init(__name, __symbol);\n        __ReentrancyGuard_init();\n        _updateAllowedSeaDrop(allowedSeaDrop);\n        _transferOwnership(initialOwner);\n        emit SeaDropTokenDeployed();\n    }\n\n    /**\n     * @notice Update the allowed SeaDrop contracts.\n     *         Only the owner can use this function.\n     *\n     * @param allowedSeaDrop The allowed SeaDrop addresses.\n     */\n    function updateAllowedSeaDrop(address[] calldata allowedSeaDrop)\n        external\n        virtual\n        override\n        onlyOwner\n    {\n        _updateAllowedSeaDrop(allowedSeaDrop);\n    }\n\n    /**\n     * @notice Internal function to update the allowed SeaDrop contracts."
+        },
+        {
+          "line": 146,
+          "text": "     * @param tokenId The token id to burn.\n     */\n    // solhint-disable-next-line comprehensive-interface\n    function burn(uint256 tokenId) external {\n        _burn(tokenId, true);\n    }\n\n    /**\n     * @dev Overrides the `_startTokenId` function from ERC721A\n     *      to start at token id `1`.\n     *\n     *      This is to avoid future possible problems since `0` is usually\n     *      used to signal values that have not been set or have been removed.\n     */\n    function _startTokenId() internal view virtual override returns (uint256) {\n        return 1;\n    }\n\n    /**\n     * @dev Overrides the `tokenURI()` function from ERC721A\n     *      to return just the base URI if it is implied to not be a directory.\n     *\n     *      This is to help with ERC721 contracts in which the same token URI\n     *      is desired for each token, such as when the tokenURI is 'unrevealed'.\n     */\n    function tokenURI(uint256 tokenId)\n        public\n        view\n        virtual\n        override\n        returns (string memory)\n    {\n        if (!_exists(tokenId)) revert URIQueryForNonexistentToken();"
+        },
+        {
+          "line": 214,
+          "text": "     * @param minter   The address to mint to.\n     * @param quantity The number of tokens to mint.\n     */\n    function mintSeaDrop(address minter, uint256 quantity)\n        external\n        virtual\n        override\n        nonReentrant\n    {\n        // Ensure the SeaDrop is allowed.\n        _onlyAllowedSeaDrop(msg.sender);\n\n        // Extra safety check to ensure the max supply is not exceeded.\n        if (_totalMinted() + quantity > maxSupply()) {\n            revert MintQuantityExceedsMaxSupply(\n                _totalMinted() + quantity,\n                maxSupply()\n            );\n        }\n\n        // Mint the quantity of tokens to the minter.\n        _safeMint(minter, quantity);\n    }\n\n    /**\n     * @notice Update the public drop data for this nft contract on SeaDrop.\n     *         Only the owner can use this function.\n     *\n     * @param seaDropImpl The allowed SeaDrop contract.\n     * @param publicDrop  The public drop data.\n     */\n    function updatePublicDrop(\n        address seaDropImpl,"
+        }
+      ]
+    },
+    {
+      "sourceUrl": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+      "path": "lib/utility-contracts/src/TwoStepOwnable.sol",
+      "sourceSha256": "add0e03c480974b8fcdda464d25178236909e3623088e5609bb1a1b49b0ba75e",
+      "excerpts": []
+    },
+    {
+      "sourceUrl": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+      "path": "src/clones/ERC721ContractMetadataCloneable.sol",
+      "sourceSha256": "ab524e31e9c77dc3df6dbd46107ba5ffe046600aaa0b297f913edd91bd0fe078",
+      "excerpts": [
+        {
+          "line": 67,
+          "text": "     *      This function is inlined instead of being a modifier\n     *      to save contract space from being inlined N times.\n     */\n    function _onlyOwnerOrSelf() internal view {\n        if (\n            _cast(msg.sender == owner()) | _cast(msg.sender == address(this)) ==\n            0\n        ) {\n            revert OnlyOwner();\n        }\n    }\n\n    /**\n     * @notice Sets the base URI for the token metadata and emits an event.\n     *\n     * @param newBaseURI The new base URI to set.\n     */\n    function setBaseURI(string calldata newBaseURI) external override {\n        // Ensure the sender is only the owner or contract itself.\n        _onlyOwnerOrSelf();\n\n        // Set the new base URI.\n        _tokenBaseURI = newBaseURI;\n\n        // Emit an event with the update.\n        if (totalSupply() != 0) {\n            emit BatchMetadataUpdate(1, _nextTokenId() - 1);\n        }\n    }\n\n    /**\n     * @notice Sets the contract URI for contract metadata.\n     *"
+        },
+        {
+          "line": 132,
+          "text": "     *\n     * @param newMaxSupply The new max supply to set.\n     */\n    function setMaxSupply(uint256 newMaxSupply) external {\n        // Ensure the sender is only the owner or contract itself.\n        _onlyOwnerOrSelf();\n\n        // Ensure the max supply does not exceed the maximum value of uint64.\n        if (newMaxSupply > 2**64 - 1) {\n            revert CannotExceedMaxSupplyOfUint64(newMaxSupply);\n        }\n\n        // Set the new max supply.\n        _maxSupply = newMaxSupply;\n\n        // Emit an event with the update.\n        emit MaxSupplyUpdated(newMaxSupply);\n    }\n\n    /**\n     * @notice Sets the provenance hash and emits an event.\n     *\n     *         The provenance hash is used for random reveals, which\n     *         is a hash of the ordered metadata to show it has not been\n     *         modified after mint started.\n     *\n     *         This function will revert after the first item has been minted.\n     *\n     * @param newProvenanceHash The new provenance hash to set.\n     */\n    function setProvenanceHash(bytes32 newProvenanceHash) external {\n        // Ensure the sender is only the owner or contract itself.\n        _onlyOwnerOrSelf();"
+        },
+        {
+          "line": 183,
+          "text": "     *\n     * @param newInfo The struct to configure royalties.\n     */\n    function setRoyaltyInfo(RoyaltyInfo calldata newInfo) external {\n        // Ensure the sender is only the owner or contract itself.\n        _onlyOwnerOrSelf();\n\n        // Revert if the new royalty address is the zero address.\n        if (newInfo.royaltyAddress == address(0)) {\n            revert RoyaltyAddressCannotBeZeroAddress();\n        }\n\n        // Revert if the new basis points is greater than 10_000.\n        if (newInfo.royaltyBps > 10_000) {\n            revert InvalidRoyaltyBasisPoints(newInfo.royaltyBps);\n        }\n\n        // Set the new royalty info.\n        _royaltyInfo = newInfo;\n\n        // Emit an event with the updated params.\n        emit RoyaltyInfoUpdated(newInfo.royaltyAddress, newInfo.royaltyBps);\n    }\n\n    /**\n     * @notice Returns the base URI for token metadata.\n     */\n    function baseURI() external view override returns (string memory) {\n        return _baseURI();\n    }\n\n    /**\n     * @notice Returns the base URI for the contract, which ERC721A uses"
+        },
+        {
+          "line": 299,
+          "text": "    /**\n     * @notice Set the transfer validator. Only callable by the token owner.\n     */\n    function setTransferValidator(address newValidator) external onlyOwner {\n        // Set the new transfer validator.\n        _setTransferValidator(newValidator);\n    }\n\n    /**\n     * @dev Hook that is called before any token transfer.\n     *      This includes minting and burning.\n     */\n    function _beforeTokenTransfers(\n        address from,\n        address to,\n        uint256 startTokenId,\n        uint256 /* quantity */\n    ) internal virtual override {\n        if (from != address(0) && to != address(0)) {\n            // Call the transfer validator if one is set.\n            address transferValidator = _transferValidator;\n            if (transferValidator != address(0)) {\n                ITransferValidator721(transferValidator).validateTransfer(\n                    msg.sender,\n                    from,\n                    to,\n                    startTokenId\n                );\n            }\n        }\n    }\n\n    /**"
+        },
+        {
+          "line": 308,
+          "text": "     * @dev Hook that is called before any token transfer.\n     *      This includes minting and burning.\n     */\n    function _beforeTokenTransfers(\n        address from,\n        address to,\n        uint256 startTokenId,\n        uint256 /* quantity */\n    ) internal virtual override {\n        if (from != address(0) && to != address(0)) {\n            // Call the transfer validator if one is set.\n            address transferValidator = _transferValidator;\n            if (transferValidator != address(0)) {\n                ITransferValidator721(transferValidator).validateTransfer(\n                    msg.sender,\n                    from,\n                    to,\n                    startTokenId\n                );\n            }\n        }\n    }\n\n    /**\n     * @notice Returns whether the interface is supported.\n     *\n     * @param interfaceId The interface id to check against.\n     */\n    function supportsInterface(bytes4 interfaceId)\n        public\n        view\n        virtual\n        override(IERC165, ERC721ACloneable)"
+        }
+      ]
+    },
+    {
+      "sourceUrl": "https://sourcify.dev/server/v2/contract/4663/0x09a26fc8fcef18192e267d7a6da9dfb4be81dd6a?fields=all",
+      "responseSha256": "34d3e4c116f5eee9c0368d2e6e4c0923bccd05f9516ff52e5bca749b55ec7b43",
+      "path": "src/clones/ERC721AConduitPreapprovedCloneable.sol",
+      "sourceSha256": "a1e326436a47a577c11fc0b0faa1cdf1fbc6ed4de1d615acbcd1f3fe6530294b",
+      "excerpts": [
+        {
+          "line": 19,
+          "text": "     * @dev Returns if the `operator` is allowed to manage all of the\n     *      assets of `owner`. Always returns true for the conduit.\n     */\n    function isApprovedForAll(address owner, address operator)\n        public\n        view\n        virtual\n        override\n        returns (bool)\n    {\n        if (operator == _CONDUIT) {\n            return true;\n        }\n        return ERC721ACloneable.isApprovedForAll(owner, operator);\n    }\n}\n"
+        }
+      ]
+    },
+    {
+      "sourceUrl": "https://sourcify.dev/server/v2/contract/1/0x721C008fdff27BF06E7E123956E2Fe03B63342e3?fields=all",
+      "responseSha256": "f52a3735d2350c81f97193510415fa5c8b003a4e71ca3d77a1a4db044c1f57d2",
+      "path": "src/CreatorTokenTransferValidator.sol",
+      "sourceSha256": "63d6c07dc6ccd8c310c2254e1b58484ec69b5a1f304b321458cfefae6e4c1288",
+      "excerpts": [
+        {
+          "line": 641,
+          "text": "     * @param globalOptions              The global options to apply.\n     * @param rulesetOptions             The ruleset-specific options to apply.\n     */\n    function setRulesetOfCollection(\n        address collection, \n        uint8 rulesetId,\n        address customRuleset,\n        uint8 globalOptions,\n        uint16 rulesetOptions\n    ) external delegateCall(_managementModule) {}\n\n    /**\n     * @notice Set expansion words and datums for a collection.\n     *\n     * @dev Throws when the caller is neither collection contract, nor the owner or admin of the specified collection.\n     *\n     * @dev <h4>Postconditions:</h4>\n     *      1. Included expansion words and datums are set for the specified collection.\n     *      2. A `SetCollectionExpansionWords` event is emitted for each expansion word included in the request.\n     *      3. A `SetCollectionExpansionDatums` event is emitted for each expansion datum included in the request.\n     *\n     * @param collection                 The address of the collection.\n     * @param expansionWords             The expansion words to set.\n     * @param expansionDatums            The expansion datums to set.\n     */\n    function setExpansionSettingsOfCollection(\n        address collection, \n        ExpansionWord[] calldata expansionWords,\n        ExpansionDatum[] calldata expansionDatums\n    ) external delegateCall(_managementModule) {}\n\n    /**\n     * @notice Set the token type setting of a collection."
+        },
+        {
+          "line": 1122,
+          "text": "     * \n     * @return The selector value for an error if the transfer is not allowed, `SELECTOR_NO_ERROR` if the transfer is allowed.\n     */\n    function _validateTransfer(\n        uint256 authorizerCheckType,\n        address collection, \n        address caller, \n        address from, \n        address to,\n        uint256 tokenId,\n        uint256 amount\n    ) internal view returns (bytes4,uint16) {\n        if (caller == address(this)) { \n            // If the caller is self (Permit-C Processor) it means we have already applied operator validation in the \n            // _beforeTransferFrom callback.  In this case, the security policy was already applied and the operator\n            // that used the Permit-C processor passed the security policy check and transfer can be safely allowed.\n            return (SELECTOR_NO_ERROR, DEFAULT_TOKEN_TYPE);\n        }\n\n        return IRulesetDelegateCall(address(this)).validateTransferDelegateCall(\n            authorizerCheckType,\n            collection,\n            caller,\n            from,\n            to,\n            tokenId,\n            amount\n        );\n    }\n\n    /**\n     * @dev Internal function used to get the collection token type and validator module address.\n     *"
+        }
+      ]
+    }
+  ]
+}

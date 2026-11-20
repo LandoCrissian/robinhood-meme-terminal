@@ -2,6 +2,8 @@
 
 **BLOCKED_NO_BROADCAST. Automatic purchases remain OFF. No production purchase route, public listing feed or payment-token approval is established.**
 
+Task085 adds a narrower [current native-order admission boundary](PROJECT_TREASURY_CURRENT_ORDER_ADMISSION.md) and dated collection/source feasibility evidence. It preserves this Task084 security register, Safe acceptance and historical failure evidence.
+
 [Task 084 owner scope](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/677#issuecomment-7019806025) starts from Task083 PR677 `663c057746e795f8cde60a4eca8d51d4d685b768`. Draft [PR678](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/678) is stacked on that branch. This task completes isolated administration, signed-order admission and an unsigned watcher candidate for the existing Seaport V2 vault. It adds no vault, token mode, hosted service, timer, production writer or financial activation.
 
 ## Security disposition
