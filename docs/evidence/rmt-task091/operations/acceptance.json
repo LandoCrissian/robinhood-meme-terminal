@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "sourceHead": "27f19787ed0a2d904ba4508d2adfab1773e82e67",
+  "scope": "CORE_CREATOR_ACTIVATION_OPERATIONAL_DISPOSITION",
+  "websiteReadOnly": "ACCEPTED_RETAINED_TASK090",
+  "hostingIdentityAndProductionBindingMetadata": "VERIFIED_CURRENT_READ_ONLY",
+  "syntheticFullEconomicLifecycle": "PASS_EXACT_SOURCE_RETAINED_CI_FRESH_CANDIDATE_CI_SEPARATE",
+  "syntheticPg186Recovery": "PASS_15_CHECKS",
+  "currentProductionWriterLease": "UNKNOWN_DIRECT_PG_LOCKS_OBSERVATION_REQUIRED",
+  "currentProviderBackups": "VERIFIED_ABSENT",
+  "currentOwnerOffDeviceBackupAndRecoveryKey": "UNVERIFIED",
+  "physicalIphoneCreationWalletAcceptance": "PENDING_OWNER_DEVICE",
+  "ownerCreationActivation": "BLOCKED_PENDING_PUBLICATION_AND_OPERATIONAL_ACCEPTANCE",
+  "generalProductionTradingAndClaims": "SOURCE_IMPLEMENTATION_NOT_PRESENT",
+  "ownerOperatorAction": {
+    "action": "Complete one production recovery acceptance packet through the existing authorized private operator controls: observe-writer.sql, then retrieve the owner-controlled encrypted production backup and its separately protected recovery key from off-device storage and restore only into isolated PostgreSQL 18.6. Return the non-secret dated manifest and restore result; do not restore production or change its networking.",
+    "evidenceRequired": [
+      "Read-only SQL observed_at, transaction_read_only=on, exactly one granted holder for advisory namespace 1380805961 / chain 4663 / objsubid 2, exact production scope cursor and checkpoint/hash.",
+      "Backup creation UTC, archive SHA-256, chain/checkpoint/hash, age and accepted RPO/retention, off-device object/version identity and retrieval time, separately recoverable key availability without publishing the key.",
+      "Isolated PostgreSQL 18.6 pg_restore success, expected existing and new-engine table inventory/row identities, preserved original receipt/cursor and successful restart/reorg drill; production untouched."
+    ],
+    "knownBackup": {
+      "exportedAt": "2026-11-17T19:49:35Z",
+      "verifiedAt": "2026-11-17T19:57:11.218Z",
+      "archiveSha256": "b04f475cf8720feb56ecdbd39f88794cc516540547a92a995d9253c913b537a0",
+      "bytes": 55976168,
+      "encryption": "AES-256-GCM; key protected by Windows DPAPI CurrentUser",
+      "offDeviceCopyVerifiedAtOriginalCapture": false,
+      "source": "docs/evidence/production-readiness/task066-backend-activation.json",
+      "limitation": "This is an earlier local restore observation, not a current retrievable off-device backup or an acceptable current RPO. No new backup was created or enabled by Task091."
+    }
+  },
+  "ownerDeviceAction": {
+    "action": "Perform one physical-iPhone acceptance session on the exact separately approved nonspending HTTPS preview of this creation candidate: MetaMask in-app browser, owner 0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA, chain 4663; connect, review RMT/RMT with empty URI and zero separate treasury, verify 1B supply / 600M-400M / 0.0004 ETH and exact factory/fee recipients, change account/network to verify review invalidation, reconnect and reload to recover the same draft, then stop before any Send/signature. Return exact URL, UTC, iOS/MetaMask versions and non-secret screenshots/results.",
+    "previewDeployedByTask091": false,
+    "previewUrl": null,
+    "currentProductionUrl": "https://www.rmtlaunch.fun/create-token",
+    "currentProductionLimitation": "The accepted read-only build deliberately does not mount its production wallet controller. It cannot establish this review flow. A separately approved nonspending preview and actual owner device result are required; financial execution must not be enabled to manufacture this acceptance.",
+    "safeWebsiteCreateSupported": false,
+    "signBroadcastOrCreateToken": false
+  },
+  "activationProcedure": "activation.md",
+  "changesPerformed": {
+    "productionDeploy": false,
+    "productionDatabaseMutation": false,
+    "productionBackupTrigger": false,
+    "sshKeyRegistrationOrProxyCreation": false,
+    "financialFlags": false,
+    "walletSignatureOrBroadcast": false,
+    "rmtCreation": false
+  }
+}

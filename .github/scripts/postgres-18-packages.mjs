@@ -13,14 +13,14 @@ export const pg18Packages=[
   {name:"postgresql-client-18",filename:"pool/main/p/postgresql-18/postgresql-client-18_18.6-1.pgdg24.04+2_amd64.deb",size:2114236,sha256:"b9d10d99a73bf7aa375be2fe36626c40499cfdf553d0ad174674a88a1b256b43"},
 ];
 const sha256=bytes=>createHash("sha256").update(bytes).digest("hex");
-function verifyPackageIndex(release,gzip,origin,suite,pins,version){
-  assert.ok(Buffer.byteLength(release)<=4*1024*1024&&gzip.length<=16*1024*1024,"PGDG metadata exceeds its bound");
+function verifyPackageIndex(release,gzip,origin,suite,pins,version,{plain=false}={}){
+  assert.ok(Buffer.byteLength(release)<=4*1024*1024&&gzip.length<=(plain?32:16)*1024*1024,"PGDG metadata exceeds its bound");
   assert.ok(release.split("\n").includes("Origin: "+origin));assert.ok(release.split("\n").includes("Suite: "+suite));
   const section=release.split(/^SHA256:\s*$/m);assert.equal(section.length,2,"One signed SHA256 section required");
   const lines=section[1].split(/\n(?=\S)/)[0].split("\n").map(line=>line.trim().split(/\s+/));
-  const rows=lines.filter(row=>row[2]==="main/binary-amd64/Packages.gz");assert.equal(rows.length,1);
+  const rows=lines.filter(row=>row[2]===(plain?"main/binary-amd64/Packages":"main/binary-amd64/Packages.gz"));assert.equal(rows.length,1);
   assert.equal(rows[0][0],sha256(gzip),"Package index must match verified InRelease SHA256");assert.equal(Number(rows[0][1]),gzip.length);
-  const index=gunzipSync(gzip,{maxOutputLength:128*1024*1024}).toString("utf8"),records=[];
+  const index=(plain?gzip:gunzipSync(gzip,{maxOutputLength:128*1024*1024})).toString("utf8"),records=[];
   for(const block of index.split("\n\n")){
     const record={};for(const line of block.split("\n"))if(line&&!/^\s/.test(line)){const at=line.indexOf(": ");if(at!==-1){const key=line.slice(0,at);assert.ok(!Object.hasOwn(record,key),"Duplicate package field");record[key]=line.slice(at+2);}}
     if(pins.some(p=>p.name===record.Package)&&record.Version===version&&record.Architecture==="amd64")records.push(record);
@@ -35,6 +35,16 @@ export function verifyPg18Index(release,gzip){
     repository:"https://apt.postgresql.org/pub/repos/apt",suite:"noble-pgdg",architecture:"amd64",signingFingerprint:pgdgFingerprint,
     verifiedReleaseSha256:sha256(release),packagesGzipSha256:sha256(gzip),packages:pg18Packages};
 }
+// PGDG's live distribution retains only the newest package revisions. Its
+// official signed archive preserves these exact older bytes; do not substitute
+// a newer libpq or accept an unsigned historical index.
+export function verifyPg18ArchiveIndex(release,index){
+  verifyPackageIndex(release,index,"apt-archive.postgresql.org","noble-pgdg-archive",pg18Packages,pg18Version,{plain:true});
+  return{schemaVersion:1,scope:"ISOLATED_CI_BINARIES_ONLY_NOT_PRODUCTION",mode:"PGDG_SIGNED_ARCHIVE_AND_PINNED_DEBS",version:pg18Version,
+    repository:"https://apt-archive.postgresql.org/pub/repos/apt",suite:"noble-pgdg-archive",architecture:"amd64",signingFingerprint:pgdgFingerprint,
+    verifiedReleaseSha256:sha256(release),packagesIndexSha256:sha256(index),packagesIndexFormat:"SIGNED_PLAIN_BYTES",
+    retainedPackagesGzip:"LOSSLESS_COPY_FOR_IMMUTABLE_ARTIFACT_SELECTORS_NOT_A_SECOND_TRUST_SOURCE",packages:pg18Packages};
+}
 export const ubuntuLiburing={name:"liburing2",filename:"pool/main/libu/liburing/liburing2_2.5-1build1_amd64.deb",size:21092,sha256:"c2aef62accee92a06263c3ad4ef46132c13e409b54296c44792a20491830a7b0"};
 export function verifyUbuntuLiburingIndex(release,gzip){
   verifyPackageIndex(release,gzip,"Ubuntu","noble",[ubuntuLiburing],"2.5-1build1");
@@ -43,8 +53,8 @@ export function verifyUbuntuLiburingIndex(release,gzip){
     verifiedReleaseSha256:sha256(release),packagesGzipSha256:sha256(gzip),packages:[ubuntuLiburing]};
 }
 if(process.argv[1]&&pathToFileURL(resolve(process.argv[1])).href===import.meta.url){
-  assert.ok(process.argv.length===5||process.argv.length===6&&process.argv[5]==="ubuntu-liburing","Use verified Release, Packages.gz and fresh manifest paths");
-  const result=(process.argv[5]==="ubuntu-liburing"?verifyUbuntuLiburingIndex:verifyPg18Index)(readFileSync(process.argv[2],"utf8"),readFileSync(process.argv[3]));
+  assert.ok(process.argv.length===5||process.argv.length===6&&["ubuntu-liburing","pgdg-archive"].includes(process.argv[5]),"Use verified Release, package index and fresh manifest paths");
+  const result=(process.argv[5]==="ubuntu-liburing"?verifyUbuntuLiburingIndex:process.argv[5]==="pgdg-archive"?verifyPg18ArchiveIndex:verifyPg18Index)(readFileSync(process.argv[2],"utf8"),readFileSync(process.argv[3]));
   writeFileSync(process.argv[4],JSON.stringify(result,null,2)+"\n",{flag:"wx"});
   for(const p of result.packages)console.log([p.name,p.filename,p.size,p.sha256].join("\t"));
 }

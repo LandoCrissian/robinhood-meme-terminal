@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "suite": "Task089 isolated whole-database backup/restore and session writer lock",
+  "sourceCommit": "27f19787ed0a2d904ba4508d2adfab1773e82e67",
+  "startedAt": "2026-11-20T19:10:46.545Z",
+  "syntheticOnly": true,
+  "productionAccess": false,
+  "originalRailwayVolumeTouched": false,
+  "versions": {
+    "postgres": "postgres (PostgreSQL) 18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+    "pg_ctl": "pg_ctl (PostgreSQL) 18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+    "initdb": "initdb (PostgreSQL) 18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+    "createdb": "createdb (PostgreSQL) 18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+    "pg_dump": "pg_dump (PostgreSQL) 18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+    "pg_restore": "pg_restore (PostgreSQL) 18.6 (Ubuntu 18.6-1.pgdg24.04+2)"
+  },
+  "checks": [
+    "schema admission refuses uninstalled database",
+    "exact sole writer lock held",
+    "second source writer refused",
+    "whole custom dump includes existing historical and new-engine tables",
+    "dump preserved same source session/lock/data",
+    "fresh restore bytes equal source",
+    "restored database independently acquires one writer lock",
+    "second restored writer refused",
+    "creation identity and checkpoint preserved",
+    "actual PostgreSQL process restart preserves both databases",
+    "session locks absent after restart until explicit reacquisition",
+    "original receipt retained as durable cursor advances",
+    "restored reorg rollback/replay replaces exact canonical identity",
+    "old hash rejected after replay",
+    "source database unchanged by restored recovery"
+  ],
+  "limitations": [
+    "This verifies the exact procedure on synthetic local data, not the existence/readability of any production backup.",
+    "No production database credentials, volume, backup, configuration, or SQL session were accessed.",
+    "An owner-controlled off-device encrypted copy, recovery key, retention/RPO and verified current production restore remain unestablished.",
+    "The writer lease is a PostgreSQL session advisory lock; it has no expiration or periodic renewal."
+  ],
+  "status": "PASS",
+  "backup": {
+    "format": "PostgreSQL custom",
+    "sha256": "2cdbd72d9349355b7ec04b102831b0f6964d6459f75133295c682c0814624143",
+    "bytes": 8730,
+    "containsSyntheticDataOnly": true
+  },
+  "sourceSnapshotSha256": "4e7cf678ce8dc8a9f14add511e3272f95e7a8e8edb9d2f0aa8d1f5836772881b",
+  "checkCount": 15,
+  "cleanup": {
+    "processStopped": true,
+    "privateTemporaryClusterRemoved": true
+  },
+  "finishedAt": "2026-11-20T19:10:48.090Z"
+}

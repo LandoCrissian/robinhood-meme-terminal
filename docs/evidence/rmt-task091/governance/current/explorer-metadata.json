@@ -1,0 +1,540 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK091_READ_ONLY_BLOCKSCOUT_EXPLORER_PUBLICATION_METADATA",
+  "recordedAt": "2026-11-20T20:38:48.712Z",
+  "chainId": 4663,
+  "tool": "Blockscout inspect_contract_code",
+  "toolVersion": "0.19.0",
+  "skill": "https://mcp.blockscout.com/skill/SKILL.md",
+  "scopeLimitation": "Metadata only. No source publication POST, API key, paid service, signing or broadcast. Runtime correspondence is independently verified through official/Pocket capture and exact compiler proof, not inferred from explorer metadata.",
+  "observations": [
+    {
+      "id": "bootstrap",
+      "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5",
+      "observedAt": null,
+      "timeBoundary": "This call completed before recordedAt; individual call completion time was not provided by the connector.",
+      "query": {
+        "chain_id": "4663",
+        "address": "0xb65380aE9A452813c4e6b0fF391cfE34faE676A5"
+      },
+      "data": {
+        "name": "0xb65380ae9a452813c4e6b0ff391cfe34fae676a5",
+        "language": null,
+        "compiler_version": null,
+        "verified_at": null,
+        "source_code_tree_structure": [],
+        "optimization_enabled": null,
+        "optimization_runs": null,
+        "evm_version": null,
+        "license_type": null,
+        "proxy_type": null,
+        "is_fully_verified": null,
+        "constructor_args": null,
+        "decoded_constructor_args": null,
+        "constructor_args_truncated": false,
+        "conflicting_implementations": null,
+        "creation_status": "success",
+        "implementations": []
+      },
+      "isError": false
+    },
+    {
+      "id": "directory",
+      "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+      "observedAt": "2026-11-20T20:38:29.086Z",
+      "query": {
+        "chain_id": "4663",
+        "address": "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C"
+      },
+      "data": {
+        "name": "RMTLaunchCurveDirectoryV2",
+        "language": "solidity",
+        "compiler_version": "v0.8.26+commit.8a97fa7a",
+        "verified_at": "2026-11-17T19:11:35.762193Z",
+        "source_code_tree_structure": [
+          "src/RMTLaunchCurveDirectoryV2.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/IERC5267.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Strings.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/Math.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol"
+        ],
+        "optimization_enabled": true,
+        "optimization_runs": 200,
+        "evm_version": "cancun",
+        "license_type": "none",
+        "proxy_type": null,
+        "is_fully_verified": true,
+        "constructor_args": "0x000000000000000000000000c447a378cfd8460febc2eef67501d7a5473b9001000000000000000000000000c3600f2df60929d2ab9ab294cff42eedcb984f510000000000000000000000002bcc3fafce77ccc7fdbed46e0b5bb80ba3e76697",
+        "decoded_constructor_args": [
+          [
+            "0xC447A378cFd8460Febc2eef67501D7a5473B9001",
+            {
+              "internalType": "address",
+              "name": "signerA_",
+              "type": "address"
+            }
+          ],
+          [
+            "0xC3600f2Df60929D2AB9ab294CFF42EEDCB984f51",
+            {
+              "internalType": "address",
+              "name": "signerB_",
+              "type": "address"
+            }
+          ],
+          [
+            "0x2Bcc3fAfCE77cCc7fdBED46E0B5bb80bA3E76697",
+            {
+              "internalType": "address",
+              "name": "signerC_",
+              "type": "address"
+            }
+          ]
+        ],
+        "constructor_args_truncated": false,
+        "package_name": null,
+        "is_partially_verified": false,
+        "is_changed_bytecode": false,
+        "conflicting_implementations": null,
+        "certified": false,
+        "is_verified_via_sourcify": false,
+        "can_be_visualized_via_sol2uml": true,
+        "is_verified_via_eth_bytecode_db": false,
+        "is_blueprint": false,
+        "external_libraries": [],
+        "implementations": [],
+        "is_verified_via_verifier_alliance": false,
+        "sourcify_repo_url": null,
+        "compiler_settings": {
+          "evmVersion": "cancun",
+          "libraries": {},
+          "metadata": {
+            "appendCBOR": true,
+            "bytecodeHash": "ipfs",
+            "useLiteralContent": false
+          },
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "*"
+              ],
+              "*": [
+                "*"
+              ]
+            }
+          },
+          "remappings": [
+            "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+            "@uniswap/v4-core/=lib/v4-core/",
+            "@uniswap/v4-periphery/=lib/v4-periphery/"
+          ],
+          "viaIR": true
+        },
+        "github_repository_metadata": null,
+        "is_verified": true,
+        "verified_twin_address_hash": null,
+        "creation_status": "success"
+      },
+      "isError": false
+    },
+    {
+      "id": "registry",
+      "address": "0xf1113714Dda31f31532995D2525e034271425398",
+      "observedAt": "2026-11-20T20:38:29.086Z",
+      "query": {
+        "chain_id": "4663",
+        "address": "0xf1113714Dda31f31532995D2525e034271425398"
+      },
+      "data": {
+        "name": "RMTLaunchProjectRegistryV3",
+        "language": "solidity",
+        "compiler_version": "v0.8.26+commit.8a97fa7a",
+        "verified_at": "2026-11-17T19:23:58.774595Z",
+        "source_code_tree_structure": [
+          "src/RMTLaunchProjectRegistryV3.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/IERC5267.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Context.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Strings.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/Math.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol",
+          "src/RMTLaunchCurveDirectoryV2.sol",
+          "src/RMTLaunchCurveTokenV2.sol"
+        ],
+        "optimization_enabled": true,
+        "optimization_runs": 200,
+        "evm_version": "cancun",
+        "license_type": "none",
+        "proxy_type": null,
+        "is_fully_verified": true,
+        "constructor_args": "0x000000000000000000000000e677a69a8124714dd0d88b73bdf1b89cc791ca9c",
+        "decoded_constructor_args": [
+          [
+            "0xE677A69A8124714DD0d88b73BDf1B89cc791ca9C",
+            {
+              "internalType": "contract RMTLaunchCurveDirectoryV2",
+              "name": "directory_",
+              "type": "address"
+            }
+          ]
+        ],
+        "constructor_args_truncated": false,
+        "package_name": null,
+        "is_partially_verified": false,
+        "is_changed_bytecode": false,
+        "conflicting_implementations": null,
+        "certified": false,
+        "is_verified_via_sourcify": false,
+        "can_be_visualized_via_sol2uml": true,
+        "is_verified_via_eth_bytecode_db": false,
+        "is_blueprint": false,
+        "external_libraries": [],
+        "implementations": [],
+        "is_verified_via_verifier_alliance": false,
+        "sourcify_repo_url": null,
+        "compiler_settings": {
+          "evmVersion": "cancun",
+          "libraries": {},
+          "metadata": {
+            "appendCBOR": true,
+            "bytecodeHash": "ipfs",
+            "useLiteralContent": false
+          },
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "*"
+              ],
+              "*": [
+                "*"
+              ]
+            }
+          },
+          "remappings": [
+            "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+            "@uniswap/v4-core/=lib/v4-core/",
+            "@uniswap/v4-periphery/=lib/v4-periphery/"
+          ],
+          "viaIR": true
+        },
+        "github_repository_metadata": null,
+        "is_verified": true,
+        "verified_twin_address_hash": null,
+        "creation_status": "success"
+      },
+      "isError": false
+    },
+    {
+      "id": "successor-v2",
+      "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6",
+      "observedAt": "2026-11-20T20:38:29.086Z",
+      "query": {
+        "chain_id": "4663",
+        "address": "0xcB25a3DF74729F7104C4f924Cb04F687F69391C6"
+      },
+      "data": {
+        "name": "RMTLaunchCurveSuccessorDeployerV1",
+        "language": "solidity",
+        "compiler_version": "v0.8.26+commit.8a97fa7a",
+        "verified_at": "2026-11-17T19:29:52.471708Z",
+        "source_code_tree_structure": [
+          "src/RMTLaunchBondingCurveV2.sol",
+          "src/RMTLaunchCurveMathV1.sol",
+          "src/RMTLaunchCurveRevenueLedgerV1.sol",
+          "src/RMTLaunchCurveTokenV2.sol",
+          "src/interfaces/IRMTLaunchCurveExecution.sol",
+          "src/interfaces/IRMTV4CurveGraduationV1.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Address.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Context.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/Math.sol",
+          "src/RMTLaunchBondingCurveV1.sol"
+        ],
+        "optimization_enabled": true,
+        "optimization_runs": 200,
+        "evm_version": "cancun",
+        "license_type": "none",
+        "proxy_type": null,
+        "is_fully_verified": true,
+        "constructor_args": null,
+        "decoded_constructor_args": null,
+        "constructor_args_truncated": false,
+        "package_name": null,
+        "is_partially_verified": false,
+        "is_changed_bytecode": false,
+        "conflicting_implementations": null,
+        "certified": false,
+        "is_verified_via_sourcify": false,
+        "can_be_visualized_via_sol2uml": true,
+        "is_verified_via_eth_bytecode_db": false,
+        "is_blueprint": false,
+        "external_libraries": [],
+        "implementations": [],
+        "is_verified_via_verifier_alliance": false,
+        "sourcify_repo_url": null,
+        "compiler_settings": {
+          "evmVersion": "cancun",
+          "libraries": {},
+          "metadata": {
+            "appendCBOR": true,
+            "bytecodeHash": "ipfs",
+            "useLiteralContent": false
+          },
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "*"
+              ],
+              "*": [
+                "*"
+              ]
+            }
+          },
+          "remappings": [
+            "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+            "@uniswap/v4-core/=lib/v4-core/",
+            "@uniswap/v4-periphery/=lib/v4-periphery/"
+          ],
+          "viaIR": true
+        },
+        "github_repository_metadata": null,
+        "is_verified": true,
+        "verified_twin_address_hash": null,
+        "creation_status": "success"
+      },
+      "isError": false
+    },
+    {
+      "id": "successor-v3",
+      "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65",
+      "observedAt": "2026-11-20T20:38:29.086Z",
+      "query": {
+        "chain_id": "4663",
+        "address": "0x622D2f878B328406861DA18F4BBdD27E4730Cb65"
+      },
+      "data": {
+        "name": "RMTLaunchCurveSuccessorDeployerV2",
+        "language": "solidity",
+        "compiler_version": "v0.8.26+commit.8a97fa7a",
+        "verified_at": "2026-11-17T20:31:53.290109Z",
+        "source_code_tree_structure": [
+          "src/RMTLaunchBondingCurveV3.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/IERC5267.sol",
+          "src/interfaces/IRMTV4CurveGraduationV1.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/interfaces/draft-IERC6093.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/ERC20.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/IERC20.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Metadata.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/extensions/IERC20Permit.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/token/ERC20/utils/SafeERC20.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Address.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Context.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ReentrancyGuard.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/ShortStrings.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/StorageSlot.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/Strings.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/ECDSA.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/EIP712.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/cryptography/MessageHashUtils.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/Math.sol",
+          "lib/v4-core/lib/openzeppelin-contracts/contracts/utils/math/SignedMath.sol",
+          "src/RMTLaunchBondingCurveV1.sol",
+          "src/RMTLaunchBondingCurveV2.sol",
+          "src/RMTLaunchCurveDirectoryV1.sol",
+          "src/RMTLaunchCurveMathV1.sol",
+          "src/RMTLaunchCurveRevenueLedgerV1.sol",
+          "src/RMTLaunchCurveTokenV2.sol",
+          "src/interfaces/IRMTLaunchCurveExecution.sol"
+        ],
+        "optimization_enabled": true,
+        "optimization_runs": 200,
+        "evm_version": "cancun",
+        "license_type": "none",
+        "proxy_type": null,
+        "is_fully_verified": true,
+        "constructor_args": null,
+        "decoded_constructor_args": null,
+        "constructor_args_truncated": false,
+        "package_name": null,
+        "is_partially_verified": false,
+        "is_changed_bytecode": false,
+        "conflicting_implementations": null,
+        "certified": false,
+        "is_verified_via_sourcify": false,
+        "can_be_visualized_via_sol2uml": true,
+        "is_verified_via_eth_bytecode_db": false,
+        "is_blueprint": false,
+        "external_libraries": [],
+        "implementations": [],
+        "is_verified_via_verifier_alliance": false,
+        "sourcify_repo_url": null,
+        "compiler_settings": {
+          "evmVersion": "cancun",
+          "libraries": {},
+          "metadata": {
+            "appendCBOR": true,
+            "bytecodeHash": "ipfs",
+            "useLiteralContent": false
+          },
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "*"
+              ],
+              "*": [
+                "*"
+              ]
+            }
+          },
+          "remappings": [
+            "@openzeppelin/=lib/v4-core/lib/openzeppelin-contracts/",
+            "@uniswap/v4-core/=lib/v4-core/",
+            "@uniswap/v4-periphery/=lib/v4-periphery/"
+          ],
+          "viaIR": true
+        },
+        "github_repository_metadata": null,
+        "is_verified": true,
+        "verified_twin_address_hash": null,
+        "creation_status": "success"
+      },
+      "isError": false
+    },
+    {
+      "id": "guard",
+      "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000",
+      "observedAt": "2026-11-20T20:38:29.086Z",
+      "query": {
+        "chain_id": "4663",
+        "address": "0x998F3C0CE20cFF92655D495a159B1Ca37c162000"
+      },
+      "data": {
+        "name": "0x998f3c0ce20cff92655d495a159b1ca37c162000",
+        "language": null,
+        "compiler_version": null,
+        "verified_at": null,
+        "source_code_tree_structure": [],
+        "optimization_enabled": null,
+        "optimization_runs": null,
+        "evm_version": null,
+        "license_type": null,
+        "proxy_type": null,
+        "is_fully_verified": null,
+        "constructor_args": null,
+        "decoded_constructor_args": null,
+        "constructor_args_truncated": false,
+        "conflicting_implementations": null,
+        "creation_status": "success",
+        "implementations": []
+      },
+      "isError": false
+    },
+    {
+      "id": "engine",
+      "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32",
+      "observedAt": "2026-11-20T20:38:29.086Z",
+      "query": {
+        "chain_id": "4663",
+        "address": "0x10e540536F10ed36E5fC6638638f1d862e552D32"
+      },
+      "data": {
+        "name": "0x10e540536f10ed36e5fc6638638f1d862e552d32",
+        "language": null,
+        "compiler_version": null,
+        "verified_at": null,
+        "source_code_tree_structure": [],
+        "optimization_enabled": null,
+        "optimization_runs": null,
+        "evm_version": null,
+        "license_type": null,
+        "proxy_type": null,
+        "is_fully_verified": null,
+        "constructor_args": null,
+        "decoded_constructor_args": null,
+        "constructor_args_truncated": false,
+        "conflicting_implementations": null,
+        "creation_status": "success",
+        "implementations": []
+      },
+      "isError": false
+    },
+    {
+      "id": "factory",
+      "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+      "observedAt": "2026-11-20T20:38:29.086Z",
+      "query": {
+        "chain_id": "4663",
+        "address": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3"
+      },
+      "data": {
+        "name": "0x7281e1f9d8764ae6533b374dfd08ab2ecbc273c3",
+        "language": null,
+        "compiler_version": null,
+        "verified_at": null,
+        "source_code_tree_structure": [],
+        "optimization_enabled": null,
+        "optimization_runs": null,
+        "evm_version": null,
+        "license_type": null,
+        "proxy_type": null,
+        "is_fully_verified": null,
+        "constructor_args": null,
+        "decoded_constructor_args": null,
+        "constructor_args_truncated": false,
+        "conflicting_implementations": null,
+        "creation_status": "success",
+        "implementations": []
+      },
+      "isError": false
+    }
+  ],
+  "fullyVerifiedIds": [
+    "directory",
+    "registry",
+    "successor-v2",
+    "successor-v3"
+  ],
+  "notObservedFullyVerifiedIds": [
+    "bootstrap",
+    "guard",
+    "engine",
+    "factory"
+  ],
+  "submissions": 0
+}

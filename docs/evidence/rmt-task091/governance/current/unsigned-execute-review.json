@@ -1,0 +1,84 @@
+{
+  "schemaVersion": 1,
+  "scope": "TASK091_REVIEW_ONLY_UNSIGNED_FACTORY_PUBLICATION",
+  "action": {
+    "kind": 0,
+    "nonce": "0",
+    "version": 1,
+    "factory": "0x7281e1f9d8764ae6533b374dfd08ab2ecbc273c3",
+    "runtimeHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
+    "signerSetEpoch": "1",
+    "deadline": "1795722606"
+  },
+  "actionDigest": "0xad499113950f3410a60c6fe9fe40b4d1d98cf055eeafeb2b1736a5a38c5fea1e",
+  "signingAuthorized": false,
+  "broadcastAuthorized": false,
+  "chainId": 4663,
+  "from": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+  "to": "0xe677a69a8124714dd0d88b73bdf1b89cc791ca9c",
+  "valueWei": "0",
+  "accountNonce": "494",
+  "data": "0x9f2fe9980000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000007281e1f9d8764ae6533b374dfd08ab2ecbc273c3519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a0910000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000006b088d6e",
+  "dataHash": "0xf13b66ca989dd1034c95e9a9095dcb85e034b7a3a78f2a602698194cae1a542d",
+  "calldataBytes": 228,
+  "request": {
+    "type": "0x2",
+    "chainId": "0x1237",
+    "from": "0x7e8e7d3af28584a8b9eeddbe16cd3308bd1e76ca",
+    "to": "0xe677a69a8124714dd0d88b73bdf1b89cc791ca9c",
+    "value": "0x0",
+    "data": "0x9f2fe9980000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000010000000000000000000000007281e1f9d8764ae6533b374dfd08ab2ecbc273c3519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a0910000000000000000000000000000000000000000000000000000000000000001000000000000000000000000000000000000000000000000000000006b088d6e",
+    "nonce": "0x1ee"
+  },
+  "anchor": {
+    "number": "119336631",
+    "hash": "0xd9e3d0ada75c340f1f771b55f00df74dad8340c76a6b70c3737ecc72e45997f7",
+    "timestamp": "1795206740",
+    "timestampUtc": "2026-11-20T20:32:20.000Z"
+  },
+  "observedAt": "2026-11-20T20:32:48.539Z",
+  "schedule": {
+    "transactionHash": "0x96bd234e49d766c73c66f9787f26736040b4fc64d91ed2ae888eca3f4c8afb65",
+    "blockHash": "0xba98e1e82b736a50c46dfae095f1f3fd3cc4932921938c7b2aa8d30f23ec9106",
+    "blockNumber": "116966133"
+  },
+  "deadlineUtc": "2026-11-26T19:50:06.000Z",
+  "deadlineDenver": "2026-11-26 12:50:06 MST",
+  "deadlineInclusive": true,
+  "reviewRefreshRequiredAfterUtc": "2026-11-20T20:35:20.000Z",
+  "cost": {
+    "gasEstimate": "114416",
+    "gasLimit": "143020",
+    "maxFeePerGasWei": "42748000",
+    "priorityFeeWei": "0",
+    "maximumWei": "6113818960000",
+    "estimatedWei": "2445527584000",
+    "l1PostingEstimateWei": "0",
+    "policy": "INDICATIVE_ONLY_RECAPTURE_AND_OWNER_WALLET_CURRENT_COST_APPROVAL_REQUIRED"
+  },
+  "expectedEffect": {
+    "latestVersion": "1",
+    "factoryMapping": [
+      "0x7281e1f9d8764ae6533b374dfd08ab2ecbc273c3",
+      "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091"
+    ],
+    "pending": [
+      "0x0000000000000000000000000000000000000000000000000000000000000000",
+      "0",
+      "0"
+    ],
+    "actionNonce": "1",
+    "assetMovement": false,
+    "tokenCreation": false
+  },
+  "risk": "Permissionless execution publishes the factory, permitting direct public token creation immediately even while the website remains read-only. This does not publish the V3 migration template or enable website transactions.",
+  "followup": "Do not repeat Schedule/signatures. Recheck current pending/action/nonce/epoch/runtime/canonicality/delegation/fees immediately before any owner-controlled signing. If mapping already published, recover and verify its canonical event; never submit a duplicate.",
+  "finality": "L1_UNVERIFIED",
+  "strictScanner": "FAIL_HIGH_22_AND_GOVERNANCE_MEDIUM_7_RETAINED",
+  "captureFile": "capture.json.gz",
+  "offlineAdmission": {
+    "status": "VALID_REVIEW_ONLY_REQUIRES_FRESH_WALLET_OWNER_APPROVAL",
+    "signingAuthorized": false,
+    "broadcastAuthorized": false
+  }
+}

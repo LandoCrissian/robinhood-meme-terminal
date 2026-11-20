@@ -1,0 +1,31 @@
+;
+; Archive created at 2026-11-20 19:10:47 UTC
+;     dbname: rmt_curve_production_smoke_backup_0f87968213
+;     TOC Entries: 20
+;     Compression: gzip
+;     Dump Version: 1.16-0
+;     Format: CUSTOM
+;     Integer: 4 bytes
+;     Offset: 8 bytes
+;     Dumped from database version: 18.6 (Ubuntu 18.6-1.pgdg24.04+2)
+;     Dumped by pg_dump version: 18.6 (Ubuntu 18.6-1.pgdg24.04+2)
+;
+;
+; Selected TOC Entries:
+;
+219; 1259 16386 TABLE public retained_historical_sentinel rmt089_synthetic
+220; 1259 16395 TABLE public rmt_curve_production_bindings rmt089_synthetic
+221; 1259 16406 TABLE public rmt_curve_production_checkpoints rmt089_synthetic
+222; 1259 16422 TABLE public rmt_curve_production_launches rmt089_synthetic
+3443; 0 16386 TABLE DATA public retained_historical_sentinel rmt089_synthetic
+3444; 0 16395 TABLE DATA public rmt_curve_production_bindings rmt089_synthetic
+3445; 0 16406 TABLE DATA public rmt_curve_production_checkpoints rmt089_synthetic
+3446; 0 16422 TABLE DATA public rmt_curve_production_launches rmt089_synthetic
+3284; 2606 16394 CONSTRAINT public retained_historical_sentinel retained_historical_sentinel_pkey rmt089_synthetic
+3286; 2606 16405 CONSTRAINT public rmt_curve_production_bindings rmt_curve_production_bindings_pkey rmt089_synthetic
+3288; 2606 16416 CONSTRAINT public rmt_curve_production_checkpoints rmt_curve_production_checkpoints_pkey rmt089_synthetic
+3291; 2606 16435 CONSTRAINT public rmt_curve_production_launches rmt_curve_production_launches_pkey rmt089_synthetic
+3293; 2606 16437 CONSTRAINT public rmt_curve_production_launches rmt_curve_production_launches_scope_transaction_hash_log_in_key rmt089_synthetic
+3289; 1259 16443 INDEX public rmt_curve_production_launches_block rmt089_synthetic
+3294; 2606 16417 FK CONSTRAINT public rmt_curve_production_checkpoints rmt_curve_production_checkpoints_scope_fkey rmt089_synthetic
+3295; 2606 16438 FK CONSTRAINT public rmt_curve_production_launches rmt_curve_production_launches_scope_fkey rmt089_synthetic

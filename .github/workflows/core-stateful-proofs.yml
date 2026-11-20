@@ -7,6 +7,7 @@ on:
       - ".github/scripts/run-core-stateful-proofs.mjs"
       - "packages/contracts/src/**"
       - "packages/contracts/test/Task090*Proof.t.sol"
+      - "packages/contracts/test/Task091AdmissionAcceptance.t.sol"
       - "packages/contracts/test/fixtures/task090-*.json"
       - "packages/contracts/scripts/**"
       - "packages/contracts/foundry.toml"
@@ -14,6 +15,8 @@ on:
       - "scripts/security/graduation-proof*"
       - "scripts/security/migration-proof*"
       - "docs/evidence/rmt-task090/**"
+      - "docs/evidence/rmt-task091/**"
+      - "scripts/release/verify-task091*"
       - "docs/evidence/rmt-task089/security/**"
       - "docs/evidence/fixed-supply-security/4663-profile.json"
       - "docs/evidence/mobile-signing/protocol-mainnet.json"
@@ -133,7 +136,15 @@ jobs:
           node scripts/security/graduation-proof.mjs --verify-canonical "$CI_EVIDENCE/canonical-compilation.json" \
             docs/evidence/rmt-task090/graduation/runtime-observation.json "$CI_EVIDENCE/graduation-runtime-binding.json" \
             2>&1 | tee "$CI_EVIDENCE/graduation-runtime-binding.log"
-      - name: Run only the 20 focused proofs with 512 fuzz cases per fuzz test
+      - name: Verify every Task091 finding and its exact evidence without financial authorization
+        run: |
+          set -euo pipefail
+          node --test scripts/release/verify-task091.test.mjs 2>&1 | tee "$CI_EVIDENCE/task091-acceptance-tests.log"
+          node scripts/release/verify-task091.mjs > "$CI_EVIDENCE/task091-acceptance.json"
+          node --test docs/evidence/rmt-task091/governance/review-packet.test.mjs 2>&1 | tee "$CI_EVIDENCE/task091-governance-tests.log"
+          node docs/evidence/rmt-task091/journey/verify-journey.mjs --output "$CI_EVIDENCE/task091-retained-journey.json"
+          node docs/evidence/rmt-task091/operations/verify-operations.mjs > "$CI_EVIDENCE/task091-operations.json"
+      - name: Run the 24 focused proofs with 512 fuzz cases per fuzz test
         id: proofs
         if: ${{ !cancelled() && steps.bindings.outcome == 'success' && steps.fixtures.outcome == 'success' }}
         run: |

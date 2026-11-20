@@ -5,6 +5,7 @@ on:
     paths:
       - "docs/RMT_CORE_LAUNCH_GO_NO_GO.md"
       - "docs/evidence/rmt-task089/**"
+      - "docs/evidence/rmt-task091/**"
       - "apps/launch-website/lib/server/production-discovery*"
       - "packages/contracts/scripts/fixed-supply-profile.mjs"
       - "packages/contracts/scripts/pinned-solc*"
@@ -12,6 +13,9 @@ on:
       - "scripts/visual-qa/lifecycle-rsc-observation*"
       - "scripts/visual-qa/rmt-creator-integration.mjs"
       - ".github/workflows/core-launch-go-no-go.yml"
+      - ".github/scripts/prepare-postgres-18.sh"
+      - ".github/scripts/postgres-18-packages.mjs"
+      - ".github/scripts/postgres-18-archive.test.mjs"
   workflow_dispatch:
 
 permissions:
@@ -62,7 +66,10 @@ jobs:
           curl --fail --silent --show-error --retry 2 --max-time 60 --proto '=https' --tlsv1.2 'https://binaries.soliditylang.org/linux-amd64/solc-linux-amd64-v0.8.26+commit.8a97fa7a' --output "$RUNNER_TEMP/solc-0.8.26"
           chmod 700 "$RUNNER_TEMP/solc-0.8.26"
           node packages/contracts/scripts/pinned-solc-smoke.mjs --solc "$RUNNER_TEMP/solc-0.8.26"
+      - name: Verify exact signed-archive PostgreSQL admission and refusal cases
+        run: node --test .github/scripts/postgres-18-archive.test.mjs scripts/reclaim-v2/postgres-preparation.test.mjs
       - name: Prepare the exact isolated PostgreSQL 18.6 fixture binaries
+        # Keep exact old package bytes available through PGDG's signed archive.
         run: bash .github/scripts/prepare-postgres-18.sh
       - name: Verify synthetic backup, independent restore, session writer lock, restart and reorg recovery
         run: |
@@ -78,6 +85,9 @@ jobs:
             ${{ runner.temp }}/task089-backup-restore/postgres.log
             ${{ env.RMT_PG18_EVIDENCE }}/provenance.json
             ${{ env.RMT_PG18_EVIDENCE }}/versions-and-runtime.txt
+            ${{ env.RMT_PG18_EVIDENCE }}/InRelease
+            ${{ env.RMT_PG18_EVIDENCE }}/Release
+            ${{ env.RMT_PG18_EVIDENCE }}/Packages
           retention-days: 7
 
   core-creator-matrix:
@@ -147,3 +157,6 @@ jobs:
             ${{ runner.temp }}/task089-creator/failure-page.txt
             ${{ env.RMT_PG18_EVIDENCE }}/provenance.json
             ${{ env.RMT_PG18_EVIDENCE }}/versions-and-runtime.txt
+            ${{ env.RMT_PG18_EVIDENCE }}/InRelease
+            ${{ env.RMT_PG18_EVIDENCE }}/Release
+            ${{ env.RMT_PG18_EVIDENCE }}/Packages

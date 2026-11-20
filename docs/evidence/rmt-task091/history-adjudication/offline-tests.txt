@@ -1,0 +1,922 @@
+TAP version 13
+# Subtest: unchanged actual raw22 includes original17, four immutable public response GUIDs and one source-bound type
+ok 1 - unchanged actual raw22 includes original17, four immutable public response GUIDs and one source-bound type
+  ---
+  duration_ms: 1434.5284
+  type: 'test'
+  ...
+# Subtest: missing exact observation1 blocks
+ok 2 - missing exact observation1 blocks
+  ---
+  duration_ms: 215.7325
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation1 blocks
+ok 3 - duplicate exact observation1 blocks
+  ---
+  duration_ms: 218.8456
+  type: 'test'
+  ...
+# Subtest: missing exact observation2 blocks
+ok 4 - missing exact observation2 blocks
+  ---
+  duration_ms: 200.0204
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation2 blocks
+ok 5 - duplicate exact observation2 blocks
+  ---
+  duration_ms: 197.1471
+  type: 'test'
+  ...
+# Subtest: missing exact observation3 blocks
+ok 6 - missing exact observation3 blocks
+  ---
+  duration_ms: 205.1082
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation3 blocks
+ok 7 - duplicate exact observation3 blocks
+  ---
+  duration_ms: 197.7725
+  type: 'test'
+  ...
+# Subtest: missing exact observation4 blocks
+ok 8 - missing exact observation4 blocks
+  ---
+  duration_ms: 198.9966
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation4 blocks
+ok 9 - duplicate exact observation4 blocks
+  ---
+  duration_ms: 212.5698
+  type: 'test'
+  ...
+# Subtest: missing exact observation5 blocks
+ok 10 - missing exact observation5 blocks
+  ---
+  duration_ms: 203.0858
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation5 blocks
+ok 11 - duplicate exact observation5 blocks
+  ---
+  duration_ms: 201.2711
+  type: 'test'
+  ...
+# Subtest: missing exact observation6 blocks
+ok 12 - missing exact observation6 blocks
+  ---
+  duration_ms: 215.3502
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation6 blocks
+ok 13 - duplicate exact observation6 blocks
+  ---
+  duration_ms: 201.4309
+  type: 'test'
+  ...
+# Subtest: missing exact observation7 blocks
+ok 14 - missing exact observation7 blocks
+  ---
+  duration_ms: 200.1479
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation7 blocks
+ok 15 - duplicate exact observation7 blocks
+  ---
+  duration_ms: 214.2344
+  type: 'test'
+  ...
+# Subtest: missing exact observation8 blocks
+ok 16 - missing exact observation8 blocks
+  ---
+  duration_ms: 200.1481
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation8 blocks
+ok 17 - duplicate exact observation8 blocks
+  ---
+  duration_ms: 227.5699
+  type: 'test'
+  ...
+# Subtest: missing exact observation9 blocks
+ok 18 - missing exact observation9 blocks
+  ---
+  duration_ms: 216.0148
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation9 blocks
+ok 19 - duplicate exact observation9 blocks
+  ---
+  duration_ms: 198.5993
+  type: 'test'
+  ...
+# Subtest: missing exact observation10 blocks
+ok 20 - missing exact observation10 blocks
+  ---
+  duration_ms: 205.3515
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation10 blocks
+ok 21 - duplicate exact observation10 blocks
+  ---
+  duration_ms: 214.3642
+  type: 'test'
+  ...
+# Subtest: missing exact observation11 blocks
+ok 22 - missing exact observation11 blocks
+  ---
+  duration_ms: 202.0446
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation11 blocks
+ok 23 - duplicate exact observation11 blocks
+  ---
+  duration_ms: 202.6975
+  type: 'test'
+  ...
+# Subtest: missing exact observation12 blocks
+ok 24 - missing exact observation12 blocks
+  ---
+  duration_ms: 210.714
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation12 blocks
+ok 25 - duplicate exact observation12 blocks
+  ---
+  duration_ms: 199.8838
+  type: 'test'
+  ...
+# Subtest: missing exact observation13 blocks
+ok 26 - missing exact observation13 blocks
+  ---
+  duration_ms: 200.4566
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation13 blocks
+ok 27 - duplicate exact observation13 blocks
+  ---
+  duration_ms: 211.3234
+  type: 'test'
+  ...
+# Subtest: missing exact observation14 blocks
+ok 28 - missing exact observation14 blocks
+  ---
+  duration_ms: 198.8818
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation14 blocks
+ok 29 - duplicate exact observation14 blocks
+  ---
+  duration_ms: 201.4628
+  type: 'test'
+  ...
+# Subtest: missing exact observation15 blocks
+ok 30 - missing exact observation15 blocks
+  ---
+  duration_ms: 229.8922
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation15 blocks
+ok 31 - duplicate exact observation15 blocks
+  ---
+  duration_ms: 202.0913
+  type: 'test'
+  ...
+# Subtest: missing exact observation16 blocks
+ok 32 - missing exact observation16 blocks
+  ---
+  duration_ms: 202.0983
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation16 blocks
+ok 33 - duplicate exact observation16 blocks
+  ---
+  duration_ms: 212.441
+  type: 'test'
+  ...
+# Subtest: missing exact observation17 blocks
+ok 34 - missing exact observation17 blocks
+  ---
+  duration_ms: 203.1611
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation17 blocks
+ok 35 - duplicate exact observation17 blocks
+  ---
+  duration_ms: 202.1115
+  type: 'test'
+  ...
+# Subtest: missing exact observation18 blocks
+ok 36 - missing exact observation18 blocks
+  ---
+  duration_ms: 217.212
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation18 blocks
+ok 37 - duplicate exact observation18 blocks
+  ---
+  duration_ms: 201.6137
+  type: 'test'
+  ...
+# Subtest: missing exact observation19 blocks
+ok 38 - missing exact observation19 blocks
+  ---
+  duration_ms: 199.1989
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation19 blocks
+ok 39 - duplicate exact observation19 blocks
+  ---
+  duration_ms: 215.684
+  type: 'test'
+  ...
+# Subtest: missing exact observation20 blocks
+ok 40 - missing exact observation20 blocks
+  ---
+  duration_ms: 203.0779
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation20 blocks
+ok 41 - duplicate exact observation20 blocks
+  ---
+  duration_ms: 202.7115
+  type: 'test'
+  ...
+# Subtest: missing exact observation21 blocks
+ok 42 - missing exact observation21 blocks
+  ---
+  duration_ms: 222.7343
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation21 blocks
+ok 43 - duplicate exact observation21 blocks
+  ---
+  duration_ms: 204.9477
+  type: 'test'
+  ...
+# Subtest: missing exact observation22 blocks
+ok 44 - missing exact observation22 blocks
+  ---
+  duration_ms: 202.5681
+  type: 'test'
+  ...
+# Subtest: duplicate exact observation22 blocks
+ok 45 - duplicate exact observation22 blocks
+  ---
+  duration_ms: 214.6843
+  type: 'test'
+  ...
+# Subtest: changed fingerprint at exact GUID line26 blocks
+ok 46 - changed fingerprint at exact GUID line26 blocks
+  ---
+  duration_ms: 203.9996
+  type: 'test'
+  ...
+# Subtest: changed commit at exact GUID line26 blocks
+ok 47 - changed commit at exact GUID line26 blocks
+  ---
+  duration_ms: 201.6217
+  type: 'test'
+  ...
+# Subtest: changed same value in future commit at exact GUID line26 blocks
+ok 48 - changed same value in future commit at exact GUID line26 blocks
+  ---
+  duration_ms: 214.5531
+  type: 'test'
+  ...
+# Subtest: changed path at exact GUID line26 blocks
+ok 49 - changed path at exact GUID line26 blocks
+  ---
+  duration_ms: 204.2173
+  type: 'test'
+  ...
+# Subtest: changed line at exact GUID line26 blocks
+ok 50 - changed line at exact GUID line26 blocks
+  ---
+  duration_ms: 203.0295
+  type: 'test'
+  ...
+# Subtest: changed end line at exact GUID line26 blocks
+ok 51 - changed end line at exact GUID line26 blocks
+  ---
+  duration_ms: 216.2965
+  type: 'test'
+  ...
+# Subtest: changed start column at exact GUID line26 blocks
+ok 52 - changed start column at exact GUID line26 blocks
+  ---
+  duration_ms: 199.402
+  type: 'test'
+  ...
+# Subtest: changed end column at exact GUID line26 blocks
+ok 53 - changed end column at exact GUID line26 blocks
+  ---
+  duration_ms: 201.5457
+  type: 'test'
+  ...
+# Subtest: changed rule at exact GUID line26 blocks
+ok 54 - changed rule at exact GUID line26 blocks
+  ---
+  duration_ms: 222.7205
+  type: 'test'
+  ...
+# Subtest: changed match at exact GUID line26 blocks
+ok 55 - changed match at exact GUID line26 blocks
+  ---
+  duration_ms: 205.0161
+  type: 'test'
+  ...
+# Subtest: changed nonredacted value at exact GUID line26 blocks
+ok 56 - changed nonredacted value at exact GUID line26 blocks
+  ---
+  duration_ms: 205.2221
+  type: 'test'
+  ...
+# Subtest: changed fingerprint at exact GUID line47 blocks
+ok 57 - changed fingerprint at exact GUID line47 blocks
+  ---
+  duration_ms: 214.1369
+  type: 'test'
+  ...
+# Subtest: changed commit at exact GUID line47 blocks
+ok 58 - changed commit at exact GUID line47 blocks
+  ---
+  duration_ms: 205.8999
+  type: 'test'
+  ...
+# Subtest: changed same value in future commit at exact GUID line47 blocks
+ok 59 - changed same value in future commit at exact GUID line47 blocks
+  ---
+  duration_ms: 203.5939
+  type: 'test'
+  ...
+# Subtest: changed path at exact GUID line47 blocks
+ok 60 - changed path at exact GUID line47 blocks
+  ---
+  duration_ms: 216.4618
+  type: 'test'
+  ...
+# Subtest: changed line at exact GUID line47 blocks
+ok 61 - changed line at exact GUID line47 blocks
+  ---
+  duration_ms: 207.3049
+  type: 'test'
+  ...
+# Subtest: changed end line at exact GUID line47 blocks
+ok 62 - changed end line at exact GUID line47 blocks
+  ---
+  duration_ms: 199.1924
+  type: 'test'
+  ...
+# Subtest: changed start column at exact GUID line47 blocks
+ok 63 - changed start column at exact GUID line47 blocks
+  ---
+  duration_ms: 220.2869
+  type: 'test'
+  ...
+# Subtest: changed end column at exact GUID line47 blocks
+ok 64 - changed end column at exact GUID line47 blocks
+  ---
+  duration_ms: 208.4392
+  type: 'test'
+  ...
+# Subtest: changed rule at exact GUID line47 blocks
+ok 65 - changed rule at exact GUID line47 blocks
+  ---
+  duration_ms: 209.3935
+  type: 'test'
+  ...
+# Subtest: changed match at exact GUID line47 blocks
+ok 66 - changed match at exact GUID line47 blocks
+  ---
+  duration_ms: 224.1618
+  type: 'test'
+  ...
+# Subtest: changed nonredacted value at exact GUID line47 blocks
+ok 67 - changed nonredacted value at exact GUID line47 blocks
+  ---
+  duration_ms: 205.6255
+  type: 'test'
+  ...
+# Subtest: changed fingerprint at exact GUID line68 blocks
+ok 68 - changed fingerprint at exact GUID line68 blocks
+  ---
+  duration_ms: 207.2918
+  type: 'test'
+  ...
+# Subtest: changed commit at exact GUID line68 blocks
+ok 69 - changed commit at exact GUID line68 blocks
+  ---
+  duration_ms: 216.5813
+  type: 'test'
+  ...
+# Subtest: changed same value in future commit at exact GUID line68 blocks
+ok 70 - changed same value in future commit at exact GUID line68 blocks
+  ---
+  duration_ms: 202.9813
+  type: 'test'
+  ...
+# Subtest: changed path at exact GUID line68 blocks
+ok 71 - changed path at exact GUID line68 blocks
+  ---
+  duration_ms: 198.9644
+  type: 'test'
+  ...
+# Subtest: changed line at exact GUID line68 blocks
+ok 72 - changed line at exact GUID line68 blocks
+  ---
+  duration_ms: 215.0299
+  type: 'test'
+  ...
+# Subtest: changed end line at exact GUID line68 blocks
+ok 73 - changed end line at exact GUID line68 blocks
+  ---
+  duration_ms: 204.5596
+  type: 'test'
+  ...
+# Subtest: changed start column at exact GUID line68 blocks
+ok 74 - changed start column at exact GUID line68 blocks
+  ---
+  duration_ms: 205.3055
+  type: 'test'
+  ...
+# Subtest: changed end column at exact GUID line68 blocks
+ok 75 - changed end column at exact GUID line68 blocks
+  ---
+  duration_ms: 220.0507
+  type: 'test'
+  ...
+# Subtest: changed rule at exact GUID line68 blocks
+ok 76 - changed rule at exact GUID line68 blocks
+  ---
+  duration_ms: 203.5106
+  type: 'test'
+  ...
+# Subtest: changed match at exact GUID line68 blocks
+ok 77 - changed match at exact GUID line68 blocks
+  ---
+  duration_ms: 204.8077
+  type: 'test'
+  ...
+# Subtest: changed nonredacted value at exact GUID line68 blocks
+ok 78 - changed nonredacted value at exact GUID line68 blocks
+  ---
+  duration_ms: 217.1753
+  type: 'test'
+  ...
+# Subtest: changed fingerprint at exact GUID line89 blocks
+ok 79 - changed fingerprint at exact GUID line89 blocks
+  ---
+  duration_ms: 205.354
+  type: 'test'
+  ...
+# Subtest: changed commit at exact GUID line89 blocks
+ok 80 - changed commit at exact GUID line89 blocks
+  ---
+  duration_ms: 202.0117
+  type: 'test'
+  ...
+# Subtest: changed same value in future commit at exact GUID line89 blocks
+ok 81 - changed same value in future commit at exact GUID line89 blocks
+  ---
+  duration_ms: 208.2677
+  type: 'test'
+  ...
+# Subtest: changed path at exact GUID line89 blocks
+ok 82 - changed path at exact GUID line89 blocks
+  ---
+  duration_ms: 195.7252
+  type: 'test'
+  ...
+# Subtest: changed line at exact GUID line89 blocks
+ok 83 - changed line at exact GUID line89 blocks
+  ---
+  duration_ms: 198.4959
+  type: 'test'
+  ...
+# Subtest: changed end line at exact GUID line89 blocks
+ok 84 - changed end line at exact GUID line89 blocks
+  ---
+  duration_ms: 211.8095
+  type: 'test'
+  ...
+# Subtest: changed start column at exact GUID line89 blocks
+ok 85 - changed start column at exact GUID line89 blocks
+  ---
+  duration_ms: 201.6793
+  type: 'test'
+  ...
+# Subtest: changed end column at exact GUID line89 blocks
+ok 86 - changed end column at exact GUID line89 blocks
+  ---
+  duration_ms: 198.7804
+  type: 'test'
+  ...
+# Subtest: changed rule at exact GUID line89 blocks
+ok 87 - changed rule at exact GUID line89 blocks
+  ---
+  duration_ms: 207.3837
+  type: 'test'
+  ...
+# Subtest: changed match at exact GUID line89 blocks
+ok 88 - changed match at exact GUID line89 blocks
+  ---
+  duration_ms: 197.0064
+  type: 'test'
+  ...
+# Subtest: changed nonredacted value at exact GUID line89 blocks
+ok 89 - changed nonredacted value at exact GUID line89 blocks
+  ---
+  duration_ms: 200.5399
+  type: 'test'
+  ...
+# Subtest: changed fingerprint at exact GUID line90 blocks
+ok 90 - changed fingerprint at exact GUID line90 blocks
+  ---
+  duration_ms: 211.4757
+  type: 'test'
+  ...
+# Subtest: changed commit at exact GUID line90 blocks
+ok 91 - changed commit at exact GUID line90 blocks
+  ---
+  duration_ms: 205.0409
+  type: 'test'
+  ...
+# Subtest: changed same value in future commit at exact GUID line90 blocks
+ok 92 - changed same value in future commit at exact GUID line90 blocks
+  ---
+  duration_ms: 196.1321
+  type: 'test'
+  ...
+# Subtest: changed path at exact GUID line90 blocks
+ok 93 - changed path at exact GUID line90 blocks
+  ---
+  duration_ms: 210.466
+  type: 'test'
+  ...
+# Subtest: changed line at exact GUID line90 blocks
+ok 94 - changed line at exact GUID line90 blocks
+  ---
+  duration_ms: 201.9061
+  type: 'test'
+  ...
+# Subtest: changed end line at exact GUID line90 blocks
+ok 95 - changed end line at exact GUID line90 blocks
+  ---
+  duration_ms: 199.8518
+  type: 'test'
+  ...
+# Subtest: changed start column at exact GUID line90 blocks
+ok 96 - changed start column at exact GUID line90 blocks
+  ---
+  duration_ms: 208.2393
+  type: 'test'
+  ...
+# Subtest: changed end column at exact GUID line90 blocks
+ok 97 - changed end column at exact GUID line90 blocks
+  ---
+  duration_ms: 197.0582
+  type: 'test'
+  ...
+# Subtest: changed rule at exact GUID line90 blocks
+ok 98 - changed rule at exact GUID line90 blocks
+  ---
+  duration_ms: 200.6193
+  type: 'test'
+  ...
+# Subtest: changed match at exact GUID line90 blocks
+ok 99 - changed match at exact GUID line90 blocks
+  ---
+  duration_ms: 214.5255
+  type: 'test'
+  ...
+# Subtest: changed nonredacted value at exact GUID line90 blocks
+ok 100 - changed nonredacted value at exact GUID line90 blocks
+  ---
+  duration_ms: 201.2311
+  type: 'test'
+  ...
+# Subtest: immutable blob drift blocks docs/evidence/rmt-task091/governance/current/source-publication-attempt.json
+ok 101 - immutable blob drift blocks docs/evidence/rmt-task091/governance/current/source-publication-attempt.json
+  ---
+  duration_ms: 2.4822
+  type: 'test'
+  ...
+# Subtest: immutable blob drift blocks docs/evidence/rmt-task091/governance/source-publication/RMTLaunchCurveDeploymentV2.request.json.gz
+ok 102 - immutable blob drift blocks docs/evidence/rmt-task091/governance/source-publication/RMTLaunchCurveDeploymentV2.request.json.gz
+  ---
+  duration_ms: 0.7554
+  type: 'test'
+  ...
+# Subtest: immutable blob drift blocks docs/evidence/rmt-task091/governance/source-publication/RMTV4CurveInitializationGuardV1.request.json.gz
+ok 103 - immutable blob drift blocks docs/evidence/rmt-task091/governance/source-publication/RMTV4CurveInitializationGuardV1.request.json.gz
+  ---
+  duration_ms: 3.3351
+  type: 'test'
+  ...
+# Subtest: immutable blob drift blocks docs/evidence/rmt-task091/governance/source-publication/RMTV4CurveGraduationV1.request.json.gz
+ok 104 - immutable blob drift blocks docs/evidence/rmt-task091/governance/source-publication/RMTV4CurveGraduationV1.request.json.gz
+  ---
+  duration_ms: 6.2702
+  type: 'test'
+  ...
+# Subtest: immutable blob drift blocks docs/evidence/rmt-task091/governance/source-publication/RMTLaunchCurveFactoryV2.request.json.gz
+ok 105 - immutable blob drift blocks docs/evidence/rmt-task091/governance/source-publication/RMTLaunchCurveFactoryV2.request.json.gz
+  ---
+  duration_ms: 10.0814
+  type: 'test'
+  ...
+# Subtest: changed actual server response, API status, target prefix, payload digest or canonical input cannot be admitted
+ok 106 - changed actual server response, API status, target prefix, payload digest or canonical input cannot be admitted
+  ---
+  duration_ms: 13.5102
+  type: 'test'
+  ...
+# Subtest: pinned proof fingerprint drift blocks
+ok 107 - pinned proof fingerprint drift blocks
+  ---
+  duration_ms: 0.4269
+  type: 'test'
+  ...
+# Subtest: pinned proof commit drift blocks
+ok 108 - pinned proof commit drift blocks
+  ---
+  duration_ms: 0.2324
+  type: 'test'
+  ...
+# Subtest: pinned proof path drift blocks
+ok 109 - pinned proof path drift blocks
+  ---
+  duration_ms: 0.2127
+  type: 'test'
+  ...
+# Subtest: pinned proof ruleId drift blocks
+ok 110 - pinned proof ruleId drift blocks
+  ---
+  duration_ms: 0.2646
+  type: 'test'
+  ...
+# Subtest: pinned proof line drift blocks
+ok 111 - pinned proof line drift blocks
+  ---
+  duration_ms: 0.2035
+  type: 'test'
+  ...
+# Subtest: pinned proof startColumn drift blocks
+ok 112 - pinned proof startColumn drift blocks
+  ---
+  duration_ms: 0.1902
+  type: 'test'
+  ...
+# Subtest: pinned proof endColumn drift blocks
+ok 113 - pinned proof endColumn drift blocks
+  ---
+  duration_ms: 0.1878
+  type: 'test'
+  ...
+# Subtest: pinned proof gitBlobSha1 drift blocks
+ok 114 - pinned proof gitBlobSha1 drift blocks
+  ---
+  duration_ms: 0.1797
+  type: 'test'
+  ...
+# Subtest: pinned proof blobSha256 drift blocks
+ok 115 - pinned proof blobSha256 drift blocks
+  ---
+  duration_ms: 0.1788
+  type: 'test'
+  ...
+# Subtest: pinned proof lineSha256 drift blocks
+ok 116 - pinned proof lineSha256 drift blocks
+  ---
+  duration_ms: 0.1782
+  type: 'test'
+  ...
+# Subtest: pinned proof requestIndex drift blocks
+ok 117 - pinned proof requestIndex drift blocks
+  ---
+  duration_ms: 0.1801
+  type: 'test'
+  ...
+# Subtest: pinned proof requestId drift blocks
+ok 118 - pinned proof requestId drift blocks
+  ---
+  duration_ms: 0.1803
+  type: 'test'
+  ...
+# Subtest: pinned proof publicKind drift blocks
+ok 119 - pinned proof publicKind drift blocks
+  ---
+  duration_ms: 0.1863
+  type: 'test'
+  ...
+# Subtest: pinned proof publicValueSha256 drift blocks
+ok 120 - pinned proof publicValueSha256 drift blocks
+  ---
+  duration_ms: 0.1766
+  type: 'test'
+  ...
+# Subtest: pinned proof redactedMatchSha256 drift blocks
+ok 121 - pinned proof redactedMatchSha256 drift blocks
+  ---
+  duration_ms: 0.2043
+  type: 'test'
+  ...
+# Subtest: pinned proof responseBodySha256 drift blocks
+ok 122 - pinned proof responseBodySha256 drift blocks
+  ---
+  duration_ms: 0.1679
+  type: 'test'
+  ...
+# Subtest: pinned proof payloadPath drift blocks
+ok 123 - pinned proof payloadPath drift blocks
+  ---
+  duration_ms: 0.1685
+  type: 'test'
+  ...
+# Subtest: pinned proof payloadGitBlobSha1 drift blocks
+ok 124 - pinned proof payloadGitBlobSha1 drift blocks
+  ---
+  duration_ms: 0.1667
+  type: 'test'
+  ...
+# Subtest: pinned proof payloadGzipSha256 drift blocks
+ok 125 - pinned proof payloadGzipSha256 drift blocks
+  ---
+  duration_ms: 0.17
+  type: 'test'
+  ...
+# Subtest: pinned proof compilerInputSha256 drift blocks
+ok 126 - pinned proof compilerInputSha256 drift blocks
+  ---
+  duration_ms: 0.171
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof fingerprint drift blocks
+ok 127 - pinned source-type proof fingerprint drift blocks
+  ---
+  duration_ms: 0.2777
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof commit drift blocks
+ok 128 - pinned source-type proof commit drift blocks
+  ---
+  duration_ms: 0.1775
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof path drift blocks
+ok 129 - pinned source-type proof path drift blocks
+  ---
+  duration_ms: 0.1774
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof ruleId drift blocks
+ok 130 - pinned source-type proof ruleId drift blocks
+  ---
+  duration_ms: 0.1702
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof line drift blocks
+ok 131 - pinned source-type proof line drift blocks
+  ---
+  duration_ms: 0.1706
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof startColumn drift blocks
+ok 132 - pinned source-type proof startColumn drift blocks
+  ---
+  duration_ms: 0.1658
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof endColumn drift blocks
+ok 133 - pinned source-type proof endColumn drift blocks
+  ---
+  duration_ms: 0.1635
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof gitBlobSha1 drift blocks
+ok 134 - pinned source-type proof gitBlobSha1 drift blocks
+  ---
+  duration_ms: 0.1622
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof blobSha256 drift blocks
+ok 135 - pinned source-type proof blobSha256 drift blocks
+  ---
+  duration_ms: 0.238
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof lineSha256 drift blocks
+ok 136 - pinned source-type proof lineSha256 drift blocks
+  ---
+  duration_ms: 0.1846
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof publicKind drift blocks
+ok 137 - pinned source-type proof publicKind drift blocks
+  ---
+  duration_ms: 0.1743
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof publicType drift blocks
+ok 138 - pinned source-type proof publicType drift blocks
+  ---
+  duration_ms: 0.1726
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof publicValueSha256 drift blocks
+ok 139 - pinned source-type proof publicValueSha256 drift blocks
+  ---
+  duration_ms: 0.1667
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof redactedMatchSha256 drift blocks
+ok 140 - pinned source-type proof redactedMatchSha256 drift blocks
+  ---
+  duration_ms: 0.1748
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof sourceInputCommit drift blocks
+ok 141 - pinned source-type proof sourceInputCommit drift blocks
+  ---
+  duration_ms: 0.2097
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof sourceInputPath drift blocks
+ok 142 - pinned source-type proof sourceInputPath drift blocks
+  ---
+  duration_ms: 0.2267
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof sourceInputGitBlobSha1 drift blocks
+ok 143 - pinned source-type proof sourceInputGitBlobSha1 drift blocks
+  ---
+  duration_ms: 0.1825
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof sourceInputGzipSha256 drift blocks
+ok 144 - pinned source-type proof sourceInputGzipSha256 drift blocks
+  ---
+  duration_ms: 0.1712
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof compilerInputSha256 drift blocks
+ok 145 - pinned source-type proof compilerInputSha256 drift blocks
+  ---
+  duration_ms: 0.1638
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof sourceFile drift blocks
+ok 146 - pinned source-type proof sourceFile drift blocks
+  ---
+  duration_ms: 0.1672
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof sourceLine drift blocks
+ok 147 - pinned source-type proof sourceLine drift blocks
+  ---
+  duration_ms: 0.1651
+  type: 'test'
+  ...
+# Subtest: pinned source-type proof sourceLineSha256 drift blocks
+ok 148 - pinned source-type proof sourceLineSha256 drift blocks
+  ---
+  duration_ms: 0.1678
+  type: 'test'
+  ...
+# Subtest: changed immutable classifier or original canonical source input cannot admit the public type
+ok 149 - changed immutable classifier or original canonical source input cannot admit the public type
+  ---
+  duration_ms: 27.2979
+  type: 'test'
+  ...
+# Subtest: original detected canary and a new API-key-looking value remain rejected
+ok 150 - original detected canary and a new API-key-looking value remain rejected
+  ---
+  duration_ms: 404.5756
+  type: 'test'
+  ...
+# Subtest: scanner rules and ignore remain pinned by the unchanged legacy verifier
+ok 151 - scanner rules and ignore remain pinned by the unchanged legacy verifier
+  ---
+  duration_ms: 349.9047
+  type: 'test'
+  ...
+# Subtest: unknown missing malformed and oversized input fail closed
+ok 152 - unknown missing malformed and oversized input fail closed
+  ---
+  duration_ms: 414.5541
+  type: 'test'
+  ...
+1..152
+# tests 152
+# suites 0
+# pass 152
+# fail 0
+# cancelled 0
+# skipped 0
+# todo 0
+# duration_ms 23299.0085
