@@ -1,0 +1,22 @@
+[
+ {
+  "RuleID": "generic-api-key",
+  "Description": "Detected a Generic API Key, potentially exposing access to various services and sensitive operations.",
+  "StartLine": 1,
+  "EndLine": 1,
+  "StartColumn": 96138,
+  "EndColumn": 96174,
+  "Match": "token =\u003e REDACTED ",
+  "Secret": "REDACTED",
+  "File": "/tmp/task088b-expanded/security/fixed-supply-4663.json",
+  "SymlinkFile": "",
+  "Commit": "",
+  "Entropy": 4.0006456,
+  "Author": "",
+  "Email": "",
+  "Date": "",
+  "Message": "",
+  "Tags": [],
+  "Fingerprint": "/tmp/task088b-expanded/security/fixed-supply-4663.json:generic-api-key:1"
+ }
+]

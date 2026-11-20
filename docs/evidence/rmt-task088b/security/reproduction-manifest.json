@@ -1,0 +1,467 @@
+{
+  "schemaVersion": 1,
+  "baseSource": "b02a0c2bb3b2814bfc9a0610dee79860b648cc08",
+  "hostArchitecture": "aarch64",
+  "python": "3.11.2",
+  "tools": {
+    "foundry": "1.7.1",
+    "slitherAnalyzer": "0.11.5",
+    "cryticCompile": "0.3.11",
+    "solc": "0.8.26+commit.8a97fa7a",
+    "gitleaks": "8.30.1"
+  },
+  "actualSolcSha256": "d5f23436f443edb85d8e76906d12f0a86ce0490e7663a9e608efeb7a93f149ef",
+  "solcExecutionWrapperSha256": "b9b9e696463b61c44e772fbb7d9a2193aa701c7b9dad288b74b15d5061ea4c47",
+  "foundryArchiveSha256": "c8fe8fa09ae3aba2c81b510c6f9da3a9d468029b9580e690b245b3f0aea687ae",
+  "foundryReleaseDigestSource": "https://api.github.com/repos/foundry-rs/foundry/releases/tags/v1.7.1",
+  "compilerWrapper": "exec /usr/bin/qemu-x86_64 -L /usr/x86_64-linux-gnu /tmp/rmt088b-tools/pinned-solc-x64 \"$@\"",
+  "nativeProfileToolLimitation": "The reviewed fixed-supply-profile.mjs compiler hash table has no linux-arm64 entry. No existing platform/hash assertion was edited or bypassed. Independent reconstruction checked every source hash, every exact transformation and the complete retained input digest before unchanged analyzer execution.",
+  "setupErrorsPreserved": [
+    {
+      "step": "First dependency installation invocation from repository root",
+      "error": "bash: scripts/install-v4-deps.sh: No such file or directory",
+      "resolution": "Ran unchanged script in packages/contracts; pinned dependencies installed."
+    },
+    {
+      "step": "First QEMU solc version check",
+      "error": "qemu-x86_64: Could not open '/lib64/ld-linux-x86-64.so.2': No such file or directory",
+      "resolution": "Installed Debian libc6-amd64-cross and libstdc++6-amd64-cross; explicit QEMU library prefix. Actual pinned compiler bytes unchanged."
+    },
+    {
+      "step": "First pinned Gitleaks archive extraction attempt",
+      "error": "TypeError: TarFile.extract() got an unexpected keyword argument 'filter'",
+      "resolution": "Used tar to extract only the verified gitleaks member; no scanner/rule changes."
+    }
+  ],
+  "networkBoundary": "Dependency/tool downloads only; analyzer uses complete local source input, Foundry invoked --offline and selected test source contains no fork/RPC/FFI/broadcast calls. No live-chain vulnerability testing performed.",
+  "scanner": {
+    "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "analysisInputSha256": "f1ce76044a1d8816441bf5fda276cb9aec675ac3babee93e3fe5bf888f5c8e56",
+    "detectorCount": 101,
+    "findingCount": 233,
+    "highCount": 22,
+    "strictExit": 1,
+    "all233FindingIdsMatch": true,
+    "all22HighIdsMatch": true
+  },
+  "contractChanges": false,
+  "scannerPolicyChanges": false,
+  "productionChanges": false,
+  "findingsCleared": 0,
+  "publicationAuthorized": false,
+  "analyzerScriptSha256": "787082cdf2f29696554379cb5364eab0c9184bb58c2153166635e94cc30bf0f2",
+  "retainedProfileHelperSha256": "a41b188fe25891824e82ae345d611c6935737a720b84a1a1513418ec91a5882f",
+  "syntheticSigningBoundary": "Existing tests use synthetic VM-only keys/signatures and execute only local test contracts; no wallet or live authorization/governance action is involved.",
+  "baseContractTreeGitObject": "7392591768cba66b61845983e6546f266bafb9f1",
+  "baseContractSourceGitObject": "fe612319e1671c400151ca37a9633e1b973200ec",
+  "baseContractTestGitObject": "8e36f247626170ab2a3e25ed49aaaeefda4900bd",
+  "localTestSourceBindings": [
+    {
+      "relativePath": "packages/contracts/foundry.toml",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "18a70f8b9e0ba83b4ee25916c7d45fbce6a90b5702dc70b70b73ac3407e33e01"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/remappings.txt",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "61719db0ec7c77a11e3de452afdc9966845f7165fbfe7fdfc3ad3743eb70a569"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchBondingCurveV1.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1d5bfe45b49c81e5dfda76939251c3f56d42594bffb69da0cb5efc59bf9f7030"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchBondingCurveV2.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ced2dd6ef8999c52f3f05c9d8a28124a665ebeac7e2696ebe75592ecafafdbb5"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchBondingCurveV3.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "5c5e13be8e978545c54771a27e6315315eb7e411f4f190daf01d9c397818fc93"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchCurveDeploymentV2.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "31e3173f1999f8d68e4bbc6cd55196d618d02de7d9a2da37c53d76dfc7ccfb93"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchCurveDirectoryV1.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "cc8e4b76a3783b5422a309d0ed83a3346985e363e68fa2145b37cf0fba1fe3e0"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchCurveDirectoryV2.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "0bb4beb821652d079620050c228783647d865da6a05da4df1628cc84ca3c1531"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchCurveFactoryV2.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b7aff2888168b9b4d091fca46e5d17e5bd83f54f62ae2c57bc64439e42cdbdc8"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchCurveLpFeeLedgerV1.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "dff06312947d67835b9c313f0e68e26a3db989149477ec968663a86576b441f5"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchCurveMathV1.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2c1db3dd44aee9532188cf81f5085cecd0ebf049841357b25840e7b7be03fbb2"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchCurveRevenueLedgerV1.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchCurveTokenV2.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c0fc0358e4f0b46dca00ed264459896a42b52e256b19a0f8c412e91a31fd7d19"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchProjectRegistryV1.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "48fa079c05c0cb840dc0c7027d407e54b1472ff0924c30d8e4dc4780a490e717"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchProjectRegistryV2.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "67f22eed981c6627ce6045001dbcfd23eff2e7d8b178c540b9f9979b7acee6ab"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTLaunchProjectRegistryV3.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8c92270751788af7acdbd6b4c18a4d0d5fbb399a876d974d55807489516e388c"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTV4CurveGraduationV1.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b633189372da00f1491908175b9af2f8b1f0ba21093e6df67ea66309921b601e"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/RMTV4CurveInitializationGuardV1.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "0c1498c636aae8954c6f47420cd7341eecbeb1eaaae9b3c743c22aa8907eb31f"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/interfaces/IRMTLaunchCurveExecution.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9b5793ca3cfbffc912e53f6e26d6744aa49a1dfce913791e867e466a5bfa451c"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/src/interfaces/IRMTV4CurveGraduationV1.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d3fe566a9b14f907c5289860d96f26b58649027f0ea6d1718862c377839ebefe"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTDependencyArithmeticReview.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "030491f216ffeadde1e4c60715095fc5cb7dda79e25cbbd9923f462767a799ba"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchAdjacentMigrationProof.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "72459d50784b0e7bc2631e68a23d68b7597b45ad2bc5e0b02e840669ed730853"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchBondingCurveV1.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "486e7fc0018a79261ad60b0d270adf3ea957039373df5cd6ebd658026f98f487"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchCreatorEarnings.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b7c81e81b008ece8cab270d1cefd815745845933de46c4c50d0e80ba9f502401"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchCurveAccountingInvariant.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "367ff93c9cc30b8349098696522e6f5c914c401d3fb9bdcef7d7d90720005aa0"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchCurveCreationFeeV1.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "db42861f5a55e8be52786720db3690e16e0e6d9a12585eb83cbc79a6e1e983c0"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchCurveDirectoryV1.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4606cf9e959c176af11fe3869ff0b63971e4b1056431300e049276b5231b9cef"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchCurveDirectoryV2.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "3e08403cdd4801d32210198899c3e5c1249f20386c6f3b456db710f493838236"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchCurveSymbolic.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2c84db5a0dc7bba267d2ea39bf4f01b347006e35c7bbb680a035fe216c820764"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchMigrationReadiness.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7b811ac656f393d80b36cc639fbc1798d194ca7089697da5804a50efecd91901"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchProjectRegistryV1.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f1ba0190be9ac82a0b128c302e543223cfde7ab1605a7febae22f1b4fcd0a6af"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchProjectRegistryV2.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9edb5b27502096dd78a17de26059debabf830197fbd6b48e0b8c6881bd30410d"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTLaunchProjectRegistryV3.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "91276bbb300a91625291af6a35d5a609d6dde1a8b1b04559133926122bb0b1e8"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTV4CurveGraduationV1.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "efcbb6cbfa479f2c2c46d47b9b7c938e6dd64c20460a539acf44069c7fd6f832"
+      }
+    },
+    {
+      "relativePath": "packages/contracts/test/RMTV4SharedPoolSettlement.t.sol",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "11393f4d11e2f024675ab35b3d33dc7cd6440eb24b7185311f3fe1f8d0e583ff"
+      }
+    }
+  ],
+  "gitleaksArchiveDigest": {
+    "algorithm": "SHA-256",
+    "hex": "e4a487ee7ccd7d3a7f7ec08657610aa3606637dab924210b3aee62570fb4b080"
+  },
+  "completedAtUtc": "2026-11-20T13:11:03.871712+00:00",
+  "foundry": {
+    "command": "forge test --use <pinned-compiler-wrapper> --offline -vv",
+    "cwd": "packages/contracts",
+    "version": "1.7.1",
+    "compiledFiles": 170,
+    "compilerSeconds": 986.55,
+    "testSeconds": 1.79,
+    "suites": 14,
+    "passed": 112,
+    "failed": 0,
+    "skipped": 0,
+    "fuzzRunsPerCase": 512,
+    "exitCode": 0,
+    "warningsPreserved": true,
+    "profile": "UNCHANGED_SYNTHETIC_31337_REPOSITORY_TEST_PROFILE"
+  },
+  "retainedEvidenceTests": {
+    "command": "node --test docs/evidence/fixed-supply-security/release-evidence.test.mjs",
+    "tests": 2,
+    "passed": 2,
+    "failed": 0,
+    "skipped": 0,
+    "network": "LOCAL_FILE_READS_ONLY"
+  },
+  "directorySecretScan": {
+    "scanner": "Gitleaks 8.30.1",
+    "configRelativePath": ".gitleaks.toml",
+    "configurationDigest": {
+      "algorithm": "SHA-256",
+      "hex": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c"
+    },
+    "ruleChanges": false,
+    "rawExitCode": 0,
+    "findings": 0,
+    "scope": "NEW_B_EVIDENCE_DIRECTORY_ONLY_NOT_FULL_HISTORY"
+  },
+  "evidenceBindings": [
+    {
+      "relativePath": "README.md",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "dd1d1889090d270e1f9cd35db114af3616d2db5893dd7b4cfcff7448f9d7bfca"
+      }
+    },
+    {
+      "relativePath": "finding-matrix.json",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "774f0756d441ee95a4a8414d36d0fa8fb0ad403147c3d2fcbc4e5276013d985f"
+      }
+    },
+    {
+      "relativePath": "foundry.log",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e57c2ea9ab125dfc9befb15b3e379414029e246bddbc6f44f8f19c9b2c771168"
+      }
+    },
+    {
+      "relativePath": "foundry-exit.txt",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      }
+    },
+    {
+      "relativePath": "fixed-supply-4663.json.gz",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ff0c7b9fd2ab44f9f82144fb81758cb2d7670a37d166f6433b05e973992cdafe"
+      }
+    },
+    {
+      "relativePath": "slither-4663.json.gz",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9f8e2fbc0ea1f989ad95775cc029a07252d4872066e2300149ff97caaab9b17e"
+      }
+    },
+    {
+      "relativePath": "slither.log",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "189713d8f5b857373e0d76a504f05a89c59735e2a2336324f712bb1dfaebd649"
+      }
+    },
+    {
+      "relativePath": "slither-exit.txt",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4355a46b19d348dc2f57c046f8ef63d4538ebb936000f3c9ee954a27460dd865"
+      }
+    },
+    {
+      "relativePath": "id-parity.json",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "666e44e961bf6b5bf53af78a3e5c9c265f117a778fe7819d9e1cc906c02ef3ee"
+      }
+    },
+    {
+      "relativePath": "reconstruct-input.py",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a0c27d457b72dd3ac552ea2c27b2acef3dd0311ec97ded32b0038f3cc9147d51"
+      }
+    },
+    {
+      "relativePath": "verify-evidence.py",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "433202cf0e5ee9d12509f0ffdfa501210c7a23185e56a202d325b55c8e200ec8"
+      }
+    },
+    {
+      "relativePath": "retained-evidence-tests.log",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "63483309245ac566bf2a64633addafc0fdef72f638dbf76d4bc1df0339bc29c0"
+      }
+    },
+    {
+      "relativePath": "retained-evidence-tests-exit.txt",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      }
+    },
+    {
+      "relativePath": "gitleaks-directory-redacted.json",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+      }
+    },
+    {
+      "relativePath": "gitleaks-directory-exit.txt",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9a271f2a916b0b6ee6cecb2426f0b3206ef074578be55d9bc94f6f3fe3ab86aa"
+      }
+    },
+    {
+      "relativePath": "gitleaks-directory.log",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "425c0fc84465901e183d37ba8c0739e366aa2262f0c2e35f8e8c21590b101c71"
+      }
+    },
+    {
+      "relativePath": "verification.json",
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9c91af9cccdbf5d0691715aea3099499e7e68ad9f75354aea4d4025235722178"
+      }
+    }
+  ]
+}
