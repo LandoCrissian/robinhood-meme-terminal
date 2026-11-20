@@ -1,0 +1,2720 @@
+{
+  "schemaVersion": 1,
+  "scope": "CHANGED_SOURCE_AND_ALL_TASK092_EVIDENCE_WITH_LOSSLESS_EXPANDED_GZIP",
+  "base": "86b7953ca2cdd74de87e2ceb89d93623c2194e89",
+  "capturedAt": "2026-11-20T23:28:04.525Z",
+  "scanner": {
+    "version": "8.30.1",
+    "executableSha256": "17157e2ee8b76fc8b1d8bee607a250e34b8a8023c8bc81822d4b5ee4d78fcb7c",
+    "officialRelease": "https://api.github.com/repos/gitleaks/gitleaks/releases/tags/v8.30.1",
+    "asset": "gitleaks_8.30.1_windows_x64.zip",
+    "assetSha256": "d29144deff3a68aa93ced33dddf84b7fdc26070add4aa0f4513094c8332afc4e",
+    "maxTargetMegabytes": 32,
+    "maxGzipOutputBytes": 33554432
+  },
+  "unchangedPolicyDigests": {
+    ".gitleaks.toml": "faeee9cdcd16872c6f4a93a776c0dffa5882a0cd628944985d9f70660154db9c",
+    ".gitleaksignore": "071c59ddaa6e63a5af34db48fb3cadbddcae4baf31cc02fb0e6cb64cb417832d"
+  },
+  "rawExit": 1,
+  "rawFindingCount": 73,
+  "sourceFileCount": 275,
+  "expandedGzipCount": 26,
+  "reportSha256": "dc1256575015138735eab2dee48bb84965c2c0a65a871c681946cc72c2fbed50",
+  "excludedGeneratedOutputs": [
+    "docs/evidence/rmt-task092/validation/final-scan/scan-manifest.json",
+    "docs/evidence/rmt-task092/validation/final-scan/gitleaks-redacted.json",
+    "docs/evidence/rmt-task092/validation/final-scan/gitleaks.txt",
+    "docs/evidence/rmt-task092/validation/final-scan/raw-exit-code.txt",
+    "docs/evidence/rmt-task092/validation/final-scan/public-classification.json"
+  ],
+  "inventory": [
+    {
+      "path": ".github/scripts/run-task092-postgres.sh",
+      "bytes": 1583,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a59acbd840a302ba13a64731e84e29746e1f3aaec7a6bff5b064b54e3fa01289"
+      },
+      "scanPath": "source/.github/scripts/run-task092-postgres.sh"
+    },
+    {
+      "path": ".github/workflows/task092-production-adapters.yml",
+      "bytes": 13316,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "90fcc4bc98c0570444a2d1ba6d8045371fc3844edeb902f895a77f2e7642b27b"
+      },
+      "scanPath": "source/.github/workflows/task092-production-adapters.yml"
+    },
+    {
+      "path": "apps/indexer/migrations/092-production-activity.sql",
+      "bytes": 908,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ac9df20e59e97daaa907d83f3760e5ef91b11fdf0c0ad35f28510fef05df5c65"
+      },
+      "scanPath": "source/apps/indexer/migrations/092-production-activity.sql"
+    },
+    {
+      "path": "apps/indexer/src/curve-production-activity-postgres-smoke.ts",
+      "bytes": 12525,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "0fefb934eaedd7abab01b29c6eb097f5e25239fcb407e77b34376d2a39e0dc62"
+      },
+      "scanPath": "source/apps/indexer/src/curve-production-activity-postgres-smoke.ts"
+    },
+    {
+      "path": "apps/indexer/src/curve-production-activity.ts",
+      "bytes": 24665,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "aa23318a07209a311c61af04ec43d3271f80804c54a02de3059cac3524dff663"
+      },
+      "scanPath": "source/apps/indexer/src/curve-production-activity.ts"
+    },
+    {
+      "path": "apps/indexer/src/curve-production-birth-postgres-smoke.ts",
+      "bytes": 9051,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c4d0d306cdcb7f3711200eb07da0624b68827afec471029fee4546c5febf696d"
+      },
+      "scanPath": "source/apps/indexer/src/curve-production-birth-postgres-smoke.ts"
+    },
+    {
+      "path": "apps/indexer/src/curve-production-birth.ts",
+      "bytes": 9473,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a05bb5213020f13a8fabc88b8be9454ab9e8cd5104458eb76feb7fc5bd866830"
+      },
+      "scanPath": "source/apps/indexer/src/curve-production-birth.ts"
+    },
+    {
+      "path": "apps/indexer/src/curve-production.ts",
+      "bytes": 14965,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "3a0a22ae10b465b04b99b1f8afbfa59a26df7702a762934c78a34ba30b411e64"
+      },
+      "scanPath": "source/apps/indexer/src/curve-production.ts"
+    },
+    {
+      "path": "apps/indexer/src/index.ts",
+      "bytes": 70201,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9b7293772fd0731eaad207f4ee549f2fd6c1ec7cd7ef6938800f2ecd23df7e18"
+      },
+      "scanPath": "source/apps/indexer/src/index.ts"
+    },
+    {
+      "path": "apps/indexer/src/worker-http-smoke.ts",
+      "bytes": 8618,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f909b36aac40d2541c3020391edba2b9b3b13385a833e72fd0d8def77d90b0f1"
+      },
+      "scanPath": "source/apps/indexer/src/worker-http-smoke.ts"
+    },
+    {
+      "path": "apps/launch-website/app/_components/earnings-dashboard.tsx",
+      "bytes": 20347,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "406a9b086ae24bbb877e9e80a19a43063d446b20f95f2a139726fa809bb683e0"
+      },
+      "scanPath": "source/apps/launch-website/app/_components/earnings-dashboard.tsx"
+    },
+    {
+      "path": "apps/launch-website/app/_components/earnings-profile-wallet.tsx",
+      "bytes": 23285,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e4d58ee1a44842d1abb5c8117ab304840e669c3bb2392ea3d1d0e45ac88d8200"
+      },
+      "scanPath": "source/apps/launch-website/app/_components/earnings-profile-wallet.tsx"
+    },
+    {
+      "path": "apps/launch-website/app/_components/production-creation-wallet.tsx",
+      "bytes": 20623,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a686dbe684d5cf23452f04ddc2035091225e519fa4f668b102935f547e563988"
+      },
+      "scanPath": "source/apps/launch-website/app/_components/production-creation-wallet.tsx"
+    },
+    {
+      "path": "apps/launch-website/app/_components/production-lifecycle-wallet.tsx",
+      "bytes": 17653,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6dc8fa751820a21a2db6b81bfa8b5e0d5d2644e7453117a7bf2c7971218251cd"
+      },
+      "scanPath": "source/apps/launch-website/app/_components/production-lifecycle-wallet.tsx"
+    },
+    {
+      "path": "apps/launch-website/app/api/launchpad/config/route.ts",
+      "bytes": 2362,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9af0ea8ad0bd92612cf2d07e1a4d2755625722827c3a8b56d466f2ef1d31327a"
+      },
+      "scanPath": "source/apps/launch-website/app/api/launchpad/config/route.ts"
+    },
+    {
+      "path": "apps/launch-website/app/api/launchpad/production-earnings/route.ts",
+      "bytes": 214,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2bf0b2758eeddc77694c03e6538933c68f9d67182dee4cfea378248f66db9ee4"
+      },
+      "scanPath": "source/apps/launch-website/app/api/launchpad/production-earnings/route.ts"
+    },
+    {
+      "path": "apps/launch-website/app/api/launchpad/production-lifecycle/route.ts",
+      "bytes": 208,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7f3323381a83a32599dd0c9417b82231990c96d1c1c5583850e942058d8c5118"
+      },
+      "scanPath": "source/apps/launch-website/app/api/launchpad/production-lifecycle/route.ts"
+    },
+    {
+      "path": "apps/launch-website/app/launches/[token]/page.tsx",
+      "bytes": 4479,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "aa6532305a1ffb7f69f23292f555da35a0c9db6f85e75061aca9b19bd1f0e990"
+      },
+      "scanPath": "source/apps/launch-website/app/launches/[token]/page.tsx"
+    },
+    {
+      "path": "apps/launch-website/app/my-launches/earnings/page.tsx",
+      "bytes": 1078,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "58862df848316a4d4afbdc592567de46eea530363aa8eae7173565b9805ee4fa"
+      },
+      "scanPath": "source/apps/launch-website/app/my-launches/earnings/page.tsx"
+    },
+    {
+      "path": "apps/launch-website/lib/claim-profiles.ts",
+      "bytes": 16033,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a1599a5945ee06dde26de135d206c292bdabc764457286fb6c09c2a691edd5ba"
+      },
+      "scanPath": "source/apps/launch-website/lib/claim-profiles.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/claim-recovery.ts",
+      "bytes": 27332,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c7042fa1d5404b54ea1748f76d703c0b52e8b636bd2a65495cfa6762dab4593b"
+      },
+      "scanPath": "source/apps/launch-website/lib/claim-recovery.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/production-creation.ts",
+      "bytes": 14301,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9525332988c977996e7002097fd20bdd0a3247814c4b509388d16951f22aaa8f"
+      },
+      "scanPath": "source/apps/launch-website/lib/production-creation.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/production-lifecycle.ts",
+      "bytes": 8735,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ece2cb28c2beb2ef4a3da6ddec0b7fb719ddd4134c6371d0ff812f95b768f387"
+      },
+      "scanPath": "source/apps/launch-website/lib/production-lifecycle.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/production-nonce.ts",
+      "bytes": 3855,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "29d208bf2d46c2938566301ef84db1c2ab0056d1e7f3e2dd8cb492e6f38db003"
+      },
+      "scanPath": "source/apps/launch-website/lib/production-nonce.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/production-trading-wallet.ts",
+      "bytes": 19835,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6ec2a1c3f1ccd1b45441ee7e4c9cde0a93aae3b1b980c5baaaee8f57158f9b19"
+      },
+      "scanPath": "source/apps/launch-website/lib/production-trading-wallet.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/production-wallet.ts",
+      "bytes": 4155,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "101ffc05a37a85c21a7cf8153e761f012334793b1170ca161cd9eadb0d0e830e"
+      },
+      "scanPath": "source/apps/launch-website/lib/production-wallet.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/claim-profiles.ts",
+      "bytes": 31806,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "3508fd0d7a2b358606b4ad9d207c215fa6b2196a614c60a4009313482401056a"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/claim-profiles.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/earnings-claims.ts",
+      "bytes": 35613,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "656704badd842d34610868ecb2efb2b6248938a5ad029b9ada3f210ebc0ed6be"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/earnings-claims.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/earnings-contracts.ts",
+      "bytes": 30031,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2e0b7be65ae0da696ffef005b3d963e3b1847bdeeb67bcbeed496a58e5b01047"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/earnings-contracts.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/nitro-zero-poster.test.ts",
+      "bytes": 2181,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "5fd4f79de9b04144635aca9495d3211dbf51e0242ef6f95e46059c5807930049"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/nitro-zero-poster.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/nitro-zero-poster.ts",
+      "bytes": 2575,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "fa968f8d089b26aa8415c73f8131c309df610f8e707a407d2ca616d04a532867"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/nitro-zero-poster.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-birth.test.ts",
+      "bytes": 6120,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "83cb00812f41dc4c2a00ec6fac80e14fa67f640dd8824dbc544b67cbbd1142db"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-birth.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-birth.ts",
+      "bytes": 5962,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ed42427b3c122216051d04a12d1008805974eaae6ef34bb4ee03d498b7062bd9"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-birth.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-claim-wallet.test.ts",
+      "bytes": 20135,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "fa0eac41fa15a4aff0be114d06ffbe444d9a8376e243881bdc599c337c393fea"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-claim-wallet.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-claims-zero-poster.test.ts",
+      "bytes": 12572,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e3b7e85afa77c3deed1154c9bb0c9a14c605c46b9c07b964f4abfe8a833a922b"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-claims-zero-poster.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-creation-recovery.test.ts",
+      "bytes": 5469,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "aa3577ba6796ed252b87bb1e96ce45fa5183ee483080695c9b87d4a728961e87"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-creation-recovery.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-earnings-test-fixture.ts",
+      "bytes": 14656,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e1b901082ff9e01c2f34aaacf8065a3123cc56ce4fa5b5df504f98451d833df2"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-earnings-test-fixture.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-earnings.test.ts",
+      "bytes": 12380,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1ed890525603367ae08026bfb5ec057de8fafe6222010839e59c54f015b94e95"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-earnings.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-earnings.ts",
+      "bytes": 18921,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c4f410746b150ea5227a697305ddd4e1921c5657d5cb63ced3f11f6b5376a6b2"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-earnings.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-financial-boundary.test.ts",
+      "bytes": 3574,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "32f9f50af7d69b62703d50f2aba33e4f35b415324f94e1444bc695c8179cd5ba"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-financial-boundary.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-financial.test.ts",
+      "bytes": 4298,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "be75ac9de317b1c4cb05ab06b4e8088f0d3953f4ade039391d31bcbc4d3d24f0"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-financial.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-financial.ts",
+      "bytes": 4366,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8d5cee3d4bd4735bb6aa096dbc01804df4ed211813266da296b78c002040346a"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-financial.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-lifecycle.test.ts",
+      "bytes": 19158,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "cdf797ee2f805323ab81d54a03dc8834d9dc68a02d6936bd4d2551aca950df2b"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-lifecycle.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-lifecycle.ts",
+      "bytes": 44320,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "93d0fe0de694c8a7dae304baf4082f5be5125a092693f07fc705f67dac4ec697"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-lifecycle.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-nonce.test.ts",
+      "bytes": 4459,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "0c3829d667d856241a508ae0972ad495d7f0da2f442b677e34177f8ad970f684"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-nonce.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-project-birth.test.ts",
+      "bytes": 9431,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ce9eb4287314b7fc2611081ff8bcb3df37b994c279b70aa4edf751e12c2ba5d9"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-project-birth.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-project-birth.ts",
+      "bytes": 9189,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eeadc163f4059c119cf1480b690a99f3763382635cc916ed409f14fed4fd9e13"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-project-birth.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-project-templates.json",
+      "bytes": 14257,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "92fffd07d2ec029920d6d7a30e4597286b8dcf61b9f338fe208090c4cbefdd36"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-project-templates.json"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-trading-test-fixture.ts",
+      "bytes": 13727,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "68182bce8b8ba7f7982fa1883202b3c60a6fdd1eea684fc524f2c676b2e3590e"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-trading-test-fixture.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/production-trading-wallet.test.ts",
+      "bytes": 20476,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a25bff8ec2322cd15dd30023c4bbbca787826a039a20c995928e7b5ff38bd9b0"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/production-trading-wallet.test.ts"
+    },
+    {
+      "path": "apps/launch-website/lib/server/railway-read-only.ts",
+      "bytes": 2533,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "3b07947412a9b0a7b0116ad8279de06f36010d92e752783330e40a4f92496261"
+      },
+      "scanPath": "source/apps/launch-website/lib/server/railway-read-only.ts"
+    },
+    {
+      "path": "apps/launch-website/middleware.ts",
+      "bytes": 5898,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "43b870e9e1b8e7d00a7962f88460a7c0c57bd82e256346ba98a30a8b7a5a6fef"
+      },
+      "scanPath": "source/apps/launch-website/middleware.ts"
+    },
+    {
+      "path": "apps/launch-website/netlify/edge-functions/launch-creation-limit.ts",
+      "bytes": 996,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "471eb4e1f8c8a32345617a0bad85b976bf09ad366f0cf91d12bc6ca0d5474fef"
+      },
+      "scanPath": "source/apps/launch-website/netlify/edge-functions/launch-creation-limit.ts"
+    },
+    {
+      "path": "docs/RMT_TASK092_RELEASE_DECISION.md",
+      "bytes": 3055,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f1f64a05e7ecdb4cc0c764cefabb180b3096b1535c740ee31e569ee0c7dd66c3"
+      },
+      "scanPath": "source/docs/RMT_TASK092_RELEASE_DECISION.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/activation.md",
+      "bytes": 4799,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1e6f5d6979341bc3d7708ee0bab99c0d41e312060d7a2d51c132698e9925d9ee"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/activation.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/adapters/README.md",
+      "bytes": 4026,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1682c4eecbcec498b5b52e0de8785148ea988eaa6ebfe65533d5392d8689a6aa"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/adapters/README.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/adapters/evm-acceptance.json.gz",
+      "bytes": 19771,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "699c5652a388257121875fb8659efbae3c05ffccf3e45495dbf9aeba394974a5"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/adapters/evm-acceptance.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/adapters/evm-acceptance.json",
+        "bytes": 247358,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "a8171c09d0e9632e4925a085a8b3f7e3cbb211c2508e50549bbebdfad2d14a66"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/adapters/evm-attempts.json",
+      "bytes": 10867,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d130bc94b73745f29f2fda07352bc1702f651db1813a5664d9a01b92c055403e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/adapters/evm-attempts.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-desktop/disabled-chromium-desktop.png",
+      "bytes": 36656,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eaf90c6d367c67da12144ed25ecb30c54473b71082758d3f18c52707b828652a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-desktop/disabled-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-desktop/eoa-chromium-desktop.png",
+      "bytes": 29251,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f39435618ea83d172f3ec43b0f4c894f3b54d975700054855a793bec3ab801cb"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-desktop/eoa-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-desktop/metamask-7702-chromium-desktop.png",
+      "bytes": 29991,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "911084100fab91115019a8e856c7a492f1b8e06e402ad661b0c4a1faeece962b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-desktop/metamask-7702-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-desktop/production-adapter-browser.json",
+      "bytes": 66316,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ef53a609ed239352f7c621b4096b81a2dd3899bd6f84d629cabcee96f030e9b4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-desktop/safe-1.4.1-chromium-desktop.png",
+      "bytes": 32316,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9a415626a75f6be74398ae89e9cc23ffdbbfe482e658e84054d06b7548b8609c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-desktop/safe-1.4.1-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-desktop/trading-chromium-desktop.png",
+      "bytes": 44610,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "65dba2e988d9d1df22837c7e0f7116a4615a9aef6f08ea4ec3852c0473b73d5e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-desktop/trading-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-mobile/disabled-chromium-mobile.png",
+      "bytes": 176276,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c6d491cf099881d58cf888f64de21c64c667fe5efb81df72107eb4cdf86b0758"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-mobile/disabled-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-mobile/eoa-chromium-mobile.png",
+      "bytes": 132901,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "64d5b3a9c723babbe83cd73e20364379f16ae51a2e6ae1776e8976dd6282a6a4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-mobile/eoa-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-mobile/metamask-7702-chromium-mobile.png",
+      "bytes": 137328,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9ee4389bf4ee30b496c368f0c2e6eba5e2f76a0815c961123b69cde52e67e3fa"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-mobile/metamask-7702-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-mobile/production-adapter-browser.json",
+      "bytes": 66300,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "050363c4e3538de111bc837eaa2737e0924c25ece02476e0de71f6ee735bb287"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-mobile/safe-1.4.1-chromium-mobile.png",
+      "bytes": 145119,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4f9e8e5a4b507a43630cdc80bb4045d47f7ff22c97bf41bb07dbeff87de486f0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-mobile/safe-1.4.1-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/chromium-mobile/trading-chromium-mobile.png",
+      "bytes": 217029,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2243f8b4edd3ad0399cdff0f0b35f0c66be4b4aa773dffc95d0ab23f8b601890"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/chromium-mobile/trading-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/prior-failures.json",
+      "bytes": 4318,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "31f4ab2b67191e1d0d28d14b77f1888c711f51c1abef0220eeb290ffce879b38"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/prior-failures.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/sha256-index.json",
+      "bytes": 4156,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ac43d88f732fd0881bab88487c829e8688d0f955b779b42e166d55042cdb085d"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/sha256-index.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-desktop/disabled-webkit-desktop.png",
+      "bytes": 36123,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "452356a30d2d6e98b034e53f746b5b0944a8203e0df69f4a24abe5110a159673"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-desktop/disabled-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-desktop/eoa-webkit-desktop.png",
+      "bytes": 29341,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "379354e2544fb18c83325a9f3395578e21bddbc027cdf9cb10bc576a6f2308a5"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-desktop/eoa-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-desktop/metamask-7702-webkit-desktop.png",
+      "bytes": 29980,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "868b8346b789908398282a4a2dd0563ecbace1bbc9211ee97fb10a972b3f9387"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-desktop/metamask-7702-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-desktop/production-adapter-browser.json",
+      "bytes": 66304,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "03643b587e9f8a11e8e1266ce45e024f3fa20778547b20d8efa247cd2b22f3a7"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-desktop/safe-1.4.1-webkit-desktop.png",
+      "bytes": 32188,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "46ef15ec77bfbf00465fb8b95000c4c9e7977d96f8771db9b8f7117ad6d9eab0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-desktop/safe-1.4.1-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-desktop/trading-webkit-desktop.png",
+      "bytes": 43520,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f6d812fed5675f24508ec0573dafb7ae05efeb3e1ae54c6908486b39cc657b02"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-desktop/trading-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-mobile/disabled-webkit-mobile.png",
+      "bytes": 146347,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e0b0b430cafb86b305889cb722725cdaa9ded359bcfe23c413c7f5fb732c60a8"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-mobile/disabled-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-mobile/eoa-webkit-mobile.png",
+      "bytes": 110329,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6c51503e6faa2a5989f0149829d7f6711f5842f463e0e1e900faa66e1a79eb6e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-mobile/eoa-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-mobile/metamask-7702-webkit-mobile.png",
+      "bytes": 113764,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c7e2f74ca2cfd3ab99ccf069eebd676c87c620772da228649ad3544bb5edb641"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-mobile/metamask-7702-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-mobile/production-adapter-browser.json",
+      "bytes": 66288,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e95f7966977d23198e855e71c72f0c911462fc36e6f1a8db5a0340dc0897ff00"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-mobile/safe-1.4.1-webkit-mobile.png",
+      "bytes": 121700,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "bda56411385173b604af3cc9391d93a6cd4df01d00da2b544f8c521df08ec6f9"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-mobile/safe-1.4.1-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-local/webkit-mobile/trading-webkit-mobile.png",
+      "bytes": 183501,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4432071e17ef31d6ba274e6cdffa378b735ac5f120adf15de28122a6bcca242a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-local/webkit-mobile/trading-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/disabled-chromium-desktop.png",
+      "bytes": 36656,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eaf90c6d367c67da12144ed25ecb30c54473b71082758d3f18c52707b828652a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/disabled-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/eoa-chromium-desktop.png",
+      "bytes": 29251,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f39435618ea83d172f3ec43b0f4c894f3b54d975700054855a793bec3ab801cb"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/eoa-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/metamask-7702-chromium-desktop.png",
+      "bytes": 29991,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "911084100fab91115019a8e856c7a492f1b8e06e402ad661b0c4a1faeece962b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/metamask-7702-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/production-adapter-browser.json",
+      "bytes": 72112,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "58c2b168c05c280b98432b1eae16f4d33cc33384167db07b2f5769e550399ae2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/safe-1.4.1-chromium-desktop.png",
+      "bytes": 32316,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9a415626a75f6be74398ae89e9cc23ffdbbfe482e658e84054d06b7548b8609c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/safe-1.4.1-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/trading-chromium-desktop.png",
+      "bytes": 44610,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "65dba2e988d9d1df22837c7e0f7116a4615a9aef6f08ea4ec3852c0473b73d5e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/trading-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/disabled-chromium-mobile.png",
+      "bytes": 176276,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c6d491cf099881d58cf888f64de21c64c667fe5efb81df72107eb4cdf86b0758"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/disabled-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/eoa-chromium-mobile.png",
+      "bytes": 132901,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "64d5b3a9c723babbe83cd73e20364379f16ae51a2e6ae1776e8976dd6282a6a4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/eoa-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/metamask-7702-chromium-mobile.png",
+      "bytes": 137328,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9ee4389bf4ee30b496c368f0c2e6eba5e2f76a0815c961123b69cde52e67e3fa"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/metamask-7702-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/production-adapter-browser.json",
+      "bytes": 72096,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b26325793571d9a5808b7dbb1d78eeda8b5a5e421e617988a19b906f08228457"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/safe-1.4.1-chromium-mobile.png",
+      "bytes": 145119,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4f9e8e5a4b507a43630cdc80bb4045d47f7ff22c97bf41bb07dbeff87de486f0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/safe-1.4.1-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/trading-chromium-mobile.png",
+      "bytes": 217029,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2243f8b4edd3ad0399cdff0f0b35f0c66be4b4aa773dffc95d0ab23f8b601890"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/trading-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/prior-failures.json",
+      "bytes": 5019,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eafabb93f99da466adb795cb925f2751b78402007c5e5b3a9a24834da29e44b2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/prior-failures.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/sha256-index.json",
+      "bytes": 4201,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e6fd21c5c7c1bf596114a03f728e4e7f2f2b08d1363e74396c2d7fe867f4bcc9"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/sha256-index.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/disabled-webkit-desktop.png",
+      "bytes": 36123,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "452356a30d2d6e98b034e53f746b5b0944a8203e0df69f4a24abe5110a159673"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/disabled-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/eoa-webkit-desktop.png",
+      "bytes": 29341,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "379354e2544fb18c83325a9f3395578e21bddbc027cdf9cb10bc576a6f2308a5"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/eoa-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/metamask-7702-webkit-desktop.png",
+      "bytes": 29980,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "868b8346b789908398282a4a2dd0563ecbace1bbc9211ee97fb10a972b3f9387"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/metamask-7702-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/production-adapter-browser.json",
+      "bytes": 72100,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "fb21e9d26828efab90ba60e6d03a1296b07a69b7cec246c2a083d6a2636d3b73"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/safe-1.4.1-webkit-desktop.png",
+      "bytes": 32188,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "46ef15ec77bfbf00465fb8b95000c4c9e7977d96f8771db9b8f7117ad6d9eab0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/safe-1.4.1-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/trading-webkit-desktop.png",
+      "bytes": 43520,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f6d812fed5675f24508ec0573dafb7ae05efeb3e1ae54c6908486b39cc657b02"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/trading-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/disabled-webkit-mobile.png",
+      "bytes": 146347,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e0b0b430cafb86b305889cb722725cdaa9ded359bcfe23c413c7f5fb732c60a8"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/disabled-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/eoa-webkit-mobile.png",
+      "bytes": 110329,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6c51503e6faa2a5989f0149829d7f6711f5842f463e0e1e900faa66e1a79eb6e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/eoa-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/metamask-7702-webkit-mobile.png",
+      "bytes": 113764,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c7e2f74ca2cfd3ab99ccf069eebd676c87c620772da228649ad3544bb5edb641"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/metamask-7702-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/production-adapter-browser.json",
+      "bytes": 72084,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e967a6b3cc763dba631f7c4d5e68a47052f169f7630093a58cd4d1a3ba85feb2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/safe-1.4.1-webkit-mobile.png",
+      "bytes": 121700,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "bda56411385173b604af3cc9391d93a6cd4df01d00da2b544f8c521df08ec6f9"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/safe-1.4.1-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/trading-webkit-mobile.png",
+      "bytes": 183501,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4432071e17ef31d6ba274e6cdffa378b735ac5f120adf15de28122a6bcca242a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/trading-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/disabled-chromium-desktop.png",
+      "bytes": 36656,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eaf90c6d367c67da12144ed25ecb30c54473b71082758d3f18c52707b828652a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/disabled-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/eoa-chromium-desktop.png",
+      "bytes": 29251,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f39435618ea83d172f3ec43b0f4c894f3b54d975700054855a793bec3ab801cb"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/eoa-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/metamask-7702-chromium-desktop.png",
+      "bytes": 29991,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "911084100fab91115019a8e856c7a492f1b8e06e402ad661b0c4a1faeece962b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/metamask-7702-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/production-adapter-browser.json",
+      "bytes": 70980,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f1b725b6d6e8be2428098bc2960e2e3583bd1983c9825294fc38bb7ec6c7a799"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/safe-1.4.1-chromium-desktop.png",
+      "bytes": 32316,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9a415626a75f6be74398ae89e9cc23ffdbbfe482e658e84054d06b7548b8609c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/safe-1.4.1-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/trading-chromium-desktop.png",
+      "bytes": 44610,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "65dba2e988d9d1df22837c7e0f7116a4615a9aef6f08ea4ec3852c0473b73d5e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/trading-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/disabled-chromium-mobile.png",
+      "bytes": 176276,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c6d491cf099881d58cf888f64de21c64c667fe5efb81df72107eb4cdf86b0758"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/disabled-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/eoa-chromium-mobile.png",
+      "bytes": 132901,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "64d5b3a9c723babbe83cd73e20364379f16ae51a2e6ae1776e8976dd6282a6a4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/eoa-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/metamask-7702-chromium-mobile.png",
+      "bytes": 137328,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9ee4389bf4ee30b496c368f0c2e6eba5e2f76a0815c961123b69cde52e67e3fa"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/metamask-7702-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/production-adapter-browser.json",
+      "bytes": 70964,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "3060b54e4133f41681204b206098b47a74c79429eb5db7db00d0c0cb29e56043"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/safe-1.4.1-chromium-mobile.png",
+      "bytes": 145119,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4f9e8e5a4b507a43630cdc80bb4045d47f7ff22c97bf41bb07dbeff87de486f0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/safe-1.4.1-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/trading-chromium-mobile.png",
+      "bytes": 217029,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2243f8b4edd3ad0399cdff0f0b35f0c66be4b4aa773dffc95d0ab23f8b601890"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/trading-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/prior-failures.json",
+      "bytes": 5019,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eafabb93f99da466adb795cb925f2751b78402007c5e5b3a9a24834da29e44b2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/prior-failures.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/sha256-index.json",
+      "bytes": 4196,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8df6486f8cc79eaa7abf582ae89d0b12b87194db8287142473b15d74d910e03a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/sha256-index.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/disabled-webkit-desktop.png",
+      "bytes": 36123,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "452356a30d2d6e98b034e53f746b5b0944a8203e0df69f4a24abe5110a159673"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/disabled-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/eoa-webkit-desktop.png",
+      "bytes": 29341,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "379354e2544fb18c83325a9f3395578e21bddbc027cdf9cb10bc576a6f2308a5"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/eoa-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/metamask-7702-webkit-desktop.png",
+      "bytes": 29980,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "868b8346b789908398282a4a2dd0563ecbace1bbc9211ee97fb10a972b3f9387"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/metamask-7702-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/production-adapter-browser.json",
+      "bytes": 70968,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "942375c9a8106a9cbb167fe4e1d56b06693e400da7062cf94a7e1bcac3ae9f70"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/safe-1.4.1-webkit-desktop.png",
+      "bytes": 32188,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "46ef15ec77bfbf00465fb8b95000c4c9e7977d96f8771db9b8f7117ad6d9eab0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/safe-1.4.1-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/trading-webkit-desktop.png",
+      "bytes": 43520,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f6d812fed5675f24508ec0573dafb7ae05efeb3e1ae54c6908486b39cc657b02"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/trading-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/disabled-webkit-mobile.png",
+      "bytes": 146347,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e0b0b430cafb86b305889cb722725cdaa9ded359bcfe23c413c7f5fb732c60a8"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/disabled-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/eoa-webkit-mobile.png",
+      "bytes": 110329,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6c51503e6faa2a5989f0149829d7f6711f5842f463e0e1e900faa66e1a79eb6e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/eoa-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/metamask-7702-webkit-mobile.png",
+      "bytes": 113764,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c7e2f74ca2cfd3ab99ccf069eebd676c87c620772da228649ad3544bb5edb641"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/metamask-7702-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/production-adapter-browser.json",
+      "bytes": 70952,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "5f75dc731d4225e48bb453008ba7af9832ffce9aef0cd597afa01adcbd1ab339"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/safe-1.4.1-webkit-mobile.png",
+      "bytes": 121700,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "bda56411385173b604af3cc9391d93a6cd4df01d00da2b544f8c521df08ec6f9"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/safe-1.4.1-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/trading-webkit-mobile.png",
+      "bytes": 183501,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4432071e17ef31d6ba274e6cdffa378b735ac5f120adf15de28122a6bcca242a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/trading-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/disabled-chromium-desktop.png",
+      "bytes": 36656,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eaf90c6d367c67da12144ed25ecb30c54473b71082758d3f18c52707b828652a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/disabled-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/eoa-chromium-desktop.png",
+      "bytes": 29251,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f39435618ea83d172f3ec43b0f4c894f3b54d975700054855a793bec3ab801cb"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/eoa-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/metamask-7702-chromium-desktop.png",
+      "bytes": 29991,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "911084100fab91115019a8e856c7a492f1b8e06e402ad661b0c4a1faeece962b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/metamask-7702-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/production-adapter-browser.json",
+      "bytes": 63675,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "95a946bf7764241ae0a547718a2796867de975301f51f1c6493044edec2cd3f7"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/safe-1.4.1-chromium-desktop.png",
+      "bytes": 32316,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9a415626a75f6be74398ae89e9cc23ffdbbfe482e658e84054d06b7548b8609c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/safe-1.4.1-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/trading-chromium-desktop.png",
+      "bytes": 44610,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "65dba2e988d9d1df22837c7e0f7116a4615a9aef6f08ea4ec3852c0473b73d5e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/trading-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/disabled-chromium-mobile.png",
+      "bytes": 176276,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c6d491cf099881d58cf888f64de21c64c667fe5efb81df72107eb4cdf86b0758"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/disabled-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/eoa-chromium-mobile.png",
+      "bytes": 132901,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "64d5b3a9c723babbe83cd73e20364379f16ae51a2e6ae1776e8976dd6282a6a4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/eoa-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/metamask-7702-chromium-mobile.png",
+      "bytes": 137328,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9ee4389bf4ee30b496c368f0c2e6eba5e2f76a0815c961123b69cde52e67e3fa"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/metamask-7702-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/production-adapter-browser.json",
+      "bytes": 63659,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "18c4969d2a6d4d5a7ecd10b04b0bb63e47189d20cea096b080edf5a45cc8eec5"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/safe-1.4.1-chromium-mobile.png",
+      "bytes": 145119,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4f9e8e5a4b507a43630cdc80bb4045d47f7ff22c97bf41bb07dbeff87de486f0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/safe-1.4.1-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/trading-chromium-mobile.png",
+      "bytes": 217029,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2243f8b4edd3ad0399cdff0f0b35f0c66be4b4aa773dffc95d0ab23f8b601890"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/trading-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/prior-attempt-index.json",
+      "bytes": 8116,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9736d369a43fa839546e1d7ae3af2720286d7fd1fddf32d5ad0c0f336c3c65eb"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/prior-attempt-index.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/sha256-index.json",
+      "bytes": 4071,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "8b4ae96c0ef90d96a6660e91dc71b2d04ceb8f01c336d646a9a6f8674ad91cae"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/sha256-index.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/disabled-webkit-desktop.png",
+      "bytes": 36123,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "452356a30d2d6e98b034e53f746b5b0944a8203e0df69f4a24abe5110a159673"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/disabled-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/eoa-webkit-desktop.png",
+      "bytes": 29341,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "379354e2544fb18c83325a9f3395578e21bddbc027cdf9cb10bc576a6f2308a5"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/eoa-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/metamask-7702-webkit-desktop.png",
+      "bytes": 29980,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "868b8346b789908398282a4a2dd0563ecbace1bbc9211ee97fb10a972b3f9387"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/metamask-7702-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/production-adapter-browser.json",
+      "bytes": 63663,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "50c51b4adc73c36fc323bac280f042bc33aa0989f5270bc032037e0d51406bfe"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/safe-1.4.1-webkit-desktop.png",
+      "bytes": 32188,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "46ef15ec77bfbf00465fb8b95000c4c9e7977d96f8771db9b8f7117ad6d9eab0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/safe-1.4.1-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/trading-webkit-desktop.png",
+      "bytes": 43520,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f6d812fed5675f24508ec0573dafb7ae05efeb3e1ae54c6908486b39cc657b02"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/trading-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/disabled-webkit-mobile.png",
+      "bytes": 146347,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e0b0b430cafb86b305889cb722725cdaa9ded359bcfe23c413c7f5fb732c60a8"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/disabled-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/eoa-webkit-mobile.png",
+      "bytes": 110329,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6c51503e6faa2a5989f0149829d7f6711f5842f463e0e1e900faa66e1a79eb6e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/eoa-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/metamask-7702-webkit-mobile.png",
+      "bytes": 113764,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c7e2f74ca2cfd3ab99ccf069eebd676c87c620772da228649ad3544bb5edb641"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/metamask-7702-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/production-adapter-browser.json",
+      "bytes": 63647,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "667b84df0c6e5bd436b11f16ddbec21e13bfd0f5ce15757372649779ee32e1e9"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/safe-1.4.1-webkit-mobile.png",
+      "bytes": 121700,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "bda56411385173b604af3cc9391d93a6cd4df01d00da2b544f8c521df08ec6f9"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/safe-1.4.1-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/trading-webkit-mobile.png",
+      "bytes": 183501,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4432071e17ef31d6ba274e6cdffa378b735ac5f120adf15de28122a6bcca242a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/trading-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/disabled-chromium-desktop.png",
+      "bytes": 36656,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eaf90c6d367c67da12144ed25ecb30c54473b71082758d3f18c52707b828652a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/disabled-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/eoa-chromium-desktop.png",
+      "bytes": 29251,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f39435618ea83d172f3ec43b0f4c894f3b54d975700054855a793bec3ab801cb"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/eoa-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/metamask-7702-chromium-desktop.png",
+      "bytes": 29991,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "911084100fab91115019a8e856c7a492f1b8e06e402ad661b0c4a1faeece962b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/metamask-7702-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/production-adapter-browser.json",
+      "bytes": 70916,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "099e833a9d9f26b2cf2dc88d2e5820c7a233f6b91b1fadb738f8e8daaa5a94ce"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/safe-1.4.1-chromium-desktop.png",
+      "bytes": 32316,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9a415626a75f6be74398ae89e9cc23ffdbbfe482e658e84054d06b7548b8609c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/safe-1.4.1-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/trading-chromium-desktop.png",
+      "bytes": 44610,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "65dba2e988d9d1df22837c7e0f7116a4615a9aef6f08ea4ec3852c0473b73d5e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/trading-chromium-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/disabled-chromium-mobile.png",
+      "bytes": 176276,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c6d491cf099881d58cf888f64de21c64c667fe5efb81df72107eb4cdf86b0758"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/disabled-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/eoa-chromium-mobile.png",
+      "bytes": 132901,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "64d5b3a9c723babbe83cd73e20364379f16ae51a2e6ae1776e8976dd6282a6a4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/eoa-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/metamask-7702-chromium-mobile.png",
+      "bytes": 137328,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9ee4389bf4ee30b496c368f0c2e6eba5e2f76a0815c961123b69cde52e67e3fa"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/metamask-7702-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/production-adapter-browser.json",
+      "bytes": 70900,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "706c7e5bf48bab9f3e6cb670dcf330cce8e98c99f6e3505a889cb27b26eb9b72"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/safe-1.4.1-chromium-mobile.png",
+      "bytes": 145119,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4f9e8e5a4b507a43630cdc80bb4045d47f7ff22c97bf41bb07dbeff87de486f0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/safe-1.4.1-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/trading-chromium-mobile.png",
+      "bytes": 217029,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2243f8b4edd3ad0399cdff0f0b35f0c66be4b4aa773dffc95d0ab23f8b601890"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/trading-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/disabled-chromium-mobile.png",
+      "bytes": 176276,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c6d491cf099881d58cf888f64de21c64c667fe5efb81df72107eb4cdf86b0758"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/disabled-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/eoa-chromium-mobile.png",
+      "bytes": 132901,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "64d5b3a9c723babbe83cd73e20364379f16ae51a2e6ae1776e8976dd6282a6a4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/eoa-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/metamask-7702-chromium-mobile.png",
+      "bytes": 137328,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9ee4389bf4ee30b496c368f0c2e6eba5e2f76a0815c961123b69cde52e67e3fa"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/metamask-7702-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/production-adapter-browser.json",
+      "bytes": 66452,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "81f7b665ff09c71d8223a7600c4693c24021df6768f47af4e7fdce9dae74fe42"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/safe-1.4.1-chromium-mobile.png",
+      "bytes": 145119,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4f9e8e5a4b507a43630cdc80bb4045d47f7ff22c97bf41bb07dbeff87de486f0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/safe-1.4.1-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/trading-chromium-mobile.png",
+      "bytes": 217029,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2243f8b4edd3ad0399cdff0f0b35f0c66be4b4aa773dffc95d0ab23f8b601890"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/trading-chromium-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/prior-failures.json",
+      "bytes": 5019,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eafabb93f99da466adb795cb925f2751b78402007c5e5b3a9a24834da29e44b2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/prior-failures.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/sha256-index.json",
+      "bytes": 5259,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6c82bede0663918e0e268e63a4de8a9195270da55c926bb0ae2778077ac34ec2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/sha256-index.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/disabled-webkit-desktop.png",
+      "bytes": 36123,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "452356a30d2d6e98b034e53f746b5b0944a8203e0df69f4a24abe5110a159673"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/disabled-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/eoa-webkit-desktop.png",
+      "bytes": 29341,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "379354e2544fb18c83325a9f3395578e21bddbc027cdf9cb10bc576a6f2308a5"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/eoa-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/metamask-7702-webkit-desktop.png",
+      "bytes": 29980,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "868b8346b789908398282a4a2dd0563ecbace1bbc9211ee97fb10a972b3f9387"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/metamask-7702-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/production-adapter-browser.json",
+      "bytes": 70904,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b4a2b4f8987307dffd97260c7a01c30837b75a095d49d4080128cb821cd9b76d"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/safe-1.4.1-webkit-desktop.png",
+      "bytes": 32188,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "46ef15ec77bfbf00465fb8b95000c4c9e7977d96f8771db9b8f7117ad6d9eab0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/safe-1.4.1-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/trading-webkit-desktop.png",
+      "bytes": 43520,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f6d812fed5675f24508ec0573dafb7ae05efeb3e1ae54c6908486b39cc657b02"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/trading-webkit-desktop.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/disabled-webkit-mobile.png",
+      "bytes": 146347,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e0b0b430cafb86b305889cb722725cdaa9ded359bcfe23c413c7f5fb732c60a8"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/disabled-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/eoa-webkit-mobile.png",
+      "bytes": 110329,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6c51503e6faa2a5989f0149829d7f6711f5842f463e0e1e900faa66e1a79eb6e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/eoa-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/metamask-7702-webkit-mobile.png",
+      "bytes": 113764,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c7e2f74ca2cfd3ab99ccf069eebd676c87c620772da228649ad3544bb5edb641"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/metamask-7702-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/production-adapter-browser.json",
+      "bytes": 70888,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "313e201de5b32a4a8b904c1838681ad485da6a5375d2cfe5381e054680445f0e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/production-adapter-browser.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/safe-1.4.1-webkit-mobile.png",
+      "bytes": 126475,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d53cf990918fcb41eef330d8a37fe58b6df8ed25216ee3b3e031d8c0fb704f8d"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/safe-1.4.1-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/trading-webkit-mobile.png",
+      "bytes": 183501,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4432071e17ef31d6ba274e6cdffa378b735ac5f120adf15de28122a6bcca242a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/trading-webkit-mobile.png"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/governance/current/authority.json.gz",
+      "bytes": 30594,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2e55f30571fbbb907f3893384f7c3ac30fbd4073541095e985952d2a3862330f"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/governance/current/authority.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/governance/current/authority.json",
+        "bytes": 246366,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "31466c3deff95511688bbefb4252ceff40da844cf0328dfac93f0053d19efa5e"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/governance/current/capture.json.gz",
+      "bytes": 232770,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "0fad65c0fd6c4dd87cf28eaef8fa56b01c24e20774171ae09ed17a3db1134b91"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/governance/current/capture.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/governance/current/capture.json",
+        "bytes": 1091954,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "1b394dd95145cba8e0a59f1a6b61ac305f41dbb3329c4b6ba9190dbc610ea2f7"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/governance/current/unsigned-execute-review.json",
+      "bytes": 4179,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ea8cd51cf897950f859a224d7d93939cbed96fe2334370a68f8e29149957cdde"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/governance/current/unsigned-execute-review.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/governance/final.test.mjs",
+      "bytes": 2086,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "20cfe9dd0fa978ffa3d10df494d3581f4f0cddd77b20d9fd417fb2fcbf4e4270"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/governance/final.test.mjs"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/governance/final/authority.json.gz",
+      "bytes": 30921,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "29930da9ee43b6945e843032a75e2b78ea0b6064a55b24e59681ad8d1ad3575a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/governance/final/authority.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/governance/final/authority.json",
+        "bytes": 248492,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "165e4fc4c5bcf1bb2f07da7dd79f1c0b8ff5bd9628f234dae7ce4383f581ae57"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/governance/final/capture.json.gz",
+      "bytes": 227399,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ba4c7e92e6dba401c3284f5f8ad1531cbb372680f2f3234f4bd56e3565998844"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/governance/final/capture.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/governance/final/capture.json",
+        "bytes": 1092143,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "dcca575eb58baa734f72654ff42c8b81467ca606a79d2c906f3791d55069ef5b"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/governance/final/unsigned-execute-review.json",
+      "bytes": 4179,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "725a093a20ab933f1651dfc558baf118e1dfb0c8984f1412e8529fd9906ebb90"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/governance/final/unsigned-execute-review.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/governance/replay.test.mjs",
+      "bytes": 2373,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a2378768770a1fedaa50f0496513aa8551901f0ed5f78659eff9c8abb5f16734"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/governance/replay.test.mjs"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/history-adjudication/exact-public-identities.json",
+      "bytes": 27110,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "85bbdb1af27363fa5d71b8ad919359e952b924e2e0987198df821e8f748ab99d"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/history-adjudication/exact-public-identities.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/iphone-checklist.md",
+      "bytes": 2383,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "70a018c33d3ec891665d5264de5a913d56ec45164b0cf0428212d905e75f0ae1"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/iphone-checklist.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/activity-postgres-tests.txt",
+      "bytes": 281,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "686aa2fd295e185686503f113ca5c49aeb9bd69a8f9399e30ee11f34a4912409"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/activity-postgres-tests.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/creation-postgres-tests.txt",
+      "bytes": 652,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d2d0970c03b8b3322df8327b4d6f0dea7226f8413129e93252580ccab9a1d738"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/creation-postgres-tests.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/directory-storage-layout.json",
+      "bytes": 6335,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "72cc478b8de0d6370c766758ca591a41575afa535abdff359cc2aca8761c5a0d"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/directory-storage-layout.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/fee-policy.md",
+      "bytes": 2290,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "5f8332a8b82de2f754584e99ff6bfee496cb71d7093859a53ae6c493cb006a5c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/fee-policy.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/indexer-birth-postgres-tests.txt",
+      "bytes": 264,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f425c464ba6afc0d485f83a3d9c77c621a5ce45bf3269d4923b6e8c5cb9219b3"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/indexer-birth-postgres-tests.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/nitro-raw-components.json",
+      "bytes": 2621,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "fb8c4ee442532650bc26112f0f8b0ab49ba837b5da450639d1f3ffea4d9fda3e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/nitro-raw-components.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/nitro-read-after-cooldown.json",
+      "bytes": 518,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a853447988c44b79f6f154087e74fd5e2924ceb3c0821727abbc4c469cc88d0c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/nitro-read-after-cooldown.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/nitro-read.json",
+      "bytes": 613,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "35d40706d85a5c26c212e64a40dce6bc94981628f39458e932c4bee5f9f6959c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/nitro-read.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/nitro-zero-poster-native-corroborated.json",
+      "bytes": 2675,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6cd88be743a65da0ef65c51add70a150cbbdfe9c9c3c7d3e777ec497f0a1ac70"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/nitro-zero-poster-native-corroborated.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/nitro-zero-poster-native-verified.json",
+      "bytes": 4997,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b8259f2df272475a6ae85576c24f2c7af52aaa86cc268fc8069dafcec8adc06e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/nitro-zero-poster-native-verified.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/nitro-zero-poster-native.json",
+      "bytes": 2676,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "1af831f4c7fc3f95ebb4749a5e92ef6e7a6b06b1d9c1f48ccf35afea0aff5054"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/nitro-zero-poster-native.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/project-birth-tests.txt",
+      "bytes": 4660,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c93756332d605268acf3b81a868f546323d17f87662c8d9cbfcf4dc03766972b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/project-birth-tests.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/provider-final-observation.json",
+      "bytes": 1671,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "104c2c633de25ef568cc77ccfc9304090b15913ddfc4ebcd97d716364a846dc7"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/provider-final-observation.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/provider-observation.json",
+      "bytes": 1671,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2a3dae97e6535c1e6c648dc61e38d9045195580f8181dd44500c94b8b0ec5718"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/provider-observation.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/public-evidence-tests.txt",
+      "bytes": 1805,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "98affc38deab96c16db3892a503da065bfa48ecbe2c7ca4da24f80928972383c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/public-evidence-tests.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/remaining-actions.md",
+      "bytes": 3434,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "b466d6c509e046e6158b5c0e1680d60dc3fffefcabe390cde9040b35ef66928a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/remaining-actions.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/replay.test.mjs",
+      "bytes": 1089,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e35955d61e18faa6d0708c9baa237e97af4a956b0fee0f11c3bcf9c55d38b8c6"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/replay.test.mjs"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/operations/worker-http-tests.txt",
+      "bytes": 261,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "fbadf2d263426663c96317e8b655af3512eab117d718dc3780c1bf8e2548552b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/operations/worker-http-tests.txt"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/README.md",
+      "bytes": 3678,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "90ad3cefea5cc3241477140f644af0ba89b2a7df7566c075d7da030c56ba81c7"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/README.md"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/acceptance.json",
+      "bytes": 3216,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "61a7bb12206b5b0c602e622804c9982e9e57b705a1e1136c38009125fa3434df"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/acceptance.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-after-v2/RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "bytes": 25614,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eaf114858539427d8c97967ebf1947cbbecf15b00888a351ddb057c11cae9b9a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-after-v2/RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/source/bootstrap-after-v2/RMTLaunchCurveDeploymentV2.metadata.json",
+        "bytes": 98251,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "a61561659dc6d460457674d6f679e1e3bb3270c6cdbec7c30b8171333e7d0cbf"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-after-v2/metadata-observation.json",
+      "bytes": 1318,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ca836493678274a453bc8828cb0f77ea4694f9250b7723f9080b10f5703da397"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-after-v2/metadata-observation.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-diagnostics.json",
+      "bytes": 1547,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a17781de24f722d8b932db6d49e81936aa83c3f44309fb35c68c09d9163cb49b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-diagnostics.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-final/RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "bytes": 25614,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eaf114858539427d8c97967ebf1947cbbecf15b00888a351ddb057c11cae9b9a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-final/RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/source/bootstrap-final/RMTLaunchCurveDeploymentV2.metadata.json",
+        "bytes": 98251,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "a61561659dc6d460457674d6f679e1e3bb3270c6cdbec7c30b8171333e7d0cbf"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-final/metadata-observation.json",
+      "bytes": 1318,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a4920049ce33237505c795cb3651eb7804e750de58550f0d43129babbde429d4"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-final/metadata-observation.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-late/RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "bytes": 25614,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eaf114858539427d8c97967ebf1947cbbecf15b00888a351ddb057c11cae9b9a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-late/RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/source/bootstrap-late/RMTLaunchCurveDeploymentV2.metadata.json",
+        "bytes": 98251,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "a61561659dc6d460457674d6f679e1e3bb3270c6cdbec7c30b8171333e7d0cbf"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-late/metadata-observation.json",
+      "bytes": 1318,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4de65ca72c91ea729e7e57f788f2838a6e384159dd3e7da041abf66d822f472a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-late/metadata-observation.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-native-artifact.json.gz",
+      "bytes": 25654,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "e85af2c70bcf7a50aa10d0cfae8dd39a9f4dcc210c2ef24ade6dbcd410c510e1"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-native-artifact.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/source/bootstrap-native-artifact.json",
+        "bytes": 100802,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "bce7bc5398df2d4e8acba7cffd85064d09f95541d90b3b70d54a226ec00eece8"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-native-reproduction.json",
+      "bytes": 1205,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "19b760b7b02a796d2b53e3e53826cf25824aeb2bf3b65546f9f4f7db6fe67358"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-native-reproduction.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/bootstrap-v2-attempt.json",
+      "bytes": 2489,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "bec323094d80b2da57ef6556117a38289b9bf3f6923abe2fe969c4af1da75243"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/bootstrap-v2-attempt.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/current-tail/RMTLaunchCurveFactoryV2.metadata.json.gz",
+      "bytes": 57784,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4a68768ee197874d128465d55712cfef69585e2aaef53578ca2d4c696c4e40a2"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/current-tail/RMTLaunchCurveFactoryV2.metadata.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/source/current-tail/RMTLaunchCurveFactoryV2.metadata.json",
+        "bytes": 248336,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "969cb9cd08e2978ff727e05212cbd8b7d1442bc0dafd24b30174d21298e0f615"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/current-tail/RMTV4CurveGraduationV1.metadata.json.gz",
+      "bytes": 73480,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "26236347b5dc0702d650a476df9e6b4b9ce163ba264c25aec0a8858ed782d4b1"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/current-tail/RMTV4CurveGraduationV1.metadata.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/source/current-tail/RMTV4CurveGraduationV1.metadata.json",
+        "bytes": 344180,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "9a67e90023a8b6834e675b21bfab0ac094ef759494019d5169f636dae69f405c"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/current-tail/metadata-observation.json",
+      "bytes": 2340,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "bc5171250ed494a98c0bc1e5ae8212c914b499898d0c32835dbf8ef107c6a562"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/current-tail/metadata-observation.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/current/RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "bytes": 25614,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "eaf114858539427d8c97967ebf1947cbbecf15b00888a351ddb057c11cae9b9a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/current/RMTLaunchCurveDeploymentV2.metadata.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/source/current/RMTLaunchCurveDeploymentV2.metadata.json",
+        "bytes": 98251,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "a61561659dc6d460457674d6f679e1e3bb3270c6cdbec7c30b8171333e7d0cbf"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/current/RMTV4CurveInitializationGuardV1.metadata.json.gz",
+      "bytes": 17276,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9899ce2c2d2edcd1d08f655dca344c1c5dc5bb118e67ea12a949c2f63f826913"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/current/RMTV4CurveInitializationGuardV1.metadata.json.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/source/current/RMTV4CurveInitializationGuardV1.metadata.json",
+        "bytes": 85080,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "bdf24d0e6c627088a7850b37bfbb20fc16ef210d9072bda8647a2b571615dd00"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/current/metadata-observation.json",
+      "bytes": 2217,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7ba66b06b4491bb630a08bd4e3e0cad0ac49d3ee131fc5548759baf02540694c"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/current/metadata-observation.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/prepare-project-templates.mjs",
+      "bytes": 3908,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "bfb6d4187ad037f3991ebbba1dbc4a5968bbe3bb38464cf07a4316313dbe1edc"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/prepare-project-templates.mjs"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/project-template-reproduction.json",
+      "bytes": 883,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a25755ecf650bea7c61321fe0e9f47dc7a60de208363bfac5eaaaabd81f2e930"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/project-template-reproduction.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/read-metadata.ps1",
+      "bytes": 4261,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "cadb5150bff4d682307ec9c096cebbaa53497b17bde758064664a75f0aa038e9"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/read-metadata.ps1"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/recompile-bootstrap.mjs",
+      "bytes": 4546,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a5d018ffaf157520765d0ba1eaae427d1860a3e2331e5ccce72ba9b976100c1b"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/recompile-bootstrap.mjs"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/submit-bootstrap-v2.ps1",
+      "bytes": 4212,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "84675a392eff8cb1abc32e61d37de106d5a2ca67499c124f42944ee0c11f2cec"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/submit-bootstrap-v2.ps1"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/verify-source.mjs",
+      "bytes": 4607,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "3e74f3d3318b6d08e007290b19ad339c1e158fc6e6f2f0fcfa0523381eb79f4f"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/verify-source.mjs"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/source/verify-source.test.mjs",
+      "bytes": 2647,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ce3bc76bf4972a2aca3469cf33e02b5c769631690cdd1b61c1e4304f1a24e98f"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/source/verify-source.test.mjs"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/foundry-local.json",
+      "bytes": 39995,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9eb799ad558777eb90bf7b15079ba3c5d97c6201177682cce1f91a8bbd718dbb"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/foundry-local.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/governance-final-authority.txt.gz",
+      "bytes": 806,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "4a474c66ef975977300ab7634c2a0ec80b5976bdc32b3c84cb75e4754ca621d0"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/governance-final-authority.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/governance-final-authority.txt",
+        "bytes": 2691,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "ca523dfbeeaa9bef3961a309cae66a2f263d8a59f9ebcb2da0bc0145709324f7"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/governance-final-capture.txt.gz",
+      "bytes": 797,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "890d20dba3ebe19510b18c9a6f9ff5bf5c639cae46cecfc9e5319ea3061cfb02"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/governance-final-capture.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/governance-final-capture.txt",
+        "bytes": 1787,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "b7e0fbdc7c6cdabe1e69d07f713c898cdd291604c9bdec0fdc6f64997d3844e7"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/governance-final-tests.txt.gz",
+      "bytes": 288,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "60d171b305253f4575fc7866f39c01ad07bb0c64314bf4a3ef3393baa360290a"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/governance-final-tests.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/governance-final-tests.txt",
+        "bytes": 659,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "a0f20149dcbe508f4198b3d509437c564840fa07ef4ffeee9ff0d788edb43d5d"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/history-control-tests.txt.gz",
+      "bytes": 6685,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2682e5fc581ed08dccf31bbee87b4ad53c3acdc359222c195cad5c86bf336f86"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/history-control-tests.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/history-control-tests.txt",
+        "bytes": 56224,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "6934a0d91b278376b565737a1252a274679d184955efaf2d46552e684cb88c5f"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/local-results.json",
+      "bytes": 5709,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "afffbfef68837b95c16e78ef16dc115eea903cb0e6781789682227be0b9b9d09"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/local-results.json"
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/release-tests-current.txt.gz",
+      "bytes": 15724,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d52b0c7961d9f5062516d616fdcac05de546e2622fbd2cd957d1271c00177f18"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/release-tests-current.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/release-tests-current.txt",
+        "bytes": 78146,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "7b580a45a355ecaba186fde2ab34f671dfe287f576966377c379e54616bc9d18"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/release-tests-final-serial.txt.gz",
+      "bytes": 15441,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "26d77ff9b9f95bb690f6158ac38230417df9babebb0b5c5e3efb69de373b9bda"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/release-tests-final-serial.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/release-tests-final-serial.txt",
+        "bytes": 77807,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "e46579e6d8902a4777fb4e26b5632860c0a8fc129c8f636a5b716189a58a884f"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/release-tests-final.txt.gz",
+      "bytes": 16183,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "7d09f84aeb2caf8d53368e5f7cd1a3dd79adebafc02c949bf5447c243c8137d7"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/release-tests-final.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/release-tests-final.txt",
+        "bytes": 79391,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "92617df8dcd71a0efd3d1bb638411e11e51548db3bfe1b74d4b2035ad1e05499"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/repo-check-final.txt.gz",
+      "bytes": 263,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "10e509bb945f001bcade6456708647321a658f2a1a91cdf99fe49012ff8fd95e"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/repo-check-final.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/repo-check-final.txt",
+        "bytes": 425,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "9a5ec15aa589cd47fba6d32f5013a63430058279a2ed2282db772358f9d4d34b"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/typecheck-final.txt.gz",
+      "bytes": 239,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "33c5914b3dc87002f352338818e17397af8ce2a3bef841d421d71611a1eadb13"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/typecheck-final.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/typecheck-final.txt",
+        "bytes": 391,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "87027db348560215785b44f13d25d44ee08e25571cfb7c77461d9f89e725612e"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/website-build-current.txt.gz",
+      "bytes": 1084,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "c41603603dbb2af17fbd314d21608718f8c31e5ed99d18668b4b76cb78a5f964"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/website-build-current.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/website-build-current.txt",
+        "bytes": 4940,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "fc7c19cd951410691f7b8bab090fd8f1d77cd8b032ad3332f8c5d9ed305030db"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/website-build-final.txt.gz",
+      "bytes": 1085,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "a549c4861edfc0b41a8f99aeb959b44dc1449d6148016f46177c86e4410ac044"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/website-build-final.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/website-build-final.txt",
+        "bytes": 4940,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "347033265b7793f530e93f1bd1f2c596b895782c16ee7142aba85efe645cdfdb"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/website-tests-current.txt.gz",
+      "bytes": 20702,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "98e6a14807d806d84e402a27835f75476f07140fbf185a3d24baa2987a0a8262"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/website-tests-current.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/website-tests-current.txt",
+        "bytes": 110831,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "91cd8b8208af08dcec7863a02eab991d8722f022d05d2ef31e3bbd42e1b2cc9e"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/tests/website-tests-final.txt.gz",
+      "bytes": 21539,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "48825f07c0b992f6e8444cedf38d993a5ab8537a98c9729cb5a6a551640e59af"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/tests/website-tests-final.txt.gz",
+      "gzip": {
+        "scanPath": "expanded/docs/evidence/rmt-task092/tests/website-tests-final.txt",
+        "bytes": 112782,
+        "contentDigest": {
+          "algorithm": "SHA-256",
+          "hex": "793c15ae03c5b953de7878c9befd780787d3ac6cf3a2d71091125a05d2108665"
+        }
+      }
+    },
+    {
+      "path": "docs/evidence/rmt-task092/validation/defensive-review.json",
+      "bytes": 7370,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "22bf2ee98276dec4494ace180e59ef654bc600cf03ea52b7113e565772aad696"
+      },
+      "scanPath": "source/docs/evidence/rmt-task092/validation/defensive-review.json"
+    },
+    {
+      "path": "knip.json",
+      "bytes": 5465,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "37a84516bfd0ba818e487ea83f620a1d3c18c4531abccc87b2dbc96b94715035"
+      },
+      "scanPath": "source/knip.json"
+    },
+    {
+      "path": "scripts/production-adapters/archive.mjs",
+      "bytes": 4223,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "847dd23797a948fc22d63321ab9b07e6ae9ad47d6bcdd532269ae53502796ccd"
+      },
+      "scanPath": "source/scripts/production-adapters/archive.mjs"
+    },
+    {
+      "path": "scripts/production-adapters/browser-entry.tsx",
+      "bytes": 1734,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "99e969003a68f51e5c21f645fe1f4277c5ccba3a8ad8515e49cc8813c27cd3c8"
+      },
+      "scanPath": "source/scripts/production-adapters/browser-entry.tsx"
+    },
+    {
+      "path": "scripts/production-adapters/browser.ts",
+      "bytes": 24263,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "6b6c9343aafd10d2bd4bde9448565190ba9bcfd985735436c736bbe17e06dca4"
+      },
+      "scanPath": "source/scripts/production-adapters/browser.ts"
+    },
+    {
+      "path": "scripts/production-adapters/probe-nitro.mjs",
+      "bytes": 5452,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "721bc9cb820169f915fa134464c23812eb3168897c7a17fe7a6a14532f3c2868"
+      },
+      "scanPath": "source/scripts/production-adapters/probe-nitro.mjs"
+    },
+    {
+      "path": "scripts/production-adapters/run.mts",
+      "bytes": 33380,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "2e72d9257552e25d33b74a42f5f7c479afa8d70150f3e495d7bcd399ba4dcb82"
+      },
+      "scanPath": "source/scripts/production-adapters/run.mts"
+    },
+    {
+      "path": "scripts/release/website-financial-preflight.mjs",
+      "bytes": 3570,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f9c2fefa36322a7c40550cfd89164cd88361e01e9ea4151562243ddc7c18dd5a"
+      },
+      "scanPath": "source/scripts/release/website-financial-preflight.mjs"
+    },
+    {
+      "path": "scripts/release/website-financial-preflight.test.mjs",
+      "bytes": 1469,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "9fa45da375dbf0a5359d5457d8ee99b1cf3c5f92264251f1cfe5761d33ebd5e2"
+      },
+      "scanPath": "source/scripts/release/website-financial-preflight.test.mjs"
+    },
+    {
+      "path": "scripts/security/public-task092-identities.mjs",
+      "bytes": 9630,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "d76ab88f981759e33ad7fdf5e33ce30ec5a6f250373a941dd70959f5cfeb6253"
+      },
+      "scanPath": "source/scripts/security/public-task092-identities.mjs"
+    },
+    {
+      "path": "scripts/security/public-task092-identities.test.mjs",
+      "bytes": 8833,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "ee73ec0a789f518ca2c651cb8647dfd5a649c56943fc394cd5c762da1a8a50ae"
+      },
+      "scanPath": "source/scripts/security/public-task092-identities.test.mjs"
+    },
+    {
+      "path": "scripts/security/run-history-scan.mjs",
+      "bytes": 5588,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "09fafacc2bbaac1e652fd8187fbda3f1c8ee80f18adf0ed838eae7008fdf7782"
+      },
+      "scanPath": "source/scripts/security/run-history-scan.mjs"
+    },
+    {
+      "path": "scripts/security/scan-task092.mjs",
+      "bytes": 8198,
+      "contentDigest": {
+        "algorithm": "SHA-256",
+        "hex": "f6dc2f5c4444ecc7a9c2912045e6abe9c7f13493079cb92853d15d68ea8279ec"
+      },
+      "scanPath": "source/scripts/security/scan-task092.mjs"
+    }
+  ],
+  "limits": [
+    "This is a scoped worktree snapshot scan, not a clean full-history claim or financial gate clearance.",
+    "Files created or edited after capture require another scan or exact-head CI; derived scan reports cannot attest their own final bytes."
+  ]
+}

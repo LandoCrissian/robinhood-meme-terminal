@@ -1,0 +1,494 @@
+{
+  "schemaVersion": 1,
+  "sourceCommit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+  "sourceTree": "4027f082b7a3fba74a47a6549169cf5aa11d1714",
+  "scope": "EXACT_IMMUTABLE_PUBLIC_IDENTITIES_AFTER_UNCHANGED_RAW_HISTORY_SCAN",
+  "initialRawFindingCount": 322,
+  "initialRawExit": 1,
+  "initialRawReportSha256": "ea065e49c238feb8c1fff5d727cb2b40d6c7ab7f56e6ae9b39a1be3635112a05",
+  "legacyFindingCount": 300,
+  "newFindingCount": 22,
+  "publicSource": {
+    "path": "apps/launch-website/app/styles/token-detail.css",
+    "blobSha256": "b2ea8c95d5259900689fa789f2891d1e2ac7153a096d59be250b5fa147f531cd",
+    "gitBlobSha1": "9f207a3501fa16b1609f1b167c8f4554186b5768",
+    "bytes": 3122
+  },
+  "compilerProof": {
+    "inputPayloadPath": "docs/evidence/rmt-task091/governance/source-publication/RMTLaunchCurveDeploymentV2.request.json.gz",
+    "inputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
+    "contractPath": "src/RMTLaunchCurveRevenueLedgerV1.sol",
+    "sourceSha256": "558c2ea7b7bae540d3c92d482cd9df2aa88b4b20d1da1c4ada1d986c0bc7bd54",
+    "bindings": [
+      {
+        "path": "docs/evidence/rmt-task091/governance/source-publication/RMTLaunchCurveDeploymentV2.request.json.gz",
+        "blobSha256": "36493a493886cffd35008c3321f4f7038f1736426b12f9f7f359dddcfa68f547",
+        "gitBlobSha1": "f9170fe2d049ebddca5bcb72cd6c874f5a966bea"
+      },
+      {
+        "path": "docs/evidence/rmt-task090/migration/canonical-compilation.json.gz",
+        "blobSha256": "c3f3b851e6d96fe89515e5f6517f4b5716dea8c81e05090841ed663d8cc7dd04",
+        "gitBlobSha1": "04bcb297a1010711d7b5a8a13fc927c5c83a6ecd"
+      },
+      {
+        "path": "docs/evidence/rmt-task092/source/project-template-reproduction.json",
+        "blobSha256": "a25755ecf650bea7c61321fe0e9f47dc7a60de208363bfac5eaaaabd81f2e930",
+        "gitBlobSha1": "13ed7d9280267f546643d65f3b26d526e32c348e"
+      },
+      {
+        "path": "apps/launch-website/lib/server/production-project-templates.json",
+        "blobSha256": "92fffd07d2ec029920d6d7a30e4597286b8dcf61b9f338fe208090c4cbefdd36",
+        "gitBlobSha1": "3e7a6cfa456cbe31e46d140a00769692f3fc0a5b"
+      }
+    ]
+  },
+  "records": [
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-local/chromium-desktop/production-adapter-browser.json:generic-api-key:44",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-local/chromium-desktop/production-adapter-browser.json",
+        "StartLine": 44,
+        "EndLine": 44,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "ef53a609ed239352f7c621b4096b81a2dd3899bd6f84d629cabcee96f030e9b4",
+      "gitBlobSha1": "88fa4313fed93f8fd28f3af8ca742bbee8ee2260",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-local/chromium-mobile/production-adapter-browser.json:generic-api-key:44",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-local/chromium-mobile/production-adapter-browser.json",
+        "StartLine": 44,
+        "EndLine": 44,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "050363c4e3538de111bc837eaa2737e0924c25ece02476e0de71f6ee735bb287",
+      "gitBlobSha1": "61b8765bc3fb917bd7c436d35ee5c068ad1cf88e",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-local/webkit-desktop/production-adapter-browser.json:generic-api-key:44",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-local/webkit-desktop/production-adapter-browser.json",
+        "StartLine": 44,
+        "EndLine": 44,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "03643b587e9f8a11e8e1266ce45e024f3fa20778547b20d8efa247cd2b22f3a7",
+      "gitBlobSha1": "47ccd8556dad36c935d69ad590f252a97138cdb3",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-local/webkit-mobile/production-adapter-browser.json:generic-api-key:44",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-local/webkit-mobile/production-adapter-browser.json",
+        "StartLine": 44,
+        "EndLine": 44,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "e95f7966977d23198e855e71c72f0c911462fc36e6f1a8db5a0340dc0897ff00",
+      "gitBlobSha1": "714589ccd4f22ddd21a14b67a84eca460077d4fa",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/production-adapter-browser.json:generic-api-key:51",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-desktop/production-adapter-browser.json",
+        "StartLine": 51,
+        "EndLine": 51,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "58c2b168c05c280b98432b1eae16f4d33cc33384167db07b2f5769e550399ae2",
+      "gitBlobSha1": "72accdcf9f1032929b0807ff3b60f619d78c3098",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/production-adapter-browser.json:generic-api-key:51",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/chromium-mobile/production-adapter-browser.json",
+        "StartLine": 51,
+        "EndLine": 51,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "b26325793571d9a5808b7dbb1d78eeda8b5a5e421e617988a19b906f08228457",
+      "gitBlobSha1": "3a05bca4ed999b6e5e4fa12406007311f77bd1c8",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/production-adapter-browser.json:generic-api-key:51",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-desktop/production-adapter-browser.json",
+        "StartLine": 51,
+        "EndLine": 51,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "fb21e9d26828efab90ba60e6d03a1296b07a69b7cec246c2a083d6a2636d3b73",
+      "gitBlobSha1": "bc780dae79f6c8db7e3cf5917d6117a62ce2ca1a",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/production-adapter-browser.json:generic-api-key:51",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-zero-noncefloor-local/webkit-mobile/production-adapter-browser.json",
+        "StartLine": 51,
+        "EndLine": 51,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "e967a6b3cc763dba631f7c4d5e68a47052f169f7630093a58cd4d1a3ba85feb2",
+      "gitBlobSha1": "0243b5b2a6a1c640e4a6c11ef5781cbce423c9ea",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/production-adapter-browser.json:generic-api-key:46",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-desktop/production-adapter-browser.json",
+        "StartLine": 46,
+        "EndLine": 46,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "f1b725b6d6e8be2428098bc2960e2e3583bd1983c9825294fc38bb7ec6c7a799",
+      "gitBlobSha1": "5edaf7db3ef8e8fb2e73c16e8096a45653d5d8e9",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/production-adapter-browser.json:generic-api-key:46",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/chromium-mobile/production-adapter-browser.json",
+        "StartLine": 46,
+        "EndLine": 46,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "3060b54e4133f41681204b206098b47a74c79429eb5db7db00d0c0cb29e56043",
+      "gitBlobSha1": "8411f17c38c007d0f27f60fed60a145cc88d79e2",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/production-adapter-browser.json:generic-api-key:46",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-desktop/production-adapter-browser.json",
+        "StartLine": 46,
+        "EndLine": 46,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "942375c9a8106a9cbb167fe4e1d56b06693e400da7062cf94a7e1bcac3ae9f70",
+      "gitBlobSha1": "03174eac24e0027ec2fd2873ab9c2131760a385c",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/production-adapter-browser.json:generic-api-key:46",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/final-zero-ttl256-local/webkit-mobile/production-adapter-browser.json",
+        "StartLine": 46,
+        "EndLine": 46,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "5f75dc731d4225e48bb453008ba7af9832ffce9aef0cd597afa01adcbd1ab339",
+      "gitBlobSha1": "124a205b8b6d7ddfd6b4e827a07bbe673a4b26af",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/production-adapter-browser.json:generic-api-key:24",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/initial-local/chromium-desktop/production-adapter-browser.json",
+        "StartLine": 24,
+        "EndLine": 24,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "95a946bf7764241ae0a547718a2796867de975301f51f1c6493044edec2cd3f7",
+      "gitBlobSha1": "e58a9781075ffc7ba71a075d7013ac365a85c12e",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/production-adapter-browser.json:generic-api-key:24",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/initial-local/chromium-mobile/production-adapter-browser.json",
+        "StartLine": 24,
+        "EndLine": 24,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "18c4969d2a6d4d5a7ecd10b04b0bb63e47189d20cea096b080edf5a45cc8eec5",
+      "gitBlobSha1": "3cf5583d1698ce06d60616bdb01987082d1dcb38",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/production-adapter-browser.json:generic-api-key:24",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/initial-local/webkit-desktop/production-adapter-browser.json",
+        "StartLine": 24,
+        "EndLine": 24,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "50c51b4adc73c36fc323bac280f042bc33aa0989f5270bc032037e0d51406bfe",
+      "gitBlobSha1": "5eaeb3427b4b103e0914c27b92f664aa1aa7e2a0",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/production-adapter-browser.json:generic-api-key:24",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/initial-local/webkit-mobile/production-adapter-browser.json",
+        "StartLine": 24,
+        "EndLine": 24,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "667b84df0c6e5bd436b11f16ddbec21e13bfd0f5ce15757372649779ee32e1e9",
+      "gitBlobSha1": "9d697728f7f2bb0e2a36ee3628b7ea963f1a2327",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/production-adapter-browser.json:generic-api-key:46",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-desktop/production-adapter-browser.json",
+        "StartLine": 46,
+        "EndLine": 46,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "099e833a9d9f26b2cf2dc88d2e5820c7a233f6b91b1fadb738f8e8daaa5a94ce",
+      "gitBlobSha1": "ef9a179e8e66ce163da1a715fbdc02b8dca446fb",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/production-adapter-browser.json:generic-api-key:46",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/zero-poster-local/chromium-mobile/production-adapter-browser.json",
+        "StartLine": 46,
+        "EndLine": 46,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "706c7e5bf48bab9f3e6cb670dcf330cce8e98c99f6e3505a889cb27b26eb9b72",
+      "gitBlobSha1": "a87bf2b9f90b28d71a1d9a19f4a36e3b3a9af52d",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/production-adapter-browser.json:generic-api-key:46",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/zero-poster-local/positive-control-chromium-mobile/production-adapter-browser.json",
+        "StartLine": 46,
+        "EndLine": 46,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "81f7b665ff09c71d8223a7600c4693c24021df6768f47af4e7fdce9dae74fe42",
+      "gitBlobSha1": "2be889aa0f00ebff1cfcda9da55bab9d89a7c1bd",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/production-adapter-browser.json:generic-api-key:46",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-desktop/production-adapter-browser.json",
+        "StartLine": 46,
+        "EndLine": 46,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "b4a2b4f8987307dffd97260c7a01c30837b75a095d49d4080128cb821cd9b76d",
+      "gitBlobSha1": "bbb0c165c40d91327156b2d2186134ef37fda4ed",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/production-adapter-browser.json:generic-api-key:46",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "token-detail.css\": \"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/browser/zero-poster-local/webkit-mobile/production-adapter-browser.json",
+        "StartLine": 46,
+        "EndLine": 46,
+        "StartColumn": 38,
+        "EndColumn": 122
+      },
+      "publicKind": "PUBLIC_SOURCE_FILE_SHA256",
+      "blobSha256": "313e201de5b32a4a8b904c1838681ad485da6a5375d2cfe5381e054680445f0e",
+      "gitBlobSha1": "0948c1e1c07ad5da41854dbe5109a9494b06d4cf",
+      "lineSha256": "2c0208ad9a5237b755a1592b803ef6953b3f788f1ef232ff7b3e1869682bdc01",
+      "identitySha256": "157ee233e212e01209e0e34f877dc218c07ebf66e91343b15d4e3e3baa96be7f",
+      "sourcePath": "apps/launch-website/app/styles/token-detail.css"
+    },
+    {
+      "finding": {
+        "Fingerprint": "2aac1e0ede3b4447345c69a338981dab745259bb:docs/evidence/rmt-task092/source/prepare-project-templates.mjs:generic-api-key:21",
+        "RuleID": "generic-api-key",
+        "Secret": "REDACTED",
+        "Match": "RMTLaunchCurveTokenV2\",\"REDACTED\"",
+        "Commit": "2aac1e0ede3b4447345c69a338981dab745259bb",
+        "File": "docs/evidence/rmt-task092/source/prepare-project-templates.mjs",
+        "StartLine": 21,
+        "EndLine": 21,
+        "StartColumn": 21,
+        "EndColumn": 74
+      },
+      "publicKind": "PUBLIC_CANONICAL_SOLIDITY_TYPE",
+      "blobSha256": "bfb6d4187ad037f3991ebbba1dbc4a5968bbe3bb38464cf07a4316313dbe1edc",
+      "gitBlobSha1": "2517cb9da15aa3a6de2785badde06eeb52c8c2fb",
+      "lineSha256": "7e5cfe2c956078ae16754ad3ce8d5516f58172e112b6b4f51ba80d9fe184852b",
+      "identitySha256": "849b67f6ff1866865d5c9846198daa83ca68a4cca438cc46f87ccb71861073ec",
+      "contractPath": "src/RMTLaunchCurveRevenueLedgerV1.sol"
+    }
+  ],
+  "detectorsChanged": false,
+  "ignoreAdded": false,
+  "rawScanPassed": false,
+  "financialSecurityClearance": false,
+  "productionAuthorization": false,
+  "actualCanaryReportUtf8": "[\n {\n  \"RuleID\": \"generic-api-key\",\n  \"Description\": \"Detected a Generic API Key, potentially exposing access to various services and sensitive operations.\",\n  \"StartLine\": 1,\n  \"EndLine\": 1,\n  \"StartColumn\": 1,\n  \"EndColumn\": 108,\n  \"Match\": \"api_key = \\\"REDACTED\\\"\",\n  \"Secret\": \"REDACTED\",\n  \"File\": \"C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task092-local-scan/history-initial-20261120-232019/ephemeral-canary/source.txt\",\n  \"SymlinkFile\": \"\",\n  \"Commit\": \"\",\n  \"Entropy\": 3.8511338,\n  \"Author\": \"\",\n  \"Email\": \"\",\n  \"Date\": \"\",\n  \"Message\": \"\",\n  \"Tags\": [],\n  \"Fingerprint\": \"C:/Users/RMT/Documents/Codex/2026-11-19/continue-rmt-launch-development-using-the/task092-local-scan/history-initial-20261120-232019/ephemeral-canary/source.txt:generic-api-key:1\"\n }\n]\n",
+  "actualCanaryReportSha256": "fa11808687d51e54c81dc741146446d563fe1bde5b13326d8d0aa33df0b4f23b"
+}
