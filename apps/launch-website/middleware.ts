@@ -42,6 +42,8 @@ export function middleware(request: NextRequest) {
       "Cache-Control": "private, no-store", "Retry-After": String(budget.retryAfter),
     } });
   }
+  if (["GET","HEAD"].includes(request.method) && (pathname === "/share/default.png" ||
+      /^\/share\/(?:u\/[a-z][a-z0-9_]{2,23}|(?:creator|launches)\/0x[0-9a-f]{40})\/[0-9a-f]{24}\.png$/.test(pathname))) return NextResponse.next();
   // The handler repeats all local manifest/origin/runtime checks. Hosted GET
   // and POST both return 404; this is never a production transaction route.
   if (pathname === "/api/nft-acquisition" && ["GET", "HEAD", "POST"].includes(request.method)) return NextResponse.next();

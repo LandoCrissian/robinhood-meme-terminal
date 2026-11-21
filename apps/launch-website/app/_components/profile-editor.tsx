@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { accountApi, accountErrorMessage } from "../../lib/account-api";
-import { profileEdit, type AccountProfile, type ProfileChallenge, type ProfileEdit } from "../../lib/profiles";
+import { profileEdit, profileShareIntent, type AccountProfile, type ProfileChallenge, type ProfileEdit } from "../../lib/profiles";
 import { assertAccountChallenge, assertConnectedAccount, sameAccount, signAccountMessage } from "../../lib/profile-wallet";
 import { testWalletErrorCode } from "../../lib/test-wallet";
 import { useAccount } from "./account-provider";
@@ -154,6 +154,7 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       {noticeArea === "avatar" && message && <p role="status">{message}</p>}
       <dl className="lpFacts"><dt>Wallet</dt><dd className="lpAddress">{profile.walletAddress}</dd><dt>Network</dt><dd>Robinhood Chain 4663</dd></dl>
       <Link className="lpBack" href={profile.username ? `/u/${profile.username}` : `/creator/${profile.walletAddress}`} prefetch={false}>Open public profile</Link>
+      <a className="lpButton lpSecondary" href={profileShareIntent(profile, true)} target="_blank" rel="noopener noreferrer">Share my profile on X</a>
     </aside>
   </div>;
 }

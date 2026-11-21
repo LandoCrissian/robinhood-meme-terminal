@@ -28,7 +28,7 @@ export default async function CreateTokenPage() {
     </header>
     <p className="lpNotice lpCreatorMode">{accepted ? "Owner creation acceptance · Robinhood Chain 4663 · real ETH. Each transaction requires your explicit wallet confirmation."
       : fixture ? "Isolated test mode · Anvil 31337 · synthetic funds only."
-      : "Prelaunch · Read-only. Token creation is disabled. Drafts do not publish a listing."}</p>
+      : "You can prepare and review a draft on this device. Token creation is disabled."}</p>
     <CreatorDraft executionTest={fixture ? { factory: fixture.factory, projectTreasury: !!configuredProjectTreasuryFixture(requestHeaders) } : undefined}
       productionCreation={accepted ? { factory: curveProductionPins.factory[0], operating: curveProductionDeployment.operating,
         reserve: curveProductionDeployment.reserve } : undefined} />

@@ -4,6 +4,7 @@ import { profileConfig, ProfileError, requireProfileRequest } from "../../lib/se
 import { profileFirebase } from "../../lib/server/profiles/firebase";
 import { profileBudget, publicMemberPage } from "../../lib/server/profiles/store";
 import { profileUsername } from "../../lib/profiles";
+import { anonymousReadHeaders } from "../../lib/server/social-pages";
 
 export const dynamic = "force-dynamic";
 export const metadata = { title: "People | RMT Launch" };
@@ -19,13 +20,13 @@ async function Members({ after }: { after?: string | string[] }) {
   try {
     const config = profileConfig();
     if (!config) return <p>Public profiles are currently disabled.</p>;
-    requireProfileRequest(new Request(config.origin + "/leaderboard", { headers: await headers() }), config, false);
+    requireProfileRequest(new Request(config.origin + "/leaderboard", { headers: anonymousReadHeaders(await headers()) }), config, false);
     const { db } = await profileFirebase(config);
     await profileBudget(db, "public-members", config.origin, 120);
     const { names, next } = await publicMemberPage(db, after);
     return <>
-      {names.length > 0 ? <ul className="lpProfileLinks">{names.map(name =>
-        <li key={name}><Link href={"/u/" + name} prefetch={false}>@{name}</Link></li>
+      {names.length > 0 ? <ul className="lpPeopleList">{names.map(name =>
+        <li key={name}><Link href={"/u/" + name} prefetch={false}><span className="lpMemberInitial" aria-hidden="true">{name.slice(0,1).toUpperCase()}</span><strong>@{name}</strong><span aria-hidden="true">→</span></Link></li>
       )}</ul> : <p>{after ? "No more public usernames." : "No public usernames yet."}</p>}
       {after && <Link className="lpButton lpSecondary" href="/leaderboard" prefetch={false}>First page</Link>}
       {next && <Link className="lpButton lpSecondary" href={"/leaderboard?after=" + next} prefetch={false}>Next page</Link>}

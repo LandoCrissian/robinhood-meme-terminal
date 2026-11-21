@@ -94,7 +94,7 @@
   .lpBrandWord { font-size: 13px; }
   .lpHeaderRight { gap: 6px; }
   .lpHeaderRight .lpNetwork { display: inline-flex; font-size: 10px; }
-  .launchpad .lpHeader > nav { grid-template-columns: repeat(3, minmax(0, 1fr)); padding: 5px 0; }
+  .launchpad .lpHeader > nav { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 5px 0; }
   .launchpad .lpHeader > nav a { min-height: 44px; }
   .launchpad .lpHeader > nav a.lpCreateLink { min-height: 44px; margin: 0 8px; }
   .launchpad .lpAccountNav { max-width: 162px; min-height: 44px; gap: 6px; font-size: 11px; }
@@ -116,3 +116,9 @@
   .launchpad .lpDiscoveryToolbar .lpSearch input, .launchpad .lpDiscoveryToolbar .lpSearch input:focus-visible { font-size: 16px; }
   .lpTextButton { min-height: 44px; }
 }
+.lpPeopleList { padding: 0; margin: 0; list-style: none; border-top: 1px solid var(--rmt-border); }
+.lpPeopleList li { border-bottom: 1px solid var(--rmt-border); }
+.lpPeopleList li a { display: flex; align-items: center; gap: 14px; min-height: 66px; padding: 8px 12px; color: var(--rmt-text); text-decoration: none; }
+.lpPeopleList li a:hover, .lpPeopleList li a:focus-visible { background: var(--rmt-panel); color: var(--rmt-accent); }
+.lpPeopleList li a > :last-child { margin-left: auto; }
+.lpMemberInitial { display: grid; place-items: center; border: 1px solid var(--rmt-border); border-radius: 50%; background: var(--rmt-canvas); color: var(--rmt-accent); width: 36px; height: 36px; }

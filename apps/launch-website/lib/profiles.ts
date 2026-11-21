@@ -46,10 +46,16 @@ export function profileXHandle(value: unknown) {
   }
   return handle;
 }
-export function profileShareIntent(profile: Pick<PublicCreatorProfile, "username" | "walletAddress">) {
+export function profilePublicPath(profile: Pick<PublicCreatorProfile, "username" | "walletAddress">) {
   const username = profileUsername(profile.username);
-  const path = username ? "/u/" + username : "/creator/" + profileAddress(profile.walletAddress);
-  const params = new URLSearchParams({ url: "https://www.rmtlaunch.fun" + path, text: "Check out this creator on RMT Launch" });
+  return username ? "/u/" + username : "/creator/" + profileAddress(profile.walletAddress).toLowerCase();
+}
+export function profileShareIntent(profile: Pick<PublicCreatorProfile, "username" | "walletAddress">, own = false) {
+  const path = profilePublicPath(profile);
+  const text = own ? "I’m building on Robinhood Chain. Follow my projects on RMT Launch."
+    : profile.username ? "Meet " + profile.username + " on RMT Launch. Take a look at their creator profile."
+    : "Discover this creator on RMT Launch and explore their projects on Robinhood Chain.";
+  const params = new URLSearchParams({ url: "https://www.rmtlaunch.fun" + path, text });
   return "https://twitter.com/intent/tweet?" + params.toString();
 }
 export function profileEdit(value: unknown): ProfileEdit {

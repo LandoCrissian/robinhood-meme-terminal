@@ -27,7 +27,7 @@ export default async function Home() {
     <header className="lpDiscoveryHeading"><h1>Launches</h1><span className="lpDiscoveryChain">{fixture ? "Anvil 31337 · synthetic test only" : "Robinhood Chain · read-only"}</span></header>
     <div className="lpActions">
       <Link className="lpButton lpSecondary" href="/account/profile" prefetch={false}>Your profile</Link>
-      <Link className="lpButton lpSecondary" href="/leaderboard" prefetch={false}>Browse people</Link>
+      <Link className="lpButton lpSecondary" href="/create-token" prefetch={false}>Prepare a token draft</Link>
     </div>
     <NewEngineSection />
   </>;

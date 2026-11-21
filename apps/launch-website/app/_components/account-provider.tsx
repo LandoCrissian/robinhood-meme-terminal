@@ -72,7 +72,10 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   }, [clearLocalIdentity]);
 
   function discoverWallets() {
-    if (discoveryStop.current) return;
+    if (discoveryStop.current) {
+      if (wallets.length) return;
+      discoveryStop.current();
+    }
     setDiscovered(true);
     discoveryStop.current = discoverAccountWallets((found) => {
       setWallets((previous) => previous.some((entry) => entry.provider === found.provider || entry.id === found.id) ? previous : [...previous, found]);

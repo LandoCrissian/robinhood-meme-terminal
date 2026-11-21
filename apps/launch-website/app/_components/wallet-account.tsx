@@ -82,11 +82,11 @@ export function WalletAccount({ compact = false }: { compact?: boolean }) {
     </section>;
   }
   return <section className="lpPanel lpForm" aria-label="Wallet account">
-    <div><span className="lpEyebrow">Your wallet, your identity</span><h2>{wallet ? "Connected, not signed in" : "Connect your wallet"}</h2></div>
+    <div><h2>{wallet ? "Connected, not signed in" : "Connect your wallet"}</h2></div>
     <p>{compact ? "Sign in to manage your creator profile and view your launches." : "Use MetaMask, Rabby or a compatible browser wallet. A separate sign-in message confirms control of your address, with no gas payment."}</p>
     {!compact && <details><summary>Supported sign-in wallets</summary><p>Account sign-in supports a standard 65-byte message signature from an externally owned wallet, including a delegated EOA when the wallet returns its original account signature. Safe and ERC-1271/4337 profile sign-in are currently unsupported; Safe treasury claims have their own separate compatibility checks.</p></details>}
     {session.availability !== "available" && <p className="lpInlineNotice" role="status">{session.availability === "disabled"
-      ? "Wallet sign-in is not configured in this preview. Profile changes are unavailable." : "The account service is unavailable. Try Check session to reconnect."}</p>}
+      ? "Wallet sign-in is currently turned off." : "The account service is unavailable. Try Check session to reconnect."}</p>}
     {wallet ? <>
       <dl className="lpFacts"><dt>Connected address</dt><dd className="lpAddress">{wallet.address}</dd>
         <dt>Network</dt><dd>{wallet.chainId === 4663 ? "Robinhood Chain 4663" : `Chain ${wallet.chainId} · switch network`}</dd></dl>
@@ -104,7 +104,7 @@ export function WalletAccount({ compact = false }: { compact?: boolean }) {
     </> : !account.discovered ? <button type="button" className="lpButton" disabled={busy} onClick={account.discoverWallets}>Choose wallet</button>
       : wallets.length ? <div className="lpWalletOptions">{wallets.map((option) => <button type="button" className="lpButton lpSecondary" key={option.id}
       disabled={busy} onClick={() => void account.connect(option)}>Connect {option.name}</button>)}</div>
-      : <p className="lpInlineNotice">Open this site in MetaMask or Rabby&apos;s wallet browser, or use a compatible browser extension. No recovery phrase or private key is needed.</p>}
+      : <div className="lpInlineNotice" role="status"><p>On iPhone, open www.rmtlaunch.fun/account/profile in the browser inside MetaMask or Rabby. On a computer, unlock your wallet extension.</p><button type="button" className="lpButton lpSecondary" onClick={account.discoverWallets}>Find wallets again</button></div>}
     <button type="button" className="lpTextButton" disabled={busy || checking} onClick={() => void account.refresh()}>Check session</button>
     {account.logoutUnconfirmed && <button type="button" className="lpButton lpSecondary" disabled={busy} onClick={() => void account.signOut()}>Retry server sign-out</button>}
     {message && <p role="status">{message}</p>}

@@ -5,7 +5,8 @@ import { isLaunchAddress } from "../../../lib/launch-data";
 import { FixtureLaunchDetails, FixtureTransactionRecovery } from "../../_components/fixture-launches";
 import { configuredCurveFixture } from "../../../lib/server/curve-fixture";
 import { readFixtureLaunches } from "../../../lib/server/fixture-discovery";
-import { configuredProductionDiscovery, productionDirectory, readProductionDiscovery } from "../../../lib/server/production-discovery";
+import { configuredProductionDiscovery, productionDirectory } from "../../../lib/server/production-discovery";
+import { launchMetadata, tokenDiscovery } from "../../../lib/server/social-pages";
 import { LaunchProvenance } from "../../_components/launch-provenance";
 import { TokenArtwork } from "../../_components/token-artwork";
 import { CreatorLink } from "../../_components/creator-link";
@@ -13,6 +14,12 @@ import { availableProductionFinancial } from "../../../lib/server/production-fin
 import { ProductionLifecycleWallet } from "../../_components/production-lifecycle-wallet";
 
 export const dynamic = "force-dynamic";
+
+export async function generateMetadata({ params }: { params: Promise<{ token: string }> }) {
+  const { token } = await params;
+  if (!isLaunchAddress(token)) notFound();
+  return launchMetadata(token.toLowerCase());
+}
 
 export default async function LaunchPage({ params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
@@ -22,7 +29,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
   const fixture = configuredCurveFixture(requestHeaders);
   if (!fixture) {
     if (!configuredProductionDiscovery(requestHeaders)) notFound();
-    const data = await readProductionDiscovery(address);
+    const data = await tokenDiscovery(address);
     const directory = productionDirectory(data);
     const trading = data.status === "ready" && data.launches[0] && await availableProductionFinancial(requestHeaders, "trading");
     return <>

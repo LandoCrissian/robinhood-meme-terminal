@@ -3,10 +3,13 @@ import { fileURLToPath } from "node:url";
 /** @type {import("next").NextConfig} */
 export default {
   poweredByHeader: false,
+  // Link unfurlers read the first HTML head and may never execute the page.
+  htmlLimitedBots: /.*/,
   // Keep the existing Netlify build untouched; Railway uses the same app with
   // its explicitly selected, separately checked Node standalone package.
   ...(process.env.RMT_WEB_HOSTING === "railway-read-only-v1" ? { output: "standalone" } : {}),
   outputFileTracingRoot: fileURLToPath(new URL("../../", import.meta.url)),
+  outputFileTracingIncludes: { "/share/**": ["./lib/server/share-assets/*"] },
   async headers() {
     return [{
       source: "/:path*",

@@ -18,7 +18,7 @@ import "./earnings.css";
 
 export const metadata: Metadata = {
   title: "RMT Launch | Token Launchpad",
-  description: "Prepare a token launch on Robinhood Chain. The launchpad is currently read-only.",
+  description: "Explore tokens and creators on Robinhood Chain, build your public profile and prepare a token launch.",
   robots: { index: false, follow: false },
   icons: { icon: logo.src, apple: logo.src },
 };
