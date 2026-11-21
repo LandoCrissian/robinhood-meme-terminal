@@ -96,7 +96,7 @@
   .lpHeaderRight .lpNetwork { display: inline-flex; font-size: 10px; }
   .launchpad .lpHeader > nav { grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 5px 0; }
   .launchpad .lpHeader > nav a { min-height: 44px; }
-  .launchpad .lpHeader > nav a.lpCreateLink { min-height: 44px; margin: 0 8px; }
+  .launchpad .lpHeader > nav a.lpCreateLink { min-height: 44px; margin: 0 2px; padding-inline: 4px; }
   .launchpad .lpAccountNav { max-width: 162px; min-height: 44px; gap: 6px; font-size: 11px; }
   .lpAccountIcon { font-size: 18px; }
   .lpDiscoveryHeading { margin-bottom: 16px; }
@@ -111,7 +111,11 @@
   .lpProfileLinkRow { grid-template-columns: minmax(0, 1fr) auto; }
   .lpProfileLinkRow > label:first-child { grid-column: 1 / -1; }
 }
-@media (max-width: 380px) { .lpBrandWord { display: none; } .launchpad .lpAccountNav { max-width: 132px; } .lpHeaderRight .lpNetwork { gap: 5px; } }
+@media (max-width: 380px) {
+  .lpBrandWord, .lpAccountNav .lpAccountIcon { display: none; }
+  .launchpad .lpAccountNav { max-width: 140px; }
+  .lpHeaderRight .lpNetwork { gap: 5px; }
+}
 @media (pointer: coarse) {
   .launchpad .lpDiscoveryToolbar .lpSearch input, .launchpad .lpDiscoveryToolbar .lpSearch input:focus-visible { font-size: 16px; }
   .lpTextButton { min-height: 44px; }

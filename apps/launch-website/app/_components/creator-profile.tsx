@@ -61,7 +61,7 @@ export function CreatorProfile({ username, walletAddress, initialProfile }: { us
     {status === "loading" ? <div className="lpSkeleton" role="status">Loading creator profile…</div> : <section className="lpProfileBanner">
       <div className="lpProfileIdentity"><ProfileAvatar name={profile?.displayName || profile?.username || "R"} url={profile?.avatarUrl} size={64} />
         <div><h2>{profile?.displayName || (profile?.username ? "@" + profile.username : creator ? shortWallet(creator) : username)}</h2>
-          {profile?.username && <p>@{profile.username}</p>}</div><span className="lpPill">Creator-provided profile</span></div>
+          {profile?.username && <p>@{profile.username}</p>}</div></div>
       {creator && <p><a className="lpAddress lpCreatorLink" href={`${robinhoodExplorer}/address/${creator}`} target="_blank" rel="noopener noreferrer">{creator}</a></p>}
       {profile?.bio && <p className="lpProfileBio">{profile.bio}</p>}
       {profile && <div className="lpActions">
