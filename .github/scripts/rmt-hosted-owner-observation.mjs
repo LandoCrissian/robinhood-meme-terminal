@@ -10,14 +10,14 @@ const {hexToString}=require("viem");
 const {parseSiweMessage}=require("viem/siwe");
 const {chromium,webkit}=createRequire(new URL("../../package.json",import.meta.url))("playwright");
 const approval = {
-  "sourceCommit": "6910b879340945e9390dda57ce068cc9e4f9af51",
+  "sourceCommit": "3c3be9c6590a2f2c1b84cba0321c8827d0e4f706",
   "owner": "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA",
   "singleIntent": "0x9929e89d4c1e3fed5e2ca96e7620508463ac14e60f7c559f8449e2ba951672ac",
   "origin": "https://www.rmtlaunch.fun",
-  "bundleSha256": "7ca1432b449fff3f6b2ea08c4b1f764976c2cf093fc303ae3e5e82dd6deb3113",
-  "functionSha256": "706eb4b1384e7d8e289be2dbbe876dbd241526dec2072bbcce1f76a71d9c1a4c"
+  "bundleSha256": "bc87649e5e277a6bbabed4e03065900c7c5c10d3e41ac7b855d3290fa2306ee8",
+  "functionSha256": "095ab11bf7c3f8405a1ff15516ba1e6577287f002233d1ad3a1b249c816e0aaa"
 };
-const published = {source:approval.sourceCommit,deployId:"6b01efb639b4668b0b9b5d5d"};
+const published = {source:approval.sourceCommit,deployId:"6b01fd92641b156b360a9970"};
 const origin=approval.origin;
 const report={source:published.source,deployId:published.deployId,bundleSha256:approval.bundleSha256,serverSha256:approval.functionSha256,
   began:new Date(),discovery:[],routes:[],browsers:[],walletSignatures:0,transactions:0};
@@ -63,6 +63,7 @@ try{
         }};
       });
       const nav=await page.goto(origin+"/create-token",{waitUntil:"domcontentloaded",timeout:75000});
+      report.lastPage={name,http:nav.status(),at:new Date(),requestId:nav.headers()["x-nf-request-id"]};save();
       assert.equal(nav.status(),200);await page.getByText(/Owner creation acceptance/).first().waitFor({timeout:60000});
       await page.locator("#draft-name").fill("RMT");await page.locator("#draft-symbol").fill("RMT");
       await page.getByRole("button",{name:"Review draft",exact:true}).click();
@@ -97,7 +98,7 @@ try{
       const methods=await page.evaluate(()=>window.reviewWallet.methods);
       assert.equal(methods.filter(m=>m==="personal_sign").length,1);
       assert.ok(methods.every(m=>["eth_accounts","eth_chainId","eth_requestAccounts","personal_sign"].includes(m)));
-      report.browsers.push({name,at:new Date(),url:page.url(),http:nav.status(),requestId:nav.headers()["x-nf-request-id"],draftValidated:true,otherAccountBlocked:true,ownerPrompt:"Sign in to preview Â· no gas",strictCookieMatchedChallenge:true,browserPlatform:process.platform,challengeHttp:challenge.status(),challengeRequestId:challenge.headers()["x-nf-request-id"],loginMessage:{owner:login.address,domain:login.domain,uri:login.uri,chainId:login.chainId,intent:login.requestId,expiry:login.expirationTime},simulatedWalletDeclined:true,walletMethods:methods,realWallet:false});save();
+      report.browsers.push({name,at:new Date(),url:page.url(),http:nav.status(),requestId:nav.headers()["x-nf-request-id"],draftValidated:true,otherAccountBlocked:true,ownerPrompt:"Sign in to preview Ã‚Â· no gas",strictCookieMatchedChallenge:true,browserPlatform:process.platform,challengeHttp:challenge.status(),challengeRequestId:challenge.headers()["x-nf-request-id"],loginMessage:{owner:login.address,domain:login.domain,uri:login.uri,chainId:login.chainId,intent:login.requestId,expiry:login.expirationTime},simulatedWalletDeclined:true,walletMethods:methods,realWallet:false});save();
     }finally{await browser.close()}
   }
   await discovery();
