@@ -113,16 +113,16 @@ const chainsSchema = z.array(chainSchema);
 
 const dexsSchema = z.object({
   chain: z.string(),
-  total24h: z.union([z.number(), z.string(), z.null(), z.undefined()]),
-  total7d: z.union([z.number(), z.string(), z.null(), z.undefined()]),
-  change_1d: z.union([z.number(), z.string(), z.null(), z.undefined()]),
-  change_7d: z.union([z.number(), z.string(), z.null(), z.undefined()])
+  total24h: z.union([z.number(), z.string(), z.null()]).optional(),
+  total7d: z.union([z.number(), z.string(), z.null()]).optional(),
+  change_1d: z.union([z.number(), z.string(), z.null()]).optional(),
+  change_7d: z.union([z.number(), z.string(), z.null()]).optional()
 }).passthrough();
 
 const feeSchema = z.object({
   chain: z.string(),
-  total24h: z.union([z.number(), z.string(), z.null(), z.undefined()]),
-  total7d: z.union([z.number(), z.string(), z.null(), z.undefined()])
+  total24h: z.union([z.number(), z.string(), z.null()]).optional(),
+  total7d: z.union([z.number(), z.string(), z.null()]).optional()
 }).passthrough();
 
 function unavailable(metric: string, dataset: string, reason: string): DefiLlamaUnavailable {

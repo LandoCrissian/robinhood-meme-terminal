@@ -34,7 +34,7 @@ const transferSchema = z.object({
 
 const transferPageSchema = z.object({
   items: z.array(transferSchema).max(100),
-  next_page_params: z.record(z.unknown()).nullable().optional()
+  next_page_params: z.record(z.string(), z.unknown()).nullable().optional()
 }).passthrough();
 
 type TransferPage = z.infer<typeof transferPageSchema>;

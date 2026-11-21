@@ -64,3 +64,20 @@ e6886f6fcad7cba637fdae81f714f99bf3f749f1:apps/web/app/sitemap.ts:generic-api-key
 8ee7fbea0ee8df442a14219fe9ee34cc01fdb899:apps/web/lib/server/external-project-metadata-smoke.ts:generic-api-key:81
 a462d3d161800210536d0296c808b11bceda9495:apps/web/lib/consent-testnet-activation.ts:generic-api-key:36
 a462d3d161800210536d0296c808b11bceda9495:apps/web/lib/consent-testnet-activation.ts:generic-api-key:51
+
+# Exact draft analysis fingerprints carried from #594. Typed Solidity structure and public identifiers, no credential literals.
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:442
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:456
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:500
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:549
+7d5453d26734cc4ab9d68d3ef7fa4a7b17872d4b:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:830
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/src/RMTV4CurveGraduationV1.sol:generic-api-key:114
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:245
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:267
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:340
+4cb57e4d87d4c4949285bcb6be2af1634cc9d18c:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:394
+1b96f6c5a1517282302902a7b95a59078072503d:packages/contracts/scripts/validate-curve-graduation-4663.mjs:generic-api-key:25
+1b96f6c5a1517282302902a7b95a59078072503d:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:121
+1b96f6c5a1517282302902a7b95a59078072503d:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:141
+1b96f6c5a1517282302902a7b95a59078072503d:packages/contracts/test/RMTV4CurveGraduationV1.t.sol:generic-api-key:194
+2fbf58ea80f8d6e6132a2f2555a56892f2db390f:packages/contracts/test/RMTV4GrowthVaultV1.t.sol:generic-api-key:189

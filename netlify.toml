@@ -1,0 +1,15 @@
+[build]
+  command = "pnpm --filter @rmt/launch-website build"
+  publish = "apps/launch-website/.next"
+
+[build.environment]
+  NODE_VERSION = "22"
+  PNPM_VERSION = "10.12.1"
+  PNPM_FLAGS = "--frozen-lockfile"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
+
+[context.production]
+  command = "node -e \"console.error('This Netlify configuration is approved only for preview builds.'); process.exit(1)\""
