@@ -10,7 +10,7 @@ import { accountHandler, type AccountAction } from "./controller";
 import { profileConfig } from "./config";
 import { profileFirebase } from "./firebase";
 import { authenticatedProfile, browserCookieName, sessionCookieName } from "./auth";
-import { digest, profileBudget, profileCollections as c, updateProfile, walletKey } from "./store";
+import { digest, profileBudget, profileCollections as c, publicMemberPage, updateProfile, walletKey } from "./store";
 import { removeAvatar, sanitizeAvatar, saveAvatar } from "./avatar";
 import { cleanupExpiredProfileState, profileRetentionPolicy } from "./retention";
 
@@ -64,6 +64,21 @@ test("real Firebase Auth sessions and durable Firestore profiles complete the is
   await fetch(`http://${config.authHost}/emulator/v1/projects/${config.projectId}/accounts`, { method: "DELETE" });
   await fetch(`http://${config.firestoreHost}/emulator/v1/projects/${config.projectId}/databases/(default)/documents`, { method: "DELETE" });
   const jar: Jar = new Map(); let signed: Awaited<ReturnType<typeof signIn>>;
+  await t.test("public members page orders only usernames and paginates without duplicates", async () => {
+    assert.deepEqual(await publicMemberPage(firebase.db), { names: [], next: null });
+    const names = Array.from({ length: 27 }, (_, i) => "member_" + String(i).padStart(2, "0"));
+    const bindings = firebase.db.collection(c.usernames);
+    const batch = firebase.db.batch();
+    for (const name of [...names].reverse()) batch.create(bindings.doc(name), { uid: "private-test-uid" });
+    await batch.commit();
+    const first = await publicMemberPage(firebase.db);
+    assert.deepEqual(first, { names: names.slice(0, 25), next: names[24] });
+    assert.deepEqual(await publicMemberPage(firebase.db, first.next!), { names: names.slice(25), next: null });
+    await assert.rejects(publicMemberPage(firebase.db, "../invalid"));
+    const cleanup = firebase.db.batch();
+    for (const name of names) cleanup.delete(bindings.doc(name));
+    await cleanup.commit();
+  });
   await t.test("Connect alone is unauthenticated; exact SIWE establishes a genuine HttpOnly Firebase session and is not replayable", async () => {
     assert.equal((await call(jar, "/api/account/session")).data.authenticated, false);
     signed = await signIn(jar);

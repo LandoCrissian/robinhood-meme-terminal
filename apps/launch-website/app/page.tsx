@@ -1,4 +1,5 @@
 import { headers } from "next/headers";
+import Link from "next/link";
 import { NewEngineLaunches } from "./_components/new-engine-launches";
 import { FixtureLaunches } from "./_components/fixture-launches";
 import { configuredCurveFixture } from "../lib/server/curve-fixture";
@@ -24,6 +25,10 @@ export default async function Home() {
   const fixture = configuredCurveFixture(await headers());
   return <>
     <header className="lpDiscoveryHeading"><h1>Launches</h1><span className="lpDiscoveryChain">{fixture ? "Anvil 31337 · synthetic test only" : "Robinhood Chain · read-only"}</span></header>
+    <div className="lpActions">
+      <Link className="lpButton lpSecondary" href="/account/profile" prefetch={false}>Your profile</Link>
+      <Link className="lpButton lpSecondary" href="/leaderboard" prefetch={false}>Browse people</Link>
+    </div>
     <NewEngineSection />
   </>;
 }

@@ -122,7 +122,7 @@ body .launchpad {
 .lpDraft [aria-invalid="true"] { border-color: var(--rmt-negative); }
 .lpDraftDescription { white-space: pre-wrap; }
 .lpDraftTreasury fieldset { margin-top: 8px; }
-.lpDraftActions { display: flex; flex-wrap: wrap; gap: 8px; }
+.lpDraftActions, .lpActions { display: flex; flex-wrap: wrap; gap: 8px; }
 .lpFacts {
   display: grid;
   grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);

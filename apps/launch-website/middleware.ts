@@ -6,7 +6,7 @@ import { admitRailwayRequest, railwayHosting } from "./lib/server/railway-read-o
 
 const publicRoutes = new Set([
   "/", "/create-token", "/my-launches", "/my-launches/earnings", "/my-launches/treasury", "/my-launches/treasury/nft-purchases", "/wallet", "/reclaim",
-  "/terms", "/risks", "/privacy", "/robots.txt", "/api/launchpad/config",
+  "/leaderboard", "/terms", "/risks", "/privacy", "/robots.txt", "/api/launchpad/config",
   "/api/launchpad/launches", "/api/launchpad/project-treasury", "/api/launchpad/reclaim",
 ]);
 

@@ -33,6 +33,7 @@ export function LaunchShell({ children, fixture = false }: { children: ReactNode
     </header>
     <main id="launch-content" className="lpContent">{children}</main>
     <footer className="lpFooter">
+      <Link href="/leaderboard" prefetch={false}>People</Link>
       <Link href="/terms" prefetch={false}>Terms</Link>
       <Link href="/risks" prefetch={false}>Risks</Link>
       <Link href="/privacy" prefetch={false}>Privacy</Link>

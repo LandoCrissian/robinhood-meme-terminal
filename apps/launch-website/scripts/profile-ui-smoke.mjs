@@ -187,6 +187,7 @@ try {
       const username = "ui_" + name + "_" + Date.now().toString(36);
       await page.getByLabel("Username", { exact: true }).fill(username); await page.getByLabel("Display name", { exact: true }).fill("Synthetic Creator");
       await page.getByLabel("Bio", { exact: true }).fill("Isolated Firebase emulator profile. No real transactions.");
+      await page.getByLabel("X username (optional)").fill("@rmt_creator");
       await page.getByRole("button", { name: "Add HTTPS link" }).click(); await page.getByLabel("Label", { exact: true }).fill("Project");
       await page.getByLabel("HTTPS URL", { exact: true }).fill("https://example.invalid/project");
       await page.getByLabel("Reduce motion", { exact: true }).check();
@@ -224,7 +225,13 @@ try {
       const callsBeforeReload = walletCalls.length; await page.reload(); await page.getByRole("form", { name: "Edit creator profile" }).waitFor();
       assert.equal(walletCalls.length, callsBeforeReload); assert.equal(await page.evaluate(() => window.rmtDiscoveryCount), 0); assert.equal(await page.getByLabel("Username", { exact: true }).inputValue(), username);
       assert.equal(await page.getByLabel("Reduce motion", { exact: true }).isChecked(), true);
-      await goto("/u/" + username); await page.getByRole("heading", { name: "Synthetic Creator", exact: true }).waitFor();
+      await goto("/leaderboard");
+      await page.getByRole("link", { name: "@" + username, exact: true }).click();
+      await page.getByRole("heading", { name: "Synthetic Creator", exact: true }).waitFor();
+      assert.equal(await page.getByRole("link", { name: "@rmt_creator on X" }).getAttribute("href"), "https://x.com/rmt_creator");
+      const intent = new URL(await page.getByRole("link", { name: "Share profile on X" }).getAttribute("href"));
+      assert.equal(intent.origin + intent.pathname, "https://twitter.com/intent/tweet");
+      assert.equal(intent.searchParams.get("url"), "https://www.rmtlaunch.fun/u/" + username);
       const publicProfile = await (await context.request.get(new URL("/api/account/public/" + username, site).href)).json();
       assert.equal(publicProfile.profile.preferences, undefined); assert.equal(publicProfile.profile.walletAddress.toLowerCase(), accounts[0].address.toLowerCase());
       await avatarLoaded();

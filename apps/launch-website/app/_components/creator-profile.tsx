@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { AccountApiError, accountApi } from "../../lib/account-api";
-import { type PublicCreatorProfile } from "../../lib/profiles";
+import { profileShareIntent, type PublicCreatorProfile } from "../../lib/profiles";
 import { sameAccount } from "../../lib/profile-wallet";
 import { NewEngineLaunches } from "./new-engine-launches";
 import { ProfileAvatar, shortWallet } from "./wallet-account";
@@ -61,6 +61,10 @@ export function CreatorProfile({ username, walletAddress }: { username?: string;
           {profile?.username && <p>@{profile.username}</p>}</div><span className="lpPill">Creator-provided profile</span></div>
       {creator && <p><a className="lpAddress lpCreatorLink" href={`${robinhoodExplorer}/address/${creator}`} target="_blank" rel="noopener noreferrer">{creator}</a></p>}
       {profile?.bio && <p className="lpProfileBio">{profile.bio}</p>}
+      {profile && <div className="lpActions">
+        {profile.xHandle && <a className="lpButton lpSecondary" href={"https://x.com/" + profile.xHandle} target="_blank" rel="noopener noreferrer ugc">@{profile.xHandle} on X</a>}
+        <a className="lpButton lpSecondary" href={profileShareIntent(profile)} target="_blank" rel="noopener noreferrer">Share profile on X</a>
+      </div>}
       {profile?.links.length ? <ul className="lpProfileLinks">{profile.links.map((link, index) => {
         const href = httpsLink(link.url); return href ? <li key={index}><a href={href} target="_blank" rel="noopener noreferrer ugc">{link.label || new URL(href).hostname} ↗</a></li> : null;
       })}</ul> : null}

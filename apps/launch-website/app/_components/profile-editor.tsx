@@ -10,7 +10,7 @@ import { useAccount } from "./account-provider";
 import { ProfileAvatar, WalletAccount } from "./wallet-account";
 
 const editable = (profile: AccountProfile): ProfileEdit => ({ username: profile.username, displayName: profile.displayName,
-  bio: profile.bio, links: profile.links.map((link) => ({ ...link })), preferences: { ...profile.preferences } });
+  bio: profile.bio, xHandle: profile.xHandle ?? null, links: profile.links.map((link) => ({ ...link })), preferences: { ...profile.preferences } });
 
 export function ProfileEditor() {
   const { session, checking } = useAccount();
@@ -116,8 +116,10 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
         <div><span className="lpEyebrow">Public profile</span><h2>How creators find you</h2></div>
         <p>Your wallet address, name, username, bio, avatar and links are public. Profile details do not change on-chain project ownership or beneficiary terms.</p>
         <label>Username<input aria-label="Username" aria-describedby="profile-username-hint" value={draft.username ?? ""} minLength={3} maxLength={24} placeholder="your_name" autoCapitalize="none" spellCheck={false}
-          onChange={(event) => setDraft({ ...draft, username: event.target.value || null })} /><small id="profile-username-hint">3–24 characters. Start with a letter; use letters, numbers or underscores. Checked when you save.</small></label>
+          onChange={(event) => setDraft({ ...draft, username: event.target.value || null })} /><small id="profile-username-hint">3–24 characters. Start with a letter; use letters, numbers or underscores. Saving a username lists it on the People page.</small></label>
         <label>Display name<input value={draft.displayName} maxLength={48} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
+        <label>X username (optional)<input value={draft.xHandle ?? ""} placeholder="@username" autoCapitalize="none" spellCheck={false} maxLength={16}
+          onChange={(event) => setDraft({ ...draft, xHandle: event.target.value || null })} /></label>
         <label>Bio<textarea aria-label="Bio" aria-describedby="profile-bio-hint" value={draft.bio} maxLength={280} rows={4} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /><small id="profile-bio-hint">{draft.bio.length}/280 characters · plain text</small></label>
         <fieldset><legend>Project links</legend>{draft.links.map((link, index) => <div className="lpProfileLinkRow" key={index}>
           <label>Label<input value={link.label} maxLength={32} onChange={(event) => setDraft({ ...draft, links: draft.links.map((row, i) => i === index ? { ...row, label: event.target.value } : row) })} /></label>

@@ -3,12 +3,24 @@ import test from "node:test";
 import sharp from "sharp";
 import { NextRequest } from "next/server";
 import { createRequire } from "node:module";
-import { profileEdit, profileUsername } from "../../profiles";
+import { profileEdit, profileUsername, profileXHandle, profileShareIntent } from "../../profiles";
 import { isProfileApiRoute, profileConfig, requireProfileRequest } from "./config";
 import { sanitizeAvatar } from "./avatar";
 
 const local = { RMT_PROFILES_MODE: "local-firebase-emulators-v1", RMT_PROFILES_ORIGIN: "http://127.0.0.1:4319", GCLOUD_PROJECT: "demo-rmt-launch-profiles",
   FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099", FIRESTORE_EMULATOR_HOST: "127.0.0.1:8080" };
+test("X links accept a handle and share the canonical public member page", () => {
+  assert.equal(profileXHandle("@RMT_Creator"), "rmt_creator");
+  assert.equal(profileXHandle(""), null);
+  for (const invalid of ["https://example.com", "user?arg", "user/other", "intent", "a".repeat(16)]) {
+    assert.throws(() => profileXHandle(invalid));
+  }
+  const walletAddress = "0x1111111111111111111111111111111111111111";
+  for (const username of ["creator_one", null]) {
+    const intent = new URL(profileShareIntent({ username, walletAddress }));
+    assert.equal(intent.searchParams.get("url"), "https://www.rmtlaunch.fun" + (username ? "/u/" + username : "/creator/" + walletAddress));
+  }
+});
 test("disabled account handlers do not load the Firebase Admin SDK or initialize profile services", async () => {
   const require = createRequire(import.meta.url);
   const loadedSdk = () => Object.keys(require.cache).filter(path => /[\\/]firebase-admin[\\/]/.test(path));

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
 import type { DocumentData, Firestore, Transaction } from "firebase-admin/firestore";
-import { profileAddress, profileEdit, type AccountProfile, type PublicCreatorProfile, type ProfileEdit } from "../../profiles";
+import { profileAddress, profileEdit, profileUsername, profileXHandle, type AccountProfile, type PublicCreatorProfile, type ProfileEdit } from "../../profiles";
 import { ProfileError } from "./config";
 
 export const profileCollections = {
@@ -59,10 +59,23 @@ function publicView(value: DocumentData | undefined, address: string): PublicCre
   if (avatarUrl !== null && (typeof avatarUrl !== "string" || !avatarUrl.startsWith("/api/account/avatar/" + wallet + "?v=")
       || !/^[a-f0-9]{64}$/.test(avatarUrl.slice(("/api/account/avatar/" + wallet + "?v=").length)))) throw new Error("Invalid stored avatar binding");
   return { walletAddress: wallet, chainId: 4663, username: fields.username, displayName: fields.displayName, bio: fields.bio, links: fields.links, avatarUrl,
-    createdAt: value.createdAt, updatedAt: value.updatedAt };
+    xHandle: profileXHandle(value.xHandle), createdAt: value.createdAt, updatedAt: value.updatedAt };
 }
 export async function publicProfile(db: Firestore, address: string) {
   return publicView((await db.collection(profileCollections.public).doc(profileAddress(address).toLowerCase()).get()).data(), address);
+}
+export async function publicMemberPage(db: Firestore, after?: string) {
+  // Username reservations are created, renamed and removed atomically with the public profile.
+  // An empty projection reads document IDs without loading wallet or Firebase UID fields.
+  const { FieldPath } = await import("firebase-admin/firestore");
+  const query = db.collection(profileCollections.usernames).orderBy(FieldPath.documentId()).select();
+  if (after !== undefined && (!after || profileUsername(after) !== after)) throw new Error("Invalid member cursor");
+  const rows = await (after ? query.startAfter(after) : query).limit(26).get();
+  const names = rows.docs.slice(0, 25).map(({ id }) => {
+    if (profileUsername(id) !== id) throw new Error("Invalid public username");
+    return id;
+  });
+  return { names, next: rows.size > 25 ? names[24] : null };
 }
 export async function accountProfile(db: Firestore, account: ProfileAccount): Promise<AccountProfile> {
   const [visible, privateRow] = await Promise.all([publicProfile(db, account.walletAddress), db.collection(profileCollections.private).doc(account.uid).get()]);
@@ -97,7 +110,8 @@ export async function updateProfile(db: Firestore, account: ProfileAccount, edit
     const stamp = new Date(now).toISOString();
     if (oldRef && current.username !== edit.username) tx.delete(oldRef);
     if (nextRef) tx.set(nextRef, { uid: account.uid, walletAddress: account.walletAddress });
-    tx.set(publicRef, { ...current, username: edit.username, displayName: edit.displayName, bio: edit.bio, links: edit.links, updatedAt: stamp });
+    tx.set(publicRef, { ...current, username: edit.username, displayName: edit.displayName, bio: edit.bio, links: edit.links,
+      xHandle: edit.xHandle === undefined ? current.xHandle ?? null : edit.xHandle, updatedAt: stamp });
     tx.set(privateRef, { preferences: edit.preferences, updatedAt: stamp }, { merge: true });
   });
   return accountProfile(db, account);
