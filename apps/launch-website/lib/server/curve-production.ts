@@ -1,8 +1,10 @@
 import { createHash } from "node:crypto";
+import { setTimeout as wait } from "node:timers/promises";
 import { createPublicClient, encodeFunctionData, getAddress, http, keccak256, parseAbi, parseAbiItem, parseEventLogs, toHex, zeroAddress, type Address, type Hex } from "viem";
 import { emptyLaunchDraft, totalTreasuryFeePercent, validateLaunchDraft } from "../launch-draft";
 import { launchTokenSupplyWei } from "../launch-terms";
 import { testCreationSignature } from "../test-creation";
+import { isRmtCreation, rmtCreationOwner } from "../owner-creation";
 import { classifyFixtureTreasury } from "./fixture-treasury";
 import { type ProductionCreationRequest } from "../production-creation";
 
@@ -102,11 +104,23 @@ const views = parseAbi([
 ]);
 const createAbi = parseAbi([testCreationSignature]);
 const publishedEvent = parseAbiItem("event FactoryPublished(uint32 indexed version,address indexed factory,bytes32 runtimeHash)");
-const readRpc = (url: string) => createPublicClient({ transport: http(url, {
-  timeout: 4_000, retryCount: 0, fetchOptions: { cache: "no-store", redirect: "error" },
+const releaseReadSlots = new Map<string, number>();
+const readRpc = (url: string, paceReleaseReads = false) => createPublicClient({ transport: http(url, {
+  timeout: paceReleaseReads ? 24_000 : 4_000, retryCount: 0, fetchOptions: { cache: "no-store", redirect: "error" },
+  fetchFn: paceReleaseReads ? async (input, init) => {
+    const now = performance.now();
+    const start = Math.max(now, releaseReadSlots.get(url) ?? 0);
+    if (start - now > 19_000) throw new Error("Release reader is busy");
+    releaseReadSlots.set(url, start + 350);
+    await wait(Math.ceil(start - now), undefined, { signal: init?.signal ?? undefined });
+    const timeout = AbortSignal.timeout(4_000);
+    return fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
+  } : undefined,
 }) });
 // Exact, existing public providers. No browser-supplied RPC URL or public Anvil.
-export const productionReaders = () => [readRpc("https://rpc.mainnet.chain.robinhood.com"), readRpc("https://robinhood.api.pocket.network")];
+export const productionReaders = (paceReleaseReads = false) => [
+  readRpc("https://rpc.mainnet.chain.robinhood.com", paceReleaseReads), readRpc("https://robinhood.api.pocket.network", paceReleaseReads),
+];
 type Reader = ReturnType<typeof readRpc>;
 
 const requiredBindings = [
@@ -185,7 +199,7 @@ async function observe(release: CurveProductionRelease, rpc: Reader, blockNumber
     poolFee: Number(poolFee), tickSpacing: Number(tickSpacing) };
 }
 
-export async function verifyCurveProduction(release: CurveProductionRelease, readers = productionReaders()) {
+export async function verifyCurveProduction(release: CurveProductionRelease, readers = productionReaders(true)) {
   if (readers.length !== 2) throw new Error("Two independent providers required");
   const heads = await Promise.all(readers.map((rpc) => rpc.getBlock({ blockTag: "latest" })));
   const blockNumber = heads[0].number < heads[1].number ? heads[0].number : heads[1].number;
@@ -211,9 +225,10 @@ export function normalizeProductionCreationFields(fields: unknown) {
 // never signs or sends a transaction.
 export async function prepareCurveProductionCreation(release: CurveProductionRelease, fields: unknown, account: Address, intentId: Hex, prior?: ProductionCreationRequest) {
   const draft = normalizeProductionCreationFields(fields);
-  if (!draft || !address(account) || !hash(intentId) || (draft.treasury && [account, curveProductionDeployment.operating,
-    curveProductionDeployment.reserve].some((reserved) => same(draft.treasury, reserved)))) throw new Error("Invalid reviewed creation terms");
-  const { rpc, anchor } = await verifyCurveProduction(release);
+  if (!draft || !address(account) || !same(account, rmtCreationOwner) || !isRmtCreation(draft, intentId)) {
+    throw new Error("Invalid reviewed creation terms");
+  }
+  const { rpc, corroboratingRpc, anchor } = await verifyCurveProduction(release);
   const creator = getAddress(account.toLowerCase());
   const treasury = draft.treasury ? getAddress(draft.treasury) : zeroAddress;
   const treasuryKind = draft.treasury ? await classifyFixtureTreasury(rpc, treasury, anchor.blockNumber) : "none";
@@ -223,17 +238,21 @@ export async function prepareCurveProductionCreation(release: CurveProductionRel
   const args = [draft.name, draft.symbol, draft.projectURI, treasury, draft.treasuryShareBps, intentId, deadline] as const;
   const data = encodeFunctionData({ abi: createAbi, functionName: "create", args });
   const transaction = { account: creator, to: curveProductionPins.factory[0], data, value: curveProductionDeployment.creationFeeWei } as const;
-  const [confirmedNonce, pendingNonce, gas, canonical, accountCode, delegateCode] = await Promise.all([
+  const simulate = (reader: Reader) => reader.simulateContract({ address: transaction.to, account: creator, abi: createAbi,
+    functionName: "create", args, value: transaction.value, blockNumber: anchor.blockNumber });
+  const [confirmedNonce, pendingNonce, gas, canonical, accountCode, delegateCode, primaryResult, corroboratedResult, peerNonce] = await Promise.all([
     rpc.getTransactionCount({ address: creator, blockTag: "latest" }), rpc.getTransactionCount({ address: creator, blockTag: "pending" }),
     rpc.estimateGas(transaction), rpc.getBlock({ blockNumber: anchor.blockNumber }),
     rpc.getCode({ address: creator, blockNumber: anchor.blockNumber }),
     rpc.getCode({ address: "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B", blockNumber: anchor.blockNumber }),
-    rpc.simulateContract({ address: transaction.to, account: creator, abi: createAbi, functionName: "create", args, value: transaction.value }),
+    simulate(rpc), simulate(corroboratingRpc), corroboratingRpc.getTransactionCount({ address: creator, blockTag: "pending" }),
   ]);
-  if (confirmedNonce !== pendingNonce || !same(canonical.hash, anchor.blockHash)) throw new Error("Creator nonce or canonical block changed");
+  if (confirmedNonce !== pendingNonce || peerNonce !== pendingNonce || !same(canonical.hash, anchor.blockHash)
+      || primaryResult.result.some((address, index) => !same(address, corroboratedResult.result[index]))) {
+    throw new Error("Creator nonce, simulation or canonical block changed");
+  }
   // First-owner activation is distinct from opening creation to every wallet.
-  if (!same(creator, "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA")
-      || !accountCode || !same(accountCode, "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b")
+  if (!accountCode || !same(accountCode, "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b")
       || !delegateCode || !same(keccak256(delegateCode), "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0")) throw new Error("Unsupported creator account or changed delegation");
   if (prior && (prior.nonce !== toHex(confirmedNonce) || !same(prior.data, data))) throw new Error("Original creation identity changed");
   const request: ProductionCreationRequest = { from: creator, to: transaction.to, data, value: toHex(transaction.value), chainId: "0x1237",

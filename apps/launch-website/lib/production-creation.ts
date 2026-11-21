@@ -3,6 +3,7 @@ import { isTransactionHash, testCreationFeeWei, testCreationSignature, type Test
 import { type TestWallet, testWalletErrorCode } from "./test-wallet";
 import { assertProductionNonceAvailable, recordProductionConsumedNonce } from "./production-nonce";
 import { isLaunchAddress } from "./launch-data";
+import { rmtCreationOwner } from "./owner-creation";
 
 export const productionCreationPath = "/api/launchpad/production-creation";
 export const productionCreationChain = "0x1237";
@@ -126,7 +127,7 @@ export async function connectProductionWallet(): Promise<ProductionWallet> {
   const provider = productionProviderAtWindow();
   if (!provider) throw new Error("Open the approved origin in your wallet browser");
   const accounts = await provider.request({ method: "eth_requestAccounts" });
-  if (!Array.isArray(accounts) || typeof accounts[0] !== "string" || !sameProductionHex(accounts[0], "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA")) throw new Error("Use the approved creator account");
+  if (!Array.isArray(accounts) || typeof accounts[0] !== "string" || !sameProductionHex(accounts[0], rmtCreationOwner)) throw new Error("Use the approved creator account");
   const wallet = { account: getAddress(accounts[0].toLowerCase()), provider, request: provider.request };
   await assertProductionWallet(wallet);
   return wallet;
@@ -138,6 +139,7 @@ export function sameProductionCreationRequest(left: ProductionCreationRequest, r
   });
 }
 export async function assertProductionWallet(wallet: ProductionWallet, request?: ProductionCreationRequest) {
+  if (!sameProductionHex(wallet.account, rmtCreationOwner)) throw new Error("Use the approved creator account");
   if (wallet.provider.request !== wallet.request) throw new Error("Wallet provider changed");
   const [accounts, chain] = await Promise.all([
     wallet.request.call(wallet.provider, { method: "eth_accounts" }), wallet.request.call(wallet.provider, { method: "eth_chainId" }),

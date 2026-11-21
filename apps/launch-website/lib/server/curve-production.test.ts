@@ -6,6 +6,9 @@ import { configuredCurveProductionRelease, curveProductionDeployment, curveProdu
   normalizeProductionCreationFields, parseCurveProductionRelease, validateCurveProductionObservation,
   type CurveProductionRelease, type ProductionObservation } from "./curve-production";
 import { handleProductionCreation } from "./production-creation";
+import { authenticatedReviewOwner, isAuthenticatedCreationOwner, issueOwnerReviewChallenge } from "./owner-creation-auth";
+import { isRmtCreation, ownerReviewMessage, rmtCreationIntent } from "../owner-creation";
+import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { assertProductionWallet, isProductionCreationRequest, productionCalldataMatches, productionCreationAbi,
   productionCreationChain, productionCreationFactory, productionCreationJournalKey, readProductionCreationJournal,
   submitProductionCreation, type ProductionCreationRequest, type ProductionWallet } from "../production-creation";
@@ -196,4 +199,50 @@ test("Netlify distributed limit configurations cover new-engine reads and the se
     assert.ok(creationLimit.path.includes(path));
   }
   assert.deepEqual(creationLimit.rateLimit, { windowSize: 60, windowLimit: 12, aggregateBy: ["ip", "domain"] });
+});
+
+test("the first RMT release fixes the token terms and a single factory intent across browser sessions", () => {
+  const terms = { name: "RMT", symbol: "RMT", projectURI: "", treasury: "", treasuryShareBps: 0 };
+  assert.ok(isRmtCreation(terms, rmtCreationIntent));
+  for (const change of [{ name: "Other" }, { symbol: "OTHER" }, { projectURI: "ipfs://other" },
+    { treasury: owner }, { treasuryShareBps: 1 }]) assert.equal(isRmtCreation({ ...terms, ...change }, rmtCreationIntent), false);
+  assert.equal(isRmtCreation(terms, hash("b")), false);
+});
+
+test("owner preview login binds the signature to the browser challenge and rejects another signer", async () => {
+  const challenge = issueOwnerReviewChallenge();
+  const cookie = challenge.cookie.split(";")[0];
+  assert.match(challenge.cookie, /; Secure; HttpOnly; SameSite=Strict$/);
+  const testAccount = privateKeyToAccount(generatePrivateKey());
+  const message = ownerReviewMessage(challenge.nonce, challenge.issuedAt);
+  const signature = await testAccount.signMessage({ message });
+  const h = new Headers({ cookie, authorization: "Bearer " + signature });
+  assert.equal(await authenticatedReviewOwner(h), testAccount.address);
+  assert.equal(await isAuthenticatedCreationOwner(h), false);
+  h.set("cookie", issueOwnerReviewChallenge().cookie.split(";")[0]);
+  assert.notEqual(await authenticatedReviewOwner(h), testAccount.address);
+  h.set("cookie", cookie + "; " + cookie); assert.equal(await authenticatedReviewOwner(h), null);
+  h.set("cookie", cookie.replace(String(challenge.issuedAt), String(challenge.issuedAt - 601_000)));
+  assert.equal(await authenticatedReviewOwner(h), null);
+  h.delete("authorization"); assert.equal(await authenticatedReviewOwner(h), null);
+});
+
+test("the production preparation route requires private owner proof before discovery or RPC reads", async () => {
+  const inputs = { ...env, RMT_CURVE_PRODUCTION_EXECUTION: "owner-creation-approved", RMT_CURVE_PRODUCTION_DISCOVERY: curveProductionProfile };
+  const previous = Object.fromEntries(Object.keys(inputs).map(key => [key, process.env[key]]));
+  try {
+    Object.assign(process.env, inputs);
+    const h = headers(); h.set("content-type", "application/json");
+    const call = (body: object) => handleProductionCreation(new Request("https://www.rmtlaunch.fun/api/launchpad/production-creation",
+      { method: "POST", headers: h, body: JSON.stringify(body) }));
+    const challenge = await call({ action: "owner-login" }); assert.equal(challenge.status, 200);
+    assert.match(challenge.headers.get("set-cookie")!, /^__Host-rmt-owner-preview=/);
+    const fields = { name: "RMT", symbol: "RMT", projectURI: "", treasury: "", treasuryShareBps: 0 };
+    const response = await call({ action: "prepare", account: owner, fields, intentId: rmtCreationIntent });
+    assert.equal(response.status, 401); assert.deepEqual(await response.json(), { status: "owner-login-required" });
+  } finally {
+    for (const [key, value] of Object.entries(previous)) {
+      if (value === undefined) delete process.env[key]; else process.env[key] = value;
+    }
+  }
 });

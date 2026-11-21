@@ -1,6 +1,8 @@
 "use client";
 
 import { productionAccountLock } from "../../lib/production-wallet";
+import { isRmtCreation, ownerReviewLifetimeMs, ownerReviewMessage, rmtCreationIntent } from "../../lib/owner-creation";
+import { stringToHex, type Hex } from "viem";
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
@@ -19,7 +21,7 @@ import { productionCalldataMatches, isProductionWalletOrigin,
   type ProductionCreationRequest } from "../../lib/production-creation";
 import { sameWalletHex as same, subscribeTestWallet, testWalletErrorCode } from "../../lib/test-wallet";
 
-type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: ProductionCreationRequest; payouts: TestCreationPayouts };
+type Prepared = { draft: ReviewedLaunchDraft; wallet: Wallet; factory: string; request: ProductionCreationRequest; payouts: TestCreationPayouts; gasEstimate: string };
 type Journal = { request: ProductionCreationRequest; transactionHash?: `0x${string}` };
 
 const journalKey = productionCreationJournalKey;
@@ -38,32 +40,36 @@ function writeJournal(entry: Journal) {
 }
 
 class UnsupportedTreasury extends Error {}
+class OwnerLoginRequired extends Error {}
 
-async function post(body: object) {
+async function post(body: object, login?: Hex) {
   if (!isProductionWalletOrigin(window.location)) throw new Error("Accepted HTTPS origin required");
   const response = await fetch(productionCreationPath, {
-    method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body),
-    cache: "no-store", redirect: "error", signal: AbortSignal.timeout(8000),
+    method: "POST", headers: { "Content-Type": "application/json", ...(login && { Authorization: "Bearer " + login }) }, body: JSON.stringify(body),
+    cache: "no-store", redirect: "error", signal: AbortSignal.timeout(45_000),
   });
   const payload = await response.json() as Record<string, unknown>;
+  if (response.status === 401 && payload.status === "owner-login-required") throw new OwnerLoginRequired();
   if (response.status === 422 && payload.status === "treasury-unsupported") throw new UnsupportedTreasury();
   if (!response.ok) throw new Error("Creation evidence unavailable");
   return payload;
 }
 
-async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, prior?: ProductionCreationRequest) {
+async function prepare(draft: ReviewedLaunchDraft, account: string, factory: string, login: Hex, prior?: ProductionCreationRequest) {
   const { name, symbol, projectURI, treasury, treasuryShareBps } = draft;
   const fields: TestCreationFields = { name, symbol, projectURI, treasury, treasuryShareBps };
-  const intentId = prior?.intentId ?? "0x" + Array.from(crypto.getRandomValues(new Uint8Array(32)), (byte) => byte.toString(16).padStart(2, "0")).join("");
-  const payload = await post({ action: "prepare", account, fields, intentId, ...(prior && { prior }) });
-  const { request, payouts } = payload;
+  const intentId = prior?.intentId ?? rmtCreationIntent;
+  if (!isRmtCreation(fields, intentId)) throw new Error("Owner release requires the reviewed RMT terms");
+  const payload = await post({ action: "prepare", account, fields, intentId, ...(prior && { prior }) }, login);
+  const { request, payouts, gasEstimate } = payload;
   if (payload.status !== "prepared" || !isProductionCreationRequest(request) || !isTestCreationPayouts(payouts, !!treasury)
       || !same(payouts.operating, productionCreationOperating) || !same(payouts.reserve, productionCreationReserve)
       || [payouts.operating, payouts.reserve].some((recipient) => same(recipient, treasury)) || !same(request.from, account)
+      || typeof gasEstimate !== "string" || !/^0x[1-9a-f][0-9a-f]{0,15}$/i.test(gasEstimate)
       || !same(request.to, factory) || !same(request.intentId, intentId) || !await productionCalldataMatches(request, fields)) {
     throw new Error("Review did not match the accepted deployment or draft fields");
   }
-  return { request, payouts };
+  return { request, payouts, gasEstimate };
 }
 
 async function verify(entry: Journal, inputHash?: string): Promise<TestCreationVerification> {
@@ -89,6 +95,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
 }) {
   const [ready, setReady] = useState(false);
   const [wallet, setWallet] = useState<Wallet>();
+  const [login, setLogin] = useState<{ signature: Hex; expires: number }>();
   const [prepared, setPrepared] = useState<Prepared>();
   const [journal, setJournal] = useState<Journal>();
   const [completed, setCompleted] = useState<CompletedProductionCreation[]>([]);
@@ -122,9 +129,15 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
       restore();
     };
     window.addEventListener("storage", storageChanged);
+    const clearPreview = () => { selection.current++; setPrepared(undefined); };
+    const onVisibility = () => { if (document.hidden) clearPreview(); };
+    document.addEventListener("visibilitychange", onVisibility);
+    window.addEventListener("pagehide", clearPreview);
     return () => {
       mounted.current = false;
       window.removeEventListener("storage", storageChanged);
+      document.removeEventListener("visibilitychange", onVisibility);
+      window.removeEventListener("pagehide", clearPreview);
     };
   }, []);
 
@@ -134,9 +147,18 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
       selection.current++;
       setPrepared(undefined);
       setWallet(undefined);
+      setLogin(undefined);
       setMessage("Wallet account or network changed. Connect and review again.");
     });
   }, [wallet]);
+
+  useEffect(() => {
+    if (!login) return;
+    const expiry = window.setTimeout(() => {
+      selection.current++; setPrepared(undefined); setLogin(undefined);
+    }, Math.max(0, login.expires - Date.now()));
+    return () => window.clearTimeout(expiry);
+  }, [login]);
 
   async function withOperation(action: () => Promise<void>, onFailure: string) {
     if (!ready || operation.current) return;
@@ -145,6 +167,10 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
     setMessage("");
     try { await action(); }
     catch (error) {
+      if (error instanceof OwnerLoginRequired) {
+        setLogin(undefined); setPrepared(undefined); setMessage("Sign in again to review this creation.");
+        return;
+      }
       setMessage(error instanceof UnsupportedTreasury
         ? "This address is not a supported independent treasury in the accepted deployment. Choose a wallet you control or a verified Safe 1.4.1."
         : onFailure);
@@ -159,22 +185,39 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
     const connected = await connectProductionWallet();
     selection.current++;
     setWallet(connected);
+    setLogin(undefined);
     setPrepared(undefined);
   }
 
+  async function signInToPreview() {
+    if (!wallet) return;
+    await assertProductionWallet(wallet);
+    const { nonce, issuedAt } = await post({ action: "owner-login" });
+    if (typeof nonce !== "string" || typeof issuedAt !== "number" || issuedAt > Date.now() + 15_000
+        || issuedAt + ownerReviewLifetimeMs <= Date.now()) throw new Error("Owner login unavailable");
+    const message = ownerReviewMessage(nonce, issuedAt);
+    await assertProductionWallet(wallet);
+    if (!mounted.current || productionProviderAtWindow() !== wallet.provider) throw new Error("Wallet changed");
+    const signature = await wallet.request.call(wallet.provider, { method: "personal_sign", params: [stringToHex(message), wallet.account] });
+    await assertProductionWallet(wallet);
+    if (!mounted.current || productionProviderAtWindow() !== wallet.provider || typeof signature !== "string"
+        || !/^0x[0-9a-f]{130}$/i.test(signature) || issuedAt + ownerReviewLifetimeMs <= Date.now()) throw new Error("Owner login unavailable");
+    setLogin({ signature: signature as Hex, expires: issuedAt + ownerReviewLifetimeMs });
+  }
+
   async function reviewCreation() {
-    if (!wallet || !draft) return;
+    if (!wallet || !draft || !login || login.expires <= Date.now()) return;
     setPrepared(undefined);
     setTreasuryAcknowledged(false);
     const generation = selection.current;
-    if (draft.treasury && same(draft.treasury, wallet.account)) {
-      setMessage("Choose a project treasury address different from the creator.");
+    if (!isRmtCreation(draft, rmtCreationIntent)) {
+      setMessage("For this release, enter RMT for both name and symbol. Leave the project URI and treasury empty and the treasury share at zero.");
       return;
     }
-    const { request, payouts } = await prepare(draft, wallet.account, factory);
+    const { request, payouts, gasEstimate } = await prepare(draft, wallet.account, factory, login.signature);
     await assertProductionWallet(wallet, request);
     if (!isCurrentDraft(draft) || selection.current !== generation) throw new Error("Review changed");
-    setPrepared({ draft, wallet, factory, request, payouts });
+    setPrepared({ draft, wallet, factory, request, payouts, gasEstimate });
   }
 
   async function check(entry: Journal, manualHash?: string) {
@@ -192,7 +235,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
   }
 
   async function confirm() {
-    if (!prepared || !isCurrentDraft(prepared.draft) || !same(prepared.factory, factory)
+    if (!prepared || !login || login.expires <= Date.now() || !isCurrentDraft(prepared.draft) || !same(prepared.factory, factory)
         || (prepared.draft.treasury && !treasuryAcknowledged)) return;
     const { request, payouts, wallet: bound, draft: candidate } = prepared;
     const generation = selection.current;
@@ -206,7 +249,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
         setJournal(existing);
         throw new Error("Creation already recorded");
       }
-      const current = await prepare(candidate, bound.account, factory, request);
+      const current = await prepare(candidate, bound.account, factory, login.signature, request);
       if (!sameProductionCreationRequest(request, current.request) || !same(payouts.operating, current.payouts.operating)
           || !same(payouts.reserve, current.payouts.reserve) || payouts.treasuryKind !== current.payouts.treasuryKind) {
         throw new Error("Factory or reviewed terms changed");
@@ -303,12 +346,17 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
       {!ready && <p>Wallet operations require the exact accepted origin and secure browser request locking.</p>}
       {!wallet ? <button type="button" className="lpButton lpSecondary" disabled={busy || !ready}
         onClick={() => void withOperation(connect, "Connect an injected wallet on Robinhood Chain 4663.")}>Connect wallet</button>
+        : !login ? <button type="button" className="lpButton lpSecondary" disabled={busy || !ready}
+          onClick={() => void withOperation(signInToPreview, "Owner sign-in was declined or expired. Choose sign in to try again.")}>Sign in to preview · no gas</button>
         : currentReview ? <>
           <dl className="lpFacts">
             <dt>Creator</dt><dd className="lpAddress">{currentReview.request.from}</dd>
             <dt>Verified factory</dt><dd className="lpAddress">{currentReview.request.to}</dd>
             <dt>Fixed total supply</dt><dd>{currentReview.draft.supply.toLocaleString("en-US")} tokens · {launchTokenDecimals} decimals</dd>
             <dt>Exact creation fee</dt><dd>0.0004 ETH, plus gas</dd>
+            <dt>Estimated gas units</dt><dd>{BigInt(currentReview.gasEstimate).toLocaleString("en-US")}</dd>
+            <dt>Account nonce</dt><dd>{BigInt(currentReview.request.nonce).toString()}</dd>
+            <dt>Review expires</dt><dd>{new Date(Number(currentReview.request.deadline) * 1000).toISOString()}</dd>
             <dt>RMT operations</dt><dd className="lpAddress">{currentReview.payouts.operating}</dd>
             <dt>RMT future reserve</dt><dd className="lpAddress">{currentReview.payouts.reserve}</dd>
             <dt>Project treasury</dt><dd className={currentReview.draft.treasury ? "lpAddress" : undefined}>{currentReview.draft.treasury || "None"}</dd>
@@ -319,6 +367,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
                 : "No contract code detected · verify control of this wallet"}</dd>
             </>}
           </dl>
+          <details><summary>Exact unsigned calldata</summary><p className="lpAddress">{currentReview.request.data}</p></details>
           {currentReview.draft.treasury && <label className="lpTreasuryAcknowledge">
             <input type="checkbox" checked={treasuryAcknowledged} disabled={busy}
               onChange={(event) => setTreasuryAcknowledged(event.target.checked)} />

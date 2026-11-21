@@ -4,6 +4,8 @@ import { isTransactionHash } from "../test-creation";
 import { configuredCurveProductionRelease, curveProductionDeployment, curveProductionPins, normalizeProductionCreationFields,
   prepareCurveProductionCreation, verifyCurveProduction } from "./curve-production";
 import { readDraftBody } from "./launch-draft";
+import { isRmtCreation, rmtCreationOwner } from "../owner-creation";
+import { isAuthenticatedCreationOwner, issueOwnerReviewChallenge } from "./owner-creation-auth";
 import { configuredProductionDiscovery, readProductionDiscovery } from "./production-discovery";
 import { verifyCanonicalCurveCreation } from "./test-creation";
 
@@ -21,7 +23,7 @@ function preparedRequest(input: unknown): ProductionCreationRequest | null {
   const decoded = decodeFunctionData({ abi: productionCreationAbi, data: input.data });
   const [name, symbol, projectURI, treasury, treasuryShareBps] = decoded.args;
   if (!normalizeProductionCreationFields({ name, symbol, projectURI, treasury: /^0x0{40}$/i.test(treasury) ? "" : treasury.toLowerCase(), treasuryShareBps })
-      || same(treasury, input.from) || !same(input.from, "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA")) return null;
+      || same(treasury, input.from) || !same(input.from, rmtCreationOwner)) return null;
   return input;
 }
 
@@ -37,11 +39,18 @@ export async function handleProductionCreation(request: Request) {
     const payload = await readDraftBody(request.body);
     if (payload.tooLarge) return reply({ status: "invalid" }, 413);
     const body = payload.input as Record<string, unknown> | null;
+    if (keys(body, ["action"]) && body.action === "owner-login") {
+      const { cookie, nonce, issuedAt } = issueOwnerReviewChallenge();
+      const response = reply({ status: "owner-login", nonce, issuedAt });
+      response.headers.set("Set-Cookie", cookie);
+      return response;
+    }
     if (keys(body, ["action", "fields", "account", "intentId", ...(body && Object.hasOwn(body, "prior") ? ["prior"] : [])]) && body.action === "prepare") {
       const prior = body.prior === undefined ? undefined : preparedRequest(body.prior);
       if (typeof body.account !== "string" || !/^0x[0-9a-f]{40}$/i.test(body.account)
-          || !same(body.account, "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA") || !isTransactionHash(body.intentId)
+          || !same(body.account, rmtCreationOwner) || !isTransactionHash(body.intentId) || !isRmtCreation(body.fields, body.intentId)
           || (body.prior !== undefined && !prior) || (prior && (!same(prior.from, body.account) || !same(prior.intentId, body.intentId)))) return reply({ status: "invalid" }, 422);
+      if (!await isAuthenticatedCreationOwner(request.headers)) return reply({ status: "owner-login-required" }, 401);
       if ((await readProductionDiscovery()).status !== "ready") return reply({ status: "unavailable" }, 503);
       return reply(await prepareCurveProductionCreation(release, body.fields, getAddress(body.account.toLowerCase()), body.intentId, prior ?? undefined));
     }
