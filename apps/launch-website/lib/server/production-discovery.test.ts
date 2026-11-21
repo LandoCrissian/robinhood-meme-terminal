@@ -81,6 +81,41 @@ test("authentication failure, unavailable worker, oversized data and malformed r
   assert.equal((await readProductionDiscovery(undefined, { env, fetch: async () => { throw new Error("Provider outage"); } })).status, "unavailable");
 });
 
+test("a transient directory 503 requires a fresh authenticated read and full validation", async () => {
+  const env = { RMT_LAUNCH_HISTORY_INDEXER_URL: "https://worker.up.railway.app", RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: "synthetic-credential" };
+  const cases = [
+    [() => Response.json(feed()), now, "ready"],
+    [() => Response.json(feed()), now + 120_000, "stale"],
+    [() => Response.json({ ...feed(), chainId: 1 }), now, "unavailable"],
+    [() => new Response(null, { status: 503 }), now, "unavailable"],
+  ] as const;
+  await Promise.all(cases.map(async ([secondResponse, observedAt, status]) => {
+    let calls = 0;
+    const result = await readProductionDiscovery(undefined, { env, now: observedAt, onDiagnostic() {}, fetch: async (url, options) => {
+      assert.ok(options);
+      assert.equal(String(url), "https://worker.up.railway.app/curve-launches?limit=25");
+      assert.equal(new Headers(options.headers).get("authorization"), "Bearer synthetic-credential");
+      assert.equal(options.cache, "no-store"); assert.equal(options.redirect, "error");
+      assert.equal(options.method ?? "GET", "GET");
+      calls++;
+      return calls === 1 ? new Response(null, { status: 503 }) : secondResponse();
+    } });
+    assert.equal(calls, 2); assert.equal(result.status, status);
+  }));
+});
+
+test("credential rejection, rate limiting, explicit backoff and token-specific failures end after one read", async () => {
+  const env = { RMT_LAUNCH_HISTORY_INDEXER_URL: "https://worker.up.railway.app", RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: "synthetic-credential" };
+  for (const [token, status, retryAfter] of [[undefined, 401], [undefined, 403], [undefined, 429], [undefined, 503, "30"], [address("2"), 503]] as const) {
+    let calls = 0;
+    const data = await readProductionDiscovery(token, { env, now, onDiagnostic() {}, fetch: async () => {
+      calls++;
+      return new Response(null, { status, headers: retryAfter ? { "retry-after": retryAfter } : {} });
+    } });
+    assert.equal(data.status, "unavailable"); assert.equal(calls, 1);
+  }
+});
+
 test("private new-engine reads use only the pinned existing indexer and do not activate the public route", async () => {
   const env = { RMT_WEB_HOSTING: railwayReadOnlyProfile, RAILWAY_PROJECT_ID: railwayProject, RAILWAY_ENVIRONMENT_ID: railwayEnvironment,
     RAILWAY_SERVICE_ID: railwayWebsiteService, RMT_INDEXER_SERVICE_ID: railwayIndexerService,

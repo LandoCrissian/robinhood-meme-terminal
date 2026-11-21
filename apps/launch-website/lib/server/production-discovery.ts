@@ -105,8 +105,16 @@ export async function readProductionDiscovery(token?: string, options: Productio
   const url = new URL(token ? "/curve-launches/" + token.toLowerCase() : "/curve-launches?limit=25", origin);
   let stage: "network" | "response_body" = "network";
   try {
-    const response = await (options.fetch ?? fetch)(url, { headers: { Accept: "application/json", Authorization: "Bearer " + credential },
+    const fetchCheckpoint = () => (options.fetch ?? fetch)(url, { headers: { Accept: "application/json", Authorization: "Bearer " + credential },
       redirect: "error", cache: "no-store", signal: AbortSignal.timeout(4_000) });
+    let response = await fetchCheckpoint();
+    // The indexer can return 503 while it advances its canonical checkpoint.
+    // Retry only the directory GET, then validate the new response in full.
+    if (!token && response.status === 503 && !response.headers.has("retry-after")) {
+      await response.body?.cancel();
+      await new Promise(resolve => setTimeout(resolve, 3_000));
+      response = await fetchCheckpoint();
+    }
     if (!response.ok) {
       await response.body?.cancel();
       return report(response.status === 401 ? "unauthorized" : response.status === 403 ? "forbidden"
