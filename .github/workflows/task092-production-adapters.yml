@@ -125,6 +125,8 @@ jobs:
           git diff --exit-code -- netlify.toml package.json pnpm-lock.yaml apps/launch-website/package.json
           node scripts/release/website-preflight.mjs --artifacts --output "$RUNNER_TEMP/task092-linux-artifact-base.json"
           node scripts/release/website-financial-preflight.mjs --artifacts --output "$RUNNER_TEMP/task092-linux-financial-artifact.json"
+          unzip -q apps/launch-website/.netlify/functions/___netlify-server-handler.zip -d "$RUNNER_TEMP/profile-runtime"
+          node --no-experimental-require-module scripts/release/website-firebase-runtime.mjs "$RUNNER_TEMP/profile-runtime/apps/launch-website"
           python3 scripts/release/website-bundle.py collect --workspace "$GITHUB_WORKSPACE" \
             --output "$RUNNER_TEMP/task092-linux-bundle.zip" --report "$RUNNER_TEMP/task092-linux-artifact-base.json" \
             --tools "$RUNNER_TEMP/task092-build-tools.json" > "$RUNNER_TEMP/task092-linux-bundle.json"

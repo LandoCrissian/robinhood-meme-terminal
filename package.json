@@ -72,6 +72,9 @@
       "source-map-js@>=1.2.0 <1.2.2": "1.2.2",
       "ws@>=8.0.0 <8.21.0": "8.21.0",
       "zod@<4.6.6": "4.6.6"
+    },
+    "patchedDependencies": {
+      "jwks-rsa@4.1.0": "patches/jwks-rsa@4.1.0.patch"
     }
   }
 }

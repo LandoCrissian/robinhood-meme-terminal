@@ -15,6 +15,11 @@ overrides:
   ws@>=8.0.0 <8.21.0: 8.21.0
   zod@<4.6.6: 4.6.6
 
+patchedDependencies:
+  jwks-rsa@4.1.0:
+    hash: a27aaedc86c512cfe4c0266ccebe5004aa21d83354776c1020df168015a24a6f
+    path: patches/jwks-rsa@4.1.0.patch
+
 importers:
 
   .:
@@ -6127,7 +6132,7 @@ snapshots:
       fast-deep-equal: 3.1.3
       google-auth-library: 11.3.4
       jsonwebtoken: 9.0.3
-      jwks-rsa: 4.1.0
+      jwks-rsa: 4.1.0(patch_hash=a27aaedc86c512cfe4c0266ccebe5004aa21d83354776c1020df168015a24a6f)
     optionalDependencies:
       '@google-cloud/firestore': 9.4.1
       '@google-cloud/storage': 8.4.0
@@ -6748,7 +6753,7 @@ snapshots:
       ecdsa-sig-formatter: 1.0.11
       safe-buffer: 5.2.1
 
-  jwks-rsa@4.1.0:
+  jwks-rsa@4.1.0(patch_hash=a27aaedc86c512cfe4c0266ccebe5004aa21d83354776c1020df168015a24a6f):
     dependencies:
       '@types/jsonwebtoken': 9.0.10
       debug: 4.4.3

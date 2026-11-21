@@ -42,9 +42,6 @@ export function middleware(request: NextRequest) {
       "Cache-Control": "private, no-store", "Retry-After": String(budget.retryAfter),
     } });
   }
-  // These handlers enforce their own backend availability, exact origin,
-  // session, CSRF and request budgets. This is only a narrow routing allowlist.
-  if (isProfileApiRoute(pathname, request.method)) return NextResponse.next();
   // The handler repeats all local manifest/origin/runtime checks. Hosted GET
   // and POST both return 404; this is never a production transaction route.
   if (pathname === "/api/nft-acquisition" && ["GET", "HEAD", "POST"].includes(request.method)) return NextResponse.next();
@@ -69,7 +66,8 @@ export function middleware(request: NextRequest) {
     return NextResponse.next({ headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } });
   }
   if (["GET","HEAD"].includes(request.method) && /^\/api\/artwork\/bafkrei[a-z2-7]{52}\/(?:metadata\.json|image\.webp|logo\.webp)$/.test(pathname)) return NextResponse.next();
-  if ((pathname === "/api/launchpad/production-creation" || pathname === "/api/artwork/upload") && request.method === "POST") {
+  if (isProfileApiRoute(pathname, request.method) ||
+      ((pathname === "/api/launchpad/production-creation" || pathname === "/api/artwork/upload") && request.method === "POST")) {
     // A same-URL rewrite with response headers makes the Netlify adapter retain
     // this request's URL when dispatching to a reused Next server instance.
     return NextResponse.rewrite(request.nextUrl, { headers: { "Cache-Control": "private, no-store" } });

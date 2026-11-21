@@ -16,3 +16,14 @@ test("creation dispatch preserves the original absolute URL and query across req
   const unrelated = middleware(new NextRequest("https://www.rmtlaunch.fun/api/launchpad/production-lifecycle", { method: "POST" }));
   assert.equal(unrelated.headers.get("x-middleware-rewrite"), null);
 });
+
+test("profile API dispatch retains the request origin and query for the handler's own checks", () => {
+  for (const [path, method] of [["/api/account/session", "GET"], ["/api/account/nonce", "POST"], ["/api/account/profile", "PATCH"]]) {
+    for (const origin of ["https://rmt-review.example", "https://www.rmtlaunch.fun"]) {
+      const href = origin + path + "?unexpected=1";
+      const result = middleware(new NextRequest(href, { method }));
+      assert.equal(result.headers.get("x-middleware-rewrite"), href);
+      assert.equal(result.headers.get("cache-control"), "private, no-store");
+    }
+  }
+});
