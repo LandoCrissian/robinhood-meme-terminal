@@ -78,6 +78,9 @@ body .launchpad {
 .lpTokenName { display: grid; min-width: 0; }
 .lpTokenName strong { color: var(--rmt-text); font-size: 13px; }
 .lpTokenName small { overflow: hidden; color: var(--rmt-text-soft); text-overflow: ellipsis; }
+.lpArtwork img { width: 100%; height: 100%; object-fit: contain; border-radius: inherit; }
+.lpArtworkPicker { margin-block-start: 1rem; }
+.lpArtworkPreview { width: 96px; height: 96px; border-radius: 12px; object-fit: contain; }
 .lpArtwork { background: var(--rmt-artwork-background, #13231a); color: var(--rmt-accent); font-weight: 800; }
 .lpEmpty, .lpPanel, .lpNotice, .lpRecovery {
   min-width: 0;

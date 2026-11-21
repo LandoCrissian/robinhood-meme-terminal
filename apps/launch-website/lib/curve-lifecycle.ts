@@ -13,6 +13,7 @@ export type CurveRegistration = {
   creator: string;
   name: string;
   symbol: string;
+  projectURI?: string;
   totalSupplyWei: string;
   tokenDecimals: typeof launchTokenDecimals;
   creation: LaunchReceipt;

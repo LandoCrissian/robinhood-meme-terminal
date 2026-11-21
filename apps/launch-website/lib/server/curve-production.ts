@@ -1,3 +1,4 @@
+import { assetCID } from "../token-artwork";
 import { createHash } from "node:crypto";
 import { setTimeout as wait } from "node:timers/promises";
 import { createPublicClient, encodeFunctionData, getAddress, http, keccak256, parseAbi, parseAbiItem, parseEventLogs, toHex, zeroAddress, type Address, type Hex } from "viem";
@@ -263,6 +264,6 @@ export async function prepareCurveProductionCreation(release: CurveProductionRel
     if (!same(reviewedBlock.hash, prior.blockHash)) throw new Error("Original review was invalidated");
   }
   return { status: "prepared", request, gasEstimate: toHex(gas), payouts: { operating: curveProductionDeployment.operating,
-      reserve: curveProductionDeployment.reserve, treasuryKind }, metadata: { projectURI: draft.projectURI, description: "device-only", artwork: "device-only" },
+      reserve: curveProductionDeployment.reserve, treasuryKind }, metadata: { projectURI: draft.projectURI, description: "device-only", artwork: assetCID(draft.projectURI,"metadata.json") ? "registered-metadata" : "device-only" },
     finality: "L2_OBSERVED_L1_NOT_PROVEN_BY_THIS_PREPARATION" } as const;
 }

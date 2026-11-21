@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { encodeAbiParameters, encodeEventTopics, encodeFunctionData, parseAbi, parseAbiParameters, type Hex } from "viem";
+import { artworkCID, artworkOrigin, assetPath, receiptForImage } from "../token-artwork";
 import { productionCreationAbi, productionCreationFactory, type ProductionCreationRequest } from "../production-creation";
 import { launchTokenSupplyWei } from "../launch-terms";
 import { curveProductionDeployment, curveProductionPins } from "./curve-production";
@@ -15,7 +16,7 @@ const ledger = "0x4444444444444444444444444444444444444444";
 const owner = "0x7E8E7D3Af28584a8b9eEDDbE16CD3308Bd1e76cA";
 const zero = "0x0000000000000000000000000000000000000000";
 const txHash = hash("a"); const blockHash = hash("b"); const blockNumber = 116835400n;
-const name = "Owner Token"; const symbol = "OWNER"; const uri = "https://example.invalid/owner";
+const name = "Owner Token"; const symbol = "OWNER"; const uri = receiptForImage(artworkOrigin + assetPath(artworkCID(new TextEncoder().encode("receipt fixture")),"image.webp")).projectURI;
 const events = parseAbi([
   "event Transfer(address indexed from,address indexed to,uint256 value)",
   "event ProjectRegistered(address indexed token,address indexed factory,address indexed curve,uint32 version)",
@@ -23,7 +24,7 @@ const events = parseAbi([
   "event CreationFeePaid(address indexed token,address indexed creator,address indexed recipient,uint256 fee,uint256 refund)",
 ]);
 
-function setup(options: { wrongNonce?: boolean; wrongChain?: boolean; reorg?: boolean; laterTrade?: boolean; indexed?: boolean;
+function setup(options: { wrongArtwork?: boolean; reverted?: boolean; wrongNonce?: boolean; wrongChain?: boolean; reorg?: boolean; laterTrade?: boolean; indexed?: boolean;
   missingReceipt?: boolean; duplicateRecovery?: boolean; malformedMint?: boolean } = {}) {
   const request: ProductionCreationRequest = { from: owner, to: productionCreationFactory, chainId: "0x1237", intentId: hash("c"),
     deadline: "1794935300", blockNumber: "0x6f6c3e0", blockHash: hash("d"), nonce: "0x1e3", value: "0x16bcc41e90000",
@@ -42,12 +43,12 @@ function setup(options: { wrongNonce?: boolean; wrongChain?: boolean; reorg?: bo
     { ...base, logIndex: 3, address: productionCreationFactory,
       topics: encodeEventTopics({ abi: events, eventName: "CurveCreated", args: { token, curve, creator: owner } }),
       data: encodeAbiParameters(parseAbiParameters("bytes32,uint256,address,address,uint16,string,string,string"),
-        [hash("c"), launchTokenSupplyWei, ledger, zero, 0, name, symbol, uri]) },
+        [hash("c"), launchTokenSupplyWei, ledger, zero, 0, name, symbol, options.wrongArtwork ? "" : uri]) },
     { ...base, logIndex: 4, address: productionCreationFactory,
       topics: encodeEventTopics({ abi: events, eventName: "CreationFeePaid", args: { token, creator: owner, recipient: curveProductionDeployment.operating } }),
       data: encodeAbiParameters(parseAbiParameters("uint256,uint256"), [curveProductionDeployment.creationFeeWei, 0n]) },
   ];
-  const receipt = { ...base, from: owner, to: productionCreationFactory, status: "success", logs };
+  const receipt = { ...base, from: owner, to: productionCreationFactory, status: options.reverted ? "reverted" : "success", logs };
   const block = { number: blockNumber, hash: options.reorg ? hash("e") : blockHash, timestamp: 1794935200n, transactions: [txHash] };
   const rpc = {
     async getTransaction() { return { hash: txHash, from: owner, to: productionCreationFactory, input: request.data,
@@ -90,8 +91,15 @@ test("missing-hash recovery reuses the original intent and canonical receipt wit
 });
 
 test("chain, nonce, reorg, interrupted receipt and malformed mint evidence fail closed", async () => {
-  for (const options of [{ wrongChain: true }, { wrongNonce: true }, { reorg: true }, { malformedMint: true }]) {
+  for (const options of [{ wrongArtwork: true }, { wrongChain: true }, { wrongNonce: true }, { reorg: true }, { malformedMint: true }]) {
     assert.equal((await (await verifyCanonicalCurveCreation(setup(options))).json()).status, "unavailable");
   }
   await assert.rejects(verifyCanonicalCurveCreation(setup({ missingReceipt: true })), /Receipt unavailable/);
+});
+
+test("reverted creation retains the original metadata-bound request for recovery", async () => {
+  const input = setup({reverted:true});
+  const original = input.request.data;
+  assert.equal((await (await verifyCanonicalCurveCreation(input)).json()).status,"reverted");
+  assert.equal(input.request.data,original);
 });

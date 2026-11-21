@@ -10,6 +10,8 @@ import {
 import { proposedCurveLifecycle } from "../../lib/curve-lifecycle";
 import { launchTerms, launchTokenDecimals, launchTokenSupply } from "../../lib/launch-terms";
 import { TestCreationWallet } from "./test-creation-wallet";
+import { ArtworkUpload, clearPendingArtwork } from "./artwork-upload";
+import { assetCID, receiptForImage, verifyArtworkReceipt } from "../../lib/token-artwork";
 import { TokenArtwork } from "./token-artwork";
 import { useAccount } from "./account-provider";
 import { ProjectTreasurySetup } from "./project-treasury-setup";
@@ -94,6 +96,8 @@ export function CreatorDraft({ executionTest, productionCreation }: {
   const accountBinding = account.wallet ? `${account.wallet.address}:${account.wallet.chainId}`
     : account.session.authenticated ? account.session.account.walletAddress : "anonymous";
   const [draft, setDraft] = useState<LaunchDraft>(emptyLaunchDraft);
+  const [artworkPending, setArtworkPending] = useState(false);
+  const [artworkReset, setArtworkReset] = useState(0);
   const [restored, setRestored] = useState(false);
   const [reviewed, setReviewed] = useState<ReviewedLaunchDraft>();
   const [errors, setErrors] = useState<LaunchDraftErrors>({});
@@ -167,7 +171,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
 
   async function review(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (reviewing.current) return;
+    if (reviewing.current || artworkPending) return;
     setMessage("");
     if (treasuryMode === "contract" && !treasuryProof) {
       setMessage("Verify the optional treasury deployment first, or choose creator-only fees. A predicted address is not a deployed beneficiary.");
@@ -231,7 +235,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
   const draftPanel = reviewed ? <section className="lpPanel lpForm lpDraft lpCreatorDraft lpCreatorReviewed">
       <div className="lpCreatorSectionHeader"><div><span className="lpEyebrow">Your draft</span><h2 ref={reviewHeading} tabIndex={-1}>Review token draft</h2></div></div>
       <div className="lpTokenHeading">
-        <TokenArtwork symbol={reviewed.symbol} />
+        <TokenArtwork symbol={reviewed.symbol} projectURI={reviewed.projectURI} />
         <div className="lpTokenName"><strong>{reviewed.name}</strong><span>{reviewed.symbol}</span></div>
       </div>
       <div><span className="lpPill">{proposedCurveLifecycle.label}</span></div>
@@ -244,7 +248,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         {treasuryProof && <><dt>Separate project treasury contract</dt><dd className="lpAddress">{treasuryProof.treasury}</dd><dt>Treasury deployment</dt><dd>Verified synthetic block {treasuryProof.deployment.blockNumber} · purchases OFF at creation</dd></>}
         <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(reviewed.treasuryShareBps)} · {percent.format(reviewed.treasuryShareBps / 100)}% of all eligible fees</dd>
       </dl>
-      <p className="lpCreatorHelp">The server verified the launch fields for this review. Your description and artwork URL stay in this browser.
+      <p className="lpCreatorHelp">The server verified the registration fields. {assetCID(reviewed.projectURI,"metadata.json") ? "The registration includes your saved image metadata." : "Optional draft notes stay in this browser."}
         {executionTest ? " The test wallet signs only the transaction reviewed below." : " No token has been created."}</p>
       <button type="button" className="lpButton lpSecondary" onClick={() => {
         currentDraft.current = undefined;
@@ -270,9 +274,11 @@ export function CreatorDraft({ executionTest, productionCreation }: {
           <input id="draft-fixed-supply" value={`${number.format(launchTokenSupply)} tokens`} readOnly aria-describedby="draft-fixed-supply-hint" />
           <small id="draft-fixed-supply-hint">Set by the launch contract · {launchTokenDecimals} decimals</small>
         </div>
+        {restored && <ArtworkUpload key={artworkReset} projectURI={draft.projectURI} onPending={setArtworkPending}
+          onSave={receipt=>{ setDraft(previous=>({...previous,...receipt})); setMessage(""); }} />}
       </fieldset>
       <details className="lpCreatorDisclosure lpCreatorMetadata">
-        <summary><span><span>Project information</span><small>Description, project URL and artwork</small></span><span className="lpCreatorOptional">Optional</span></summary>
+        <summary><span><span>Project information</span><small>Description and advanced URL options</small></span><span className="lpCreatorOptional">Optional</span></summary>
         <fieldset className="lpCreatorDisclosureBody" disabled={pending || !restored} aria-label="Project information">
           <div className="lpDraftField">
             <label htmlFor={fieldId("description")}>Project description</label>
@@ -280,12 +286,23 @@ export function CreatorDraft({ executionTest, productionCreation }: {
             <small id={fieldId("description") + "-hint"}>Up to 500 UTF-8 bytes · kept on this device</small>
             {errorFor("description")}
           </div>
-          {projectLinks.map(({ key, label, max }) => <div className="lpDraftField" key={key}>
+          <details><summary>Advanced URLs</summary>{projectLinks.map(({ key, label, max }) => <div className="lpDraftField" key={key}>
             <label htmlFor={fieldId(key)}>{label}</label>
-            <input {...inputProps(key, true)} type="url" maxLength={max} placeholder="https://" autoComplete="off" />
-            <small id={fieldId(key) + "-hint"}>{key === "projectURI" ? "Included in the creation transaction’s registration fields" : "Kept on this device · no upload or remote preview"}</small>
+            <input {...inputProps(key, true)} readOnly={Boolean(assetCID(draft.projectURI,"metadata.json"))} type="url" maxLength={max} placeholder="https://" autoComplete="off" />
+            <small id={fieldId(key) + "-hint"}>{key === "projectURI" ? "Included in the creation transaction’s registration fields" : "Paste a saved RMT Launch image URL to reuse it. For other links, upload the original file to include it in registration."}</small>
             {errorFor(key)}
           </div>)}
+          {assetCID(draft.artworkURL,"image.webp") && !assetCID(draft.projectURI,"metadata.json") &&
+            <button type="button" disabled={pending || artworkPending} onClick={async()=>{
+              setPending(true);
+              try {
+                const receipt = receiptForImage(draft.artworkURL);
+                await verifyArtworkReceipt(receipt,AbortSignal.timeout(20_000));
+                setDraft(previous=>({...previous,...receipt}));
+              } catch { setMessage("Could not verify that saved image. Try again or choose a file."); }
+              finally { setPending(false); }
+            }}>Use saved image URL</button>}
+          </details>
         </fieldset>
       </details>
       <details className="lpDraftTreasury lpCreatorDisclosure">
@@ -321,8 +338,9 @@ export function CreatorDraft({ executionTest, productionCreation }: {
       </details>
       {message && <p className="lpNotice lpError" role="alert">{message}</p>}
       <div className="lpDraftActions lpCreatorActions">
-        <button type="submit" className="lpButton" disabled={pending || !restored}>{pending ? "Reviewing draft…" : "Review draft"}</button>
+        <button type="submit" className="lpButton" disabled={pending || !restored || artworkPending}>{pending ? "Reviewing draft…" : "Review draft"}</button>
         <button type="button" className="lpButton lpSecondary" disabled={pending || !restored} onClick={() => {
+          void clearPendingArtwork(); setArtworkReset(value=>value+1);
           setDraft(emptyLaunchDraft);
           setTreasuryProof(undefined);
           setTreasuryMode("none");
@@ -332,7 +350,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
           setMessage("");
         }}>Clear draft</button>
       </div>
-      <p className="lpCreatorHelp">Saved in this browser. Review validates your launch fields and fee choices. Your description and artwork URL stay on this device.</p>
+      <p className="lpCreatorHelp">Saved in this browser. Review validates your launch fields and fee choices. Saved artwork is public. Your description stays on this device.</p>
     </form>;
   return <div className="lpColumns lpCreatorColumns">
     {draftPanel}

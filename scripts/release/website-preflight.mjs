@@ -112,7 +112,7 @@ export async function inspectLinuxArtifacts(workspace, python = "python3") {
   const archive = JSON.parse(execFileSync(python, [join(root, "scripts/release/website-archive.py"), zip], { encoding: "utf8", timeout: 60_000 }));
   const paths = JSON.parse(await readFile(join(app, ".next/server/app-paths-manifest.json"), "utf8"));
   for (const route of ["/page", "/create-token/page", "/my-launches/page", "/wallet/page", "/account/profile/page", "/u/[username]/page",
-    "/api/account/session/route", "/api/account/verify/route", "/api/launchpad/production-creation/route", "/launches/[token]/page"]) {
+    "/api/artwork/upload/route", "/api/artwork/[cid]/[file]/route", "/api/account/session/route", "/api/account/verify/route", "/api/launchpad/production-creation/route", "/launches/[token]/page"]) {
     assert.ok(paths[route], "Required route missing from Linux build: " + route);
   }
   return { functions, edge, staticFiles, archive, appRoutes: Object.keys(paths).sort(),

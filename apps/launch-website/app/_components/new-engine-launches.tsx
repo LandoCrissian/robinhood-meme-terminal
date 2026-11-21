@@ -63,7 +63,7 @@ export function NewEngineLaunches({ directory: received }: { directory: NewEngin
       const { registration } = launch;
       const lifecycle = describeCurveLifecycle(launch);
       return <article className="lpLaunchCard" key={`${registration.chainId}:${registration.factory}:${registration.token}`}>
-        <div className="lpTokenHeading"><TokenArtwork symbol={registration.symbol} /><div><h3><Link href={`/launches/${registration.token}`} prefetch={false}>{registration.name}</Link></h3><span className="lpCardSymbol">${registration.symbol}</span></div></div>
+        <div className="lpTokenHeading"><TokenArtwork symbol={registration.symbol} projectURI={registration.projectURI} /><div><h3><Link href={`/launches/${registration.token}`} prefetch={false}>{registration.name}</Link></h3><span className="lpCardSymbol">${registration.symbol}</span></div></div>
         <span className="lpPill lpLifecycle" data-stage={lifecycle.stage}>{lifecycle.label}</span>
         {(lifecycle.stage === "active" || lifecycle.stage === "graduating" || lifecycle.stage === "graduated") && <dl className="lpCardMetrics">
           {(lifecycle.stage === "active" || lifecycle.stage === "graduating") && <>

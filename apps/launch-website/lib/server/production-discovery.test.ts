@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { artworkOrigin, assetPath, artworkCID, receiptForImage, assetCID } from "../token-artwork";
 import { NewEngineLaunches } from "../../app/_components/new-engine-launches";
 import { configuredProductionDiscovery, createProductionDiscoveryHandler, parseProductionDiscovery, productionDirectory, readProductionDiscovery } from "./production-discovery";
 import { curveProductionDeployment, curveProductionPins, curveProductionProfile } from "./curve-production";
@@ -432,4 +433,15 @@ test("default gate rejection shares the existing one-per-minute server diagnosti
       { event: "production_discovery_degraded", reason: "profile_disabled" },
     ]);
   } finally { Date.now = actualNow; console.warn = actualWarn; }
+});
+
+test("the launch card derives its image exclusively from the indexed registration URI", () => {
+  const input = feed(), image = artworkOrigin + assetPath(artworkCID(new TextEncoder().encode("token art")),"image.webp");
+  input.launches[0].projectURI = receiptForImage(image).projectURI;
+  const cid = assetCID(input.launches[0].projectURI,"metadata.json")!;
+  const render = () => renderToStaticMarkup(createElement(NewEngineLaunches,{directory:productionDirectory(parseProductionDiscovery(input,undefined,now))}));
+  assert.ok(render().includes('src="' + assetPath(cid,"logo.webp") + '"'));
+  input.launches[0].projectURI = "https://another.example/image.webp";
+  assert.ok(!render().includes("/logo.webp"));
+  assert.ok(!render().includes("another.example"));
 });

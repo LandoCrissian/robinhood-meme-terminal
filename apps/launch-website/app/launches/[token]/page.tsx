@@ -7,6 +7,7 @@ import { configuredCurveFixture } from "../../../lib/server/curve-fixture";
 import { readFixtureLaunches } from "../../../lib/server/fixture-discovery";
 import { configuredProductionDiscovery, productionDirectory, readProductionDiscovery } from "../../../lib/server/production-discovery";
 import { LaunchProvenance } from "../../_components/launch-provenance";
+import { TokenArtwork } from "../../_components/token-artwork";
 import { CreatorLink } from "../../_components/creator-link";
 import { availableProductionFinancial } from "../../../lib/server/production-financial";
 import { ProductionLifecycleWallet } from "../../_components/production-lifecycle-wallet";
@@ -30,6 +31,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
       <p className="lpNotice" role="status">{data.status === "unavailable" ? "Registration cannot be verified right now. An unavailable read does not mean the token was never registered."
         : data.status === "stale" ? "Stale registration checkpoint. Current lifecycle and trading are unverified."
         : data.launches.length ? "Creation confirmed at the indexed checkpoint. Trading and claims remain separately gated." : "No registration at this verified checkpoint. A newly confirmed transaction may still be indexing."}</p>
+      {data.status === "ready" && data.launches[0] && <TokenArtwork symbol={data.launches[0].symbol} projectURI={data.launches[0].projectURI} />}
       <code className="lpAddress">{address}</code>
       {directory.status === "ready" && directory.launches[0] && <LaunchProvenance launch={directory.launches[0]} />}
       {directory.status === "stale" && directory.history[0] && <details className="lpFeedStatus">

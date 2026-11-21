@@ -50,7 +50,7 @@ jobs:
           set -euo pipefail
           pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json --test \
             lib/server/production-financial.test.ts lib/server/production-financial-boundary.test.ts lib/server/production-birth.test.ts lib/server/production-project-birth.test.ts lib/server/production-lifecycle.test.ts \
-            lib/server/production-trading-wallet.test.ts lib/server/production-nonce.test.ts lib/server/production-creation-recovery.test.ts lib/server/production-earnings.test.ts lib/server/production-claim-wallet.test.ts lib/server/production-claims-zero-poster.test.ts lib/server/nitro-zero-poster.test.ts \
+            lib/server/production-trading-wallet.test.ts lib/server/production-nonce.test.ts lib/server/production-creation-recovery.test.ts lib/server/production-creation-receipt.test.ts lib/server/token-artwork.test.ts lib/server/production-earnings.test.ts lib/server/production-claim-wallet.test.ts lib/server/production-claims-zero-poster.test.ts lib/server/nitro-zero-poster.test.ts \
             2>&1 | tee "$RUNNER_TEMP/task092-server-tests.log"
           node --test docs/evidence/rmt-task092/source/verify-source.test.mjs \
             docs/evidence/rmt-task092/governance/replay.test.mjs docs/evidence/rmt-task092/governance/final.test.mjs docs/evidence/rmt-task092/operations/replay.test.mjs \

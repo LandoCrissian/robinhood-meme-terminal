@@ -290,7 +290,7 @@ export function TestCreationWallet({ factory, draft, isCurrentDraft, treasuryInt
   const state = result?.status ?? "pending";
   return <section className="lpPanel lpForm" aria-label="Isolated test creation">
     <h2>Isolated test creation</h2>
-    <p>Local chain 31337 · synthetic ETH only. The transaction includes the reviewed token name, ticker, project URI and treasury terms. The factory sets the one-billion-token supply. Artwork and description stay in this browser.</p>
+    <p>Local chain 31337 · synthetic ETH only. The transaction includes the reviewed token name, ticker, project URI and treasury terms. The factory sets the one-billion-token supply. The project URI can reference saved artwork. Your description stays in this browser.</p>
     {journal ? <>
       <p role="status">{state === "confirmed" ? "On-chain creation confirmed" : state === "reverted" ? "Creation reverted"
         : state === "unavailable" ? "Evidence unavailable" : "Transaction pending"}</p>

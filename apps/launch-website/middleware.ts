@@ -68,7 +68,8 @@ export function middleware(request: NextRequest) {
       (pathname === "/api/launchpad/test-mobile-review" && request.method === "POST"))) {
     return NextResponse.next({ headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } });
   }
-  if (pathname === "/api/launchpad/production-creation" && request.method === "POST") {
+  if (["GET","HEAD"].includes(request.method) && /^\/api\/artwork\/bafkrei[a-z2-7]{52}\/(?:metadata\.json|image\.webp|logo\.webp)$/.test(pathname)) return NextResponse.next();
+  if ((pathname === "/api/launchpad/production-creation" || pathname === "/api/artwork/upload") && request.method === "POST") {
     // A same-URL rewrite with response headers makes the Netlify adapter retain
     // this request's URL when dispatching to a reused Next server instance.
     return NextResponse.rewrite(request.nextUrl, { headers: { "Cache-Control": "private, no-store" } });

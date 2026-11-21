@@ -64,6 +64,6 @@ export function MyLaunches() {
         <Link className="lpButton lpSecondary" href="/account/profile" prefetch={false}>Edit creator profile</Link></div>
       <p className="lpInlineNotice">{stale ? "The registration checkpoint is stale or a page could not be refreshed. " : ""}Projects use recipient-aware indexed pages. Load more traverses all pages, retaining up to 100 projects per reading window. Refresh returns to the beginning. Historical V4/V6 tokens remain separate. Trading and fee claims remain disabled.</p>
     </>}
-    <section className="lpPanel lpForm" style={{ marginTop: 18 }}><h2>Your draft stays with you</h2><p>Unsubmitted token details and artwork remain saved in this browser. Recover submitted transactions using their original account and transaction hash.</p><Link className="lpBack" href="/create-token" prefetch={false}>Continue your token draft →</Link></section>
+    <section className="lpPanel lpForm" style={{ marginTop: 18 }}><h2>Your draft stays with you</h2><p>Unsubmitted token details stay in this browser. Images become public when you save artwork. Recover submitted transactions using their original account and transaction hash.</p><Link className="lpBack" href="/create-token" prefetch={false}>Continue your token draft →</Link></section>
   </>;
 }

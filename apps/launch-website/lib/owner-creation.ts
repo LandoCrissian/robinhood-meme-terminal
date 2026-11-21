@@ -1,3 +1,4 @@
+import { assetCID } from "./token-artwork";
 import { createSiweMessage } from "viem/siwe";
 
 // First production issuance. The published factory consumes each creator/intent pair once.
@@ -16,6 +17,6 @@ export function ownerReviewMessage(nonce: string, issuedAt: number) {
 export function isRmtCreation(fields: unknown, intentId: unknown) {
   if (!fields || typeof fields !== "object" || intentId !== rmtCreationIntent) return false;
   const draft = fields as Record<string, unknown>;
-  return draft.name === "RMT" && draft.symbol === "RMT" && draft.projectURI === ""
+  return draft.name === "RMT" && draft.symbol === "RMT" && (draft.projectURI === "" || Boolean(assetCID(draft.projectURI,"metadata.json")))
     && draft.treasury === "" && draft.treasuryShareBps === 0;
 }

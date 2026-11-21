@@ -11,6 +11,6 @@ export const config = {
   // Reuse the second Personal-plan rule; do not provision another rule/service.
   // Firestore transactions also enforce per-browser and account write budgets.
   path: ["/api/launchpad/production-creation", "/api/launchpad/production-lifecycle", "/api/launchpad/production-earnings", "/api/account/nonce", "/api/account/verify",
-    "/api/account/logout", "/api/account/profile", "/api/account/avatar"],
+    "/api/account/logout", "/api/account/profile", "/api/account/avatar", "/api/artwork/upload"],
   rateLimit: { windowSize: 60, windowLimit: 12, aggregateBy: ["ip", "domain"] },
 };

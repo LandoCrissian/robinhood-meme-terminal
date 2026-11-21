@@ -9,6 +9,6 @@ export const config = {
   path: ["/", "/api/launchpad/creation-review", "/api/launchpad/launches", "/api/launchpad/launches/:token",
     "/api/launchpad/new-engine", "/api/launchpad/new-engine/:token", "/launches/:token",
     "/u/:username", "/creator/:wallet", "/api/account/public/:username", "/api/account/creator/:wallet",
-    "/api/account/avatar/:wallet", "/api/account/session"],
+    "/api/account/avatar/:wallet", "/api/account/session", "/api/artwork/:cid/:file"],
   rateLimit: { windowSize: 60, windowLimit: 120, aggregateBy: ["ip", "domain"] },
 };

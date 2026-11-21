@@ -9,6 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@netlify/blobs": "11.1.6",
     "firebase-admin": "14.5.1",
     "next": "15.5.29",
     "react": "19.0.0",

@@ -1,6 +1,7 @@
 "use client";
 
 import { productionAccountLock } from "../../lib/production-wallet";
+import { assetCID } from "../../lib/token-artwork";
 import { isRmtCreation, ownerReviewLifetimeMs, ownerReviewMessage, rmtCreationIntent } from "../../lib/owner-creation";
 import { stringToHex, type Hex } from "viem";
 
@@ -210,8 +211,8 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
     setPrepared(undefined);
     setTreasuryAcknowledged(false);
     const generation = selection.current;
-    if (!isRmtCreation(draft, rmtCreationIntent)) {
-      setMessage("For this release, enter RMT for both name and symbol. Leave the project URI and treasury empty and the treasury share at zero.");
+    if (!assetCID(draft.projectURI,"metadata.json") || !isRmtCreation(draft, rmtCreationIntent)) {
+      setMessage("For this release, enter RMT for both name and symbol. Save the token image and leave the treasury empty with a zero treasury share.");
       return;
     }
     const { request, payouts, gasEstimate } = await prepare(draft, wallet.account, factory, login.signature);
@@ -319,7 +320,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
   const state = result?.status ?? "pending";
   return <section className="lpPanel lpForm" aria-label="Create on Robinhood Chain">
     <h2>Create on Robinhood Chain</h2>
-    <p>Robinhood Chain 4663 · real ETH. Review the live network fee in MetaMask before personally confirming. The transaction includes the reviewed token name, ticker, project URI and treasury terms. The factory sets the one-billion-token supply. Artwork and description stay in this browser.</p>
+    <p>Robinhood Chain 4663 · real ETH. Review the live network fee in MetaMask before personally confirming. The transaction includes the reviewed token name, ticker, project URI and treasury terms. The factory sets the one-billion-token supply. The registration includes the saved artwork metadata URI. Your description stays in this browser.</p>
     {journal ? <>
       <p role="status">{state === "confirmed" ? "On-chain creation confirmed" : state === "reverted" ? "Creation reverted"
         : state === "unavailable" ? "Evidence unavailable" : "Transaction pending"}</p>
