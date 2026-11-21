@@ -68,9 +68,14 @@ export function middleware(request: NextRequest) {
       (pathname === "/api/launchpad/test-mobile-review" && request.method === "POST"))) {
     return NextResponse.next({ headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } });
   }
+  if (pathname === "/api/launchpad/production-creation" && request.method === "POST") {
+    // A same-URL rewrite with response headers makes the Netlify adapter retain
+    // this request's URL when dispatching to a reused Next server instance.
+    return NextResponse.rewrite(request.nextUrl, { headers: { "Cache-Control": "private, no-store" } });
+  }
   // Each local-only handler repeats its full manifest, host and origin checks.
   if (((pathname === "/api/launchpad/test-creation" || pathname === "/api/launchpad/test-lifecycle") && request.method === "POST") ||
-      (["/api/launchpad/production-creation", "/api/launchpad/production-lifecycle"].includes(pathname) && request.method === "POST") ||
+      (pathname === "/api/launchpad/production-lifecycle" && request.method === "POST") ||
       (/^\/api\/launchpad\/new-engine(?:\/0[xX][0-9A-Fa-f]{40})?$/.test(pathname) &&
         (request.method === "GET" || request.method === "HEAD"))) return NextResponse.next();
   if (request.method === "POST" && pathname === creationReviewPath) return NextResponse.next();
