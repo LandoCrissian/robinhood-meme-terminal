@@ -36,6 +36,16 @@ test("production curve adapter prepares genuine 4663 calldata, exact 2 ETH gross
   f.knobs.request = r.request; f.knobs.mined = true;
   assert.equal((await verifyProductionLifecycle(f.context(), r.request, f.p.f.txHash, f.activity)).status, "confirmed");
 }));
+test("indicative sell quotes enforce the same one-percent fee as preparation", async () => withFixture(async f => {
+  const url = "https://www.rmtlaunch.fun/api/launchpad/production-lifecycle";
+  const quote = async () => (await handleProductionLifecycle(new Request(url, {
+    method: "POST", headers: { Origin: new URL(url).origin, "Content-Type": "application/json" },
+    body: JSON.stringify({ action: "quote", token: f.p.f.token, side: "sell", amountWei: "1000" }),
+  }), { configured: (() => ({ approvalBinding: f.context().approvalBinding })) as any, resolve: (async () => f.context()) as any })).json();
+  assert.equal((await quote()).outputWei, "990");
+  f.knobs.wrongSellFee = true;
+  assert.deepEqual(await quote(), { status: "unavailable" });
+}));
 test("atomic final buy requires full target and both indexed settlement events", async()=>withFixture(async f=>{
   const early=await prepareProductionLifecycle(f.context(),f.p.f.token,f.p.f.creator,"buy-graduate","100000000000",50);
   assert.equal(early.status,"invalid");

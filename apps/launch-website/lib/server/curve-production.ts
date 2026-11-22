@@ -1,4 +1,4 @@
-import { assetCID } from "../token-artwork";
+import { assetCID, boundedBytes } from "../token-artwork";
 import { createHash } from "node:crypto";
 import { setTimeout as wait } from "node:timers/promises";
 import { createPublicClient, encodeFunctionData, getAddress, http, keccak256, parseAbi, parseAbiItem, parseEventLogs, toHex, zeroAddress, type Address, type Hex } from "viem";
@@ -106,16 +106,40 @@ const views = parseAbi([
 const createAbi = parseAbi([testCreationSignature]);
 const publishedEvent = parseAbiItem("event FactoryPublished(uint32 indexed version,address indexed factory,bytes32 runtimeHash)");
 const releaseReadSlots = new Map<string, number>();
+export async function verifiedReleaseBatch(response: Response, ids: number[]) {
+  if (!response.ok) return response;
+  const result = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(await boundedBytes(response.body, 2 * 1024 * 1024)));
+  // Pocket can unwrap a single reply. Verify the ID even in that case.
+  const replies = Array.isArray(result) ? result : [result];
+  if (!ids.length || ids.length > 4 || new Set(ids).size !== ids.length || replies.length !== ids.length
+      || replies.some(row => !row || row.jsonrpc !== "2.0" || !ids.includes(row.id)
+        || Object.hasOwn(row, "result") === Object.hasOwn(row, "error"))
+      || new Set(replies.map(row => row.id)).size !== ids.length) throw new Error("Incomplete or conflicting RPC batch");
+  return Response.json(replies);
+}
 const readRpc = (url: string, paceReleaseReads = false) => createPublicClient({ transport: http(url, {
+  // Each provider answers its own small JSON-RPC batches. All original
+  // per-method checks, canonical block pins and cross-provider comparisons apply.
+  batch: paceReleaseReads ? { batchSize: 4, wait: 12 } : false,
   timeout: paceReleaseReads ? 24_000 : 4_000, retryCount: 0, fetchOptions: { cache: "no-store", redirect: "error" },
   fetchFn: paceReleaseReads ? async (input, init) => {
-    const now = performance.now();
-    const start = Math.max(now, releaseReadSlots.get(url) ?? 0);
-    if (start - now > 19_000) throw new Error("Release reader is busy");
-    releaseReadSlots.set(url, start + 350);
-    await wait(Math.ceil(start - now), undefined, { signal: init?.signal ?? undefined });
-    const timeout = AbortSignal.timeout(4_000);
-    return fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
+    const batch = JSON.parse(String(init?.body)) as { id: number }[];
+    const deadline = performance.now() + 19_000;
+    for (let attempt = 0; ; attempt++) {
+      const now = performance.now(), start = Math.max(now, releaseReadSlots.get(url) ?? 0);
+      if (start > deadline) throw new Error("Release reader is busy");
+      // Count RPC methods, even when they share a single HTTP request.
+      releaseReadSlots.set(url, start + 350 * batch.length);
+      await wait(Math.ceil(start - now), undefined, { signal: init?.signal ?? undefined });
+      const timeout = AbortSignal.timeout(4_000);
+      const response = await fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
+      if (response.status !== 429 || attempt > 0) return verifiedReleaseBatch(response, batch.map(request => request.id));
+      const hint = response.headers.get("Retry-After");
+      const delayMs = hint === null ? 2000 : /^\d+$/.test(hint) ? Number(hint) * 1000 : Date.parse(hint) - Date.now();
+      if (!Number.isFinite(delayMs) || delayMs > 19_000) return response;
+      await response.body?.cancel();
+      releaseReadSlots.set(url, Math.max(releaseReadSlots.get(url) ?? 0, performance.now() + Math.max(1000, delayMs)));
+    }
   } : undefined,
 }) });
 // Exact, existing public providers. No browser-supplied RPC URL or public Anvil.
@@ -224,6 +248,37 @@ export function normalizeProductionCreationFields(fields: unknown) {
 // Unsigned preparation only. The separate, acceptance-gated wallet controller
 // owns explicit user confirmation and recoverable submission. Returning calldata
 // never signs or sends a transaction.
+type CreationCall = { account: Address; to: Address; data: Hex; value: bigint };
+const ownerDelegate = "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B";
+const ownerDelegateHash = "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0";
+
+export async function corroborateCreationWallet(readers: readonly [Reader, Reader], transaction: CreationCall,
+  anchor: { blockNumber: bigint; blockHash: Hex }, prior?: ProductionCreationRequest) {
+  const { account } = transaction;
+  const witnesses = await Promise.all(readers.map(async reader => {
+    const [nonce, pending, code, pendingCode, delegate, pendingDelegate, gas, balance, price, block, original] = await Promise.all([
+      reader.getTransactionCount({ address: account, blockNumber: anchor.blockNumber }),
+      reader.getTransactionCount({ address: account, blockTag: "pending" }),
+      reader.getCode({ address: account, blockNumber: anchor.blockNumber }), reader.getCode({ address: account, blockTag: "pending" }),
+      reader.getCode({ address: ownerDelegate, blockNumber: anchor.blockNumber }), reader.getCode({ address: ownerDelegate, blockTag: "pending" }),
+      reader.estimateGas({ ...transaction, blockNumber: anchor.blockNumber }),
+      reader.getBalance({ address: account, blockNumber: anchor.blockNumber }), reader.getGasPrice(),
+      reader.getBlock({ blockNumber: anchor.blockNumber }), prior && reader.getBlock({ blockNumber: BigInt(prior.blockNumber) }),
+    ]);
+    if (!Number.isSafeInteger(nonce) || nonce < 0 || nonce !== pending || !same(block.hash, anchor.blockHash)
+        || (prior && (!original || !same(original.hash, prior.blockHash))) || !code || !pendingCode || !same(code, pendingCode)
+        || !same(code, "0xef0100" + ownerDelegate.slice(2)) || !delegate || !pendingDelegate || !same(delegate, pendingDelegate)
+        || !same(keccak256(delegate), ownerDelegateHash)) throw new Error("Creator nonce, delegation or canonical block changed");
+    if (gas < 21000n || gas > 30000000n || price <= 0n || balance < transaction.value + gas * price)
+      throw new Error("Creation fee and estimated gas are not covered at the verified block");
+    return { nonce, gas, balance };
+  }));
+  const [first, second] = witnesses;
+  if (first.nonce !== second.nonce || first.gas !== second.gas || first.balance !== second.balance)
+    throw new Error("Creation wallet or gas witnesses disagree");
+  return { nonce: first.nonce, gas: first.gas };
+}
+
 export async function prepareCurveProductionCreation(release: CurveProductionRelease, fields: unknown, account: Address, intentId: Hex, prior?: ProductionCreationRequest) {
   const draft = normalizeProductionCreationFields(fields);
   if (!draft || !address(account) || !same(account, rmtCreationOwner) || !isRmtCreation(draft, intentId)) {
@@ -241,28 +296,14 @@ export async function prepareCurveProductionCreation(release: CurveProductionRel
   const transaction = { account: creator, to: curveProductionPins.factory[0], data, value: curveProductionDeployment.creationFeeWei } as const;
   const simulate = (reader: Reader) => reader.simulateContract({ address: transaction.to, account: creator, abi: createAbi,
     functionName: "create", args, value: transaction.value, blockNumber: anchor.blockNumber });
-  const [confirmedNonce, pendingNonce, gas, canonical, accountCode, delegateCode, primaryResult, corroboratedResult, peerNonce] = await Promise.all([
-    rpc.getTransactionCount({ address: creator, blockTag: "latest" }), rpc.getTransactionCount({ address: creator, blockTag: "pending" }),
-    rpc.estimateGas(transaction), rpc.getBlock({ blockNumber: anchor.blockNumber }),
-    rpc.getCode({ address: creator, blockNumber: anchor.blockNumber }),
-    rpc.getCode({ address: "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B", blockNumber: anchor.blockNumber }),
-    simulate(rpc), simulate(corroboratingRpc), corroboratingRpc.getTransactionCount({ address: creator, blockTag: "pending" }),
-  ]);
-  if (confirmedNonce !== pendingNonce || peerNonce !== pendingNonce || !same(canonical.hash, anchor.blockHash)
-      || primaryResult.result.some((address, index) => !same(address, corroboratedResult.result[index]))) {
-    throw new Error("Creator nonce, simulation or canonical block changed");
-  }
-  // First-owner activation is distinct from opening creation to every wallet.
-  if (!accountCode || !same(accountCode, "0xef010063c0c19a282a1b52b07dd5a65b58948a07dae32b")
-      || !delegateCode || !same(keccak256(delegateCode), "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0")) throw new Error("Unsupported creator account or changed delegation");
+  const [primaryResult, corroboratedResult] = await Promise.all([simulate(rpc), simulate(corroboratingRpc)]);
+  if (primaryResult.result.some((address, index) => !same(address, corroboratedResult.result[index])))
+    throw new Error("Creation simulations disagree");
+  const { nonce: confirmedNonce, gas } = await corroborateCreationWallet([rpc, corroboratingRpc], transaction, anchor, prior);
   if (prior && (prior.nonce !== toHex(confirmedNonce) || !same(prior.data, data))) throw new Error("Original creation identity changed");
   const request: ProductionCreationRequest = { from: creator, to: transaction.to, data, value: toHex(transaction.value), chainId: "0x1237",
     nonce: toHex(confirmedNonce), intentId, deadline: deadline.toString(),
     blockNumber: prior?.blockNumber ?? toHex(anchor.blockNumber), blockHash: prior?.blockHash ?? anchor.blockHash };
-  if (prior) {
-    const reviewedBlock = await rpc.getBlock({ blockNumber: BigInt(prior.blockNumber) });
-    if (!same(reviewedBlock.hash, prior.blockHash)) throw new Error("Original review was invalidated");
-  }
   return { status: "prepared", request, gasEstimate: toHex(gas), payouts: { operating: curveProductionDeployment.operating,
       reserve: curveProductionDeployment.reserve, treasuryKind }, metadata: { projectURI: draft.projectURI, description: "device-only", artwork: assetCID(draft.projectURI,"metadata.json") ? "registered-metadata" : "device-only" },
     finality: "L2_OBSERVED_L1_NOT_PROVEN_BY_THIS_PREPARATION" } as const;

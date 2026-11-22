@@ -79,6 +79,11 @@ export function productionCurveBuyQuote(amount: bigint, result: readonly [bigint
   return { output, fee, refund };
 }
 
+function productionCurveSellQuote([output, gross, fee]: readonly [bigint, bigint, bigint]) {
+  must(output > 0n && fee > 0n && output + fee === gross && fee === productionCurveFee(gross));
+  return { output, fee };
+}
+
 export async function productionDirectWallet(rpc: EarningsRpc, account: Address, blockNumber: bigint, pending: boolean) {
   const [rawCode, nonce] = await Promise.all([rpc.getCode({ address: account, blockNumber }), rpc.getTransactionCount({ address: account, blockNumber })]);
   must(rawCode === undefined || typeof rawCode === "string" && /^0x(?:[0-9a-f]{2})*$/i.test(rawCode));
@@ -191,7 +196,8 @@ async function indicativeQuote(context: ProductionTradingContext, token: Address
     output=productionCurveBuyQuote(amount,quotes[0],BigInt(state.soldWei),BigInt(state.targetSoldWei)).output;
   }else{
     const quotes=await Promise.all([context.rpc,context.corroboratingRpc].map(r=>r.readContract({address:state.curve,abi:curveAbi,functionName:"quoteSell",args:[amount],blockNumber:context.anchor.blockNumber})));
-    must(equal(quotes[0],quotes[1]) && quotes[0][0]>0n && quotes[0][0]+quotes[0][2]===quotes[0][1]); output=quotes[0][0];
+    must(equal(quotes[0],quotes[1]));
+    output=productionCurveSellQuote(quotes[0]).output;
   }
   return {status:"ready",outputWei:String(output),blockNumber:String(context.anchor.blockNumber),blockHash:context.anchor.blockHash};
 }
@@ -235,8 +241,8 @@ export async function prepareProductionLifecycle(context: ProductionTradingConte
   } else if (operation === "sell") {
     const quotes = await Promise.all([context.rpc, context.corroboratingRpc].map(rpc => rpc.readContract({ address: state.curve, abi: curveAbi,
       functionName: "quoteSell", args: [amount], blockNumber: at })));
-    must(equal(quotes[0], quotes[1])); const [out, gross, charge] = quotes[0];
-    must(out > 0n && charge > 0n && out + charge === gross && productionCurveFee(gross) === charge); output = out; fee = charge;
+    must(equal(quotes[0], quotes[1]));
+    ({ output, fee } = productionCurveSellQuote(quotes[0]));
   }
   const minimum = output * BigInt(10000 - slippageBps) / 10000n;
   if (isLifecycleTrade(tradeTermsOperation(operation)) && minimum === 0n) return { status: "invalid", reason: "amount-unavailable" };

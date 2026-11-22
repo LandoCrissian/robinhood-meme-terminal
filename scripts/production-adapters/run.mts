@@ -20,7 +20,7 @@ import type { EarningsClaimOperation } from "../../apps/launch-website/lib/earni
 import { curveProductionConfig } from "../../apps/indexer/src/curve-production-config";
 import { curveProductionSchemaSql, productionCurveScope, productionCurveCursor } from "../../apps/indexer/src/curve-production-store";
 import { lockIndexWriter } from "../../apps/indexer/src/index-store";
-import { productionActivitySchemaSql } from "../../apps/indexer/src/curve-production-activity";
+import { initializeProductionActivityStore, productionActivitySchemaSql } from "../../apps/indexer/src/curve-production-activity";
 import { createProductionCurveIndexer } from "../../apps/indexer/src/curve-production";
 
 const require = createRequire(new URL("../../apps/launch-website/package.json", import.meta.url));
@@ -151,9 +151,36 @@ async function getIndexer(path: string) {
   const response = await fetch(apiOrigin + path, { headers: { Authorization: "Bearer " + credential }, signal: AbortSignal.timeout(5000) });
   assert.equal(response.status, 200); return response.json();
 }
+// Independently aggregate the wallet's receipt-verified input/output amounts in
+// execution order and compare them with the production SQL market reader.
+const fills: { timestamp: number; native: bigint; tokens: bigint }[] = [];
+async function checkCandles(token: string, phase: string) {
+  const market = await mainIndexer.readMarket(readDatabase, { token: token.toLowerCase() as any, interval: 60 });
+  assert.equal(market.status, "ready");
+  if (market.status !== "ready") throw Error("Missing registered fork market");
+  assert.equal(market.phase, phase);
+  const expected = new Map<number, { time: number; count: number; open: number; high: number; low: number; close: number; volumeWei: string }>();
+  for (const fill of fills) {
+    const time = Math.floor(fill.timestamp / 60) * 60;
+    const price = Number(fill.native) / Number(fill.tokens);
+    const bucket = expected.get(time) ?? { time, count: 0, open: price, high: price, low: price, close: price, volumeWei: "0" };
+    bucket.count++; bucket.high = Math.max(bucket.high, price); bucket.low = Math.min(bucket.low, price);
+    bucket.close = price; bucket.volumeWei = String(BigInt(bucket.volumeWei) + fill.native);
+    expected.set(time, bucket);
+  }
+  assert.deepEqual(market.candles, [...expected.values()]);
+  (report.markets ??= []).push({ phase, soldWei: market.soldWei, backingWei: market.backingWei,
+    checkpoint: market.checkpoint, fills: fills.length, candles: market.candles });
+  return market;
+}
 async function persist() {
   await mainIndexer.syncOnce(); const state = mainIndexer.state();
-  assert.equal(state.status, "ready", JSON.stringify(state)); assert.ok(state.caughtUp && state.checkpoint); durablePoint = state.checkpoint;
+  assert.equal(state.status, "ready", JSON.stringify(state)); assert.ok(state.caughtUp && state.checkpoint);
+  await mainIndexer.syncActivity();
+  const activity = mainIndexer.activityState();
+  assert.equal(activity.status, "ready", JSON.stringify(activity));
+  assert.equal(activity.indexedThrough, state.checkpoint.blockNumber);
+  durablePoint = state.checkpoint;
 }
 async function trade(token: string, account: string, operation: ProductionLifecycleOperation, amountWei = "0") {
   const prepared = await prepareProductionLifecycle(await context(), token as any, account as any, operation, amountWei, operation.includes("buy") || operation.includes("sell") ? 50 : 0);
@@ -175,6 +202,11 @@ async function trade(token: string, account: string, operation: ProductionLifecy
   assert.equal(verified.status, "confirmed", `${operation}: ${JSON.stringify(verified)}`); assert.equal(verified.indexed, true);
   const recovered = await verifyProductionLifecycle(await context(), r, undefined, activity as any);
   assert.equal(recovered.status, "confirmed"); assert.equal(recovered.transactionHash, receipt.transactionHash);
+  if (["buy", "sell", "v4-buy", "v4-sell"].includes(operation)) {
+    const buy = operation.endsWith("buy"), output = BigInt(verified.outputWei!);
+    fills.push({ timestamp: Number((await client.getBlock({blockNumber: receipt.blockNumber})).timestamp),
+      native: buy ? BigInt(amountWei) - BigInt(verified.refundWei ?? 0) : output, tokens: buy ? output : BigInt(amountWei) });
+  }
   report.steps.push({ operation, token, request: r, quote: prepared.quote, receipt: { transactionHash: receipt.transactionHash, blockNumber: String(receipt.blockNumber), blockHash: receipt.blockHash }, verified,
     lostHashRecovery: { status: recovered.status, transactionHash: recovered.transactionHash, newTransactionSent: false }, ...(humanReview && { humanReview }) });
   return { prepared, receipt, verified };
@@ -230,6 +262,7 @@ try {
   // An explicit, wholly isolated empty checkpoint restore scopes the following
   // economic lifecycle. It is neither a production backup nor a complete old backfill.
   assert.equal((await database.query("SELECT count(*)::int AS count FROM rmt_curve_production_launches")).rows[0].count, 0);
+  await initializeProductionActivityStore(database, config);
   await database.query("DELETE FROM rmt_curve_production_checkpoints WHERE scope=$1", [scope]);
   await database.query("DELETE FROM rmt_curve_activity_checkpoints WHERE scope=$1", [scope]);
   await database.query("UPDATE rmt_curve_production_bindings SET next_block=$2 WHERE scope=$1", [scope, String(fork.number + 1n)]);
@@ -262,14 +295,16 @@ try {
   assert.equal((await fetch(apiOrigin + "/curve-launches")).status, 401); report.indexerAuthentication = "unauthenticated401; existingBearerpatternrequired";
   report.runtimePins = [];
   for (const [id, [address, hash]] of Object.entries(pins)) { const code = await client.getCode({ address }); assert.ok(code && keccak256(code) === hash, `Runtime ${id}`); report.runtimePins.push({ id, address, runtimeHash: hash }); }
-  // Test-only state fixture: publish the existing exact runtime in local storage. No governance method is called, signed or executed.
-  const mapping = keccak256(encodeAbiParameters([{ type: "uint32" }, { type: "uint256" }], [1, 10n]));
-  const mappingNext = toHex(BigInt(mapping) + 1n, { size: 32 });
-  await writeLocal("anvil_setStorageAt", [pins.directory[0], mapping, toHex(BigInt(pins.factory[0]), { size: 32 })]);
-  await writeLocal("anvil_setStorageAt", [pins.directory[0], mappingNext, pins.factory[1]]);
+  if (!args.latest) {
+    // The archived prepublication fixture predates the owner's publication.
+    const mapping = keccak256(encodeAbiParameters([{ type: "uint32" }, { type: "uint256" }], [1, 10n]));
+    const mappingNext = toHex(BigInt(mapping) + 1n, { size: 32 });
+    await writeLocal("anvil_setStorageAt", [pins.directory[0], mapping, toHex(BigInt(pins.factory[0]), { size: 32 })]);
+    await writeLocal("anvil_setStorageAt", [pins.directory[0], mappingNext, pins.factory[1]]);
+  }
   const published = await client.readContract({ address: pins.directory[0], abi: directoryAbi, functionName: "factories", args: [1] });
   assert.equal(published[0].toLowerCase(), pins.factory[0].toLowerCase()); assert.equal(published[1], pins.factory[1]);
-  report.publicationFixture = { kind: "local-storage-only", directory: pins.directory[0], mappingSlot: "10", governanceMethodCalled: false };
+  report.publicationFixture = { kind: args.latest ? "published-at-fork-anchor" : "local-storage-only", directory: pins.directory[0], governanceMethodCalled: false };
   const creator = privateKeyToAccount(generatePrivateKey()).address;
   await writeLocal("anvil_setBalance", [creator, toHex(100n * 10n ** 18n)]); await writeLocal("anvil_impersonateAccount", [creator]);
   // Move the local clock to this run's wall time; historical production headers remain untouched.
@@ -286,13 +321,18 @@ try {
     creationFee: { amountWei: curveProductionDeployment.creationFeeWei.toString(), refundWei: "0", recipient: curveProductionDeployment.operating, logIndex: created[0].logIndex + 1 } };
   registrations.set(c.token.toLowerCase(), registration); await mine(); await persist();
   report.steps.push({ operation: "create-synthetic-project", token: c.token, curve: c.curve, transactionHash: creation.transactionHash, registration });
+  await checkCandles(c.token, "curve");
   const first = await trade(c.token, creator, "buy", (2n * 10n ** 18n).toString());
+  const afterBuy = await checkCandles(c.token, "curve");
   const curveSell = (BigInt(first.verified.outputWei!) / 100n).toString();
   await trade(c.token, creator, "approve", curveSell); await trade(c.token, creator, "sell", curveSell);
+  const afterSell = await checkCandles(c.token, "curve");
+  assert.ok(BigInt(afterSell.soldWei) < BigInt(afterBuy.soldWei) && BigInt(afterSell.backingWei) < BigInt(afterBuy.backingWei));
   await claim(c.token, creator, "curve-claim");
   await claim(c.token, creator, "creation-fees");
   await trade(c.token, creator, "buy", (4n * 10n ** 18n).toString());
   await trade(c.token, creator, "graduate");
+  await checkCandles(c.token, "graduated");
   async function v4Round() {
     const buy = await trade(c.token, creator, "v4-buy", (10n ** 16n).toString());
     const tokenAmount = (BigInt(buy.verified.outputWei!) / 2n).toString();
@@ -314,6 +354,7 @@ try {
   mainIndexer = createProductionCurveIndexer(config, database, rpc as any, corroboratingRpc as any); await persist();
   const afterRestart = (await database.query("SELECT payload FROM rmt_curve_activity_events WHERE scope=$1 ORDER BY token,transaction_hash,log_index", [scope])).rows;
   assert.deepEqual(afterRestart, beforeRestart);
+  await checkCandles(c.token, "graduated");
   report.recovery = { restart: { identicalDurableEvents: true, rows: afterRestart.length, competingWriterRejected: true, originalLeaseReleasedAndReacquired: true } };
   const snapshot = await writeLocal("evm_snapshot");
   const orphan = await trade(c.token, creator, "v4-buy", (10n ** 15n).toString());
@@ -322,6 +363,8 @@ try {
   assert.equal(orphanRows.rows[0].count, 0);
   const orphanStatus = await verifyProductionLifecycle(await context(), orphan.prepared.request!, orphan.receipt.transactionHash, activity as any);
   assert.equal(orphanStatus.status, "unavailable");
+  fills.pop();
+  await checkCandles(c.token, "graduated");
   report.recovery.reorg = { transactionHash: orphan.receipt.transactionHash, orphanedRows: 0, verification: orphanStatus,
     canonicalCheckpoint: durablePoint, rebroadcast: false, custodyUnchanged: true };
   report.status = "passed";

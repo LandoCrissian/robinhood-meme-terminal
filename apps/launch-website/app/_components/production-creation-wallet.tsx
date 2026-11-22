@@ -251,6 +251,8 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
         throw new Error("Creation already recorded");
       }
       const current = await prepare(candidate, bound.account, factory, login.signature, request);
+      if (BigInt(current.gasEstimate) > BigInt(prepared.gasEstimate))
+        throw new Error("Estimated creation gas increased. Review the updated estimate before continuing.");
       if (!sameProductionCreationRequest(request, current.request) || !same(payouts.operating, current.payouts.operating)
           || !same(payouts.reserve, current.payouts.reserve) || payouts.treasuryKind !== current.payouts.treasuryKind) {
         throw new Error("Factory or reviewed terms changed");

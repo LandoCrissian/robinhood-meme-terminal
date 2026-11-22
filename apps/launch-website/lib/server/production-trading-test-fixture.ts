@@ -20,7 +20,7 @@ export function productionTradingFixture() {
   const p = productionClaimFixture(), key = { currency0: zeroAddress, currency1: p.f.token, fee: 3000, tickSpacing: 60, hooks: pins.guard[0] };
   const knobs = { phase: "curve" as "curve" | "eligible" | "graduated", request: null as ProductionLifecycleRequest | null,
     mined: false, reverted: false, reorg: false, missingIndex: false, wrongIndex: false, quoteConflict: false, wrongTarget: false,
-    nonceConflict: false, allowance: 0n, erc20Allowance: 0n, permitAllowance: 0n, peerOffline: false,
+    nonceConflict: false, wrongSellFee: false, allowance: 0n, erc20Allowance: 0n, permitAllowance: 0n, peerOffline: false,
     zeroPoster: false, positiveC8: false, missingC8: false, conflictingC8: false, zeroL1Estimate: 0n, zeroUnit: 0n,
     zeroBaseMismatch: false, zeroNativeDifferent: false, missingTransactionBase: false, missingGasInfo: false, advance: 0n, expired: false };
   const minedAt = p.reviewNumber + 1n;
@@ -66,7 +66,7 @@ export function productionTradingFixture() {
             virtualToken: launchTokenSupplyWei * 9n / 5n, poolId: await testV4PoolId(key), positionTokenId: 1n };
           if (Object.hasOwn(v, arg.functionName)) return v[arg.functionName];
           if (arg.functionName === "quoteBuy") { const q = buyQuote(arg.args[0]); return peer && knobs.quoteConflict ? [q[0] + 1n, ...q.slice(1)] : q; }
-          if (arg.functionName === "quoteSell") return [990n, 1000n, 10n];
+          if (arg.functionName === "quoteSell") return knobs.wrongSellFee ? [999n, 1000n, 1n] : [990n, 1000n, 10n];
         }
         if (same(arg.address, pins.engine[0])) {
           if (arg.functionName === "positions") return phase === "graduated" ? [1n, 1000n] : [0n, 0n];
