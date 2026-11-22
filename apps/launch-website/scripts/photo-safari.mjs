@@ -40,8 +40,12 @@ try {
       const sleep=ms=>new Promise(r=>setTimeout(r,ms));
       (async()=>{
         const deadline=Date.now()+20000;
-        const picker=document.querySelector("#token-logo-file");
-        while(picker?.disabled && Date.now()<deadline) await sleep(40);
+        let picker;
+        do {
+          picker=document.querySelector("#token-logo-file");
+          if(picker && !picker.disabled) break;
+          await sleep(40);
+        } while(Date.now()<deadline);
         if(!picker || picker.disabled) throw Error("File picker unavailable");
         const res=await fetch("/_next/static/photo-check/"+name);
         const blob=await res.blob();
