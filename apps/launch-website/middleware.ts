@@ -42,6 +42,12 @@ export function middleware(request: NextRequest) {
       "Cache-Control": "private, no-store", "Retry-After": String(budget.retryAfter),
     } });
   }
+  if (["GET","HEAD"].includes(request.method)) {
+    if (/^\/api\/launchpad\/market\/0x[0-9a-f]{40}$/i.test(pathname)) return NextResponse.next();
+    if (pathname === "/review/trading" && /^(?:[a-f0-9]{24}--eclectic-valkyrie-16cb92\.netlify\.app|127\.0\.0\.1:\d+)$/.test(request.headers.get("host") ?? "")) {
+      return NextResponse.next({ headers: { "Cache-Control": "private, no-store", "X-Robots-Tag": "noindex, nofollow" } });
+    }
+  }
   if (["GET","HEAD"].includes(request.method) && (pathname === "/share/default.png" ||
       /^\/share\/(?:u\/[a-z][a-z0-9_]{2,23}|(?:creator|launches)\/0x[0-9a-f]{40})\/[0-9a-f]{24}\.png$/.test(pathname))) return NextResponse.next();
   // The handler repeats all local manifest/origin/runtime checks. Hosted GET
