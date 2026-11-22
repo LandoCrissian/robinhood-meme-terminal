@@ -44,6 +44,7 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
   let failed = false;
   let failureInvalidatesEvidence = false;
   let caughtUp = false;
+  let activityBacklog = false;
   let busy = false;
   let revision = 0;
   const activity = createProductionActivityIndexer(config, writer, primary, archive);
@@ -145,7 +146,13 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
       caughtUp = BigInt(checkpoint.blockNumber) === safeHead;
       // Optional explicitly installed activity schema backfills independently.
       // Missing/invalid activity never makes creation-only evidence unavailable.
-      try { await activity.sync(checkpoint, safeHead); } catch { activity.invalidate(); }
+      activityBacklog = false;
+      try {
+        await activity.sync(checkpoint, safeHead);
+        activityBacklog = !activity.ready(checkpoint);
+      } catch {
+        activity.invalidate();
+      }
       verifiedAt = now();
       failed = false;
       failureInvalidatesEvidence = false;
@@ -165,7 +172,7 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     const fresh = verifiedAt !== null && currentTime >= verifiedAt && currentTime - verifiedAt <= maximumCheckpointAgeMs
       && Number.isFinite(blockTime) && blockTime <= currentTime + 30_000 && currentTime - blockTime <= maximumCheckpointAgeMs;
     return { status: busy || !checkpoint || failureInvalidatesEvidence || !caughtUp ? "unavailable"
-      : failed || !fresh ? "stale" : "ready", checkpoint, revision, verifiedAt, caughtUp };
+      : failed || !fresh ? "stale" : "ready", checkpoint, revision, verifiedAt, caughtUp, activityBacklog };
   }
 
   async function read(db: Database, query: NonNullable<ReturnType<typeof parseProductionCurveQuery>>) {

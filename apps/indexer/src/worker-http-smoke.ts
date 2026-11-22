@@ -131,6 +131,14 @@ try {
   const missingActivity = await fetch(url + activityPath, { headers: auth });
   assert.equal(missingActivity.status, 503);
   assert.equal((await missingActivity.json() as { status: string }).status, "unavailable");
+  const marketPath = "/curve-market/" + address("5");
+  assert.equal((await fetch(url + marketPath)).status, 401);
+  assert.equal((await fetch(url + marketPath, { headers: { Authorization: "Bearer invalid" } })).status, 401);
+  assert.equal((await fetch(url + marketPath, { method: "POST", headers: auth })).status, 405);
+  assert.equal((await fetch(url + marketPath + "?interval=17", { headers: auth })).status, 400);
+  const missingMarket = await fetch(url + marketPath + "?interval=60", { headers: auth });
+  assert.equal(missingMarket.status, 503);
+  assert.equal((await missingMarket.json() as { status: string }).status, "unavailable");
   const undeployed = await fetch(url + "/curve-launches", { headers: auth });
   assert.equal(undeployed.status, 404);
   assert.equal((await undeployed.json() as { status: string }).status, "undeployed");

@@ -164,13 +164,29 @@ const pool = new Pool({
 pool.on("error", (error) => console.error(JSON.stringify({ event: "indexer_read_pool_error", errorType: errorType(error) })));
 const writer = new Client({ ...database, connectionTimeoutMillis: 10_000, keepAlive: true });
 const historyReadBudget = createHistoryReadBudget();
+// The public read providers also serve interactive traffic. Space discovery
+// requests independently per provider, including retries during catch-up.
+function discoveryReader(url: string) {
+  let nextRead = 0;
+  return createPublicClient({ chain, transport: http(url, {
+    retryCount: 3, retryDelay: 1_000, timeout: 12_000,
+    async onFetchRequest(request) {
+      const now = performance.now();
+      const start = Math.max(now, nextRead);
+      nextRead = start + 350;
+      await wait(Math.ceil(start - now), undefined, { signal: request.signal });
+    },
+  }) });
+}
+
 const productionCurveConfigured = Boolean(process.env.RMT_CURVE_PRODUCTION_BINDING);
 let productionCurve: ReturnType<typeof createProductionCurveIndexer> | null = null;
 if (productionCurveConfigured) {
   try {
     const production = curveProductionConfig(process.env);
     if (!production || !config.readToken) throw new Error("Production curve read authentication is required");
-    productionCurve = createProductionCurveIndexer(production, writer, rpc, distinctArchive);
+    productionCurve = createProductionCurveIndexer(production, writer, discoveryReader(config.rpcUrl),
+      distinctArchive ? discoveryReader(config.archiveRpcUrl) : undefined);
   } catch (error) {
     console.error(JSON.stringify({ event: "production_curve_config_unavailable", errorType: errorType(error) }));
   }
@@ -1715,7 +1731,17 @@ async function run() {
       }
       if (!stopping && productionCurve && lastFailureKind !== "local") {
         try {
-          await productionCurve.syncOnce();
+          // Drain contiguous, verified registration ranges after downtime. Give
+          // the historical feed a turn between batches and keep its error backoff.
+          for (let range = 0; range < 16 && !stopping; range++) {
+            await productionCurve.syncOnce();
+            const state = productionCurve.state();
+            if ((state.caughtUp && !state.activityBacklog) || lastFailureKind !== null) break;
+            if (range === 15) {
+              console.info(JSON.stringify({ event: "curve_backfill_progress", toBlock: state.checkpoint?.blockNumber }));
+              delayMs = Math.min(delayMs, 1_000);
+            }
+          }
         } catch (error) {
           console.error(JSON.stringify({ event: "production_curve_sync_unavailable", errorType: errorType(error) }));
         }

@@ -43,7 +43,7 @@ async function Members({ after }: { after?: string | string[] }) {
           <ProfileAvatar name={displayName || username} url={avatarUrl} size={52} />
           <span className="lpMemberName"><strong>{displayName || username}</strong><small>@{username}</small></span>
           <span aria-hidden="true" className="lpArrow">→</span></Link></li>)}</ul>
-        : <p className="lpNotice">{after ? "You’ve reached the end of the directory." : "Public creator profiles will appear here when people choose a username."}</p>}
+        : <p className="lpNotice">{after ? "You’ve reached the end of the directory." : "Public profiles will appear here when people choose a username."}</p>}
       {capturedAt && <small>Public profile snapshot · {capturedAt}</small>}
       <div className="lpActions">{after && <Link className="lpUtility" href="/people" prefetch={false}>First page</Link>}
         {next && <Link className="lpUtility" href={"/people?after="+next} prefetch={false}>Next page →</Link>}</div>
@@ -54,6 +54,6 @@ async function Members({ after }: { after?: string | string[] }) {
 }
 export default async function PeoplePage({ searchParams }: { searchParams: Promise<{ after?: string | string[] }> }) {
   const {after}=await searchParams;
-  return <div className="lpReading"><header className="lpPageHeading"><div><h1>People</h1><p>Browse creators by username, A–Z.</p></div>
+  return <div className="lpReading"><header className="lpPageHeading"><div><h1>People</h1><p>Browse profiles by username, A–Z.</p></div>
     <Link className="lpUtility" href="/account/profile" prefetch={false}>Your profile</Link></header><Members after={after}/></div>;
 }

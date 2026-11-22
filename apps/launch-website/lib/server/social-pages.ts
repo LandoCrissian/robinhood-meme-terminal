@@ -66,16 +66,16 @@ export const readShareToken = cache(async (address: string) => {
   return result.status === "ready" ? result.launches[0] ?? null : null;
 });
 
-export function shareImagePath(card: ShareCard) {
-  const version = createHash("sha256").update(JSON.stringify(["rmt-card-v1",card.kind,card.name,card.identity,card.path,card.artwork])).digest("hex").slice(0,24);
+export function shareImagePath(card: ShareCard, versionTag = card.kind === "creator" ? "rmt-profile-v2" : "rmt-card-v1") {
+  const version = createHash("sha256").update(JSON.stringify([versionTag,card.kind,card.name,card.identity,card.path,card.artwork])).digest("hex").slice(0,24);
   return "/share" + card.path + "/" + version + ".png";
 }
 
 export async function creatorMetadata(kind: "u" | "creator", key: string) {
   const found = await readCreator(kind, key);
-  if (found.status !== "ready") return socialMetadata("/" + kind + "/" + key, "Creator profile | RMT Launch", "Discover creators building on Robinhood Chain.");
+  if (found.status !== "ready") return socialMetadata("/" + kind + "/" + key, "Profile | RMT Launch", "Discover people on Robinhood Chain.");
   const p = found.profile, card = creatorCard(p);
-  return socialMetadata(card.path, card.name + " | RMT Launch", p.bio || "Explore " + card.identity + "’s creator profile and projects on Robinhood Chain.",
+  return socialMetadata(card.path, card.name + " | RMT Launch", p.bio || "Explore " + card.identity + "’s profile on RMT Launch.",
     shareImagePath(card), card.name + " · " + card.identity + " on RMT Launch", true, reviewOrigin(await headers()) ?? undefined);
 }
 

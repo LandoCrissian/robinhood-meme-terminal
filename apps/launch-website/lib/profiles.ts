@@ -54,9 +54,12 @@ export function profilePublicPath(profile: Pick<PublicCreatorProfile, "username"
 export function profileShareIntent(profile: Pick<PublicCreatorProfile, "username" | "walletAddress"> & { displayName?: string }, own = false) {
   const path = profilePublicPath(profile);
   const display = profile.displayName?.trim();
-  const name = (display && !/(?:https?:\/\/|www\.)/i.test(display) && display) || (profile.username ? "@" + profile.username : "this creator");
-  const text = own ? "I’m building on Robinhood Chain. Here’s my creator profile on RMT Launch."
-    : "Explore " + name + "’s creator profile on RMT Launch.";
+  // An editable composer gets one platform mention and one canonical link.
+  // Use a validated username when the display name contains a link or handle.
+  const name = display && /^[\p{L}\p{M}\p{N} &'’–-]+$/u.test(display) ? display : profile.username;
+  const text = own ? "Find me on @RMTLaunch. Here’s my profile on Robinhood Chain."
+    : name ? "Take a look at " + name + "’s profile on @RMTLaunch."
+    : "Explore this community profile on @RMTLaunch.";
   const params = new URLSearchParams({ url: "https://www.rmtlaunch.fun" + path, text });
   return "https://twitter.com/intent/tweet?" + params.toString();
 }

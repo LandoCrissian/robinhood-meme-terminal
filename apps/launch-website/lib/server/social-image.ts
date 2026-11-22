@@ -32,7 +32,7 @@ export async function renderShareImage(card: ShareCard, portrait: Buffer | null)
   const dir = await assetDirectory(), font = join(dir, "BarlowSemiCondensed-Bold.ttf");
   const brand = await readFile(join(dir, "rmt-mark.png"));
   const text = (value: string, size: number, color: string, width: number) => lettering(value, size, color, width, font);
-  const category = card.kind === "creator" ? "CREATOR PROFILE" : card.kind === "token" ? "TOKEN PROFILE" : "TOKEN LAUNCHPAD";
+  const category = card.kind === "creator" ? "PROFILE" : card.kind === "token" ? "TOKEN PROFILE" : "TOKEN LAUNCHPAD";
   const hero = card.name === card.identity && card.kind === "creator" ? card.name.replace(/^@/, "") : card.name;
   const [wordmark, label, name, handle, domain, chain, mark] = await Promise.all([
     text("RMT LAUNCH", 35, "#f3f8ee", 245), text(category, 25, "#b6f655", 420),

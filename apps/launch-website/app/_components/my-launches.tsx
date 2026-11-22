@@ -61,7 +61,7 @@ export function MyLaunches() {
       {loading ? <div className="lpSkeleton" role="status">Loading verified creator launches…</div> : <NewEngineLaunches directory={stale && directory.status==="ready" ? {status:"stale",history:directory.launches.map(({registration})=>({registration,state:"unknown"}))} : directory} onRetry={()=>setRevision(value=>value+1)} />}
       <div className="lpDraftActions">{!stale && directory.status==="ready" && <button type="button" className="lpButton lpSecondary" disabled={loading} onClick={() => setRevision((value) => value + 1)}>Refresh launches</button>}
         {cursor && <button type="button" className="lpButton lpSecondary" disabled={loading} onClick={() => void more()}>{directory.status === "ready" && directory.launches.length >= 100 ? "Next project window" : "Load more projects"}</button>}
-        <Link className="lpButton lpSecondary" href="/account/profile" prefetch={false}>Edit creator profile</Link></div>
+        <Link className="lpButton lpSecondary" href="/account/profile" prefetch={false}>Edit profile</Link></div>
       <details className="lpDisclosure"><summary>Data status</summary><p>{stale ? "The last records could not be refreshed." : "Projects are matched to the creator address in their registration."} Load more to browse older registrations.</p></details>
     </>}
     <section className="lpPanel lpForm" style={{ marginTop: 18 }}><h2>Token draft</h2><p>Continue a saved draft in this browser. Artwork becomes public when you save the image.</p><Link className="lpBack" href="/create-token" prefetch={false}>Continue your token draft →</Link></section>

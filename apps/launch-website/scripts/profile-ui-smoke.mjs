@@ -99,7 +99,7 @@ try {
       const goto = async (path) => { const response = await page.goto(new URL(path, site).href); assert.equal(response.status(), 200, path); };
       const status = (pattern) => page.getByRole("status").filter({ hasText: pattern }).first().waitFor();
       const profileIdle = () => page.waitForFunction(() => {
-        const save = document.querySelector('form[aria-label="Edit creator profile"] button[type="submit"]');
+        const save = document.querySelector('form[aria-label="Edit profile"] button[type="submit"]');
         const upload = document.querySelector('input[type="file"]');
         return save instanceof HTMLButtonElement && !save.disabled && upload instanceof HTMLInputElement && !upload.disabled;
       });
@@ -271,7 +271,7 @@ try {
       await status(/Avatar updated/);
       assert.equal((await context.request.get(new URL(originalAvatar, site).href)).status(), 404);
       await screenshot("profile-portrait"); await page.setViewportSize({ width: 844, height: 390 }); await screenshot("profile-landscape");
-      const callsBeforeReload = walletCalls.length; await page.reload(); await page.getByRole("form", { name: "Edit creator profile" }).waitFor();
+      const callsBeforeReload = walletCalls.length; await page.reload(); await page.getByRole("form", { name: "Edit profile" }).waitFor();
       assert.equal(walletCalls.length, callsBeforeReload); assert.equal(await page.evaluate(() => window.rmtDiscoveryCount), 0); assert.equal(await page.getByLabel("Username", { exact: true }).inputValue(), username);
       assert.equal(await page.getByLabel("Reduce motion", { exact: true }).isChecked(), true);
       for (const width of (name==="webkit" ? [320,390] : [1440])) {
@@ -288,7 +288,7 @@ try {
       const intent = new URL(await page.getByRole("link", { name: "Share my profile" }).getAttribute("href"));
       assert.equal(intent.origin + intent.pathname, "https://twitter.com/intent/tweet");
       assert.equal(intent.searchParams.get("url"), "https://www.rmtlaunch.fun/u/" + username);
-      assert.match(intent.searchParams.get("text"),/^I’m building/);
+      assert.match(intent.searchParams.get("text"),/^Find me on @RMTLaunch/);
       assert.equal(intent.searchParams.getAll("url").length,1);
       await screenshot("signed-in-share");
       // Capture the actual browser popup handoff without logging in to or posting on X.
