@@ -1,3 +1,4 @@
+import { reviewLaunches } from "../lib/server/public-review";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { NewEngineLaunches } from "./_components/new-engine-launches";
@@ -10,25 +11,27 @@ export const dynamic = "force-dynamic";
 
 async function NewEngineSection() {
   const requestHeaders = await headers();
+  const review = await reviewLaunches();
+  if (review) return <NewEngineLaunches directory={review} />;
   const fixture = configuredCurveFixture(requestHeaders);
   if (fixture) return <FixtureLaunches directory={await readFixtureLaunches(fixture)} />;
   if (!configuredProductionDiscovery(requestHeaders)) return <NewEngineLaunches directory={{ status: "prelaunch" }} />;
   const data = await readProductionDiscovery();
   return <>
-    {data.status !== "unavailable" && <details className="lpFeedStatus"><summary>{data.status === "stale" ? "Stale creation records" : "Creation feed status"}</summary>
-      <p>Checkpoint {data.checkpoint.blockNumber} · {data.checkpoint.timestamp}. Current curve activity and Ethereum L1 finality are unverified.</p></details>}
     <NewEngineLaunches directory={productionDirectory(data)} />
+    {data.status !== "unavailable" && <details className="lpFeedStatus"><summary>Data status</summary>
+      <p>Checkpoint {data.checkpoint.blockNumber} · {data.checkpoint.timestamp}. Current curve activity and Ethereum L1 finality are unverified.</p></details>}
   </>;
 }
 
 export default async function Home() {
   const fixture = configuredCurveFixture(await headers());
   return <>
-    <header className="lpDiscoveryHeading"><h1>Launches</h1><span className="lpDiscoveryChain">{fixture ? "Anvil 31337 · synthetic test only" : "Robinhood Chain · read-only"}</span></header>
-    <div className="lpActions">
-      <Link className="lpButton lpSecondary" href="/account/profile" prefetch={false}>Your profile</Link>
+    <header className="lpDiscoveryHeading"><h1>Launches</h1><span className="lpDiscoveryChain">{fixture ? "Anvil 31337 · synthetic test only" : "Robinhood Chain"}</span></header>
+    <div className="lpHomeIntro"><p>Explore tokens created on Robinhood Chain.</p><div className="lpActions">
+      <Link className="lpUtility" href="/people" prefetch={false}>Browse people →</Link>
       <Link className="lpButton lpSecondary" href="/create-token" prefetch={false}>Prepare a token draft</Link>
-    </div>
+    </div></div>
     <NewEngineSection />
   </>;
 }

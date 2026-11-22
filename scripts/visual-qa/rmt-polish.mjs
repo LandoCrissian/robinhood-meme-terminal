@@ -201,7 +201,7 @@ async function startFixtureHarness() {
       build.onResolve({ filter: /^next\/link$/ }, () => ({ path: "next-link", namespace: "qa" }));
       build.onLoad({ filter: /.*/, namespace: "qa" }, () => ({ contents: `import React from 'react'; export default function Link({children, prefetch, ...props}) { return React.createElement('a', props, children); }`, loader: "js", resolveDir: join(dependencies, "apps/launch-website") }));
     } }], define: { "process.env.NODE_ENV": '"production"' } });
-  const cssFiles = ["styles/styles.css", "styles/mobile-polish.css", "styles/desktop-polish.css", "styles/launch-theme.css", "styles/token-detail.css", "launchpad.css", "profile-refinement.css", "creator-polish.css"];
+  const cssFiles = ["styles/styles.css", "styles/mobile-polish.css", "styles/desktop-polish.css", "styles/launch-theme.css", "styles/token-detail.css", "launchpad.css", "profile-refinement.css", "creator-polish.css", "product.css"];
   const css = (await Promise.all(cssFiles.map(path => readFile(join(root, "apps/launch-website/app", path), "utf8")))).join("\n");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Synthetic RMT polish QA harness</title><style>${css}</style></head><body><div id="root"></div><script src="/harness.js"></script></body></html>`;
   const server = createServer((request, response) => {
@@ -370,10 +370,10 @@ async function checkAfter(browser, engine, layout, harness) {
   await page.goto(site.href, { waitUntil: "networkidle" });
   await page.getByRole("heading", { name: "Launches", exact: true }).waitFor();
   const navigation = page.getByRole("navigation", { name: "Launchpad navigation", exact: true });
-  assert.deepEqual(await navigation.getByRole("link").allTextContents(), ["Launches", "Create", "My Launches"]);
+  assert.deepEqual(await navigation.getByRole("link").allTextContents(), ["Launches", "People", "Create", "My Launches"]);
   assert.equal(await navigation.getByRole("link", { name: "Wallet", exact: true }).count(), 0);
   assert.equal(await page.locator(".lpLaunchSteps, .lpOverview").count(), 0);
-  assert.equal(await page.locator('a[href="/create-token"]:visible').count(), 1, "Homepage has one prominent Create action");
+  assert.equal(await page.locator('main a[href="/create-token"]:visible').count(), 1, "Homepage has one prominent Create action");
   assert.equal(await page.locator("details.lpArchive, .lpArchiveRecord").count(), 0, "The homepage must not render historical registrations");
   assert.equal(await page.getByText(/Historical registrations|archive below/i).count(), 0);
   await page.getByRole("heading", { name: "Launches coming soon", exact: true }).waitFor();
@@ -387,7 +387,7 @@ async function checkAfter(browser, engine, layout, harness) {
     await page.locator(".launchpad").evaluate((element, theme) => { element.dataset.theme = theme; }, theme);
     await settleTheme(page, theme);
     appThemes.push({ theme, scope: "CSS-only local DOM attribute; no saved preference or authentication change",
-      contrast: await contrastEvidence(page, [".lpHeader > nav a", ".lpAccountLabel", ".lpNetwork", ".lpDiscoveryHeading h1", ".lpDiscoveryChain", ".lpDiscoveryCount", ".lpEmpty h2", ".lpEmpty p"]) });
+      contrast: await contrastEvidence(page, [".lpHeader > nav a", ".lpAccountLabel", ".lpDiscoveryHeading h1", ".lpDiscoveryChain", ".lpEmpty h2", ".lpEmpty p"]) });
     captures.push(await screenshot(page, `after-${engine}-${layout.name}-launches-${theme}`));
   }
   await page.locator(".launchpad").evaluate(element => { element.dataset.theme = "dark"; });

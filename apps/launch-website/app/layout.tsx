@@ -15,6 +15,7 @@ import { AccountProvider } from "./_components/account-provider";
 import "./profile-refinement.css";
 import "./creator-polish.css";
 import "./earnings.css";
+import "./product.css";
 
 export const metadata: Metadata = {
   title: "RMT Launch | Token Launchpad",

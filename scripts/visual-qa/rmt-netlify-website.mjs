@@ -156,7 +156,11 @@ const unverifiedTokenData = await request(unverifiedTokenApi);
 assert.ok([404, 503].includes(unverifiedTokenData.status));
 const missingData = await readPublicJson(unverifiedTokenData);
 assert.equal(missingData.launches.length, 0);
-assert.equal(missingData.status === "unavailable", unverifiedTokenData.status === 503);
+assert.equal(["stale","unavailable"].includes(missingData.status), unverifiedTokenData.status === 503);
+if (missingData.status === "stale") {
+  assert.ok(missingData.checkpoint?.blockHash);
+  assert.ok(Date.parse(missingData.checkpoint.timestamp) < Date.now());
+}
 const unverifiedTokenDataHead = await request(unverifiedTokenApi, { method: "HEAD" });
 assert.ok([404, 503].includes(unverifiedTokenDataHead.status));
 assert.equal(await unverifiedTokenDataHead.text(), "");
@@ -273,7 +277,8 @@ try {
     const operationalControls = /connect (?:test (?:trading )?)?wallet|browser wallet|open (?:inside|in) (?:a |your )?wallet|switch to|confirm|review creation|review trade|review (?:test |exact ).*(?:buy|sell|approval|fee)|claim fees|recover wallet request/i;
     async function verifyReadOnly(heading, draftForm = false) {
       await main.getByRole("heading", { name: heading, exact: true }).waitFor();
-      await page.getByText("Read-only", { exact: true }).first().waitFor();
+      assert.equal(await nav.getByRole("link", { name:"Create",exact:true }).count(),1);
+      assert.equal(await page.locator(".lpNetwork").count(),0);
       assert.equal(await main.getByRole("button", { name: operationalControls }).count(), 0);
       assert.equal(await page.getByRole("link", { name: operationalControls }).count(), 0);
       assert.equal(await page.locator("form").count(), Number(draftForm));
@@ -325,6 +330,7 @@ try {
       assert.equal(await main.locator("select").count(), 0);
       await main.locator(".lpCreatorMetadata > summary").click();
       await main.getByLabel("Project description").fill("This sample text stays on the device.");
+      await main.getByText("Advanced URLs", { exact:true }).click();
       await main.getByLabel("Project or metadata URL").fill(draftFields.projectURI);
       await main.getByLabel("Artwork URL").fill("https://example.test/artwork.png");
       try {

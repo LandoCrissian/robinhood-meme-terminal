@@ -138,9 +138,10 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
     await page.getByLabel("Token name", { exact: true }).fill(name); await page.getByLabel("Ticker", { exact: true }).fill(symbol);
     const fixedSupply = page.getByLabel("Fixed supply", { exact: true });
     assert.equal(await fixedSupply.inputValue(), "1,000,000,000 tokens"); assert.equal(await fixedSupply.getAttribute("readonly"), "");
-    const details = page.locator("details.lpCreatorMetadata"); if (!await details.evaluate(el => el.open)) await details.locator("summary").click();
+    const details = page.locator("details.lpCreatorMetadata"); if (!await details.evaluate(el => el.open)) await details.locator(":scope > summary").click();
+    if (!await page.getByLabel("Project or metadata URL", { exact: true }).isVisible()) await page.getByText("Advanced URLs", { exact: true }).click();
     await page.getByLabel("Project or metadata URL", { exact: true }).fill("https://example.test/" + symbol.toLowerCase());
-    const settings = page.locator("details.lpDraftTreasury"); if (!await settings.evaluate(el => el.open)) await settings.locator("summary").click();
+    const settings = page.locator("details.lpDraftTreasury"); if (!await settings.evaluate(el => el.open)) await settings.locator(":scope > summary").click();
     return { name, symbol, projectURI: "https://example.test/" + symbol.toLowerCase() };
   }
   async function createCore(fields, treasury, intentId) {

@@ -261,6 +261,8 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         <span className="lpCreatorOptional">Name &amp; ticker required</span>
       </div>
       <fieldset disabled={pending || !restored} aria-labelledby="creator-token-details">
+        {restored && <ArtworkUpload key={artworkReset} projectURI={draft.projectURI} onPending={setArtworkPending}
+          onSave={receipt=>{ setDraft(previous=>({...previous,...receipt})); setMessage(""); }} />}
         <div className="lpFormGrid">
           {controls.map(({ key, label, max, placeholder }) => <div className="lpDraftField" key={key}>
             <label htmlFor={fieldId(key)}>{label}</label>
@@ -274,8 +276,6 @@ export function CreatorDraft({ executionTest, productionCreation }: {
           <input id="draft-fixed-supply" value={`${number.format(launchTokenSupply)} tokens`} readOnly aria-describedby="draft-fixed-supply-hint" />
           <small id="draft-fixed-supply-hint">Set by the launch contract · {launchTokenDecimals} decimals</small>
         </div>
-        {restored && <ArtworkUpload key={artworkReset} projectURI={draft.projectURI} onPending={setArtworkPending}
-          onSave={receipt=>{ setDraft(previous=>({...previous,...receipt})); setMessage(""); }} />}
       </fieldset>
       <details className="lpCreatorDisclosure lpCreatorMetadata">
         <summary><span><span>Project information</span><small>Description and advanced URL options</small></span><span className="lpCreatorOptional">Optional</span></summary>
@@ -350,7 +350,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
           setMessage("");
         }}>Clear draft</button>
       </div>
-      <p className="lpCreatorHelp">Saved in this browser. Review validates your launch fields and fee choices. Saved artwork is public. Your description stays on this device.</p>
+      <p className="lpCreatorHelp">Your draft and description stay in this browser. Saving artwork publishes the image and its metadata URL.</p>
     </form>;
   return <div className="lpColumns lpCreatorColumns">
     {draftPanel}

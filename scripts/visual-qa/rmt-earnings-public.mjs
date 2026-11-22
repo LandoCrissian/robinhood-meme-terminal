@@ -137,7 +137,7 @@ try {
       return route.continue();
     });
     const page = await context.newPage();
-    page.on("pageerror", error => errors.push(error.message));
+    page.on("pageerror", error => errors.push({ path: new URL(page.url()).pathname, stack: error.stack || error.message }));
     const main = page.getByRole("main");
     async function settled(heading) {
       await main.getByRole("heading", { name: heading, exact: true }).waitFor();
@@ -175,13 +175,13 @@ try {
       await submit.click();
       const loading = main.getByRole("button", { name: "Checking evidence…", exact: true });
       await loading.waitFor(); assert.equal(await loading.isDisabled(), true);
-      await main.getByRole("status").filter({ hasText: "Loading recipient-aware registrations…" }).waitFor();
+      await main.getByRole("status").filter({ hasText: "Looking up projects for this wallet…" }).waitFor();
       assert.equal((await response).status(), 503);
       await main.getByRole("status").filter({ hasText: /Earnings unavailable.*failed read does not mean zero/ }).waitFor();
       await page.waitForLoadState("networkidle");
       assert.equal(earningsRequests.length, 1, "The lookup duplicated its read");
       assert.equal(await submit.isEnabled(), true, "Unavailable data stranded the lookup");
-      assert.equal(await main.getByText("No matching new-engine registrations at this checkpoint", { exact: true }).count(), 0);
+      assert.equal(await main.getByText("No matching projects", { exact: true }).count(), 0);
       assert.equal(await main.locator(".lpEarningsSummary, .lpEarningsProject").count(), 0, "Failed read fabricated checked balances");
       assert.equal(await main.getByRole("button", { name: /^(?:Claim|Collect|Release|Confirm|Review claim)/i }).count(), 0);
       await main.getByText("Robinhood Chain 4663 · read-only. Claims and wallet signing are not activated.", { exact: true }).waitFor();
@@ -205,7 +205,8 @@ try {
       for (const label of ["Launches", "Create", "My Launches"]) assert.equal(await nav.getByRole("link", { name: label, exact: true }).count(), 1);
 
       const views = main.getByRole("navigation", { name: "My Launches views" });
-      await views.getByRole("link", { name: "Treasury", exact: true }).click(); await settled("Project Treasury");
+      assert.equal(await views.getByRole("link", { name:"Treasury", exact:true }).count(),0);
+      await page.goto(new URL(treasuryPath,site).href); await settled("Project Treasury");
       assert.equal(new URL(page.url()).pathname, treasuryPath);
       await main.getByText("Read-only. The optional project treasury module is not deployed or activated for production.", { exact: true }).waitFor();
       const treasuryInput = main.getByLabel("Project treasury address", { exact: true }), treasurySubmit = main.getByRole("button", { name: "View treasury", exact: true });

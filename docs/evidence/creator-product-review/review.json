@@ -1,0 +1,434 @@
+{
+  "release": {
+    "at": "2026-11-22T06:38:53.251Z",
+    "source": "2641f11b4718250038aab3e93870d3151ae1054c",
+    "bundleSha256": "288b4605a6d7a688dccf3049038ac15d31da33ea0768c8ffc6ceef9341837fd1",
+    "serverSha256": "972613a9f2fed1580fed8e0fc743489972d09caf2e6a7e871a328efa2ac455fd",
+    "deployId": "6b028dd2f0cdc1d43ab9ac68",
+    "url": "https://6b028dd2f0cdc1d43ab9ac68--eclectic-valkyrie-16cb92.netlify.app",
+    "productionDeploy": "6b027ac01b4c2506e2a6222a",
+    "context": "deploy-preview"
+  },
+  "linuxBuild": {
+    "sourceCommit": "2641f11b4718250038aab3e93870d3151ae1054c",
+    "bundleSha256": "288b4605a6d7a688dccf3049038ac15d31da33ea0768c8ffc6ceef9341837fd1",
+    "bytes": 36575655,
+    "functionArchiveSha256": "972613a9f2fed1580fed8e0fc743489972d09caf2e6a7e871a328efa2ac455fd",
+    "files": 281,
+    "deployed": false,
+    "sourceRun": "44994103692",
+    "artifactId": 14742812615,
+    "outerDigest": "sha256:f6114dc4d7d40275df3360d72b1b4827c1f34cbb2f57a731587f6396668e4f60"
+  },
+  "snapshotFiles": {
+    "a32ec5bf3de141494b6d633be5da97f0c112e08e955f549eab7021a3fe27d4f7.webp": "a32ec5bf3de141494b6d633be5da97f0c112e08e955f549eab7021a3fe27d4f7",
+    "dbca4bd4600f3ad30e698aa2ef19cd1a0d4be9e4f96d7a87b0bcf18c13bf0a2f.webp": "dbca4bd4600f3ad30e698aa2ef19cd1a0d4be9e4f96d7a87b0bcf18c13bf0a2f",
+    "people.json": "9c37e409e5b00df2d6927a5618b11379689a8b447556dd17d8c27cdbe337334c"
+  },
+  "hosted": {
+    "at": "2026-11-22T06:41:09.506Z",
+    "origin": "https://6b028dd2f0cdc1d43ab9ac68--eclectic-valkyrie-16cb92.netlify.app",
+    "rows": [
+      {
+        "path": "/people",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "100073c3b6699a5cb8225e2d619d856bf8434308efa8c7750f8e10aa4491ead7",
+        "length": 11041
+      },
+      {
+        "path": "/leaderboard?after=alpha",
+        "status": 308,
+        "type": "text/html; charset=utf-8",
+        "sha256": "0a3a1ac6b15d365458c9e0590da81021ee459d732fcf0a01e4b8ea999d0d8cd6",
+        "length": 6257
+      },
+      {
+        "path": "/u/rmtlaunch",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "eee07c00970e848a14baab932475cde8f474b098571485b1296d5808188ceebc",
+        "length": 15800
+      },
+      {
+        "path": "/share/u/rmtlaunch/b59a8e6b7c91f5608478bc33.png",
+        "status": 200,
+        "type": "image/png",
+        "sha256": "493bb002d5a642efc720c8a3992c6ae891064d6c4099d074c4c6b521f4675a73",
+        "length": 284730
+      },
+      {
+        "path": "/_next/static/public-review/dbca4bd4600f3ad30e698aa2ef19cd1a0d4be9e4f96d7a87b0bcf18c13bf0a2f.webp",
+        "status": 200,
+        "type": "image/webp",
+        "sha256": "dbca4bd4600f3ad30e698aa2ef19cd1a0d4be9e4f96d7a87b0bcf18c13bf0a2f",
+        "length": 12258
+      },
+      {
+        "path": "/",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "47a32f395c0a65476f4df3a8c10db3e3fb7966cb2cb67228e13f78e583c6b45f",
+        "length": 11179
+      },
+      {
+        "path": "/create-token",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "584dd13b2810c42f44ebed135f90bd1e73e93a18a196badc17c251839372ab36",
+        "length": 17086
+      },
+      {
+        "path": "/my-launches",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "66433350a9c2da0e359bfd6504e1b674a729070c6b2a81f601a9e4b013a5632c",
+        "length": 9146
+      },
+      {
+        "path": "/my-launches/earnings",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "95bf696c69c2713c79681758e4e76e2a13dea950e97b55b3d35eea39999574b1",
+        "length": 10171
+      },
+      {
+        "path": "/wallet",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "4178b4ad08cc2e38983889a67652c0bb9e6e7f1c37934a0040a0b480ad918ce0",
+        "length": 10269
+      },
+      {
+        "path": "/account/profile",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "b453d30bf831df617fb57178723295b35e09fb9e585a746fd90c890c57ae9749",
+        "length": 9005
+      },
+      {
+        "path": "/terms",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "ce27e15c9ec997e5f89563a9d233bd59b18daed30c4b113a159ef984cd5c6dd7",
+        "length": 10570
+      },
+      {
+        "path": "/privacy",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "b7c47883fee35d95d52efcfc614f2997bc1b59edf43812eb0f4659067dc684ac",
+        "length": 10912
+      },
+      {
+        "path": "/risks",
+        "status": 200,
+        "type": "text/html; charset=utf-8",
+        "sha256": "076e3eb8336f65042e349cea654901da8e3e3b4f33caaac5969b67e47c6f2119",
+        "length": 10800
+      },
+      {
+        "path": "/api/account/session",
+        "status": 200,
+        "type": "application/json; charset=utf-8",
+        "sha256": "e6b7c4c9201cbd1876473e2502813939b3d5a0dcc3a30a8f9d09eda40db2949c",
+        "length": 49
+      },
+      {
+        "path": "/api/launchpad/production-creation",
+        "status": 404,
+        "type": "application/json",
+        "sha256": "774a5957e1e1b76e5ba7d6a9b803e215b28d31ac0fae1df873a96758e7fb35ef",
+        "length": 24
+      },
+      {
+        "path": "/api/launchpad/production-lifecycle",
+        "status": 404,
+        "type": "application/json",
+        "sha256": "774a5957e1e1b76e5ba7d6a9b803e215b28d31ac0fae1df873a96758e7fb35ef",
+        "length": 24
+      },
+      {
+        "path": "/api/launchpad/production-earnings",
+        "status": 404,
+        "type": "application/json",
+        "sha256": "4333a38cd1a79f519210a28b4c9eaa0e6e3a9c615b63063e6be21076857ade88",
+        "length": 171
+      }
+    ]
+  },
+  "routeCaptures": [
+    {
+      "width": 320,
+      "path": "/",
+      "status": 200,
+      "heading": "Launches",
+      "overflow": false,
+      "text": "Launches\nRobinhood Chain\nExplore tokens created on Robinhood Chain.\nBrowse people →\nPrepare a token draft\n\n0 launches\nNo launches yet\nTokens"
+    },
+    {
+      "width": 320,
+      "path": "/people",
+      "status": 200,
+      "heading": "People",
+      "overflow": false,
+      "text": "People\nBrowse creators by username, A–Z.\nYour profile\n\nRMT Launch | LAMMB\n@rmtlaunch\n→\nPublic profile snapshot · 2026-11-22\n"
+    },
+    {
+      "width": 320,
+      "path": "/u/rmtlaunch",
+      "status": 200,
+      "heading": "RMT Launch | LAMMB",
+      "overflow": false,
+      "text": "← People\n\nRMT Launch | LAMMB\n@rmtlaunch\nBuilding the next generation of community-driven token launches on Robinhood Chain. Independent crea"
+    },
+    {
+      "width": 320,
+      "path": "/account/profile",
+      "status": 200,
+      "heading": "Edit profile",
+      "overflow": false,
+      "text": "Edit profile\nManage your public photo, details and links.\nWallet account\nConnect your wallet\nSign in to manage your creator profile and view"
+    },
+    {
+      "width": 320,
+      "path": "/create-token",
+      "status": 200,
+      "heading": "Create Token",
+      "overflow": false,
+      "text": "Create Token\nChoose your artwork and token details, then review the fees and recipients.\nBrowse launches\nDraft only. You can save and review"
+    },
+    {
+      "width": 320,
+      "path": "/my-launches",
+      "status": 200,
+      "heading": "My Launches",
+      "overflow": false,
+      "text": "My Launches\nProjects created by your signed-in wallet.\nPrepare a draft\nProjects\nEarnings\nConnect your wallet\nSign in to manage your creator "
+    },
+    {
+      "width": 320,
+      "path": "/terms",
+      "status": 200,
+      "heading": "Website Terms",
+      "overflow": false,
+      "text": "Website Terms\nUsing RMT Launch\nBrowse launches and public creators, manage a wallet-linked profile and prepare a token draft. Website token "
+    },
+    {
+      "width": 320,
+      "path": "/privacy",
+      "status": 200,
+      "heading": "Website Privacy",
+      "overflow": false,
+      "text": "Website Privacy\nYour creator profile\nYour username, display name, wallet address, bio, avatar, X handle and project links are public. They c"
+    },
+    {
+      "width": 320,
+      "path": "/risks",
+      "status": 200,
+      "heading": "Risk Disclosures",
+      "overflow": false,
+      "text": "Risk Disclosures\nCheck the creator and contract\nA wallet signature proves control of an address. Names, avatars, tickers and links are suppl"
+    },
+    {
+      "width": 390,
+      "path": "/",
+      "status": 200,
+      "heading": "Launches",
+      "overflow": false,
+      "text": "Launches\nRobinhood Chain\nExplore tokens created on Robinhood Chain.\nBrowse people →\nPrepare a token draft\n\n0 launches\nNo launches yet\nTokens"
+    },
+    {
+      "width": 390,
+      "path": "/people",
+      "status": 200,
+      "heading": "People",
+      "overflow": false,
+      "text": "People\nBrowse creators by username, A–Z.\nYour profile\n\nRMT Launch | LAMMB\n@rmtlaunch\n→\nPublic profile snapshot · 2026-11-22\n"
+    },
+    {
+      "width": 390,
+      "path": "/u/rmtlaunch",
+      "status": 200,
+      "heading": "RMT Launch | LAMMB",
+      "overflow": false,
+      "text": "← People\n\nRMT Launch | LAMMB\n@rmtlaunch\nBuilding the next generation of community-driven token launches on Robinhood Chain. Independent crea"
+    },
+    {
+      "width": 390,
+      "path": "/account/profile",
+      "status": 200,
+      "heading": "Edit profile",
+      "overflow": false,
+      "text": "Edit profile\nManage your public photo, details and links.\nWallet account\nConnect your wallet\nSign in to manage your creator profile and view"
+    },
+    {
+      "width": 390,
+      "path": "/create-token",
+      "status": 200,
+      "heading": "Create Token",
+      "overflow": false,
+      "text": "Create Token\nChoose your artwork and token details, then review the fees and recipients.\nBrowse launches\nDraft only. You can save and review"
+    },
+    {
+      "width": 390,
+      "path": "/my-launches",
+      "status": 200,
+      "heading": "My Launches",
+      "overflow": false,
+      "text": "My Launches\nProjects created by your signed-in wallet.\nPrepare a draft\nProjects\nEarnings\nConnect your wallet\nSign in to manage your creator "
+    },
+    {
+      "width": 390,
+      "path": "/terms",
+      "status": 200,
+      "heading": "Website Terms",
+      "overflow": false,
+      "text": "Website Terms\nUsing RMT Launch\nBrowse launches and public creators, manage a wallet-linked profile and prepare a token draft. Website token "
+    },
+    {
+      "width": 390,
+      "path": "/privacy",
+      "status": 200,
+      "heading": "Website Privacy",
+      "overflow": false,
+      "text": "Website Privacy\nYour creator profile\nYour username, display name, wallet address, bio, avatar, X handle and project links are public. They c"
+    },
+    {
+      "width": 390,
+      "path": "/risks",
+      "status": 200,
+      "heading": "Risk Disclosures",
+      "overflow": false,
+      "text": "Risk Disclosures\nCheck the creator and contract\nA wallet signature proves control of an address. Names, avatars, tickers and links are suppl"
+    },
+    {
+      "width": 1440,
+      "path": "/",
+      "status": 200,
+      "heading": "Launches",
+      "overflow": false,
+      "text": "Launches\nRobinhood Chain\n\nExplore tokens created on Robinhood Chain.\n\nBrowse people →\nPrepare a token draft\n0 launches\nNo launches yet\n\nToke"
+    },
+    {
+      "width": 1440,
+      "path": "/people",
+      "status": 200,
+      "heading": "People",
+      "overflow": false,
+      "text": "People\n\nBrowse creators by username, A–Z.\n\nYour profile\nRMT Launch | LAMMB\n@rmtlaunch\n→\nPublic profile snapshot · 2026-11-22"
+    },
+    {
+      "width": 1440,
+      "path": "/u/rmtlaunch",
+      "status": 200,
+      "heading": "RMT Launch | LAMMB",
+      "overflow": false,
+      "text": "← People\nRMT Launch | LAMMB\n\n@rmtlaunch\n\nBuilding the next generation of community-driven token launches on Robinhood Chain. Independent cre"
+    },
+    {
+      "width": 1440,
+      "path": "/account/profile",
+      "status": 200,
+      "heading": "Edit profile",
+      "overflow": false,
+      "text": "Edit profile\n\nManage your public photo, details and links.\n\nWallet account\nConnect your wallet\n\nSign in to manage your creator profile and v"
+    },
+    {
+      "width": 1440,
+      "path": "/create-token",
+      "status": 200,
+      "heading": "Create Token",
+      "overflow": false,
+      "text": "Create Token\n\nChoose your artwork and token details, then review the fees and recipients.\n\nBrowse launches\n\nDraft only. You can save and rev"
+    },
+    {
+      "width": 1440,
+      "path": "/my-launches",
+      "status": 200,
+      "heading": "My Launches",
+      "overflow": false,
+      "text": "My Launches\n\nProjects created by your signed-in wallet.\n\nPrepare a draft\nProjects\nEarnings\nConnect your wallet\n\nSign in to manage your creat"
+    },
+    {
+      "width": 1440,
+      "path": "/terms",
+      "status": 200,
+      "heading": "Website Terms",
+      "overflow": false,
+      "text": "Website Terms\nUsing RMT Launch\n\nBrowse launches and public creators, manage a wallet-linked profile and prepare a token draft. Website token"
+    },
+    {
+      "width": 1440,
+      "path": "/privacy",
+      "status": 200,
+      "heading": "Website Privacy",
+      "overflow": false,
+      "text": "Website Privacy\nYour creator profile\n\nYour username, display name, wallet address, bio, avatar, X handle and project links are public. They "
+    },
+    {
+      "width": 1440,
+      "path": "/risks",
+      "status": 200,
+      "heading": "Risk Disclosures",
+      "overflow": false,
+      "text": "Risk Disclosures\nCheck the creator and contract\n\nA wallet signature proves control of an address. Names, avatars, tickers and links are supp"
+    }
+  ],
+  "emulatorBrowser": [
+    {
+      "engine": "chromium",
+      "cookieHttpOnly": true,
+      "profiles": "saved/reloaded/public/deleted-after-fresh-proof",
+      "avatar": "uploaded/re-encoded/decoded/removed-with-profile-retained/reuploaded-versioned/header-editor-public-loaded",
+      "privatePreferences": "saved/not-public",
+      "logoutAndAccountChange": "verified-including-outage-retry",
+      "transactions": 0
+    },
+    {
+      "engine": "webkit",
+      "cookieHttpOnly": true,
+      "profiles": "saved/reloaded/public/deleted-after-fresh-proof",
+      "avatar": "uploaded/re-encoded/decoded/removed-with-profile-retained/reuploaded-versioned/header-editor-public-loaded",
+      "privatePreferences": "saved/not-public",
+      "logoutAndAccountChange": "verified-including-outage-retry",
+      "transactions": 0
+    }
+  ],
+  "external": [
+    {
+      "url": "https://x.com/rmtlaunch",
+      "status": 200,
+      "final": "https://x.com/rmtlaunch",
+      "title": "RMT | 🟩🟢 (@RMTLaunch) / X"
+    },
+    {
+      "url": "https://opensea.io/collection/lammbs-59693791",
+      "status": 200,
+      "final": "https://opensea.io/collection/lammbs-59693791",
+      "title": "LAMMBs 0.0012 ETH - Collection | OpenSea"
+    },
+    {
+      "url": "https://twitter.com/intent/tweet?url=https%3A%2F%2Fwww.rmtlaunch.fun%2Fu%2Frmtlaunch&text=Explore%20RMT%20Launch",
+      "status": 200,
+      "final": "https://x.com/i/jf/onboarding/web?redirect_after_login=%2Fintent%2Ftweet%3Furl%3Dhttps%253A%252F%252Fwww.rmtlaunch.fun%252Fu%252Frmtlaunch%26text%3DExplore%2BRMT%2BLaunch&mode=login",
+      "title": "X - The Everything App / X"
+    }
+  ],
+  "composer": [
+    {
+      "engine": "desktop",
+      "intent": "https://twitter.com/intent/tweet?url=https%3A%2F%2Fwww.rmtlaunch.fun%2Fu%2Frmtlaunch&text=Explore+RMT+Launch+%7C+LAMMB%E2%80%99s+creator+profile+on+RMT+Launch.",
+      "url": "https://x.com/intent/tweet?url=https%3A%2F%2Fwww.rmtlaunch.fun%2Fu%2Frmtlaunch&text=Explore+RMT+Launch+%7C+LAMMB%E2%80%99s+creator+profile+on+RMT+Launch.",
+      "title": ""
+    },
+    {
+      "engine": "iphone",
+      "intent": "https://twitter.com/intent/tweet?url=https%3A%2F%2Fwww.rmtlaunch.fun%2Fu%2Frmtlaunch&text=Explore+RMT+Launch+%7C+LAMMB%E2%80%99s+creator+profile+on+RMT+Launch.",
+      "url": "https://x.com/i/jf/onboarding/web?redirect_after_login=%2Fintent%2Ftweet%3Furl%3Dhttps%253A%252F%252Fwww.rmtlaunch.fun%252Fu%252Frmtlaunch%26text%3DExplore%2BRMT%2BLaunch%2B%257C%2BLAMMB%25E2%2580%2599s%2Bcreator%2Bprofile%2Bon%2BRMT%2BLaunch.&mode=login",
+      "title": "X - The Everything App / X"
+    }
+  ],
+  "physicalIPhone": false,
+  "xTimelineRendering": "unverified"
+}

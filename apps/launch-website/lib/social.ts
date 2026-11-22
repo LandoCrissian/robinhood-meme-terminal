@@ -16,8 +16,8 @@ export function tokenCard(token: { token: string; name: string; symbol: string; 
 
 export function shortAddress(address: string) { return address.slice(0, 6) + "…" + address.slice(-4); }
 
-export function socialMetadata(path: string, title: string, description: string, imagePath = "/share/default.png", alt = "RMT Launch on Robinhood Chain", profile = false): Metadata {
-  const url = socialOrigin + path, image = socialOrigin + imagePath;
+export function socialMetadata(path: string, title: string, description: string, imagePath = "/share/default.png", alt = "RMT Launch on Robinhood Chain", profile = false, imageOrigin = socialOrigin): Metadata {
+  const url = socialOrigin + path, image = imageOrigin + imagePath;
   return { title, description, alternates: { canonical: url },
     openGraph: { type: profile ? "profile" : "website", siteName: "RMT Launch", url, title, description,
       images: [{ url: image, type: "image/png", width: 1200, height: 630, alt }] },
