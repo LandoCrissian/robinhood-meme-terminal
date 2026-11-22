@@ -1,0 +1,286 @@
+{
+  "started": "2026-11-22T15:28:38.687Z",
+  "at": "2026-11-22T15:30:46.194Z",
+  "delays": [],
+  "context": "local PostgreSQL and corrected component; real production discovery and two public RPCs; empty registration fixture anchored to hosted checkpoint",
+  "site": {
+    "blockNumber": "120721983",
+    "blockHash": "0x485460240a72550407cf723c3771fa45fe3705c1094ffe3af7459df5c7415cf6",
+    "timestamp": "2026-11-22T15:28:02.000Z",
+    "confirmations": 20,
+    "finality": "l2-confirmed",
+    "l1Finality": "unverified"
+  },
+  "railway": {
+    "blockNumber": "120721983",
+    "blockHash": "0x485460240a72550407cf723c3771fa45fe3705c1094ffe3af7459df5c7415cf6",
+    "timestamp": "2026-11-22T15:28:02.000Z",
+    "confirmations": 20,
+    "finality": "l2-confirmed",
+    "l1Finality": "unverified"
+  },
+  "urls": [
+    "https://rpc.mainnet.chain.robinhood.com",
+    "https://robinhood.api.pocket.network"
+  ],
+  "observations": [
+    {
+      "registration": {
+        "blockNumber": "120722283",
+        "blockHash": "0x5325e30c455716fd1723f12f9ae6465060a879d688eaa86abf281121ba358260",
+        "timestamp": "2026-11-22T15:28:35.000Z"
+      },
+      "activity": {
+        "blockNumber": "116836101",
+        "blockHash": "0x76802fef0f7e3321e6d30115c95011daae61a7d6c24dbabc0d7c98c459ee88b6",
+        "timestamp": "2026-11-17T19:50:08.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3886182"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722524",
+        "blockHash": "0x70f7e05a6dedba4671ac13a70d8938b66da16320bb38bb5ae6843baefaf77798",
+        "timestamp": "2026-11-22T15:29:06.000Z"
+      },
+      "activity": {
+        "blockNumber": "116837101",
+        "blockHash": "0x5bef1cad0203cb2ffb96d70335ea381c205bb9fe82af944e848264439ab6620a",
+        "timestamp": "2026-11-17T19:51:52.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3885423"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722574",
+        "blockHash": "0xcbdd9f723f51819036044cacc9849a44110bfaa5b70a58a4b3265fbecc05fe4d",
+        "timestamp": "2026-11-22T15:29:12.000Z"
+      },
+      "activity": {
+        "blockNumber": "116838101",
+        "blockHash": "0x1546146f79bb81aa3249d860f40d0c258b6d3bf07c9754a1d229cc3dd047c5ff",
+        "timestamp": "2026-11-17T19:53:37.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3884473"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722625",
+        "blockHash": "0x829f3f830857354e297b112c4c929ddc23c71964c2c43627e3b2a10cae2e036e",
+        "timestamp": "2026-11-22T15:29:18.000Z"
+      },
+      "activity": {
+        "blockNumber": "116839101",
+        "blockHash": "0x463405c03464d783cbec4337177b1e1e89f6357070f5bf9d64560d134d20f90a",
+        "timestamp": "2026-11-17T19:55:21.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3883524"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722676",
+        "blockHash": "0x2889e8f1e5583f679f0abe0d7b306201a78d17ff754772a08f8887bdf40a06dc",
+        "timestamp": "2026-11-22T15:29:24.000Z"
+      },
+      "activity": {
+        "blockNumber": "116840101",
+        "blockHash": "0xe09a63dda6e28ef011b47a4fc9fa511bc965dc4ea18372e96fc6637f2940b548",
+        "timestamp": "2026-11-17T19:57:06.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3882575"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722735",
+        "blockHash": "0x8433e0a8cc9d40bd31543840abe9cc4b6be299cd8fd8334161dbc526c3eb774b",
+        "timestamp": "2026-11-22T15:29:30.000Z"
+      },
+      "activity": {
+        "blockNumber": "116841101",
+        "blockHash": "0xa9abe87146fedcc6363e2a7f03a25f541c7e9572be269b31987908bc399bbb7d",
+        "timestamp": "2026-11-17T19:58:52.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3881634"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722788",
+        "blockHash": "0xb1330350fc801491f711a89ed7f7c89546eb49202eba4a1dcd8a57d366cab473",
+        "timestamp": "2026-11-22T15:29:36.000Z"
+      },
+      "activity": {
+        "blockNumber": "116842101",
+        "blockHash": "0x26ef06cd5df93918461ff170dd7e8e108cdcba2b1fd9d5bd5d58f5f020c0d0d3",
+        "timestamp": "2026-11-17T20:00:36.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3880687"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722839",
+        "blockHash": "0xa7d6569c1bc97f911a4b3d4218f5d81a26f95004f196d5c5bea460b654bf374a",
+        "timestamp": "2026-11-22T15:29:42.000Z"
+      },
+      "activity": {
+        "blockNumber": "116843101",
+        "blockHash": "0xc7e2847c5ed61e64cd4ae3f5d2055a78c4df22e7fcb13553e025242879e0228b",
+        "timestamp": "2026-11-17T20:02:18.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3879738"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722893",
+        "blockHash": "0xca1d4cbab924cb2034d4d105452133f6865e0ab1976a7d64bae606b79050a93e",
+        "timestamp": "2026-11-22T15:29:48.000Z"
+      },
+      "activity": {
+        "blockNumber": "116844101",
+        "blockHash": "0x8e39bfc08ef62de93a33f9bfcaaf65807cb6e5f9af0aa5a1718112fc21c2c0ab",
+        "timestamp": "2026-11-17T20:04:01.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3878792"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722940",
+        "blockHash": "0x26cf45102729541a562910303e6d5faa4fd3d7075d38c987a48fe3cda185b1b3",
+        "timestamp": "2026-11-22T15:29:54.000Z"
+      },
+      "activity": {
+        "blockNumber": "116845101",
+        "blockHash": "0x1ec79950ac15652a9cde7c5df19839979d319f5c8927bbd2c0878dba681338c1",
+        "timestamp": "2026-11-17T20:05:46.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3877839"
+    },
+    {
+      "registration": {
+        "blockNumber": "120722998",
+        "blockHash": "0xd1823196391c5ac61b93abdb16d97b22b105860b579f2a911e57abe6c35cfbe8",
+        "timestamp": "2026-11-22T15:30:00.000Z"
+      },
+      "activity": {
+        "blockNumber": "116846101",
+        "blockHash": "0x7e9a5650612db2ca8c8e2e332b78cb95280e4e73f56f86869673e9f3169757d1",
+        "timestamp": "2026-11-17T20:07:28.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3876897"
+    },
+    {
+      "registration": {
+        "blockNumber": "120723054",
+        "blockHash": "0x950a48eac00139cb0554b87486e69dfbcbe969f806ff997fb3f4fdb21aa86e8a",
+        "timestamp": "2026-11-22T15:30:06.000Z"
+      },
+      "activity": {
+        "blockNumber": "116847101",
+        "blockHash": "0xdf114fa5297703fbbff97ea1f7929c686a65aefa2679f28cac5322902395461e",
+        "timestamp": "2026-11-17T20:09:14.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3875953"
+    },
+    {
+      "registration": {
+        "blockNumber": "120723103",
+        "blockHash": "0xd9914a1249a69b93c74e6d9e0db1bac88f73045f636a4587fec39cba9678cf30",
+        "timestamp": "2026-11-22T15:30:12.000Z"
+      },
+      "activity": {
+        "blockNumber": "116848101",
+        "blockHash": "0x9b3ae33a4a700ad54a6de57f6ce9d67ef6757787d02997389361480f8de8a011",
+        "timestamp": "2026-11-17T20:10:59.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3875002"
+    },
+    {
+      "registration": {
+        "blockNumber": "120723147",
+        "blockHash": "0x48cb951d2a6745e456d3525b44762f5f1077e31aec39807d6bc8a5742aa0a725",
+        "timestamp": "2026-11-22T15:30:18.000Z"
+      },
+      "activity": {
+        "blockNumber": "116849101",
+        "blockHash": "0x38ac931d1989047b590cbe28f7e8d8b6055d335922605089cb7d7ac77cff289b",
+        "timestamp": "2026-11-17T20:12:43.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3874046"
+    },
+    {
+      "registration": {
+        "blockNumber": "120723203",
+        "blockHash": "0x30dd5f9a8cc9ac606a8d2ad1b95e432eccfcc6e89827b4dd97301da9cfdf5946",
+        "timestamp": "2026-11-22T15:30:25.000Z"
+      },
+      "activity": {
+        "blockNumber": "116850101",
+        "blockHash": "0xd8b52c4719d753bf14673785e9e313100681a54ded1714f967ed60381507470d",
+        "timestamp": "2026-11-17T20:14:26.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3873102"
+    },
+    {
+      "registration": {
+        "blockNumber": "120723259",
+        "blockHash": "0x48e1242ce687a665aa5272463fa04b40603bb47ba9d65f6f3f75fa027059edd0",
+        "timestamp": "2026-11-22T15:30:31.000Z"
+      },
+      "activity": {
+        "blockNumber": "116851101",
+        "blockHash": "0x6f8b954b19458152da99ec615ffeae5b39803bc767a7979abd37588a8d69930e",
+        "timestamp": "2026-11-17T20:16:11.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3872158"
+    },
+    {
+      "registration": {
+        "blockNumber": "120723319",
+        "blockHash": "0x805811d71c765c3fa5475c9e829dabdb971d6363f024310dbec3ae82864ff1d3",
+        "timestamp": "2026-11-22T15:30:37.000Z"
+      },
+      "activity": {
+        "blockNumber": "116852101",
+        "blockHash": "0xb377c1dadddab9ac5e31e545c4e400e85eb003ec3e8ad01ce59b90ecef8823a3",
+        "timestamp": "2026-11-17T20:17:52.000Z"
+      },
+      "status": "backfilling",
+      "lag": "3871218"
+    }
+  ],
+  "concurrentReads": 68,
+  "budgets": [
+    {
+      "attempts": 242,
+      "limited": 0,
+      "retries": 0,
+      "timeouts": 0,
+      "errors": 9
+    },
+    {
+      "attempts": 217,
+      "limited": 0,
+      "retries": 0,
+      "timeouts": 0,
+      "errors": 0
+    }
+  ],
+  "historicalProductionCursor": "116849101",
+  "registrationSeed": "isolated empty catalog at authenticated production checkpoint",
+  "verification": "Every persisted range end and served registration point checked against both providers by block hash and timestamp"
+}

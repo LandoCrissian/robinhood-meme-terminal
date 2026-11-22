@@ -1,7 +1,9 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { setTimeout as sleep } from "node:timers/promises";
-import { providerBudget, rpcFeed, resourceError } from "./feed-scheduler.js";
+import { createServer } from "node:http";
+import { once } from "node:events";
+import { providerBudget, rpcFeed, resourceError, scheduledTransport } from "./feed-scheduler.js";
 import { classifySyncFailure } from "./rpc-resilience.js";
 
 test("one request per provider, paced starts and a foreground turn ahead of queued activity", async () => {
@@ -79,4 +81,29 @@ test("retry an explicit valid log interval once, preserving the range and reject
   assert.equal(budget.stats.retries, 2);
   assert.equal(budget.stats.attempts, 7);
   assert.equal(resourceError({ code: -32000, details: "missing trie node" }, true).transient, false);
+});
+
+test("a missing numbered header is retried on the same provider and stays unavailable if absent", async () => {
+  const requests: unknown[][] = [];
+  const server = createServer(async (request, response) => {
+    let body = "";
+    for await (const chunk of request) body += chunk;
+    const { id, params } = JSON.parse(body);
+    requests.push(params);
+    response.writeHead(200, { "content-type": "application/json" });
+    response.end(JSON.stringify({ jsonrpc: "2.0", id, result: requests.length === 2 ? { number: params[0] } : null }));
+  });
+  server.listen(0, "127.0.0.1");
+  await once(server, "listening");
+  try {
+    const address = server.address();
+    assert.ok(address && typeof address !== "string");
+    const budget = providerBudget("test", 1, () => 0);
+    const wire = scheduledTransport("http://127.0.0.1:" + address.port, budget, new AbortController().signal)({});
+    const args = { method: "eth_getBlockByNumber" as const, params: ["0x12", false] as const };
+    assert.deepEqual(await wire.request(args), { number: "0x12" });
+    await assert.rejects(wire.request(args), e => classifySyncFailure(e) === "upstream");
+    assert.deepEqual(requests, Array(4).fill(args.params));
+    assert.equal(budget.stats.retries, 2);
+  } finally { server.close(); }
 });

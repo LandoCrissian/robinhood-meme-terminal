@@ -52,6 +52,7 @@ export function resourceError(error: unknown, boundedLogs = false) {
   let status: number | undefined,
     code: number | undefined,
     timeout = false,
+    missingBlock = false,
     rangeMessage = false;
   for (
     let cause = error;
@@ -70,6 +71,7 @@ export function resourceError(error: unknown, boundedLogs = false) {
     if (Number.isInteger(e.status)) status = e.status;
     if (typeof e.code === "number" && e.code < 0) code = e.code;
     timeout ||= e.name === "TimeoutError" || e.name === "TimeoutRpcError";
+    missingBlock ||= e.name === "ProviderBlockUnavailable";
     rangeMessage ||= e.details === "invalid block range params" || e.message === "invalid block range params";
     cause = e.cause;
   }
@@ -78,9 +80,10 @@ export function resourceError(error: unknown, boundedLogs = false) {
     status,
     code,
     timeout,
+    missingBlock,
     deferredRange,
     transient:
-      timeout || deferredRange ||
+      timeout || deferredRange || missingBlock ||
       status === 408 ||
       status === 429 ||
       (status !== undefined && status >= 500) ||
@@ -147,6 +150,8 @@ export function providerBudget(
             httpStatus: failure.status,
             rpcCode: failure.code,
             timeout: failure.timeout,
+            ...(failure.missingBlock && { reason: "numbered_block_unavailable" }),
+            ...(failure.deferredRange && { reason: "valid_log_range_unavailable" }),
             retry,
           }),
         );
@@ -176,11 +181,20 @@ export function scheduledTransport(
   return custom(
     {
       request: (args) =>
-        budget.request(args.method, () => {
+        budget.request(args.method, async () => {
           signal.throwIfAborted();
-          return wire.request(args, {
+          const result = await wire.request(args, {
             signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]),
           });
+          // A load-balanced provider can report a confirmed head and then route
+          // its numbered header read to a backend that has not indexed it yet.
+          if (result === null && args.method === "eth_getBlockByNumber" &&
+              Array.isArray(args.params) && /^0x[0-9a-f]+$/i.test(args.params[0])) {
+            const error = new Error("Provider did not return the requested numbered block");
+            error.name = "ProviderBlockUnavailable";
+            throw error;
+          }
+          return result;
         }, args.params),
     },
     { retryCount: 0 },

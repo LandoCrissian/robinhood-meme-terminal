@@ -50,7 +50,7 @@ type ErrorLike = {
 };
 
 const TRANSIENT_UPSTREAM_ERROR = /(?:too many requests|\b429\b|context deadline exceeded|fetch failed|http request failed|gateway timeout|service unavailable|socket hang up|timed? out|econnreset|enotfound)/i;
-const TRANSIENT_UPSTREAM_NAMES = new Set(["HttpRequestError", "TimeoutError", "SocketClosedError", "ResourceUnavailableRpcError", "LimitExceededRpcError", "TimeoutRpcError", "UpstreamLogRangeUnavailable"]);
+const TRANSIENT_UPSTREAM_NAMES = new Set(["HttpRequestError", "TimeoutError", "SocketClosedError", "ResourceUnavailableRpcError", "LimitExceededRpcError", "TimeoutRpcError", "UpstreamLogRangeUnavailable", "ProviderBlockUnavailable"]);
 
 export function classifySyncFailure(error: unknown): SyncFailureKind {
   const seen = new Set<unknown>();

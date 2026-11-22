@@ -6,14 +6,16 @@ In an isolated replay of the old worker, a 429 on the factory activity log query
 
 During a longer live-RPC replay, Pocket returned JSON-RPC `-32000` with `invalid block range params` for the 54-block registration query at 120719331–120719384. The identical request succeeded on that provider afterward. The worker retries this exact response once only for an explicit, ordered `eth_getLogs` range of at most 2,000 blocks. Exhaustion reports an upstream delay. An invalid range, missing state, provider disagreement or unverified checkpoint cannot advance the feed.
 
+Pocket also returned a null header at block 120721298 after reporting sufficient head height. A numbered header read now gets the same bounded retry on the same provider. If either provider still cannot produce the header, verification stops at the last committed range.
+
 | Check | Result |
 |---|---|
 | Worker HTTP with PostgreSQL 18.6 | 17 fresh discovery checks. Activity received 429, 503, timeout and JSON-RPC resource errors. Health and readiness stayed 200 during those checks. An unauthenticated market read returned 401 and an authenticated read returned 503 during catch-up. The restarted worker resumed the stored checkpoint under one lease. |
 | Full backlog | Both deterministic providers covered every block in 3,841,624 blocks. PostgreSQL committed 3,842 checkpoints, including the final partial range. A mid-run restart preserved the cursor. This uses an accelerated RPC fixture and measures coverage, not live throughput. |
-| Live public data | The corrected component used isolated PostgreSQL, started its test registration catalog at the verified empty production catalog, and fetched actual blocks and logs from Robinhood and Pocket. Its activity cursor began at the factory deployment. Both providers matched three advancing registration and activity checkpoints. Twelve discovery reads completed during the activity scans. |
+| Live public data | The corrected component used isolated PostgreSQL and the verified empty production registration catalog. Robinhood and Pocket independently confirmed 17 successive activity checkpoints from the factory deployment to block 116852101, including the last failed worker's cursor at 116849101. The registration checkpoint advanced from 120722283 to 120723319. All 68 concurrent registration reads returned fresh evidence. |
 | Trading history | The PostgreSQL market suite checked the existing deployed-contract fork receipts at every recorded checkpoint and interval, including sellback, pending graduation, the pool transition, reorg replacement and disconnection. The public factory currently has no indexed token whose live fills can be checked. |
 
-[Measured results](acceptance.json) · [Receipt-based chart evidence](../token-market/production-candidate/receipts.json)
+[Measured results](acceptance.json) · [Live boundary replay, checkpoints and request counts](live-boundary.json) · [Receipt-based chart evidence](../token-market/production-candidate/receipts.json)
 
 ## Railway candidate
 
