@@ -148,7 +148,10 @@ async function rehearse(url: string) {
       expect = "success",
     ) {
       await call("evm_setNextBlockTimestamp", [
-        Number(headers[0].timestamp) + ++seq * 61,
+        Math.floor(Number(headers[0].timestamp) / 60) * 60 +
+          60 +
+          ++seq * 18 +
+          Math.floor(seq / 16) * 90,
       ]);
       const hash = await call("eth_sendTransaction", [
         { from: actor, to, data, value: toHex(value), gas: "0xb71b00" },
@@ -401,12 +404,37 @@ async function rehearse(url: string) {
     await buy("3", true);
     await frame("Atomic graduation");
     assert.equal(frames.at(-1).phase, "graduated");
+    const checkSize = parseEther("0.01"),
+      balance = await read(token, "balanceOf", [actor]);
+    await tx(
+      router,
+      await encodeTestV4Swap(
+        key,
+        true,
+        checkSize,
+        ((await poolQuote(true, checkSize)) * 11n) / 10n,
+        cutoff,
+      ),
+      checkSize,
+      "reverted",
+    );
+    assert.equal(await read(token, "balanceOf", [actor]), balance);
+    checks.push("Out-of-limit v4 purchase reverted with no token movement");
     for (const [i, size] of [
       "0.018",
       "0.031",
       "0.012",
       "0.023",
       "0.009",
+      "0.04",
+      "0.02",
+      "0.05",
+      "0.03",
+      "0.01",
+      "0.07",
+      "0.02",
+      "0.03",
+      "0.01",
     ].entries()) {
       const amount = parseEther(size);
       await tx(
@@ -421,8 +449,8 @@ async function rehearse(url: string) {
         amount,
       );
       await frame("Pool buy " + (i + 1));
-      if (i === 1 || i === 3) {
-        const sale = 1_000_000n * 10n ** 18n;
+      if (i % 2 === 1) {
+        const sale = (i % 4 === 1 ? 14_000_000n : 2_000_000n) * 10n ** 18n;
         await tx(token, enc("approve", [permit, sale]));
         const permitAbi = parseAbi([
           "function approve(address,address,uint160,uint48)",
@@ -448,7 +476,7 @@ async function rehearse(url: string) {
         await frame("Pool sell " + (i + 1));
       }
     }
-    assert.ok(fills.length === 21 && graduation);
+    assert.ok(fills.length === 35 && graduation);
     checks.push(
       "Curve buys and sells, atomic graduation and both v4 swap directions settled",
     );

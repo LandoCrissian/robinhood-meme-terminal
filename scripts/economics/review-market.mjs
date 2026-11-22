@@ -73,6 +73,9 @@ for (const [engine, options, label] of [
     await page.getByRole("button", { name: "Sell", exact: true }).click();
     await page.getByLabel("Quote amount").selectOption("5000000");
     await page.getByText("Contract quote at this recorded block").waitFor();
+    await page.getByText("Review quote", { exact: true }).click();
+    await page.getByLabel("Slippage limit").selectOption("50");
+    await page.getByText(/Minimum received/).waitFor();
     assert.equal(
       await page.getByRole("button", { name: "Sell unavailable" }).isDisabled(),
       true,
@@ -101,24 +104,65 @@ for (const [engine, options, label] of [
     await canvas.scrollIntoViewIfNeeded();
     const box = await canvas.boundingBox();
     await page.mouse.move(box.x + box.width * 0.6, box.y + box.height * 0.45);
-    await page.mouse.wheel(0, -40);
-    if (label === "mobile")
+    if (label === "desktop") await page.mouse.wheel(0, -40);
+    if (label === "mobile") {
       await page.touchscreen.tap(
-        box.x + box.width * 0.5,
-        box.y + box.height * 0.5,
+        box.x + box.width * 0.45,
+        box.y + box.height * 0.45,
       );
+      const beforeGesture = await canvas.screenshot();
+      await page.evaluate(async () => {
+        const host = document
+            .querySelector(".rmCanvas")
+            .getBoundingClientRect(),
+          x = host.left + host.width * 0.45,
+          y = host.top + host.height * 0.4;
+        const target = document.elementFromPoint(x, y);
+        const point = (identifier, offset) => ({
+          identifier,
+          target,
+          clientX: x + offset,
+          clientY: y,
+          pageX: scrollX + x + offset,
+          pageY: scrollY + y,
+          screenX: x + offset,
+          screenY: y,
+        });
+        const touch = (type, touches, changed) => {
+          const e = new Event(type, { bubbles: true, cancelable: true });
+          Object.assign(e, {
+            touches,
+            targetTouches: touches,
+            changedTouches: changed,
+          });
+          target.dispatchEvent(e);
+        };
+        touch("touchstart", [point(10, -20)], [point(10, -20)]);
+        touch("touchstart", [point(10, -20), point(11, 20)], [point(11, 20)]);
+        for (const distance of [25, 32, 42, 55]) {
+          const fingers = [point(10, -distance), point(11, distance)];
+          touch("touchmove", fingers, fingers);
+          await new Promise(requestAnimationFrame);
+        }
+        touch("touchend", [], [point(10, -55), point(11, 55)]);
+        await new Promise(requestAnimationFrame);
+      });
+      assert.notDeepEqual(
+        await canvas.screenshot(),
+        beforeGesture,
+        "WebKit pinch should change the rendered chart",
+      );
+    }
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth <= innerWidth,
       ),
       true,
     );
-    await page
-      .locator(".rmWorkspace")
-      .screenshot({
-        path: join(folder, label + ".png"),
-        animations: "disabled",
-      });
+    await page.locator(".rmWorkspace").screenshot({
+      path: join(folder, label + ".png"),
+      animations: "disabled",
+    });
     await page.reload({ waitUntil: "domcontentloaded" });
     await page.getByText("Recorded checkpoint", { exact: true }).waitFor();
     assert.deepEqual(errors, []);

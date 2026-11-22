@@ -227,7 +227,7 @@ try {
   );
   assert.deepEqual(restored.candles, current.charts[60]);
   console.log(
-    "Fork receipts matched PostgreSQL in 110 checkpoint/interval combinations; old rows, sellbacks, branch replacement, pending graduation, pagination and disconnected checkpoints passed.",
+    "Fork receipts matched PostgreSQL in all recorded checkpoint/interval combinations; old rows, sellbacks, branch replacement, pending graduation, pagination and disconnected checkpoints passed.",
   );
 } finally {
   await db.end();

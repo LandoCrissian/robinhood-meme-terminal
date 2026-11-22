@@ -102,6 +102,14 @@ export function MarketChart({
       v = volume.current,
       view = chart.current;
     if (!c || !v || !view) return;
+    const unit = fdv ? " ETH" : " gwei";
+    c.applyOptions({
+      priceFormat: {
+        type: "custom",
+        minMove: 0.00001,
+        formatter: (v: number) => fmt(v) + unit,
+      },
+    });
     const points = [],
       volumes = [];
     for (const [i, r] of market.candles.entries()) {
@@ -125,14 +133,28 @@ export function MarketChart({
         color: r.close >= r.open ? "#35684f" : "#76474e",
       });
     }
-    c.setData(points);
-    v.setData(volumes);
     const g = market.graduation,
       graduationBucket =
         g && Math.floor(g.time / market.interval) * market.interval;
+    const visibleGraduation =
+      graduationBucket !== null &&
+      market.candles.length > 0 &&
+      graduationBucket >= market.candles[0].time &&
+      graduationBucket <= market.candles.at(-1)!.time;
+    if (
+      visibleGraduation &&
+      !points.some((row) => row.time === graduationBucket)
+    ) {
+      const gap = { time: graduationBucket as UTCTimestamp };
+      points.push(gap);
+      volumes.push(gap);
+      points.sort((a, b) => a.time - b.time);
+      volumes.sort((a, b) => a.time - b.time);
+    }
+    c.setData(points);
+    v.setData(volumes);
     marker.current?.setMarkers(
-      graduationBucket &&
-        market.candles.some((r) => r.time === graduationBucket)
+      visibleGraduation
         ? [
             {
               time: graduationBucket as UTCTimestamp,

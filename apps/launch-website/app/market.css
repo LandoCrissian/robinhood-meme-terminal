@@ -33,6 +33,17 @@
 .rmQuoteForm p {
   margin-top: 12px;
 }
+.rmQuoteForm details {
+  margin-top: 10px;
+  font-size: 0.8rem;
+}
+.rmQuoteForm summary {
+  cursor: pointer;
+  color: #d7c0f5;
+}
+.rmQuoteForm details label {
+  margin-top: 9px;
+}
 .rmQuoteForm small {
   margin-top: 6px;
 }

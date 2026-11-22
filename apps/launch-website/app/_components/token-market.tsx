@@ -48,7 +48,8 @@ export function TokenMarket({
     [time, setTime] = useState(Date.now),
     [before, setBefore] = useState<number | null>(null);
   const [side, setSide] = useState("Buy"),
-    [quoteInput, setQuoteInput] = useState("");
+    [quoteInput, setQuoteInput] = useState(""),
+    [limitBps, setLimitBps] = useState(100);
   const frame = replay?.[index],
     recorded = frame
       ? { ...frame, interval, candles: frame.charts[interval], earlier: false }
@@ -166,7 +167,8 @@ export function TokenMarket({
                 <>
                   Graduation funding <b>2 ETH</b> · sent to the locked position{" "}
                   <b>
-                    {fmt(Number(market.graduation.nativeUsedWei) / 1e18, 8)} ETH
+                    ≈{fmt(Number(market.graduation.nativeUsedWei) / 1e18, 8)}{" "}
+                    ETH
                   </b>{" "}
                   · current curve backing 0 ETH
                 </>
@@ -263,8 +265,8 @@ export function TokenMarket({
             </div>
           )}
           <footer>
-            Volume in ETH · fees included, gas excluded. Empty intervals have no
-            candle.
+            ETH volume measures amounts paid on buys and received on sells,
+            after trading fees. Gas is excluded. Empty intervals have no candle.
             {market && (
               <span>
                 Block {market.checkpoint.blockNumber} ·{" "}
@@ -337,6 +339,50 @@ export function TokenMarket({
                       </b>
                     </p>
                     <small>Contract quote at this recorded block</small>
+                    <details
+                      key={
+                        frame?.checkpoint.blockHash +
+                        ":" +
+                        quoted.side +
+                        ":" +
+                        quoted.input
+                      }
+                    >
+                      <summary>Review quote</summary>
+                      <label>
+                        Slippage limit{" "}
+                        <select
+                          value={limitBps}
+                          onChange={(e) => setLimitBps(Number(e.target.value))}
+                        >
+                          {[10, 50, 100, 200, 500].map((bps) => (
+                            <option key={bps} value={bps}>
+                              {bps / 100}%
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <p>
+                        Minimum received{" "}
+                        <b>
+                          {fmt(
+                            Number(
+                              (BigInt(quoted.outputWei) *
+                                BigInt(10000 - limitBps)) /
+                                10000n,
+                            ) / 1e18,
+                            8,
+                          )}{" "}
+                          {side === "Buy" ? symbol : "ETH"}
+                        </b>
+                      </p>
+                      {BigInt(quoted.refundWei) > 0n && (
+                        <p>
+                          Expected refund{" "}
+                          <b>{fmt(Number(quoted.refundWei) / 1e18, 8)} ETH</b>
+                        </p>
+                      )}
+                    </details>
                   </div>
                 ) : (
                   <p>No executable quote at this checkpoint.</p>

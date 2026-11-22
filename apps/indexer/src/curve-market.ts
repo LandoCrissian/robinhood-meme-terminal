@@ -265,7 +265,10 @@ export async function readCurveMarket(
     ordinal = 2147483647,
     earlier = false;
   // Read complete occupied buckets. An older page ends strictly before the earliest displayed bucket.
+  const started = Date.now();
   for (;;) {
+    if (Date.now() - started > 6000)
+      throw new Error("Market history exceeded the read budget");
     const page = await db.query<Row>(
       select +
         ` WHERE scope=$1 AND token=$2 AND (block_number,log_index)<($3::bigint,$4::integer)

@@ -51,7 +51,7 @@ test("independent receipt-word reconstruction matches every final candle and ETH
         return [];
       }),
     );
-  assert.equal(fills.length, 21);
+  assert.equal(fills.length, 35);
   for (const [step, candles] of Object.entries(frame.charts)) {
     assert.equal(
       candles.reduce((sum, c) => sum + c.count, 0),
