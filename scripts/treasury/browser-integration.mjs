@@ -139,6 +139,7 @@ export async function createTreasuryProjectsFromForm({ browserEngine, site, out,
     const fixedSupply = page.getByLabel("Fixed supply", { exact: true });
     assert.equal(await fixedSupply.inputValue(), "1,000,000,000 tokens"); assert.equal(await fixedSupply.getAttribute("readonly"), "");
     const details = page.locator("details.lpCreatorMetadata"); if (!await details.evaluate(el => el.open)) await details.locator("summary").click();
+    if (!await page.getByLabel("Project or metadata URL", { exact: true }).isVisible()) await page.getByText("Advanced URLs", { exact: true }).click();
     await page.getByLabel("Project or metadata URL", { exact: true }).fill("https://example.test/" + symbol.toLowerCase());
     const settings = page.locator("details.lpDraftTreasury"); if (!await settings.evaluate(el => el.open)) await settings.locator("summary").click();
     return { name, symbol, projectURI: "https://example.test/" + symbol.toLowerCase() };

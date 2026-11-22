@@ -346,6 +346,9 @@ try {
       await page.setViewportSize({width:320,height:844}); await screenshot("long-profile-320");
       await page.getByRole("link",{name:"Edit profile",exact:true}).click();
       await page.getByText("Profile data and removal", { exact: true }).click();
+      // The full public-page reload restored the session, not the in-memory wallet connection.
+      await page.getByRole("button",{name:"Choose wallet",exact:true}).click();
+      await page.getByRole("button",{name:"Connect MetaMask",exact:true}).click();
       await page.getByRole("button", { name: "Review profile removal", exact: true }).click();
       await page.getByRole("button", { name: "Confirm wallet for removal", exact: true }).click(); await status(/Wallet control confirmed/);
       await page.getByLabel("I want to remove my RMT Launch profile data.", { exact: true }).check();

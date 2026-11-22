@@ -714,6 +714,7 @@ try {
   }
   await page.locator(".lpCreatorMetadata > summary").click();
   await page.getByLabel("Project description", { exact: true }).fill(draftOnly.description);
+  await page.getByText("Advanced URLs", { exact: true }).click();
   await page.getByLabel("Project or metadata URL", { exact: true }).fill(project.projectURI);
   await page.getByLabel("Artwork URL", { exact: true }).fill(draftOnly.artwork);
   await page.getByText("Optional project treasury", { exact: true }).click();
