@@ -6,6 +6,7 @@ on:
       - "apps/launch-website/**"
       - "apps/indexer/**"
       - "scripts/production-adapters/**"
+      - "scripts/economics/review-market-outage.mjs"
       - "scripts/security/public-task092-identities*"
       - "scripts/security/run-history-scan.mjs"
       - "scripts/release/website-financial-preflight*"
@@ -259,6 +260,9 @@ jobs:
         run: |
           pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json ../../scripts/production-adapters/browser.ts \
             --browser "${{ matrix.browser }}" --viewport "${{ matrix.viewport }}" --fee-mode "${{ matrix.fee }}" --output "$RUNNER_TEMP/task092-browser"
+      - name: Verify stale market state and recovery after a disconnected feed
+        if: matrix.fee == 'positive' && ((matrix.browser == 'chromium' && matrix.viewport == 'desktop') || (matrix.browser == 'webkit' && matrix.viewport == 'mobile'))
+        run: node scripts/economics/review-market-outage.mjs "${{ matrix.browser }}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:

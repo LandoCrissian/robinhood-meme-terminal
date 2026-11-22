@@ -7,6 +7,7 @@ COPY apps/launch-website/package.json ./apps/launch-website/package.json
 RUN pnpm install --frozen-lockfile --filter @rmt/launch-website...
 COPY apps/launch-website ./apps/launch-website
 COPY packages/launchpad-common ./packages/launchpad-common
+COPY docs/evidence/token-market/market-replay.json ./docs/evidence/token-market/market-replay.json
 ENV NEXT_TELEMETRY_DISABLED=1 RMT_WEB_HOSTING=railway-read-only-v1
 RUN pnpm --filter @rmt/launch-website build
 
