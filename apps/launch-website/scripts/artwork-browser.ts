@@ -82,7 +82,11 @@ async function main(){
         const image = img as HTMLImageElement; await image.decode(); return image.naturalWidth;
       }),1024);
       const original = engine === "webkit" ? jpeg : png;
-      if (engine === "webkit") await picker.setInputFiles({name:"phone.jpg",mimeType:"image/jpeg",buffer:original});
+      if (engine === "webkit") {
+        // Deterministically exercise the JPEG fallback after native export failure.
+        await page.evaluate(() => { HTMLCanvasElement.prototype.toBlob = callback => callback(null); });
+        await picker.setInputFiles({name:"phone.jpg",mimeType:"image/jpeg",buffer:original});
+      }
       else await picker.evaluate((input, encoded) => {
         const data = new DataTransfer(), bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
         data.items.add(new File([bytes],"dropped.png",{type:"image/png"}));

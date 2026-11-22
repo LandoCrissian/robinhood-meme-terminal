@@ -70,6 +70,9 @@ importers:
       firebase-admin:
         specifier: 14.5.1
         version: 14.5.1(@firebase/app-compat@0.5.23)(@firebase/app@0.16.7)
+      jpeg-js:
+        specifier: 0.4.4
+        version: 0.4.4
       next:
         specifier: 15.5.29
         version: 15.5.29(@opentelemetry/api@1.9.1)(@types/node@22.20.1)(react-dom@19.0.0(react@19.0.0))(react@19.0.0)
@@ -2672,6 +2675,9 @@ packages:
 
   jose@6.2.17:
     resolution: {integrity: sha512-wOuK9V1yujQFH5S0ZWmLcDZN7+IKh9bUCC2ZPCf2HDlol3WWHy+PPyNjEI75FXRLMp3vDKQcupP59xhVU95hcg==}
+
+  jpeg-js@0.4.4:
+    resolution: {integrity: sha512-WZzeDOEtTOBK4Mdsar0IqEU5sMr3vSV2RqkAIzUEV2BHnUfKGyswWFPFwK5EeDo93K3FohSHbLAjj0s1Wzd+dg==}
 
   js-yaml@4.3.2:
     resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
@@ -6709,6 +6715,8 @@ snapshots:
       valid-url: 1.0.9
 
   jose@6.2.17: {}
+
+  jpeg-js@0.4.4: {}
 
   js-yaml@4.3.2:
     dependencies:

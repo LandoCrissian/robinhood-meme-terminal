@@ -35,6 +35,7 @@ jobs:
         with:
           node-version: 22
       - run: pnpm install --frozen-lockfile --filter @rmt/launch-website...
+      - run: pnpm --filter @rmt/launch-website build
       - name: Check native Safari photo decoding, orientation and final size
         run: |
           sudo safaridriver --enable

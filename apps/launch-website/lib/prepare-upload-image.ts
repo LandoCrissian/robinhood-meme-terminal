@@ -76,7 +76,7 @@ export async function prepareUploadImage(file: File, kind: "avatar" | "artwork")
     const scale = Math.min(1, max / Math.max(image.naturalWidth, image.naturalHeight));
     canvas.width = Math.max(1, Math.round(image.naturalWidth * scale));
     canvas.height = Math.max(1, Math.round(image.naturalHeight * scale));
-    const ctx = canvas.getContext("2d");
+    const ctx = canvas.getContext("2d", {willReadFrequently:true});
     if (!ctx) throw new Error("Your browser could not prepare the photo. Try again in a new tab.");
     ctx.imageSmoothingQuality = "high";
     ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
@@ -88,14 +88,14 @@ export async function prepareUploadImage(file: File, kind: "avatar" | "artwork")
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       blob = await encode("image/jpeg");
-      // Some WebKit builds return an empty Blob for a canvas codec. Try the
-      // native JPEG data-URL encoder on this already downsampled canvas.
+      // Some WebKit installations can decode HEIC but return null from both
+      // native encoders. Only pass our bounded, oriented pixels to the fallback.
       if (!blob?.size) {
-        const prefix = "data:image/jpeg;base64,", data = canvas.toDataURL("image/jpeg", 0.9);
-        if (data.startsWith(prefix) && data.length <= prefix.length + 4 * Math.ceil(artworkLimit / 3)) {
-          const bytes = Uint8Array.from(atob(data.slice(prefix.length)), c => c.charCodeAt(0));
-          blob = new Blob([bytes], {type:"image/jpeg"});
-        }
+        const pixels = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        if (pixels.data[3] !== 255) throw new Error("Your browser could not read the photo preview. Choose the photo again.");
+        const { default: encodeJpeg } = await import("jpeg-js/lib/encoder");
+        const jpeg = encodeJpeg(pixels, 88);
+        blob = new Blob([new Uint8Array(jpeg.data)], {type:"image/jpeg"});
       }
     }
     if (!blob || !blob.size || blob.size > artworkLimit) throw new Error("The photo could not be optimized. Try choosing it again.");
