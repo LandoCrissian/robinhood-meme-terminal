@@ -4,6 +4,8 @@ import receipts from "../../../../docs/evidence/token-market/receipts.json";
 import { toEventSelector } from "viem";
 import replay from "../../../../docs/evidence/token-market/market-replay.json";
 import { checkpointFresh, validMarket } from "../token-market";
+import { GET as marketRoute } from "../../app/api/launchpad/market/[token]/route";
+import { curveProductionProfile } from "./curve-production";
 const frame = replay.frames.at(-1)!;
 test("independent receipt-word reconstruction matches every final candle and ETH volume", () => {
   const trade = toEventSelector(
@@ -79,6 +81,49 @@ const snapshot = {
   candles: frame.charts["60"],
   earlier: false,
 };
+test("website market GET authenticates privately, exposes only verified chart fields and closes on upstream errors", async t => {
+  const bindings: Record<string,string> = {
+    RMT_CURVE_PRODUCTION_DISCOVERY: curveProductionProfile,
+    RMT_CURVE_FIXTURE: "",
+    RMT_LAUNCH_HISTORY_INDEXER_URL: "https://worker.example.invalid/",
+    RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: "fixture-only",
+  };
+  const saved = Object.fromEntries(Object.keys(bindings).map(key => [key, process.env[key]]));
+  Object.assign(process.env, bindings);
+  t.after(() => { for (const [key, value] of Object.entries(saved)) {
+    if (value === undefined) delete process.env[key]; else process.env[key] = value;
+  } });
+  const privateNote = "internal-test-field";
+  const body = {
+    ...snapshot, schemaVersion: 1, chainId: 4663, privateNote,
+    checkpoint: { ...snapshot.checkpoint, privateNote },
+    candles: snapshot.candles.map(candle => ({ ...candle, privateNote })),
+    graduation: { ...snapshot.graduation, privateNote },
+  };
+  let upstream = () => Response.json(body);
+  const fetcher = t.mock.method(globalThis, "fetch", async (input: URL, init: RequestInit) => {
+    assert.equal(input.href, bindings.RMT_LAUNCH_HISTORY_INDEXER_URL + "curve-market/" + replay.token + "?interval=60");
+    assert.equal(new Headers(init.headers).get("authorization"), "Bearer fixture-only");
+    assert.equal(init.redirect, "error"); assert.equal(init.cache, "no-store");
+    return upstream();
+  });
+  const read = (host: string, query = "interval=60") => marketRoute(new Request("https://" + host + "/api/launchpad/market/" + replay.token + "?" + query,
+    { headers: { host, "x-forwarded-proto": "https" } }), { params: Promise.resolve({ token: replay.token }) });
+  assert.equal((await read("preview.example.invalid")).status, 404);
+  assert.equal((await read("www.rmtlaunch.fun", "interval=7")).status, 400);
+  assert.equal(fetcher.mock.callCount(), 0);
+  const response = await read("www.rmtlaunch.fun");
+  assert.equal(response.status, 200); assert.match(response.headers.get("cache-control")!, /no-store/);
+  const payload = await response.text(); assert.ok(!payload.includes(privateNote)); assert.ok(!payload.includes("fixture-only"));
+  const page = JSON.parse(payload); assert.ok(validMarket(page, replay.token, 60)); assert.deepEqual(page.checkpoint, snapshot.checkpoint);
+  assert.deepEqual(page.candles, snapshot.candles);
+  for (const rejected of [() => new Response(null, { status: 401 }), () => Response.json({ ...body, chainId: 1 }),
+    () => Response.json({ ...body, padding: "x".repeat(131072) })]) {
+    upstream = rejected;
+    const result = await read("www.rmtlaunch.fun"); assert.equal(result.status, 503);
+    assert.deepEqual(await result.json(), { status: "unavailable" });
+  }
+});
 test("recorded market validates real backing, phase, ordered fill prices and token identity", () => {
   assert.ok(validMarket(snapshot, replay.token, 60));
   assert.equal(

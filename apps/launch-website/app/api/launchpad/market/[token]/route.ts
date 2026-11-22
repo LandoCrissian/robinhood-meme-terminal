@@ -75,7 +75,19 @@ export async function GET(
       !validMarket(market, token, interval)
     )
       return unavailable();
-    return Response.json(market, { headers });
+    // Only the chart contract is public. A worker diagnostic added later must
+    // not be forwarded by this authenticated server-to-server proxy.
+    const { blockNumber, blockHash, timestamp } = market.checkpoint;
+    const graduation = market.graduation;
+    return Response.json({
+      schemaVersion: 1, chainId: 4663, token: market.token, factory: market.factory,
+      interval: market.interval, checkpoint: { blockNumber, blockHash, timestamp },
+      soldWei: market.soldWei, backingWei: market.backingWei, phase: market.phase,
+      graduation: graduation && { time: graduation.time, poolId: graduation.poolId, nativeUsedWei: graduation.nativeUsedWei },
+      candles: market.candles.map(({ time, open, high, low, close, count, volumeWei }) =>
+        ({ time, open, high, low, close, count, volumeWei })),
+      earlier: market.earlier,
+    }, { headers });
   } catch {
     return unavailable();
   }
