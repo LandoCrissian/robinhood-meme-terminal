@@ -8,7 +8,8 @@ import {
   type LaunchDraft, type LaunchDraftErrors, type LaunchDraftField, type LaunchReviewRequest, type ReviewedLaunchDraft,
 } from "../../lib/launch-draft";
 import { proposedCurveLifecycle } from "../../lib/curve-lifecycle";
-import { launchTerms, launchTokenDecimals, launchTokenSupply } from "../../lib/launch-terms";
+import { formatEther } from "viem";
+import { launchTerms, launchTokenDecimals, launchTokenSupply, minimumGraduationGrossWei } from "../../lib/launch-terms";
 import { TestCreationWallet } from "./test-creation-wallet";
 import { ArtworkUpload, clearPendingArtwork } from "./artwork-upload";
 import { assetCID, receiptForImage, verifyArtworkReceipt } from "../../lib/token-artwork";
@@ -43,12 +44,12 @@ function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; produc
   const fullTerms = <>
     <dl className="lpFacts lpCreatorTermsFacts">
       <dt>Creation fee</dt><dd>{launchTerms.creationFeeEth} ETH, plus network gas</dd>
-      <dt>Illustrative value</dt><dd>About $1 at a fixed $2,500 per ETH reference</dd>
-      <dt>Creation fee recipient</dt><dd>{production ? <code className="lpAddress">{production.operating}</code> : "RMT operations · production address pending approval"}</dd>
+      <dt>Creation fee recipient</dt><dd>{production ? <code className="lpAddress">{production.operating}</code> : "RMT operations"}</dd>
       {production && <><dt>Future reserve recipient</dt><dd><code className="lpAddress">{production.reserve}</code></dd></>}
       <dt>Creator token allocation</dt><dd>0 tokens</dd>
       <dt>Opening curve inventory</dt><dd>{number.format(launchTokenSupply)} tokens</dd>
       <dt>Opening real reserve</dt><dd>0 ETH · creators supply no liquidity</dd>
+      <dt>Opening virtual reserve</dt><dd>{launchTerms.virtualEth} ETH for pricing only. Buyers supply the actual ETH.</dd>
       <dt>Curve trading fee</dt><dd>{launchTerms.curveTradeFeePercent}% of gross ETH, plus gas</dd>
       <dt>Curve and locked-position fee split</dt><dd>
         {draft ? <>
@@ -58,15 +59,16 @@ function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; produc
       </dd>
       <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(draft?.treasuryShareBps ?? 0)}</dd>
       <dt>Rewards after graduation</dt><dd>Same recipients for ETH and token fees collected from the original locked position</dd>
-      <dt>Graduation target</dt><dd>{number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold ({launchTerms.curveAllocationPercent}%) and {launchTerms.graduationBackingEth} ETH of real backing{production ? "" : " in the review fixture"}</dd>
+      <dt>Graduation target</dt><dd>{number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold ({launchTerms.curveAllocationPercent}%) and {launchTerms.graduationBackingEth} ETH of real backing</dd>
+      <dt>Minimum gross buy from launch</dt><dd>{formatEther(minimumGraduationGrossWei)} ETH in a single buy, including the curve fee. Gas is separate. Sells reduce progress and splitting buys can add rounding costs.</dd>
       <dt>Original v4 position</dt><dd>{number.format(launchTokenSupply * launchTerms.liquidityAllocationPercent / 100)} tokens available before rounding ({launchTerms.liquidityAllocationPercent}%) · permanently locked principal</dd>
       <dt>v4 pool fee</dt><dd>{launchTerms.graduationPoolFeePercent}% · project earnings depend on fees earned by the locked position</dd>
     </dl>
-    <p>At the target, the reviewed engine permits a separate graduation transaction.{production ? " Trading and claims require their own activation acceptance." : " Production terms require approval."}</p>
+    <p>At the target, anyone can complete graduation. The transaction seeds the locked v4 position at the final curve price. Small rounding balances stay in the curve.</p>
   </>;
-  return <section className="lpPanel lpForm lpCreatorTerms" aria-label="Provisional launch terms">
+  return <section className="lpPanel lpForm lpCreatorTerms" aria-label="Factory v1 launch terms">
     <div className="lpCreatorSectionHeader">
-      <div><span className="lpEyebrow">Costs &amp; allocation</span><h2>{production ? "Launch terms" : "Provisional launch terms"}</h2></div>
+      <div><span className="lpEyebrow">Costs &amp; allocation</span><h2>Factory v1 launch terms</h2></div>
     </div>
     {draft ? fullTerms : <>
       <dl className="lpCreatorTermHighlights">
@@ -79,7 +81,8 @@ function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; produc
         <p><strong>{launchTerms.projectFeeSharePercent}% project</strong> · {launchTerms.operatingFeeSharePercent}% RMT operations · {launchTerms.futureReserveFeeSharePercent}% RMT future reserve</p>
         <p>Applies to curve fees and fees earned by the original locked position. An optional treasury receives part of the project share.</p>
         <p><strong>0 creator tokens.</strong> Creators supply no liquidity.</p>
-        <p>Graduation target: {number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold ({launchTerms.curveAllocationPercent}%) and {launchTerms.graduationBackingEth} ETH of real backing. The remaining {number.format(launchTokenSupply * launchTerms.liquidityAllocationPercent / 100)} tokens ({launchTerms.liquidityAllocationPercent}%) are available before rounding for the original v4 position, with permanently locked principal.</p>
+        <p>Graduation requires {number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold and {launchTerms.graduationBackingEth} ETH of buyer-funded backing. One buy from launch costs about {Number(formatEther(minimumGraduationGrossWei)).toFixed(4)} ETH including the fee, plus gas.</p>
+        <p>At graduation, that backing and the remaining {number.format(launchTokenSupply * launchTerms.liquidityAllocationPercent / 100)} tokens fund the permanently locked v4 position, subject to rounding.</p>
       </div>
       <details className="lpCreatorDisclosure lpCreatorTermsDisclosure">
         <summary><span>View full launch terms</span></summary>

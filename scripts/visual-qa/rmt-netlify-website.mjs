@@ -307,9 +307,9 @@ try {
 
       await nav.getByRole("link", { name: "Create", exact: true }).click();
       await verifyReadOnly("Create Token", true);
-      const terms = main.getByRole("region", { name: "Provisional launch terms" });
+      const terms = main.getByRole("region", { name: "Factory v1 launch terms" });
       await terms.locator(".lpCreatorTermsDisclosure > summary").click();
-      for (const disclosure of [/0\.0004 ETH/i, /\b2 ETH\b/i, /600,000,000 tokens net sold \(60%\)/,
+      for (const disclosure of [/0\.0004 ETH/i, /2 ETH of real backing/i, /4 ETH for pricing only/, /2\.020202020202020203 ETH/, /600,000,000 tokens net sold \(60%\)/,
         /400,000,000 tokens available before rounding \(40%\)/, /1%/, /90%/, /5% RMT operations/i, /5% RMT future reserve/i]) {
         await terms.getByText(disclosure).first().waitFor();
       }
