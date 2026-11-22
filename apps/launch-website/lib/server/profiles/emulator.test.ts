@@ -157,7 +157,8 @@ test("real Firebase Auth sessions and durable Firestore profiles complete the is
     assert.equal(visible.result.status, 200); assert.equal(visible.data.profile.preferences, undefined); assert.equal(visible.data.profile.uid, undefined);
   });
   await t.test("the verified owner wallet can reserve, refresh and publicly resolve the official name", async () => {
-    const account = await ensureWalletProfile(firebase.db, rmtCreationOwner);
+    const created = Date.now();
+    const account = { ...await ensureWalletProfile(firebase.db, rmtCreationOwner, created), createdAt: new Date(created).toISOString() };
     const guard = { sessionId: digest("isolated-owner-session"), browserHash: digest("isolated-owner-browser"), browserEpoch: 1 };
     await firebase.db.collection(c.browsers).doc(guard.browserHash).set({ epoch: guard.browserEpoch });
     await firebase.db.collection(c.sessions).doc(guard.sessionId).set({ ...account, epoch: account.authEpoch, browserHash: guard.browserHash,
