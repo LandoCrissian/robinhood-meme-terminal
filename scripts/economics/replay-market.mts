@@ -46,11 +46,17 @@ const actor = "0x0000000000000000000000000000000000ec0190",
     createPublicClient({ transport: http(url), cacheTime: 0 }),
   );
 const heads = await Promise.all(clients.map((r) => r.getBlockNumber()));
-const base = (heads[0] < heads[1] ? heads[0] : heads[1]) - 24n;
+const confirmed = (heads[0] < heads[1] ? heads[0] : heads[1]) - 24n;
+const mode = process.argv[4] ?? "latest";
+assert.ok(mode === "recorded" || mode === "latest");
+const base = mode === "recorded" ? 120526594n : confirmed;
+assert.ok(base <= confirmed);
 const headers = await Promise.all(
   clients.map((r) => r.getBlock({ blockNumber: base })),
 );
 assert.equal(headers[0].hash, headers[1].hash);
+if (mode === "recorded")
+  assert.equal(headers[0].hash, "0x44c1060d862e1e81519a2871f2035d5dc3d2f30494d5142cb073087c57010ed5");
 const quoter = "0x8dc178efb8111bb0973dd9d722ebeff267c98f94";
 const quoterAbi = parseAbi([
   "function quoteExactInputSingle(((address currency0,address currency1,uint24 fee,int24 tickSpacing,address hooks) poolKey,bool zeroForOne,uint128 exactAmount,bytes hookData) params) returns(uint256 amountOut,uint256 gasEstimate)",

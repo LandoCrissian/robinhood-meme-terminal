@@ -4,6 +4,10 @@
     ".": {
       "entry": [
         "scripts/production-adapters/*.{mjs,mts,ts,tsx}",
+        "scripts/economics/measure-graduation.mjs",
+        "scripts/economics/replay-market.mts",
+        "scripts/economics/review-market.mjs",
+        "scripts/economics/verify-public-market-addresses.mjs",
         "scripts/security/scan-task092.mjs",
         "docs/evidence/rmt-task091/validation/classify-scan.mjs",
         "docs/evidence/rmt-task091/governance/capture-authority.mjs",

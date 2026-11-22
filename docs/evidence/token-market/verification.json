@@ -1,0 +1,164 @@
+{
+  "release": {
+    "at": "2026-11-22T09:36:47.877Z",
+    "source": "55ac66fc1f1f0970db984883fa9cee5acf07114a",
+    "bundleSha256": "20a91fd0a95817029b3394103d68d73af49ea86ca34673cf0fea31b39e7df617",
+    "serverSha256": "191d4616291fb2679ece070b7c24620d6b4f272d7843f222486fa6a5eb8b9474",
+    "deployId": "6b02b785902df208e890e377",
+    "url": "https://6b02b785902df208e890e377--eclectic-valkyrie-16cb92.netlify.app",
+    "productionDeploy": "6b029787efaaf7bc868d68e4",
+    "context": "deploy-preview"
+  },
+  "artifact": {
+    "sourceCommit": "55ac66fc1f1f0970db984883fa9cee5acf07114a",
+    "bundleSha256": "20a91fd0a95817029b3394103d68d73af49ea86ca34673cf0fea31b39e7df617",
+    "bytes": 36752417,
+    "functionArchiveSha256": "191d4616291fb2679ece070b7c24620d6b4f272d7843f222486fa6a5eb8b9474",
+    "files": 291,
+    "deployed": false,
+    "sourceRun": "45007543150",
+    "artifactId": 14748736783,
+    "outerDigest": "sha256:6329be133316baf60c036282d6c304e09d4f9d54953c504f319027cadcb4a729"
+  },
+  "publicProfileSnapshotHashes": {
+    "a32ec5bf3de141494b6d633be5da97f0c112e08e955f549eab7021a3fe27d4f7.webp": "a32ec5bf3de141494b6d633be5da97f0c112e08e955f549eab7021a3fe27d4f7",
+    "dbca4bd4600f3ad30e698aa2ef19cd1a0d4be9e4f96d7a87b0bcf18c13bf0a2f.webp": "dbca4bd4600f3ad30e698aa2ef19cd1a0d4be9e4f96d7a87b0bcf18c13bf0a2f",
+    "people.json": "9c37e409e5b00df2d6927a5618b11379689a8b447556dd17d8c27cdbe337334c"
+  },
+  "hosted": {
+    "origin": "https://6b02b785902df208e890e377--eclectic-valkyrie-16cb92.netlify.app",
+    "at": "2026-11-22T09:37:28.152Z",
+    "results": [
+      {
+        "browser": "chromium",
+        "width": 1440,
+        "priceAndFdv": true,
+        "sellback": true,
+        "pendingAndGraduated": true,
+        "quotes": true,
+        "reload": true,
+        "overflow": false,
+        "walletRequests": 0
+      },
+      {
+        "browser": "webkit",
+        "width": 375,
+        "priceAndFdv": true,
+        "sellback": true,
+        "pendingAndGraduated": true,
+        "quotes": true,
+        "reload": true,
+        "overflow": false,
+        "walletRequests": 0
+      }
+    ]
+  },
+  "hostedDisclosures": {
+    "origin": "https://6b02b785902df208e890e377--eclectic-valkyrie-16cb92.netlify.app",
+    "at": "2026-11-22T09:37:33.464Z",
+    "results": [
+      {
+        "engine": "chromium",
+        "viewport": 1440,
+        "disclosures": true,
+        "restoredSyntheticDraft": true,
+        "riskPage": true,
+        "financial": "disabled"
+      },
+      {
+        "engine": "webkit",
+        "viewport": 390,
+        "disclosures": true,
+        "restoredSyntheticDraft": true,
+        "riskPage": true,
+        "financial": "disabled"
+      }
+    ]
+  },
+  "screenshotsSha256": {
+    "desktop.png": "aa80b5b67d1bffda4bf9c79ecd0cc40d53a17b7475352adc219be5a2312252c5",
+    "mobile.png": "40b0eb0e7ea10b3f4fb0867710f2718d2e20398b90c2560fb0169384a1479ce6"
+  },
+  "isolatedBrowserWallet": {
+    "chromium": {
+      "checks": {
+        "twoEthGross": true,
+        "editInvalidates": true,
+        "fourEthRefundTwoEthTarget": true,
+        "explicitRejectThenLostHashRecoveryNoResend": true
+      },
+      "layout": {
+        "width": 1440,
+        "document": 1440
+      },
+      "status": "passed"
+    },
+    "webkit": {
+      "checks": {
+        "twoEthGross": true,
+        "editInvalidates": true,
+        "fourEthRefundTwoEthTarget": true,
+        "explicitRejectThenLostHashRecoveryNoResend": true
+      },
+      "layout": {
+        "width": 390,
+        "document": 390
+      },
+      "status": "passed"
+    }
+  },
+  "independentForkRepeat": {
+    "repeatBlock": "120535468",
+    "hash": "0xf211d613c82708b9f4c00f689747e66faa22cfac741bf9e5955a26723203919f",
+    "canonicalReceiptsPerProvider": 54,
+    "canonicalFillsPerProvider": 35,
+    "all36StateAndQuoteComparisons": true,
+    "minuteOhlcvIdenticalAfterRebasingTime": true,
+    "receiptsSha256": "adfe1afbf163b51722e3ddc4739636b164a59d3c1c53b4eb8460ebb753d333e6",
+    "marketReplaySha256": "320b4366609e728370e29168180e64a5fef048d6e536ec09707b79be159ad7d2"
+  },
+  "production": {
+    "origin": "https://www.rmtlaunch.fun",
+    "at": "2026-11-22T09:33:34.424010+00:00",
+    "checks": [
+      {
+        "path": "/api/launchpad/config",
+        "method": "GET",
+        "http": 200,
+        "status": "disabled"
+      },
+      {
+        "path": "/api/launchpad/production-creation",
+        "method": "POST",
+        "http": 404,
+        "status": "unavailable"
+      },
+      {
+        "path": "/api/launchpad/production-lifecycle",
+        "method": "POST",
+        "http": 404,
+        "status": "unavailable"
+      },
+      {
+        "path": "/api/launchpad/production-earnings",
+        "method": "POST",
+        "http": 404,
+        "status": "unavailable"
+      },
+      {
+        "path": "/review/trading",
+        "method": "GET",
+        "http": 404,
+        "status": null
+      }
+    ]
+  },
+  "historicalScanner": {
+    "run": 45007543159,
+    "artifact": 14748765492,
+    "raw": 361,
+    "approvedByExistingClassifier": 322,
+    "independentlyReproducedPublicErc20Addresses": 39,
+    "automatedDecision": "BLOCKED_UNCLASSIFIED_OR_MISSING_FINDING"
+  }
+}
