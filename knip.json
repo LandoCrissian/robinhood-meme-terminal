@@ -90,6 +90,7 @@
         "lib/server/**/*.test.ts",
         "lib/server/profiles/next-http-acceptance.mjs",
         "scripts/profile-ui-smoke.mjs",
+        "scripts/artwork-browser.ts",
         "netlify/edge-functions/*.ts"
       ]
     },

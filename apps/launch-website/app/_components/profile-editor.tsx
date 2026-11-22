@@ -61,7 +61,8 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       try { body=profileEdit(draft,profile.walletAddress); } catch(error) {
         const reason=error instanceof Error ? error.message : "";
         const link=reason.match(/Project link (\d+)/);
-        if(link) focusField("url-"+(Number(link[1])-1));
+        if (/link label/i.test(reason)) focusField("label-"+draft.links.findIndex(row=>Array.from(row.label.normalize("NFC").trim()).length>32 || /[<>\p{Cc}\p{Cf}]/u.test(row.label)));
+        else if(link) focusField("url-"+(Number(link[1])-1));
         else if (/username|reserved/i.test(reason)) focusField(/X username/.test(reason)?"xHandle":"username");
         else if (/display name|bio/i.test(reason)) focusField(/bio/i.test(reason)?"bio":"displayName");
         throw error;
@@ -165,14 +166,14 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       <form className="lpPanel lpForm lpProfileForm" noValidate onInput={()=>setInvalid("")} onSubmit={(event) => void save(event)} aria-label="Edit creator profile">
         <h2>Public details</h2>
         <p>Save your changes to update your creator profile.</p>
-        <label>Display name<input name="displayName" aria-invalid={invalid==="displayName" || undefined} aria-errormessage={invalid==="displayName"?"profile-save-message":undefined} value={draft.displayName} maxLength={48} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
+        <label>Display name<input name="displayName" aria-invalid={invalid==="displayName" || undefined} aria-errormessage={invalid==="displayName"?"profile-save-message":undefined} value={draft.displayName} maxLength={96} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
         <label>Username<input name="username" aria-invalid={invalid==="username" || undefined} aria-errormessage={invalid==="username"?"profile-save-message":undefined} aria-label="Username" aria-describedby="profile-username-hint" value={draft.username ?? ""} minLength={3} maxLength={24} placeholder="your_name" autoCapitalize="none" spellCheck={false}
           onChange={(event) => setDraft({ ...draft, username: event.target.value || null })} /><small id="profile-username-hint">3–24 characters. Start with a letter; use letters, numbers or underscores. Saving a username lists it on the People page.</small></label>
-        <label>Bio<textarea name="bio" aria-invalid={invalid==="bio" || undefined} aria-errormessage={invalid==="bio"?"profile-save-message":undefined} aria-label="Bio" aria-describedby="profile-bio-hint" value={draft.bio} maxLength={280} rows={4} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /><small id="profile-bio-hint">{draft.bio.length}/280 characters · plain text</small></label>
+        <label>Bio<textarea name="bio" aria-invalid={invalid==="bio" || undefined} aria-errormessage={invalid==="bio"?"profile-save-message":undefined} aria-label="Bio" aria-describedby="profile-bio-hint" value={draft.bio} maxLength={560} rows={4} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /><small id="profile-bio-hint">{Array.from(draft.bio.normalize("NFC")).length}/280 characters · plain text</small></label>
         <label>X username (optional)<input name="xHandle" aria-invalid={invalid==="xHandle" || undefined} aria-errormessage={invalid==="xHandle"?"profile-save-message":undefined} value={draft.xHandle ?? ""} placeholder="@username" autoCapitalize="none" spellCheck={false} maxLength={16}
           onChange={(event) => setDraft({ ...draft, xHandle: event.target.value || null })} /></label>
         <fieldset><legend>Project links</legend>{draft.links.map((link, index) => <div className="lpProfileLinkRow" key={index}>
-          <label>Label<input value={link.label} maxLength={32} onChange={(event) => setDraft({ ...draft, links: draft.links.map((row, i) => i === index ? { ...row, label: event.target.value } : row) })} /></label>
+          <label>Label<input name={"label-"+index} aria-invalid={invalid==="label-"+index || undefined} aria-errormessage={invalid==="label-"+index?"profile-save-message":undefined} value={link.label} maxLength={64} onChange={(event) => setDraft({ ...draft, links: draft.links.map((row, i) => i === index ? { ...row, label: event.target.value } : row) })} /></label>
           <label>HTTPS URL<input name={"url-"+index} aria-invalid={invalid==="url-"+index || undefined} aria-errormessage={invalid==="url-"+index?"profile-save-message":undefined} type="url" value={link.url} maxLength={512} placeholder="https://" onChange={(event) => setDraft({ ...draft, links: draft.links.map((row, i) => i === index ? { ...row, url: event.target.value } : row) })} /></label>
           <button type="button" className="lpTextButton" onClick={() => setDraft({ ...draft, links: draft.links.filter((_, i) => i !== index) })} aria-label={`Remove link ${index + 1}`}>Remove</button>
         </div>)}{draft.links.length < 3 && <button type="button" className="lpTextButton" onClick={() => setDraft({ ...draft, links: [...draft.links, { label: "", url: "" }] })}>Add HTTPS link</button>}</fieldset>
