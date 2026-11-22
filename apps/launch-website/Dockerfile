@@ -2,6 +2,7 @@ FROM node:22-bookworm-slim@sha256:e9f565d32859f0cbfb52125eafe8be39390f24dac302dc
 WORKDIR /app
 RUN corepack enable && corepack prepare pnpm@10.12.1 --activate
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY patches/jwks-rsa@4.1.0.patch ./patches/jwks-rsa@4.1.0.patch
 COPY apps/launch-website/package.json ./apps/launch-website/package.json
 RUN pnpm install --frozen-lockfile --filter @rmt/launch-website...
 COPY apps/launch-website ./apps/launch-website

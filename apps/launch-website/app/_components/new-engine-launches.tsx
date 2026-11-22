@@ -15,7 +15,7 @@ function units(wei: string) {
 
 const creationDate = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
 
-export function NewEngineLaunches({ directory: received, onRetry }: { directory: NewEngineDirectory; onRetry?: () => void }) {
+export function NewEngineLaunches({ directory: received, onRetry, creatorView }: { directory: NewEngineDirectory; creatorView?: boolean; onRetry?: () => void }) {
   const freshUntil = received.status === "ready" ? received.freshUntil : undefined;
   const [expiredAt, setExpiredAt] = useState<number | null>(null);
   useEffect(() => {
@@ -38,7 +38,7 @@ export function NewEngineLaunches({ directory: received, onRetry }: { directory:
     .some((value) => value.toLowerCase().includes(search)));
   const clearSearch = () => { setQuery(""); input.current?.focus(); };
   return <section className="lpProjectLink" aria-label="New RMT Launch engine">
-    {(directory.status === "ready" || directory.status === "prelaunch") && <div className="lpDiscoveryToolbar"><div className="rmtSearch lpSearch"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg></span>
+    {(!creatorView || launches.length > 0) && (directory.status === "ready" || directory.status === "prelaunch") && <div className="lpDiscoveryToolbar"><div className="rmtSearch lpSearch"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg></span>
       <input ref={input} type="search" aria-label="Search launches" placeholder="Search name, ticker or address" value={query} onChange={(event) => setQuery(event.target.value)} />
       {query && <button type="button" className="lpSearchClear" aria-label="Clear search" onClick={clearSearch}>×</button>}</div>
       <span className="lpDiscoveryCount" role="status">{directory.status === "ready"
@@ -57,7 +57,7 @@ export function NewEngineLaunches({ directory: received, onRetry }: { directory:
             <time dateTime={registration.creation.timestamp}>Created {creationDate.format(new Date(registration.creation.timestamp))} UTC</time>
           </li>)}</ul></details>}
     </>}
-    {directory.status === "ready" && launches.length === 0 && <section className="lpEmpty lpForm lpLaunchEmpty"><h2>No launches yet</h2><p>Tokens appear here once their creation is confirmed on Robinhood Chain.</p></section>}
+    {directory.status === "ready" && launches.length === 0 && (creatorView ? <p className="lpQuietEmpty">No launches from this wallet in the current feed.</p> : <section className="lpEmpty lpForm lpLaunchEmpty"><h2>No launches yet</h2><p>Tokens appear here once their creation is confirmed on Robinhood Chain.</p></section>)}
     {launches.length > 0 && visible.length === 0 && <section className="lpEmpty lpForm"><h2>No launches match your search</h2><p>Try a token name, ticker or exact contract address.</p></section>}
     <div className="lpCardGrid">{visible.map((launch) => {
       const { registration } = launch;

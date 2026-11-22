@@ -22,9 +22,9 @@ export function MyLaunches() {
     setLoading(true); setDirectory({ status: "unavailable" });
     setCursor(null); setStale(false);
     fetch("/api/launchpad/earnings?recipient=" + address, { cache: "no-store", redirect: "error", signal: controller.signal }).then(async (response) => {
-      if (!response.ok) throw new Error("Launch evidence unavailable");
+      if (!response.ok && response.status !== 503) throw new Error("Launch evidence unavailable");
       const payload = await response.json() as { status: string; launches: unknown[]; nextCursor: string | null };
-      if (!["ready", "stale"].includes(payload.status) || !Array.isArray(payload.launches) || payload.launches.length > 50
+      if ((!response.ok && payload.status !== "stale") || !["ready", "stale"].includes(payload.status) || !Array.isArray(payload.launches) || payload.launches.length > 50
         || (payload.nextCursor !== null && (typeof payload.nextCursor !== "string" || !/^[A-Za-z0-9_-]{1,768}$/.test(payload.nextCursor)))) throw new Error("Launch evidence unavailable");
       const launches = payload.launches.map((value): CurveLaunch => {
         if (!value || typeof value !== "object") throw new Error("Invalid registration");
@@ -42,7 +42,7 @@ export function MyLaunches() {
     try {
       const response = await fetch(`/api/launchpad/earnings?recipient=${address}&after=${encodeURIComponent(cursor)}`, { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(10000) });
       const result = await response.json() as { status: string; launches: CurveLaunch["registration"][]; nextCursor: string | null };
-      if (!response.ok || !["ready", "stale"].includes(result.status) || !Array.isArray(result.launches) || result.launches.length > 50
+      if ((!response.ok && !(response.status===503 && result.status==="stale")) || !["ready", "stale"].includes(result.status) || !Array.isArray(result.launches) || result.launches.length > 50
         || result.launches.some(row => !hasCurveRegistration(row)) || (result.nextCursor !== null && !/^[A-Za-z0-9_-]{1,768}$/.test(result.nextCursor))) throw new Error("Page unavailable");
       if (version !== generation.current) return;
       const additions: CurveLaunch[] = result.launches.filter(row => sameAccount(row.creator, address)).map(registration => ({ registration, state: "created" }));
@@ -59,7 +59,7 @@ export function MyLaunches() {
     {checking ? <div className="lpSkeleton" role="status">Checking your account…</div> : !session.authenticated ? <WalletAccount compact /> : <>
       <p className="lpWalletLine">Creator wallet <code>{address?.slice(0,6)}…{address?.slice(-4)}</code></p>
       {loading ? <div className="lpSkeleton" role="status">Loading verified creator launches…</div> : <NewEngineLaunches directory={stale && directory.status==="ready" ? {status:"stale",history:directory.launches.map(({registration})=>({registration,state:"unknown"}))} : directory} onRetry={()=>setRevision(value=>value+1)} />}
-      <div className="lpDraftActions"><button type="button" className="lpButton lpSecondary" disabled={loading} onClick={() => setRevision((value) => value + 1)}>Refresh launches</button>
+      <div className="lpDraftActions">{!stale && directory.status==="ready" && <button type="button" className="lpButton lpSecondary" disabled={loading} onClick={() => setRevision((value) => value + 1)}>Refresh launches</button>}
         {cursor && <button type="button" className="lpButton lpSecondary" disabled={loading} onClick={() => void more()}>{directory.status === "ready" && directory.launches.length >= 100 ? "Next project window" : "Load more projects"}</button>}
         <Link className="lpButton lpSecondary" href="/account/profile" prefetch={false}>Edit creator profile</Link></div>
       <details className="lpDisclosure"><summary>Data status</summary><p>{stale ? "The last records could not be refreshed." : "Projects are matched to the creator address in their registration."} Load more to browse older registrations.</p></details>

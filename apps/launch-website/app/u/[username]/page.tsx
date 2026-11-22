@@ -1,3 +1,4 @@
+import { reviewLaunches } from "../../../lib/server/public-review";
 import { notFound } from "next/navigation";
 import { CreatorProfile } from "../../_components/creator-profile";
 import { creatorMetadata, readCreator } from "../../../lib/server/social-pages";
@@ -14,5 +15,5 @@ export default async function PublicProfilePage({ params }: { params: Promise<{ 
   if (!/^[a-z][a-z0-9_]{2,23}$/.test(username)) notFound();
   const found = await readCreator("u", username);
   if (found.status === "missing") notFound();
-  return <CreatorProfile key={username} username={username} initialProfile={found.status === "ready" ? found.profile : undefined} />;
+  return <CreatorProfile key={username} username={username} reviewFeed={found.status === "ready" ? await reviewLaunches(found.profile.walletAddress) : undefined} initialProfile={found.status === "ready" ? found.profile : undefined} />;
 }

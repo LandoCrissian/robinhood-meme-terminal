@@ -70,6 +70,9 @@ export function middleware(request: NextRequest) {
   if (["GET","HEAD"].includes(request.method) && /^\/api\/artwork\/bafkrei[a-z2-7]{52}\/(?:metadata\.json|image\.webp|logo\.webp)$/.test(pathname)) return NextResponse.next();
   if (isProfileApiRoute(pathname, request.method) ||
       ((pathname === "/api/launchpad/production-creation" || pathname === "/api/artwork/upload") && request.method === "POST")) {
+    // A standalone Next server already receives the original URL. Rewriting a
+    // loopback IPv4 URL can change its authority and recursively proxy to localhost.
+    if (["localhost","127.0.0.1"].includes(request.nextUrl.hostname)) return NextResponse.next();
     // A same-URL rewrite with response headers makes the Netlify adapter retain
     // this request's URL when dispatching to a reused Next server instance.
     return NextResponse.rewrite(request.nextUrl, { headers: { "Cache-Control": "private, no-store" } });

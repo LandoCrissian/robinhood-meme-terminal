@@ -16,13 +16,13 @@ function httpsLink(value: string) {
   catch { return null; }
 }
 
-export function CreatorProfile({ username, walletAddress, initialProfile }: { username?: string; walletAddress?: string; initialProfile?: PublicCreatorProfile }) {
+export function CreatorProfile({ username, walletAddress, initialProfile, reviewFeed }: { username?: string; walletAddress?: string; initialProfile?: PublicCreatorProfile; reviewFeed?: NewEngineDirectory }) {
   const { session, checking, refresh } = useAccount();
   const [copied,setCopied] = useState("");
   const [feedAttempt,setFeedAttempt] = useState(0);
   const [profile, setProfile] = useState<PublicCreatorProfile | undefined>(initialProfile), [status, setStatus] = useState<"loading" | "ready" | "missing" | "unavailable">(initialProfile ? "ready" : "loading");
   const [attempt, setAttempt] = useState(0);
-  const [directory, setDirectory] = useState<NewEngineDirectory | null>(null);
+  const [directory, setDirectory] = useState<NewEngineDirectory | null>(reviewFeed ?? null);
   useEffect(() => {
     if (initialProfile) { setProfile(initialProfile); setStatus("ready"); return; }
     const controller = new AbortController(); let active = true;
@@ -38,12 +38,13 @@ export function CreatorProfile({ username, walletAddress, initialProfile }: { us
   }, [username, walletAddress, initialProfile, attempt]);
   const creator = profile?.walletAddress ?? walletAddress;
   useEffect(() => {
+    if (reviewFeed) { setDirectory(reviewFeed); return; }
     if (!creator) return;
     const controller = new AbortController(); let active = true;
     fetch("/api/launchpad/new-engine", { cache: "no-store", redirect: "error", signal: controller.signal })
       .then(async (response) => {
         if (!response.ok && response.status !== 503) throw new Error("Unavailable launch evidence");
-        const data = await response.json() as { status: string; launches?: Array<CurveLaunch | { creator: string }> };
+        const data = await response.json() as { status: string; checkpoint?:{timestamp:string}; launches?: Array<CurveLaunch | { creator: string }> };
         if (!active) return;
         if (data.status === "stale") { setDirectory({status:"stale",history:[]}); return; }
         if (!response.ok || data.status !== "ready" || !Array.isArray(data.launches) || data.launches.length > 25) throw new Error("Unavailable launch evidence");
@@ -53,10 +54,10 @@ export function CreatorProfile({ username, walletAddress, initialProfile }: { us
           if ("registration" in row) return sameAccount(row.registration.creator, creator) ? [row] : [];
           return sameAccount(row.creator, creator) ? [{ registration: row as unknown as CurveLaunch["registration"], state: "created" as const }] : [];
         });
-        setDirectory({ status: "ready", launches });
+        setDirectory({ status: "ready", launches, freshUntil:data.checkpoint ? Date.parse(data.checkpoint.timestamp)+120000 : undefined });
       }).catch(() => { if (active) setDirectory({ status: "unavailable" }); });
     return () => { active = false; controller.abort(); };
-  }, [creator,feedAttempt]);
+  }, [creator,feedAttempt,reviewFeed]);
   const own = creator && session.authenticated && sameAccount(session.account.walletAddress, creator);
   const label = profile?.displayName || profile?.username || (creator ? shortWallet(creator) : username);
   const destinations = [...(profile?.xHandle ? [{label:"@"+profile.xHandle+" on X",url:"https://x.com/"+profile.xHandle}] : []), ...(profile?.links || [])];
@@ -89,7 +90,6 @@ export function CreatorProfile({ username, walletAddress, initialProfile }: { us
         <details className="lpDisclosure"><summary>About this identity</summary><p>Wallet sign-in confirms control of the address. Creators supply their names, images and links. Check the contract and destination before using a project.</p></details>
       </article>}
     {creator && <section className="lpProfileProjects"><h2>Launches</h2>
-      {!directory ? <p className="lpSkeleton" role="status">Loading launches…</p> : directory.status === "ready" && !directory.launches.length
-        ? <p className="lpQuietEmpty">No launches from this wallet in the current feed.</p> : <NewEngineLaunches directory={directory} onRetry={()=>setFeedAttempt(n=>n+1)} />}</section>}
+      {!directory ? <p className="lpSkeleton" role="status">Loading launches…</p> : <NewEngineLaunches directory={directory} creatorView onRetry={reviewFeed ? ()=>location.reload() : ()=>setFeedAttempt(n=>n+1)} />}</section>}
   </div>;
 }

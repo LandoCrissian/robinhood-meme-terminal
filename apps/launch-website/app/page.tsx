@@ -1,3 +1,4 @@
+import { reviewLaunches } from "../lib/server/public-review";
 import { headers } from "next/headers";
 import Link from "next/link";
 import { NewEngineLaunches } from "./_components/new-engine-launches";
@@ -10,6 +11,8 @@ export const dynamic = "force-dynamic";
 
 async function NewEngineSection() {
   const requestHeaders = await headers();
+  const review = await reviewLaunches();
+  if (review) return <NewEngineLaunches directory={review} />;
   const fixture = configuredCurveFixture(requestHeaders);
   if (fixture) return <FixtureLaunches directory={await readFixtureLaunches(fixture)} />;
   if (!configuredProductionDiscovery(requestHeaders)) return <NewEngineLaunches directory={{ status: "prelaunch" }} />;

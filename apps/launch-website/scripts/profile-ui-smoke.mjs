@@ -237,6 +237,12 @@ try {
       await avatarLoaded();
       const originalAvatar = (await (await context.request.get(new URL("/api/account/session", site).href)).json()).account.profile.avatarUrl;
       const originalCard = await publicCard(username);
+      const list = await context.newPage();
+      await list.goto(new URL("/people",site).href);
+      const firstImage = list.getByRole("link",{name:new RegExp("@"+username)}).locator("img");
+      assert.equal(await firstImage.getAttribute("src"),originalAvatar);
+      await firstImage.evaluate(image=>image.decode());
+      await list.close();
       const removed = await profileMutation("DELETE", "/api/account/avatar", () => page.getByRole("button", { name: "Remove avatar", exact: true }).click());
       assert.equal(removed.profile.avatarUrl, null); await status(/Avatar removed/);
       await page.waitForFunction(() => document.querySelectorAll(".lpProfileAvatar img").length === 0);
@@ -285,6 +291,16 @@ try {
       assert.match(intent.searchParams.get("text"),/^I’m building/);
       assert.equal(intent.searchParams.getAll("url").length,1);
       await screenshot("signed-in-share");
+      // Capture the actual browser popup handoff without logging in to or posting on X.
+      let handedOff;
+      await context.route("https://twitter.com/intent/tweet?**", route=>{
+        handedOff=route.request().url();
+        return route.fulfill({status:200,contentType:"text/plain",body:"Composer handoff recorded by browser test."});
+      },{times:1});
+      const [composer] = await Promise.all([page.waitForEvent("popup"),page.getByRole("link",{name:"Share my profile"}).click()]);
+      await composer.waitForLoadState();
+      assert.equal(handedOff,intent.href);
+      await composer.close();
       const visitor = await browser.newContext({ viewport:page.viewportSize() });
       try {
         const view = await visitor.newPage();
@@ -321,6 +337,14 @@ try {
       await page.getByRole("button", { name: "Connect MetaMask", exact: true }).click();
       await page.getByRole("button", { name: "Review gas-free sign-in" }).click(); await page.getByRole("button", { name: "Sign in with wallet" }).click();
       await page.getByText("Signed in", { exact: true }).waitFor(); await page.getByRole("link", { name: "Edit profile", exact: true }).click();
+      const longName="Robinhood Chain Studio · 🐑💜 Small Batch Creators";
+      await page.getByLabel("Display name",{exact:true}).fill(longName);
+      await page.getByLabel("Label",{exact:true}).fill("Community artwork and resources");
+      await profileMutation("PATCH","/api/account/profile",()=>page.getByRole("button",{name:"Save profile",exact:true}).click());
+      await goto("/u/"+username);
+      await page.getByRole("heading",{name:longName,exact:true}).waitFor();
+      await page.setViewportSize({width:320,height:844}); await screenshot("long-profile-320");
+      await page.getByRole("link",{name:"Edit profile",exact:true}).click();
       await page.getByText("Profile data and removal", { exact: true }).click();
       await page.getByRole("button", { name: "Review profile removal", exact: true }).click();
       await page.getByRole("button", { name: "Confirm wallet for removal", exact: true }).click(); await status(/Wallet control confirmed/);

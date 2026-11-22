@@ -201,7 +201,7 @@ async function startFixtureHarness() {
       build.onResolve({ filter: /^next\/link$/ }, () => ({ path: "next-link", namespace: "qa" }));
       build.onLoad({ filter: /.*/, namespace: "qa" }, () => ({ contents: `import React from 'react'; export default function Link({children, prefetch, ...props}) { return React.createElement('a', props, children); }`, loader: "js", resolveDir: join(dependencies, "apps/launch-website") }));
     } }], define: { "process.env.NODE_ENV": '"production"' } });
-  const cssFiles = ["styles/styles.css", "styles/mobile-polish.css", "styles/desktop-polish.css", "styles/launch-theme.css", "styles/token-detail.css", "launchpad.css", "profile-refinement.css", "creator-polish.css"];
+  const cssFiles = ["styles/styles.css", "styles/mobile-polish.css", "styles/desktop-polish.css", "styles/launch-theme.css", "styles/token-detail.css", "launchpad.css", "profile-refinement.css", "creator-polish.css", "product.css"];
   const css = (await Promise.all(cssFiles.map(path => readFile(join(root, "apps/launch-website/app", path), "utf8")))).join("\n");
   const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Synthetic RMT polish QA harness</title><style>${css}</style></head><body><div id="root"></div><script src="/harness.js"></script></body></html>`;
   const server = createServer((request, response) => {

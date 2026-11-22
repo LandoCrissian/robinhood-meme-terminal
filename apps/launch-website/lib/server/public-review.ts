@@ -1,3 +1,5 @@
+import { hasCurveRegistration, type CurveRegistration, type NewEngineDirectory } from "../curve-lifecycle";
+import { headers } from "next/headers";
 import { cache } from "react";
 import { profileAddress, profileEdit, type PublicCreatorProfile } from "../profiles";
 
@@ -26,3 +28,22 @@ export const readPublicReview = cache(async (origin: string) => {
   });
   return { profiles: profiles as PublicCreatorProfile[], capturedAt: new Date(snapshot.capturedAt).toISOString().slice(0,10) };
 });
+/** Present the canonical website's public GET on draft hosts without sharing any production binding. */
+export async function reviewLaunches(creator?: string): Promise<NewEngineDirectory | undefined> {
+  if (!reviewOrigin(await headers())) return undefined;
+  try {
+    const response = await fetch("https://www.rmtlaunch.fun/api/launchpad/new-engine", {cache:"no-store", redirect:"error", signal:AbortSignal.timeout(5000)});
+    if (!response.ok && response.status !== 503) throw new Error();
+    const feed = await response.json();
+    const stamp = Date.parse(feed.checkpoint?.timestamp);
+    if (!["ready","stale"].includes(feed.status) || !Number.isFinite(stamp) || stamp > Date.now()+15000 ||
+        feed.checkpoint.finality !== "l2-confirmed" || feed.checkpoint.confirmations < 20 || !Array.isArray(feed.launches) ||
+        feed.launches.length > 25 || !feed.launches.every(hasCurveRegistration)) throw new Error();
+    const registrations = (feed.launches as CurveRegistration[]).filter(row=>!creator || row.creator.toLowerCase()===creator.toLowerCase());
+    const freshUntil = stamp+120000;
+    if (!response.ok || feed.status==="stale" || freshUntil<=Date.now()) {
+      return {status:"stale",history:registrations.map(registration=>({registration,state:"unknown"}))};
+    }
+    return {status:"ready",freshUntil,launches:registrations.map(registration=>({registration,state:"created"}))};
+  } catch { return {status:"unavailable"}; }
+}

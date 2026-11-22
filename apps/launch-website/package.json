@@ -5,6 +5,7 @@
   "scripts": {
     "build": "next build",
     "start": "next start",
+    "test:artwork:browser": "tsx scripts/artwork-browser.ts",
     "test:history": "tsx --tsconfig tsconfig.test.json --test lib/server/*.test.ts lib/server/profiles/core.test.ts",
     "typecheck": "tsc --noEmit"
   },
