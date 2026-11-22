@@ -90,7 +90,7 @@ async function main() {
         assert.equal(method, "eth_sendTransaction", "The browser wallet has no signing, broadcasting, account creation or generic RPC capability");
         const envelope = params[0] as any;
         const journal = await source.page.evaluate(() => Object.entries(localStorage).filter(([key]) => /claim\.execution|production:trade/.test(key)).map(([key, value]) => ({ key, value: JSON.parse(value) })));
-        assert.ok(journal.some(row => mode === "trading" ? row.value.request?.operation === "buy" : row.value.stage === "awaiting-wallet"), "Intent was durably stored before wallet confirmation");
+        assert.ok(journal.some(row => mode === "trading" ? row.value.request?.operation === tradeReview.request.operation && row.value.request?.data === tradeReview.request.data : row.value.stage === "awaiting-wallet"), "Intent was durably stored before wallet confirmation");
         if (mode === "trading") {
           const r = tradeReview.request, q = tradeReview.quote;
           assert.deepEqual(envelope, { from: r.from, to: r.to, data: r.data, value: r.value, nonce: r.nonce, chainId: r.chainId, type: "0x2",
@@ -175,12 +175,12 @@ async function main() {
           record.checks.nativeCrossAccountStorageLock = true; record.consumedNonceFloors = floors; await second.close();
         } else if (mode === "trading") {
           await button("Connect trading wallet").click(); await page.getByText(/Connected account/).waitFor();
-          await page.getByLabel(/^Trade amount/).fill("2"); await button("Review buy").click(); await button("Confirm buy").waitFor();
+          await page.getByLabel(/^Trade amount/).fill("2"); await page.getByText(/^Estimated output .* at block /).waitFor(); await button("Review buy").click(); await button("Confirm buy").waitFor();
           assert.equal(record.sends.length, 0); assert.equal(tradeReview.quote.feeWei, "20000000000000000"); record.checks.twoEthGross = true;
           await page.getByLabel(/^Trade amount/).fill("4"); await button("Confirm buy").waitFor({ state: "hidden" }); record.checks.editInvalidates = true;
-          await button("Review buy").click(); await button("Confirm buy").waitFor(); assert.ok(BigInt(tradeReview.quote.refundWei) > 10n ** 18n); record.checks.fourEthRefundTwoEthTarget = true;
-          decision = "reject"; await button("Confirm buy").click(); await page.getByRole("alert").waitFor(); assert.equal(record.sends.length, 1);
-          decision = "lose"; await button("Review buy").click(); await button("Confirm buy").click(); await page.getByText("Wallet hash missing · original payer and nonce retained", { exact: true }).waitFor();
+          await button("Review final buy and v4 graduation").click(); await button("Confirm final buy and v4 graduation").waitFor(); assert.equal(tradeReview.request.operation,"buy-graduate"); assert.ok(BigInt(tradeReview.quote.refundWei) > 10n ** 18n); record.checks.fourEthRefundTwoEthTarget = true;
+          decision = "reject"; await button("Confirm final buy and v4 graduation").click(); await page.getByRole("alert").waitFor(); assert.equal(record.sends.length, 1);
+          decision = "lose"; await button("Review final buy and v4 graduation").click(); await button("Confirm final buy and v4 graduation").click(); await page.getByText("Wallet hash missing · original payer and nonce retained", { exact: true }).waitFor();
           assert.equal(record.sends.length, 2); trade.knobs.missingIndex = false; trade.knobs.peerOffline = false;
           await page.reload(); await button("Connect trading wallet").click(); await button("Check original transaction").waitFor();
           await button("Check original transaction").click(); await page.getByText("Canonical L2 receipt and indexed activity verified. Ethereum L1 finality remains unverified.", { exact: true }).waitFor();
