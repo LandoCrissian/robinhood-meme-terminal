@@ -10,6 +10,8 @@ The raw development sources use chain 31337, 2 virtual ETH and 1 ETH backing. Th
 
 Each fork created the synthetic ECON project in one discarded call. Reading its 14 immutable getters reconstructed its entire runtime, including factory, token, creator, ledger, treasury allocation, registry, engine, supply and sale threshold. The fresh curve returned execution version 1, zero migration source, 4 virtual ETH, 2 real ETH at graduation and 100 basis points per trade. Its instance hash depends on constructor addresses. V2/V3 successor templates are for separately approved registry migrations. Ordinary factory creation cannot select them. [Fork probe](../../../scripts/economics/GraduationProbe.sol) · [Registry migration rules](../../../packages/contracts/src/RMTLaunchProjectRegistryV3.sol)
 
+A second run fetched fork state independently from each RPC with Anvil storage caching disabled. Both providers agreed at block **120503005**, hash **0xc80925bdb5991db410bedaa19c8a16ebcb0fe99e150f89b7248f884b71d2a615**. Between blocks, only the block context and the position manager’s NFT serial changed. Every quote, fee bucket, reserve, liquidity amount, rounding balance and price stayed identical. The runner also reproduced the rehearsal ERC-20 address by CREATE2 from the public factory, synthetic sender, intent and compiled token constructor. [Second run](measurements.json) · [First run](https://github.com/LandoCrissian/robinhood-meme-terminal/blob/412730e4c8ade1093dda91e0075482ecba97a441/docs/evidence/graduation-economics/measurements.json)
+
 ## What buyers actually pay
 
 The fixed supply is one billion 18-decimal tokens. The opening real ETH balance is zero. Let V be 1.8 billion tokens in atomic units, E be 4 ETH in wei, and S be net token units sold. Required backing is **ceil(E × V / (V − S)) − E**. A single buy to an attainable backing increase B needs **ceil(100 × B / 99)** wei gross. Excess is refunded. A sell pays the decrease in backing less a fee rounded up to the next wei. Net sales can move in either direction before graduation.
@@ -57,11 +59,19 @@ Holding supply, 60/40 allocation, fee and price continuity fixed gives the follo
 
 The 1 ETH alternative makes a 0.1 ETH trade about twice as large relative to liquidity. The 4.2 ETH alternative improves depth but asks buyers for 2.2 ETH more net backing. Keep 2 ETH if that compromise fits RMT’s audience. If execution depth for orders of 0.1 ETH or more is a launch requirement, defer creation and select a deeper design before issuance. No website flag can change the published factory’s constants.
 
+**Creation decision.** The graduation contract passed its economic acceptance test. Creating the token starts the curve with zero real backing. Website trading is disabled, so visitors currently cannot supply the required demand through the launchpad. If a functioning public buy flow is a launch requirement, hold creation until that flow passes its separate acceptance and the owner approves it.
+
+## Website review
+
+The preview serves application commit `412730e4c8ade1093dda91e0075482ecba97a441`. Netlify reports deploy `6b02a871f8039afde8b07443` in preview context. The Linux CI bundle SHA-256 is `9dcd83dd76fdb446648bb7902d0759ad746e58e71afc771b9772e9c7c47e4ef1`. The hosted server function matches the CI function archive SHA-256 `5377939fac6ba94cbc24a8eae02bb00ae07b6b7293638c2cd35bd389245e6a07`. [Creator preview](https://6b02a871f8039afde8b07443--eclectic-valkyrie-16cb92.netlify.app/create-token) · [Risk disclosures](https://6b02a871f8039afde8b07443--eclectic-valkyrie-16cb92.netlify.app/risks) · [CI artifact job](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/45002842897/job/137147919517)
+
+At 08:32 UTC on 22 November 2026, desktop Chromium at 1440 px and mobile WebKit at 390 px both displayed the exact gross requirement, restored the synthetic ECON draft on refresh and returned disabled financial configuration. The 447 website tests passed. Production remained on deploy `6b029787efaaf7bc868d68e4`. The owner’s existing public artwork and metadata still matched their recorded SHA-256 digests. [Desktop screenshot](desktop.png) · [Mobile screenshot](mobile.png)
+
 ## Reproduce
 
 From the repository root, use the pinned native solc 0.8.26 and Anvil. Supply a new output path. The runner compiles the exact archived input, compares runtime bytes and getter-derived immutable values, reads both public providers, and executes one discarded call per loopback fork with a synthetic-funded probe. Use the recorded block when both providers retain that state, or omit the block for a fresh common observation.
 
 ~~~sh
-node scripts/economics/measure-graduation.mjs --solc /path/to/solc --anvil /path/to/anvil --block 120494375 --output /tmp/graduation-rerun.json
+node scripts/economics/measure-graduation.mjs --solc /path/to/solc --anvil /path/to/anvil --output /tmp/graduation-rerun.json
 pnpm --filter @rmt/launch-website test:history
 ~~~

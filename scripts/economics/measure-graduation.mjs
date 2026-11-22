@@ -16,8 +16,12 @@ const {
   createPublicClient,
   http,
   decodeFunctionResult,
+  encodeAbiParameters,
+  encodeDeployData,
   encodeFunctionData,
+  getContractAddress,
   keccak256,
+  stringToHex,
   toFunctionSelector,
   toHex,
   parseAbi,
@@ -245,6 +249,7 @@ async function runFork(url) {
       "4663",
       "--accounts",
       "0",
+      "--no-storage-caching",
       "--hardfork",
       "prague",
       "--fork-url",
@@ -293,6 +298,22 @@ async function runFork(url) {
       data: response,
     });
     const { code, getterWords, ...r } = result;
+    const tokenTemplate = artifact("RMTLaunchCurveTokenV2");
+    const intent = keccak256(stringToHex("isolated economics rehearsal"));
+    const expectedToken = getContractAddress({
+      opcode: "CREATE2",
+      from: factory,
+      salt: keccak256(encodeAbiParameters(
+        [{ type: "address" }, { type: "bytes32" }],
+        [probe.toLowerCase(), intent],
+      )),
+      bytecode: encodeDeployData({
+        abi: tokenTemplate.abi,
+        bytecode: "0x" + tokenTemplate.evm.bytecode.object,
+        args: ["Economics rehearsal", "ECON"],
+      }),
+    });
+    assert.equal(r.token, expectedToken, "Fork project address must follow factory CREATE2 inputs");
     const words = Object.fromEntries(
       getters.map((key, i) => [key, getterWords[i]]),
     );

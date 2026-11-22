@@ -1,11 +1,11 @@
 {
   "chainId": 4663,
-  "block": "120494375",
+  "block": "120503005",
   "providers": [
     "https://rpc.mainnet.chain.robinhood.com",
     "https://robinhood.api.pocket.network"
   ],
-  "observedAt": "2026-11-22T08:21:27.886Z",
+  "observedAt": "2026-11-22T08:37:03.132Z",
   "compilerInputSha256": "66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10",
   "compilerVersion": "v0.8.26+commit.8a97fa7a",
   "factory": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
@@ -13,8 +13,8 @@
   "initcodeHash": "0xa9a337271cd3a91f9de691800b98526bd612de1cace33c3f18e41df0c1aabbfa",
   "curveCreationTemplateHash": "0xe340621b25335e961edecef09b99e1c6e9106533b2f3effb997613017d2f6664",
   "direct": {
-    "hash": "0x9f67b0fa3ded0dc15c5c583ea8b0df9a0989746c98618595b9e482d7214d3d31",
-    "timestamp": "1795335653",
+    "hash": "0xc80925bdb5991db410bedaa19c8a16ebcb0fe99e150f89b7248f884b71d2a615",
+    "timestamp": "1795336569",
     "factoryHash": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091",
     "words": {
       "graduationEngine": "0x00000000000000000000000010e540536f10ed36e5fc6638638f1d862e552d32",
@@ -246,7 +246,7 @@
     },
     "eligibleBeforeGraduate": true,
     "poolId": "0xf5e499feda2cedd4d3e3f0b487f63f6d44d319c0242f0ffa0685c9b5ae9edd8d",
-    "positionId": "4342347",
+    "positionId": "4342404",
     "liquidity": "28284271247461900976033",
     "sqrtPriceX96": "1120455419495722798374638764549163",
     "tick": 191147,
