@@ -4,6 +4,8 @@ The recovered production worker is `3b6e5b24-7589-4135-b023-a0aa87bea011`. The f
 
 In an isolated replay of the old worker, a 429 on the factory activity log query produced four consecutive 503s from readiness, health and discovery. Registration held its busy flag across the activity scan. The scheduler repeated both operations up to 16 times and legacy reads had their own RPC transports. The candidate gives activity its own loop, makes each feed's state visible and shares one paced request slot per provider. The original advisory lease owns every write. A registration request can finish at its verified checkpoint across ordinary extension. Reorg, expiry, missing database evidence and mismatched market checkpoints still close the relevant read path.
 
+During a longer live-RPC replay, Pocket returned JSON-RPC `-32000` with `invalid block range params` for the 54-block registration query at 120719331–120719384. The identical request succeeded on that provider afterward. The worker retries this exact response once only for an explicit, ordered `eth_getLogs` range of at most 2,000 blocks. Exhaustion reports an upstream delay. An invalid range, missing state, provider disagreement or unverified checkpoint cannot advance the feed.
+
 | Check | Result |
 |---|---|
 | Worker HTTP with PostgreSQL 18.6 | 17 fresh discovery checks. Activity received 429, 503, timeout and JSON-RPC resource errors. Health and readiness stayed 200 during those checks. An unauthenticated market read returned 401 and an authenticated read returned 503 during catch-up. The restarted worker resumed the stored checkpoint under one lease. |

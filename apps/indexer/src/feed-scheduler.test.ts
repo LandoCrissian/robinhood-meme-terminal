@@ -57,3 +57,26 @@ test("retry only transient resource failures, retain classification through wrap
   assert.equal(budget.stats.attempts, 3);
   assert.equal(budget.stats.limited, 1);
 });
+
+test("retry an explicit valid log interval once, preserving the range and rejecting malformed requests", async () => {
+  const error = Object.assign(Error("invalid block range params"), { code: -32000 });
+  const params = [{ fromBlock: "0x73207e3", toBlock: "0x7320818" }];
+  const budget = providerBudget("fixture", 1, () => 0);
+  const seen: string[] = [];
+  const read = () => budget.request("eth_getLogs", async () => {
+    seen.push(JSON.stringify(params));
+    if (seen.length === 1) throw error;
+    return [];
+  }, params);
+  assert.deepEqual(await read(), []);
+  assert.deepEqual(seen, [JSON.stringify(params), JSON.stringify(params)]);
+  await assert.rejects(budget.request("eth_getLogs", async () => { throw error; }, params),
+    e => classifySyncFailure(e) === "upstream");
+  for (const bad of [[{ fromBlock: "latest", toBlock: "0x10" }], [{ fromBlock: "0x2", toBlock: "0x1" }],
+    [{ fromBlock: "0x1", toBlock: "0x1000" }]]) {
+    await assert.rejects(budget.request("eth_getLogs", async () => { throw error; }, bad), e => e === error);
+  }
+  assert.equal(budget.stats.retries, 2);
+  assert.equal(budget.stats.attempts, 7);
+  assert.equal(resourceError({ code: -32000, details: "missing trie node" }, true).transient, false);
+});

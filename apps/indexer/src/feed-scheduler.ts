@@ -37,11 +37,22 @@ export const rpcFeed = new AsyncLocalStorage<
   "activity" | "registration" | "historical" | "market"
 >();
 
-export function resourceError(error: unknown) {
+function boundedLogRange(method: string, params: unknown) {
+  if (method !== "eth_getLogs" || !Array.isArray(params) || params.length !== 1) return false;
+  const filter = params[0];
+  const quantity = /^0x(?:0|[1-9a-f][0-9a-f]{0,15})$/i;
+  if (typeof filter?.fromBlock !== "string" || typeof filter.toBlock !== "string" ||
+      !quantity.test(filter.fromBlock) || !quantity.test(filter.toBlock)) return false;
+  const size = BigInt(filter.toBlock) - BigInt(filter.fromBlock) + 1n;
+  return size > 0n && size <= 2000n;
+}
+
+export function resourceError(error: unknown, boundedLogs = false) {
   const seen = new Set<unknown>();
   let status: number | undefined,
     code: number | undefined,
-    timeout = false;
+    timeout = false,
+    rangeMessage = false;
   for (
     let cause = error;
     cause && typeof cause === "object" && !seen.has(cause);
@@ -52,19 +63,24 @@ export function resourceError(error: unknown) {
       status?: number;
       code?: number;
       name?: string;
+      details?: string;
+      message?: string;
       cause?: unknown;
     };
     if (Number.isInteger(e.status)) status = e.status;
     if (typeof e.code === "number" && e.code < 0) code = e.code;
     timeout ||= e.name === "TimeoutError" || e.name === "TimeoutRpcError";
+    rangeMessage ||= e.details === "invalid block range params" || e.message === "invalid block range params";
     cause = e.cause;
   }
+  const deferredRange = boundedLogs && rangeMessage && code === -32000;
   return {
     status,
     code,
     timeout,
+    deferredRange,
     transient:
-      timeout ||
+      timeout || deferredRange ||
       status === 408 ||
       status === 429 ||
       (status !== undefined && status >= 500) ||
@@ -96,7 +112,7 @@ export function providerBudget(
     active = true;
     release();
   }
-  async function request<T>(method: string, send: () => Promise<T>) {
+  async function request<T>(method: string, send: () => Promise<T>, params?: unknown) {
     const feed = rpcFeed.getStore() ?? "historical";
     for (let attempt = 0; ; attempt++) {
       await new Promise<void>((resolve) => {
@@ -109,7 +125,7 @@ export function providerBudget(
         stats.attempts++;
         return await send();
       } catch (error) {
-        const failure = resourceError(error);
+        const failure = resourceError(error, boundedLogRange(method, params));
         stats.errors++;
         if (failure.status === 429 || failure.code === -32005) stats.limited++;
         if (failure.timeout) stats.timeouts++;
@@ -134,7 +150,14 @@ export function providerBudget(
             retry,
           }),
         );
-        if (!retry) throw error;
+        if (!retry) {
+          if (failure.deferredRange) {
+            const unavailable = new Error("Provider could not serve the checked log range", { cause: error });
+            unavailable.name = "UpstreamLogRangeUnavailable";
+            throw unavailable;
+          }
+          throw error;
+        }
       } finally {
         active = false;
         wake();
@@ -158,7 +181,7 @@ export function scheduledTransport(
           return wire.request(args, {
             signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]),
           });
-        }),
+        }, args.params),
     },
     { retryCount: 0 },
   );
