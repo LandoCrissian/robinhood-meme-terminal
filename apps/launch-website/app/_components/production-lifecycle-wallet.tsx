@@ -14,10 +14,10 @@ import { isTransactionHash } from "../../lib/test-creation";
 import { subscribeTestWallet } from "../../lib/test-wallet";
 import { formatTestAmount as amount, formatTestPercent as percent } from "./fixture-lifecycle-evidence";
 
-const labels: Record<ProductionLifecycleOperation, string> = { buy: "buy", sell: "sell", approve: "exact curve approval", graduate: "graduation",
+const labels: Record<ProductionLifecycleOperation, string> = { buy: "buy", "buy-graduate": "final buy and v4 graduation", sell: "sell", approve: "exact curve approval", graduate: "graduation",
   "v4-buy": "v4 buy", "v4-sell": "v4 sell", "v4-token-approve": "exact token approval", "v4-permit2-approve": "exact Permit2 approval" };
 const uint = (v: unknown): v is string => typeof v === "string" && /^(0|[1-9][0-9]{0,77})$/.test(v) && BigInt(v) < 2n ** 256n;
-const native = (op: ProductionLifecycleOperation) => op === "buy" || op === "v4-buy";
+const native = (op: ProductionLifecycleOperation) => op === "buy" || op === "buy-graduate" || op === "v4-buy";
 const approval = (op: ProductionLifecycleOperation) => ["approve", "v4-token-approve", "v4-permit2-approve"].includes(op);
 type Prepared = { request: ProductionLifecycleRequest; quote: ProductionLifecycleQuote; revision: number; wallet: ProductionWallet };
 async function post(body: object) {
@@ -47,6 +47,19 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
   const [review, setReview] = useState<Prepared | null>(null), [journal, setJournal] = useState<ProductionTradeJournal | null>(null);
   const [result, setResult] = useState<ProductionLifecycleVerification | null>(null), [hash, setHash] = useState("");
   const [busy, setBusy] = useState(false), [message, setMessage] = useState("");
+  const [indicative,setIndicative] = useState("");
+  useEffect(()=>{
+    setIndicative("");
+    if(!wallet || journal || review || !/^\d{1,12}(\.\d{1,18})?$/.test(input) || parseUnits(input,18)<=0n)return;
+    let alive=true, retry:ReturnType<typeof setTimeout>;
+    async function quote(){try{
+      const r=await post({action:"quote",token,side,amountWei:parseUnits(input,18).toString()});
+      if(alive)setIndicative(r.status==="ready" && uint(r.outputWei) && uint(r.blockNumber) ?
+        "Estimated output "+amount(r.outputWei)+" "+(side==="buy"?symbol:"ETH")+" at block "+r.blockNumber : "Quote unavailable. Refresh before reviewing.");
+    }catch{if(alive)setIndicative("Quote unavailable. Refresh before reviewing.");}
+    finally{if(alive)retry=setTimeout(quote,15000);}}
+    const timer=setTimeout(()=>void quote(),550);return()=>{alive=false;clearTimeout(timer);clearTimeout(retry);};
+  },[wallet,input,side,token,symbol,journal,review]);
   const invalidate = () => { revision.current++; setReview(null); };
   useEffect(() => { active.current = true; return () => { active.current = false; revision.current++; }; }, []);
   useEffect(() => {
@@ -123,7 +136,11 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
     });
   }
   const v4 = state?.postGraduation;
-  const trade: ProductionLifecycleOperation = v4 ? side === "buy" ? "v4-buy" : "v4-sell" : side;
+  let terminalBuy = false;
+  if (!v4 && side==="buy" && state?.phase==="curve" && /^\d{1,12}(\.\d{0,18})?$/.test(input)) {
+    terminalBuy = parseUnits(input,18)*99n/100n >= BigInt(state.targetBackingWei)-BigInt(state.backingWei);
+  }
+  const trade: ProductionLifecycleOperation = v4 ? side === "buy" ? "v4-buy" : "v4-sell" : terminalBuy ? "buy-graduate" : side;
   const current = review?.wallet === wallet && review.revision === revision.current ? review : null;
   return <section className="lpPanel lpForm lpTradeColumn" aria-label="Production trading">
     <h2>{v4 ? "Verified Uniswap v4 trading" : "Verified bonding curve"}</h2>
@@ -150,6 +167,7 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
         <div className="lpFormGrid"><label htmlFor={`${id}-amount`}>Trade amount<input id={`${id}-amount`} value={input} inputMode="decimal" maxLength={31} onChange={e => { invalidate(); setInput(e.target.value); }} /><small>{side === "buy" ? "ETH budget" : symbol}</small></label>
           <label htmlFor={`${id}-slippage`}>Slippage (%)<input id={`${id}-slippage`} value={slippage} inputMode="decimal" maxLength={4} onChange={e => { invalidate(); setSlippage(e.target.value); }} /><small>{v4 ? "0.10% to 5%" : "0% to 5%"}</small></label></div>
       </fieldset>
+      {indicative && <p role="status">{indicative}</p>}
       {side === "sell" && <div className="lpDraftActions"><button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => prepare(v4 ? "v4-token-approve" : "approve"))}>Review exact token approval</button>
         {v4 && <button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => prepare("v4-permit2-approve"))}>Review exact Permit2 approval</button>}</div>}
       <button className="lpButton lpSecondary" disabled={busy || state.phase === "eligible" && side === "buy"} onClick={() => void run(() => prepare(trade))}>Review {labels[trade]}</button>

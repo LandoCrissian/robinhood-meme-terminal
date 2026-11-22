@@ -13,6 +13,7 @@ import { creatorEarningsProfile, decodeEarningsDiscoveryCursor, earningsBenefici
 import { createProductionActivityIndexer, productionActivityProfile, readProductionActivity,
   type ActivityQuery } from "./curve-production-activity.js";
 import { productionCurveBirthRpc } from "./curve-production-birth.js";
+import { readCurveMarket, type MarketQuery } from "./curve-market.js";
 
 type Database = Pick<Client, "query">;
 const maximumRange = 2_000n;
@@ -228,5 +229,13 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
       checkpoint: { ...before.checkpoint, confirmations: binding.confirmations, finality: "l2-confirmed" as const, l1Finality: "unverified" as const }, events };
   }
 
-  return { syncOnce, state, read, readEarnings, readActivity };
+  async function readMarket(db: Database, query: MarketQuery) {
+    const before = state();
+    if (!archive || before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint unavailable");
+    const result = await readCurveMarket(db, scope, config, [primary, archive], before.checkpoint, query);
+    const after = state();
+    if (after.status !== "ready" || after.revision !== before.revision || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint changed");
+    return result;
+  }
+  return { syncOnce, state, read, readEarnings, readActivity, readMarket };
 }

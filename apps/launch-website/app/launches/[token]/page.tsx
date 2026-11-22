@@ -12,6 +12,7 @@ import { TokenArtwork } from "../../_components/token-artwork";
 import { CreatorLink } from "../../_components/creator-link";
 import { availableProductionFinancial } from "../../../lib/server/production-financial";
 import { ProductionLifecycleWallet } from "../../_components/production-lifecycle-wallet";
+import { TokenMarket } from "../../_components/token-market";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,9 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
         : data.status === "stale" ? "Stale registration checkpoint. Current lifecycle and trading are unverified."
         : data.launches.length ? "Creation confirmed at the indexed checkpoint. Trading and claims remain separately gated." : "No registration at this verified checkpoint. A newly confirmed transaction may still be indexing."}</p>
       {data.status === "ready" && data.launches[0] && <TokenArtwork symbol={data.launches[0].symbol} projectURI={data.launches[0].projectURI} />}
+      {data.status !== "unavailable" && data.launches[0] && <TokenMarket token={address} symbol={data.launches[0].symbol}>
+        {trading && data.status === "ready" ? <ProductionLifecycleWallet token={data.launches[0].token} curve={data.launches[0].initialCurve} symbol={data.launches[0].symbol}/> : null}
+      </TokenMarket>}
       <code className="lpAddress">{address}</code>
       {directory.status === "ready" && directory.launches[0] && <LaunchProvenance launch={directory.launches[0]} />}
       {directory.status === "stale" && directory.history[0] && <details className="lpFeedStatus">
@@ -51,8 +55,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
         <dt>Submitted project URI</dt><dd>{data.launches[0].projectURI || "None"}</dd>
         <dt>Checkpoint</dt><dd>{data.checkpoint.blockNumber} · {data.checkpoint.timestamp}</dd>
       </dl>}
-      {trading && data.status === "ready" && data.launches[0] && <ProductionLifecycleWallet token={data.launches[0].token}
-        curve={data.launches[0].initialCurve} symbol={data.launches[0].symbol} />}
+
     </>;
   }
   const directory = await readFixtureLaunches(fixture, address);

@@ -96,20 +96,20 @@ export async function productionActivityCursor(db: Database, scope: string) {
   return BigInt(result.rows[0].next_block);
 }
 export async function commitProductionActivity(db: Database, config: CurveProductionConfig, from: bigint,
-  checkpoint: BlockEvidence, rows: { token: Address; event: ProductionActivityEvent }[]) {
+  checkpoint: BlockEvidence, rows: { token: Address; event: ProductionActivityEvent; marketTime?: number }[]) {
   const scope = productionCurveScope(config), to = BigInt(checkpoint.blockNumber);
   if (rows.length > rangeEventLimit || to < from) throw new Error("Activity range exceeds its bound");
   await assertIndexWriterLease(db, config.binding.chainId);
   await atomic(db, async () => {
     const cursor = await db.query<{ next_block: string }>("SELECT next_block::text FROM rmt_curve_activity_bindings WHERE scope=$1 FOR UPDATE", [scope]);
     if (!cursor.rows[0] || BigInt(cursor.rows[0].next_block) !== from) throw new Error("Activity cursor changed during ingestion");
-    for (const { token, event } of rows) {
+    for (const { token, event, marketTime } of rows) {
       validateProductionActivityEvent(event);
       if (!isAddress(token, { strict: false }) || BigInt(event.blockNumber) < from || BigInt(event.blockNumber) > to) throw new Error("Activity scope or range mismatch");
-      const payload = JSON.stringify(event);
+      const payload = JSON.stringify(marketTime === undefined ? event : { ...event, marketTime });
       await db.query(`INSERT INTO rmt_curve_activity_events(scope,token,transaction_hash,log_index,block_number,block_hash,payload)
         VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`, [scope, token.toLowerCase(), event.transactionHash, event.logIndex, event.blockNumber, event.blockHash, payload]);
-      const exact = await db.query<{ matches: boolean }>(`SELECT payload=$5::jsonb AS matches FROM rmt_curve_activity_events
+      const exact = await db.query<{ matches: boolean }>(`SELECT payload-'marketTime'=($5::jsonb-'marketTime') AND (NOT payload ? 'marketTime' OR payload->'marketTime'=$5::jsonb->'marketTime') AS matches FROM rmt_curve_activity_events
         WHERE scope=$1 AND token=$2 AND transaction_hash=$3 AND log_index=$4`, [scope, token.toLowerCase(), event.transactionHash, event.logIndex, payload]);
       if (exact.rows[0]?.matches !== true) throw new Error("Conflicting durable activity identity");
     }
@@ -139,7 +139,7 @@ export async function readProductionActivity(db: Database, scope: string, point:
     const registered = await db.query("SELECT token FROM rmt_curve_production_launches WHERE scope=$1 AND token=$2 AND block_number<=$3", [scope, query.token, point.blockNumber]);
     if (registered.rows.length !== 1) throw new Error("Activity token is not registered to this deployment");
   }
-  const result = await db.query<{ payload: ProductionActivityEvent }>(`SELECT payload FROM rmt_curve_activity_events
+  const result = await db.query<{ payload: ProductionActivityEvent }>(`SELECT payload-'marketTime' AS payload FROM rmt_curve_activity_events
     WHERE scope=$1 AND token=$2 AND transaction_hash=$3 AND block_number<=$4 ORDER BY log_index LIMIT $5`,
     [scope, query.token ?? zeroAddress, query.transactionHash, point.blockNumber, activityEventLimit + 1]);
   if (result.rows.length > activityEventLimit) throw new Error("Activity receipt exceeds its event bound");
@@ -249,7 +249,7 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
       const grouped = new Map<Hash, ProductionActivityEvent[]>();
       for (const event of referencesBoth[0]!) { const events = grouped.get(event.transactionHash) ?? []; events.push(event); grouped.set(event.transactionHash, events); }
       if (grouped.size > activityEventLimit) throw new Error("Activity transaction range exceeds its bound");
-      const rows: { token: Address; event: ProductionActivityEvent }[] = [];
+      const rows: { token: Address; event: ProductionActivityEvent; marketTime: number }[] = [];
       for (const [transactionHash, discovered] of grouped) {
         const receipts: TransactionReceipt[] = await Promise.all([primary, archive].map(rpc => rpc.getTransactionReceipt({ hash: transactionHash })));
         const normalized: { blockNumber: string; blockHash: string; transactionIndex: number; events: ProductionActivityEvent[] }[] = receipts.map(receipt => {
@@ -286,7 +286,9 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
             tokens.add(token);
           }
         }
-        for (const token of tokens) for (const event of receipt.events) rows.push({ token, event });
+        const marketTime = Date.parse(block.timestamp) / 1000;
+        assert.ok(Number.isSafeInteger(marketTime) && marketTime > 0);
+        for (const token of tokens) for (const event of receipt.events) rows.push({ token, event, marketTime });
         if (rows.length > rangeEventLimit) throw new Error("Durable activity range exceeds its bound");
       }
       assert.deepEqual(await canonical(to), end, "Activity range changed during receipt verification");

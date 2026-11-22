@@ -53,6 +53,7 @@ import { IndexStoreError, initializeIndexStore, lockIndexWriter } from "./index-
 import { curveProductionConfig } from "./curve-production-config.js";
 import { createProductionCurveIndexer, parseProductionCurveQuery } from "./curve-production.js";
 import { parseProductionActivityQuery, productionActivityProfile } from "./curve-production-activity.js";
+import { parseMarketQuery } from "./curve-market.js";
 import { creatorEarningsProfile, parseEarningsDiscoveryQuery } from "./creator-earnings.js";
 
 const CHAIN_ID = 4663;
@@ -1413,12 +1414,13 @@ function startServer() {
         json(response, 503, { error: "Indexer data service is temporarily unavailable." });
         return;
       }
-      if (url.pathname === "/curve-activity") {
+      if (url.pathname === "/curve-activity" || url.pathname.startsWith("/curve-market/")) {
         if (!hasHistoricalReadAccess(config.readToken, request.headers.authorization)) {
           response.setHeader("WWW-Authenticate", "Bearer"); json(response, 401, { error: "Unauthorized" }); return;
         }
+        const market = url.pathname.startsWith("/curve-market/") ? parseMarketQuery(url) : null;
         const query = parseProductionActivityQuery(url);
-        if (!query) { json(response, 400, { error: "Invalid production activity query" }); return; }
+        if (!query && !market) { json(response, 400, { error: "Invalid production activity query" }); return; }
         const current = productionCurve;
         const unavailable = { schemaVersion: 1, chainId: CHAIN_ID, profile: productionActivityProfile, status: "unavailable", checkpoint: null };
         if (!productionCurveConfigured || !current || current.state().status !== "ready") { json(response, 503, unavailable); return; }
@@ -1429,7 +1431,7 @@ function startServer() {
           db = await pool.connect();
           await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
           await db.query("SET LOCAL statement_timeout = '1s'");
-          const result = await current.readActivity(db, query);
+          const result = market ? await current.readMarket(db, market) : await current.readActivity(db, query!);
           await db.query("COMMIT"); json(response, 200, result);
         } catch (error) {
           await db?.query("ROLLBACK").catch(() => undefined); json(response, 503, unavailable);
