@@ -4,7 +4,7 @@ import {isAbsolute,join,resolve,relative} from "node:path";
 import {fileURLToPath} from "node:url";
 import {parseArgs} from "node:util";
 import {syntheticCanaryText} from "./synthetic-canary.mjs";
-import {verifyTask092HistoryPublicData as verifyHistoryPublicData} from "./public-task092-identities.mjs";
+import {verifyMarketHistoryPublicData as verifyHistoryPublicData} from "./public-market-identities.mjs";
 
 const {values}=parseArgs({options:{scanner:{type:"string"},output:{type:"string"}}});
 const repository=fileURLToPath(new URL("../../",import.meta.url));

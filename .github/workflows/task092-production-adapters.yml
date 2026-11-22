@@ -8,6 +8,8 @@ on:
       - "scripts/production-adapters/**"
       - "scripts/economics/review-market-outage.mjs"
       - "scripts/security/public-task092-identities*"
+      - "scripts/security/public-market-identities*"
+      - "docs/evidence/token-market/redacted-public-address-rows.json"
       - "scripts/security/run-history-scan.mjs"
       - "scripts/release/website-financial-preflight*"
       - "docs/evidence/rmt-task092/**"
@@ -83,7 +85,7 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/task092-public-evidence-tests.log"
           node --test scripts/release/website-financial-preflight.test.mjs \
             2>&1 | tee "$RUNNER_TEMP/task092-financial-preflight-tests.log"
-          node --test scripts/security/public-task092-identities.test.mjs \
+          node --test scripts/security/public-task092-identities.test.mjs scripts/security/public-market-identities.test.mjs \
             2>&1 | tee "$RUNNER_TEMP/task092-public-history-tests.log"
       - name: Prepare exact signed-archive PostgreSQL18.6 fixture
         run: bash .github/scripts/prepare-postgres-18.sh

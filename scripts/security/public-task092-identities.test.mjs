@@ -108,7 +108,7 @@ test("original secret workflow, detector policies, legacy verifiers and tests re
   const runner = normalize(readFileSync(new URL("run-history-scan.mjs", import.meta.url)));
   assert.equal(runner, normalize(git(commit, "scripts/security/run-history-scan.mjs"))
     .replace('import {verifyTask091SnapshotHistoryPublicData as verifyHistoryPublicData} from "./public-task091-snapshot-identities.mjs";',
-      'import {verifyTask092HistoryPublicData as verifyHistoryPublicData} from "./public-task092-identities.mjs";'));
+      'import {verifyMarketHistoryPublicData as verifyHistoryPublicData} from "./public-market-identities.mjs";'));
 });
 
 test("the new Task092 server job always executes this protected adjudication test", () => {

@@ -16,7 +16,7 @@
     "test:profiles:server": "node scripts/profiles/run-emulator-tests.mjs --command \"pnpm --filter @rmt/launch-website exec tsx --test lib/server/profiles/core.test.ts lib/server/profiles/emulator.test.ts\"",
     "test:profiles:browser": "node scripts/profiles/run-emulator-tests.mjs --command \"node apps/launch-website/scripts/profile-ui-smoke.mjs\"",
     "test:profiles:http": "node scripts/profiles/run-emulator-tests.mjs --command \"node --test apps/launch-website/lib/server/profiles/next-http-acceptance.mjs\"",
-    "test:release-evidence": "node --test \"docs/evidence/**/*.test.mjs\"",
+    "test:release-evidence": "node scripts/release-evidence-tests.mjs",
     "test:production-readiness": "node --test scripts/production-readiness/*.test.mjs",
     "probe:production-readiness": "node scripts/production-readiness/run.mjs",
     "probe:blockscout": "node packages/contracts/scripts/probe-blockscout-4663.mjs",
