@@ -22,6 +22,7 @@ test("today's package, contract and security changes are bounded against the act
   ["pnpm-lock.yaml","de395bc9e33ce18f1ab8293c9b629980e360b7a2"],
   [".github/workflows/launch-website-review.yml","af59b869053f94fa4c5a6a18bcb066871cf68ba0"],
   [".github/workflows/task092-production-adapters.yml","08b5ce14e0dfb95975858ba64e8d5fa92eb23303"],
+  [".github/workflows/core-launch-go-no-go.yml","fc24874ee69e92ac81d096a74aa478b7465d4685"],
   [".github/workflows/ci.yml","1a9182e71f56e5e3b888a1d558f76a2c947ea1d9"],
   [".github/scripts/run-task092-postgres.sh","c86d66b2301801d1b34b8aa20206e0fde7d7cc4c"],
   ["scripts/security/run-history-scan.mjs","71f23518ad23aefd7f05d6977aa6f52e3ebef88b"],

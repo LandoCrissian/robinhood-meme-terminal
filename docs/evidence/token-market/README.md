@@ -1,8 +1,10 @@
 # Token trading and graduation
 
+The current read-only release candidate includes the deployed worker recovery settings, corrected unregistered-token handling and role-neutral profile sharing. [Current decision, hosted preview and screenshots](production-candidate/README.md)
+
 The approved bonding curve sells 600 million tokens from a one billion fixed supply and graduates with 2 ETH of real backing. The token page reads net sales and backing at the same confirmed block. A sell can reverse both figures. Reaching the target shows “Graduation pending”. A matching graduation receipt and on-chain pool identity are required to show the completed Uniswap v4 position. [Published factory](https://robinhoodchain.blockscout.com/address/0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3) · [Deployed economics and creator disclosures](../graduation-economics/README.md)
 
-**Hosted preview** — Select “Opening”, “Curve buy 4”, “Curve sell 4” or “Atomic graduation” to inspect the transition. The quote panel uses contract quotes recorded at the selected block. Wallet execution is disabled on this host. The public website remains on Netlify production deployment `6b029787efaaf7bc868d68e4`. [Open the trading preview](https://6b02bce6503f27925a927daf--eclectic-valkyrie-16cb92.netlify.app/review/trading) · [Desktop Chromium](desktop.png) · [Mobile WebKit](mobile.png)
+**Initial hosted preview** — Select “Opening”, “Curve buy 4”, “Curve sell 4” or “Atomic graduation” to inspect the transition. The quote panel uses contract quotes recorded at the selected block. Wallet execution is disabled on this host. The public website remains on Netlify production deployment `6b029787efaaf7bc868d68e4`. [Open the trading preview](https://6b02bce6503f27925a927daf--eclectic-valkyrie-16cb92.netlify.app/review/trading) · [Desktop Chromium](desktop.png) · [Mobile WebKit](mobile.png)
 
 | Hosted artifact | Identity |
 | --- | --- |
@@ -37,7 +39,7 @@ The indexer serves cached-history reads from its existing activity tables and ch
 
 The website confirmation component was exercised with isolated browser wallets on desktop Chromium and mobile WebKit. Editing the input invalidated a prior quote. After a rejected request and a lost wallet response, refresh recovered the original transaction without resubmission. The atomic purchase required both the trade and graduation evidence before settlement. All 451 local website tests and all eight browser, viewport and fee combinations passed. Database integration passed locally on PostgreSQL 16.15 and in Linux CI on PostgreSQL 18.6. The hosted locale correction changes only chart axis formatting. [PostgreSQL 18.6 acceptance](https://github.com/LandoCrissian/robinhood-meme-terminal/actions/runs/45009766894/job/137169282470) Physical MetaMask trading and organic production fills have not been observed.
 
-## Release decision
+## Original preview release decision
 
 **Ready for website and indexer review. Financial activation remains on hold.** The production HTTP checks returned disabled configuration and 404/unavailable for creation, trading and claims. Deploying the authenticated indexer reader and website, verifying their production checkpoint together, and obtaining separate financial approval are outstanding.
 

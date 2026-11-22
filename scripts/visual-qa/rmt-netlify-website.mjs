@@ -67,8 +67,8 @@ const pages = [
   ["/my-launches", "My Launches"],
   ["/wallet", "Wallet"],
   ["/account/profile", "Edit profile"],
-  ["/u/review_creator", "Creator profile"],
-  ["/creator/0x0000000000000000000000000000000000000001", "Creator profile"],
+  ["/u/review_creator", 'role="status">Loading profile…</p>'],
+  ["/creator/0x0000000000000000000000000000000000000001", 'role="status">Loading profile…</p>'],
 ];
 for (const [path, text] of pages) {
   const response = await request(path);
