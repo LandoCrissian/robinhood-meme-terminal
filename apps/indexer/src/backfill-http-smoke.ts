@@ -10,6 +10,7 @@ import {
   parseAbiParameters,
   toFunctionSelector,
   toHex,
+  zeroAddress,
 } from "viem";
 import {
   syntheticProductionConfig as config,
@@ -19,6 +20,7 @@ import {
   curveProductionSchemaSql,
   initializeProductionCurveStore,
   commitProductionCurveRange,
+  productionCurveScope,
 } from "./curve-production-store.js";
 import { productionActivitySchemaSql } from "./curve-production-activity.js";
 
@@ -30,12 +32,13 @@ if (
 )
   throw Error("Dedicated loopback database required");
 const sql = new Client({ connectionString });
-const start = 3_841_724,
+const alignedFixture = process.argv.includes("--empty-market");
+const start = alignedFixture ? 215 : 3_841_724,
   legacy = "0x1111111111111111111111111111111111111111";
 const auth = { Authorization: "Bearer synthetic-backfill-reader" };
 let safe = start;
 const hash = (height: number) => toHex(height, { size: 32 });
-const blockTime = Math.floor(Date.now() / 1000);
+let blockTime = Math.floor(Date.now() / 1000);
 const timestamp = (height: number) =>
   blockTime + Math.floor((height - start) / 10);
 const answers = new Map<string, string>();
@@ -72,6 +75,22 @@ for (const [fn, value] of Object.entries({
   getter(fn + "()", "address", value);
 
 let fault: "429" | "503" | "timeout" | "resource" | null = null;
+const asset = "0x2222222222222222222222222222222222222222";
+const curve = "0x3333333333333333333333333333333333333333";
+let mapped = false, disagree = false;
+function marketCall(to: string, data: string) {
+  if (to === proposal.factory.toLowerCase() && data === toFunctionSelector("curveForToken(address)") + asset.slice(2).padStart(64, "0"))
+    return encodeAbiParameters(parseAbiParameters("address"), [mapped ? curve : zeroAddress]);
+  if (mapped && to === curve) {
+    const address = data === toFunctionSelector("token()") ? asset : data === toFunctionSelector("factory()") ? config.binding.factory : null;
+    if (address) return encodeAbiParameters(parseAbiParameters("address"), [address]);
+    for (const [signature,value] of Object.entries({
+      "executionVersion()": 1n, "sold()": 0n, "backingReserve()": 0n, "poolId()": 0n, "graduated()": 0n,
+      "graduationSold()": 600_000_000n * 10n**18n, "GRADUATION_BACKING()": 2n * 10n**18n,
+    })) if (data === toFunctionSelector(signature)) return toHex(value, {size:32});
+  }
+  return answers.get(data);
+}
 const activityAttempts: string[] = [];
 function provider(primary: boolean) {
   return createServer(async (req, res) => {
@@ -98,11 +117,11 @@ function provider(primary: boolean) {
       result = {
         number: toHex(n),
         timestamp: toHex(timestamp(n)),
-        hash: hash(n),
+        hash: hash(disagree && !primary && n === safe ? n+1 : n),
         parentHash: hash(n - 1),
         transactions: [],
       };
-    } else if (method === "eth_call") result = answers.get(params[0].data);
+    } else if (method === "eth_call") result = marketCall(params[0].to.toLowerCase(), params[0].data);
     else if (method === "eth_getTransactionReceipt")
       result = {
         transactionHash: proposal.deploymentTransactionHash,
@@ -197,7 +216,7 @@ function boot() {
         RMT_INDEXER_READ_TOKEN: auth.Authorization.slice(7),
         RMT_CURVE_PRODUCTION_BINDING: JSON.stringify(proposal),
         RMT_INDEXER_POLL_MS: "500",
-        RMT_INDEXER_CAUGHT_UP_POLL_MS: "1000",
+        RMT_INDEXER_CAUGHT_UP_POLL_MS: alignedFixture ? "30000" : "1000",
         RMT_INDEXER_ACTIVITY_INTERVAL_MS: "1000",
         PORT: String(port),
       },
@@ -211,7 +230,7 @@ function boot() {
 const get = async (path: string, authorized = true) =>
   fetch(url + path, {
     headers: authorized ? auth : {},
-    signal: AbortSignal.timeout(4000),
+    signal: AbortSignal.timeout(alignedFixture ? 8000 : 4000),
   });
 let servingReads = 0;
 async function verifyDiscovery() {
@@ -240,31 +259,7 @@ async function verifyDiscovery() {
   servingReads++;
   return Number(page.checkpoint.blockNumber);
 }
-try {
-  await sql.connect();
-  assert.equal(
-    (
-      await sql.query(
-        "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'",
-      )
-    ).rows[0].n,
-    0,
-  );
-  await sql.query(curveProductionSchemaSql + productionActivitySchemaSql);
-  await initializeProductionCurveStore(sql, config);
-  // A restored registration cursor near head and an empty activity store are fixture inputs.
-  await commitProductionCurveRange(
-    sql,
-    config,
-    100n,
-    {
-      blockNumber: String(start),
-      blockHash: hash(start),
-      timestamp: new Date(timestamp(start) * 1000).toISOString(),
-    },
-    [],
-  );
-  await sql.query("SELECT pg_advisory_unlock_all()");
+async function verifyBacklog() {
   fault = "429";
   const first = boot();
   await until(
@@ -375,6 +370,75 @@ try {
       marketDuringBackfill: 503,
     }),
   );
+}
+async function verifyEmptyMarket() {
+  const market = "/curve-market/" + asset + "?interval=60";
+  boot();
+  await until(async () => get("/ready").then(async r => r.ok && ((await r.json()) as {feeds:{activity:{status:string}}}).feeds.activity.status === "ready", () => false));
+  const absent = await get(market);
+  assert.equal(absent.status, 404);
+  const body = await absent.json();
+  assert.deepEqual(body, {schemaVersion:1, chainId:4663, status:"not_found", token:asset,
+    deployment:{factory:config.binding.factory, registry:config.binding.projectRegistry, blockNumber:"100", blockHash:hash(100)},
+    checkpoint:{blockNumber:String(start), blockHash:hash(start), timestamp:new Date(timestamp(start)*1000).toISOString(),
+      confirmations:20, finality:"l2-confirmed", l1Finality:"unverified"}});
+  assert.equal((await get(market,false)).status,401);
+  assert.equal((await fetch(url+market,{headers:{Authorization:"Bearer invalid"}})).status,401);
+  for (const path of ["/curve-market/invalid","/curve-market/"+asset+"?interval=",market+"&interval=60","/curve-market/"+asset+"?interval=6e1",market+"&before=1"])
+    assert.equal((await get(path)).status,400);
+  const activity = await get("/curve-activity?transactionHash="+hash(77)); assert.equal(activity.status,200);
+  assert.deepEqual(((await activity.json()) as {events: unknown[]}).events,[]);
+  const unavailable = async () => {
+    const r = await get(market); assert.equal(r.status,503);
+    const data = await r.json() as {status:string; checkpoint:unknown}; assert.equal(data.status,"unavailable"); assert.equal(data.checkpoint,null);
+  };
+  mapped = true;
+  await unavailable(); // Registration store and on-chain factory contradict one another.
+  const scope = productionCurveScope(config);
+  await sql.query("INSERT INTO rmt_curve_production_launches VALUES($1,$2,$3,0,$4,$5,$6)",[scope,asset,hash(123),start,hash(start),
+    {token:asset, chainId:4663, factory:config.binding.factory, projectRegistry:config.binding.projectRegistry, initialCurve:curve}]);
+  const empty = await get(market); assert.equal(empty.status,200);
+  const snapshot = await empty.json() as {candles:unknown[]; soldWei:string; backingWei:string}; assert.deepEqual(snapshot.candles,[]); assert.equal(snapshot.soldWei,"0"); assert.equal(snapshot.backingWei,"0");
+  await sql.query("DELETE FROM rmt_curve_production_launches WHERE scope=$1 AND token=$2",[scope,asset]); mapped=false;
+  await sql.query("UPDATE rmt_curve_activity_checkpoints SET block_hash=$1 WHERE block_number=$2",[hash(start+8),start]);
+  await unavailable();
+  await sql.query("UPDATE rmt_curve_activity_checkpoints SET block_hash=$1 WHERE block_number=$2",[hash(start),start]);
+  disagree=true; await unavailable(); disagree=false;
+  // Force a real SELECT failure in the disposable cluster.
+  await sql.query("ALTER TABLE rmt_curve_production_launches RENAME TO fixture_unavailable");
+  try { await unavailable(); } finally { await sql.query("ALTER TABLE fixture_unavailable RENAME TO rmt_curve_production_launches"); }
+  blockTime -= 180; safe++;
+  await until(async () => ((await (await get("/ready")).json()) as {feeds:{registration:{status:string}}}).feeds.registration.status === "stale");
+  await unavailable();
+  console.log("Aligned zero-token catalog 404 with proof; registered/no trades 200; activity empty 200; auth 401; invalid 400; SQL, provider, cursor and factory disagreement 503.");
+}
+try {
+  await sql.connect();
+  assert.equal(
+    (
+      await sql.query(
+        "SELECT count(*)::int AS n FROM pg_tables WHERE schemaname='public'",
+      )
+    ).rows[0].n,
+    0,
+  );
+  await sql.query(curveProductionSchemaSql + productionActivitySchemaSql);
+  await initializeProductionCurveStore(sql, config);
+  // A restored registration cursor near head and an empty activity store are fixture inputs.
+  await commitProductionCurveRange(
+    sql,
+    config,
+    100n,
+    {
+      blockNumber: String(start),
+      blockHash: hash(start),
+      timestamp: new Date(timestamp(start) * 1000).toISOString(),
+    },
+    [],
+  );
+  await sql.query("SELECT pg_advisory_unlock_all()");
+  if (alignedFixture) await verifyEmptyMarket();
+  else await verifyBacklog();
 } catch (error) {
   console.error(JSON.stringify({ fault, activityAttempts }));
   console.error(

@@ -9,6 +9,7 @@
     "start": "node dist/index.js",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:schema": "tsx src/schema-smoke.ts",
+    "test:empty-market": "tsx src/backfill-http-smoke.ts --empty-market",
     "test:backfill-http": "tsx src/backfill-http-smoke.ts",
     "test:activity-backlog": "tsx src/activity-backlog-smoke.ts",
     "test:provider-budget": "tsx --test src/feed-scheduler.test.ts",

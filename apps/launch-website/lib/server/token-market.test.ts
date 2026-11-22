@@ -5,7 +5,7 @@ import { toEventSelector } from "viem";
 import replay from "../../../../docs/evidence/token-market/market-replay.json";
 import { checkpointFresh, validMarket } from "../token-market";
 import { GET as marketRoute } from "../../app/api/launchpad/market/[token]/route";
-import { curveProductionProfile } from "./curve-production";
+import { curveProductionDeployment, curveProductionPins, curveProductionProfile } from "./curve-production";
 const frame = replay.frames.at(-1)!;
 test("independent receipt-word reconstruction matches every final candle and ETH volume", () => {
   const trade = toEventSelector(
@@ -96,7 +96,7 @@ test("website market GET authenticates privately, exposes only verified chart fi
   const privateNote = "internal-test-field";
   const body = {
     ...snapshot, schemaVersion: 1, chainId: 4663, privateNote,
-    checkpoint: { ...snapshot.checkpoint, privateNote },
+    checkpoint: { ...snapshot.checkpoint, timestamp: new Date().toISOString(), privateNote },
     candles: snapshot.candles.map(candle => ({ ...candle, privateNote })),
     graduation: { ...snapshot.graduation, privateNote },
   };
@@ -111,13 +111,35 @@ test("website market GET authenticates privately, exposes only verified chart fi
     { headers: { host, "x-forwarded-proto": "https" } }), { params: Promise.resolve({ token: replay.token }) });
   assert.equal((await read("preview.example.invalid")).status, 404);
   assert.equal((await read("www.rmtlaunch.fun", "interval=7")).status, 400);
+  assert.equal((await read("www.rmtlaunch.fun", "interval=6e1")).status, 400);
   assert.equal(fetcher.mock.callCount(), 0);
   const response = await read("www.rmtlaunch.fun");
   assert.equal(response.status, 200); assert.match(response.headers.get("cache-control")!, /no-store/);
   const payload = await response.text(); assert.ok(!payload.includes(privateNote)); assert.ok(!payload.includes("fixture-only"));
-  const page = JSON.parse(payload); assert.ok(validMarket(page, replay.token, 60)); assert.deepEqual(page.checkpoint, snapshot.checkpoint);
+  const page = JSON.parse(payload); assert.ok(validMarket(page, replay.token, 60)); assert.deepEqual(page.checkpoint, { ...snapshot.checkpoint, timestamp: body.checkpoint.timestamp });
   assert.deepEqual(page.candles, snapshot.candles);
-  for (const rejected of [() => new Response(null, { status: 401 }), () => Response.json({ ...body, chainId: 1 }),
+  const absent = { status: "not_found", schemaVersion: 1, chainId: 4663, token: replay.token, privateNote,
+    deployment: {factory: curveProductionPins.factory[0], registry: curveProductionPins.registry[0],
+      blockNumber: String(curveProductionDeployment.blockNumber), blockHash: curveProductionDeployment.blockHash, privateNote},
+    checkpoint: {...body.checkpoint, confirmations:20, finality:"l2-confirmed", l1Finality:"unverified"} };
+  const missing = (payload: unknown) => Response.json(payload, {status:404});
+  upstream = () => missing(absent);
+  const verified = await read("www.rmtlaunch.fun"); assert.equal(verified.status,404);
+  const text = await verified.text(); assert.ok(!text.includes(privateNote)); assert.ok(!text.includes("fixture-only"));
+  assert.deepEqual(Object.keys(JSON.parse(text)).sort(), ["chainId","checkpoint","deployment","schemaVersion","status","token"]);
+  assert.equal(JSON.parse(text).checkpoint.blockHash, absent.checkpoint.blockHash);
+  for (const invalid of [{}, {...absent, chainId:1}, {...absent, token:curveProductionPins.guard[0]}, {...absent, candles:[]},
+      {...absent, deployment:{...absent.deployment,factory:curveProductionPins.guard[0]}},
+      {...absent, deployment:{...absent.deployment,blockHash:absent.checkpoint.blockHash}},
+      {...absent, deployment:{...absent.deployment,registry:curveProductionPins.guard[0]}},
+      {...absent, checkpoint:{...absent.checkpoint,blockNumber:"1"}},
+      {...absent, checkpoint:{...absent.checkpoint,timestamp:new Date(Date.now()-120001).toISOString()}},
+      {...absent, checkpoint:{...absent.checkpoint,confirmations:0}}, {...absent,padding:"x".repeat(4096)}]) {
+    upstream=()=>missing(invalid);
+    const result=await read("www.rmtlaunch.fun"); assert.equal(result.status,503); assert.deepEqual(await result.json(),{status:"unavailable"});
+  }
+  for (const rejected of [() => new Response(null, { status: 401 }), () => new Response(null, {status:404}),
+    () => Response.json({...body,checkpoint:{...body.checkpoint,timestamp:"2020-01-01T00:00:00Z"}}), () => Response.json({ ...body, chainId: 1 }),
     () => Response.json({ ...body, padding: "x".repeat(131072) })]) {
     upstream = rejected;
     const result = await read("www.rmtlaunch.fun"); assert.equal(result.status, 503);

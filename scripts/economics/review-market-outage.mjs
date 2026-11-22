@@ -22,7 +22,7 @@ const code = await build({
 });
 const selected = process.argv[2];
 assert.ok(selected === undefined || ["chromium", "webkit"].includes(selected));
-for (const [engine, options] of [[chromium, {}], [webkit, devices["iPhone 13"]]]) {
+for (const [engine, options] of [[chromium, { viewport:{width:390,height:844}, isMobile:true, hasTouch:true }], [webkit, devices["iPhone 13"]]]) {
   if (selected && engine.name() !== selected) continue;
   const browser = await engine.launch();
   try {
@@ -31,7 +31,7 @@ for (const [engine, options] of [[chromium, {}], [webkit, devices["iPhone 13"]]]
     await page.addInitScript(() => Object.defineProperty(navigator, "language", { get: () => "en-US@posix" }));
     const buy = replay.frames.find(f => f.label === "Curve buy 4");
     const sell = replay.frames.find(f => f.label === "Curve sell 4");
-    let frame = buy;
+    let frame = buy, absent = null;
     const origin = "http://127.0.0.1:31279";
     const status = page.locator(".rmStatus");
     const progress = page.getByRole("progressbar", { name: "Net curve tokens sold" });
@@ -43,6 +43,7 @@ for (const [engine, options] of [[chromium, {}], [webkit, devices["iPhone 13"]]]
       if (url.pathname === "/bundle.js")
         return route.fulfill({ contentType: "application/javascript", body: code.outputFiles[0].text });
       assert.equal(url.pathname, "/api/launchpad/market/" + replay.token.toLowerCase());
+      if (absent) return route.fulfill({status:404,json:absent});
       return frame ? route.fulfill({ json: { ...frame, candles: frame.charts[60], interval: 60, earlier: false } })
         : route.fulfill({ status: 503, json: { status: "unavailable" } });
     });
@@ -65,7 +66,21 @@ for (const [engine, options] of [[chromium, {}], [webkit, devices["iPhone 13"]]]
     assert.ok(Number(await progress.getAttribute("value")) < peak);
     await page.clock.fastForward(125000);
     await status.getByText("Last verified · stale").waitFor();
-    console.log(engine.name() + " passed feed loss, elapsed freshness, refresh and canonical sellback recovery");
+    await page.clock.setSystemTime(new Date(sell.checkpoint.timestamp));
+    absent = {schemaVersion:1, chainId:4663, status:"not_found",token:replay.token, deployment:{
+      factory:sell.factory, registry:"0xf1113714Dda31f31532995D2525e034271425398",blockNumber:"116835102",
+      blockHash:"0x4a72961fb6649c1690fe4cf361ae6a6fbbdab39117a85604e2a11ba4646c7639"},
+      checkpoint:{...sell.checkpoint,confirmations:20, finality:"l2-confirmed",l1Finality:"unverified"}};
+    await page.clock.fastForward(16000);
+    await page.getByText("Token not found",{exact:true}).waitFor(); assert.equal(await progress.count(),0);
+    assert.equal(await page.locator("canvas").count(),0);
+    absent = {status:"not_found"};
+    await page.clock.fastForward(16000); await status.getByText("Feed unavailable").waitFor();
+    absent=null; frame=replay.frames[0];
+    await page.clock.setSystemTime(new Date(frame.checkpoint.timestamp)); await page.clock.fastForward(16000);
+    await page.getByText("No trades in this window",{exact:true}).waitFor();
+    assert.equal(await page.locator("canvas").count(),0);
+    console.log(engine.name() + " passed feed loss, freshness, sellback, proof-bearing absence, rejected bare 404 and empty history");
   } finally {
     await browser.close();
   }

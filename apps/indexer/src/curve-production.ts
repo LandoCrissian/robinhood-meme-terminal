@@ -285,7 +285,8 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     if (!archive || before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint unavailable");
     const result = await readCurveMarket(db, scope, config, [primary, archive], before.checkpoint, query);
     const after = state();
-    if (after.status !== "ready" || after.revision !== before.revision || now() - Date.parse(before.checkpoint.timestamp) > maximumCheckpointAgeMs || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint changed");
+    const age = now() - Date.parse(before.checkpoint.timestamp);
+    if (after.status !== "ready" || after.revision !== before.revision || after.checkpoint?.blockHash !== before.checkpoint.blockHash || age >= maximumCheckpointAgeMs || age < -15_000 || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint changed");
     return result;
   }
   return { syncOnce, syncActivity, state, activityState, read, readEarnings, readActivity, readMarket };

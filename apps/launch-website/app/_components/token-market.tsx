@@ -8,6 +8,7 @@ import {
   marketIntervals,
   maxSold,
   validMarket,
+  validMarketAbsence,
   type MarketSnapshot,
 } from "../../lib/token-market";
 const MarketChart = dynamic(
@@ -44,6 +45,7 @@ export function TokenMarket({
     [fdv, setFdv] = useState(false),
     [index, setIndex] = useState((replay?.length ?? 1) - 1);
   const [active, setActive] = useState<MarketSnapshot | null>(null),
+    [absence, setAbsence] = useState<{ token: string; timestamp: string } | null>(null),
     [failed, setFailed] = useState(false),
     [time, setTime] = useState(Date.now),
     [before, setBefore] = useState<number | null>(null);
@@ -66,6 +68,7 @@ export function TokenMarket({
     const ctrl = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
     setActive(null);
+    setAbsence(null);
     setFailed(false);
     async function refresh() {
       try {
@@ -80,16 +83,21 @@ export function TokenMarket({
             signal: AbortSignal.any([ctrl.signal, AbortSignal.timeout(11000)]),
           },
         );
-        if (!r.ok) throw Error();
         const data = await r.json();
+        if (r.status === 404 && validMarketAbsence(data, token)) {
+          if (alive) { setActive(null); setFailed(false); setAbsence({ token, timestamp: data.checkpoint.timestamp }); setTime(Date.now()); }
+          return;
+        }
+        if (!r.ok) throw Error();
         if (!validMarket(data, token, interval)) throw Error();
         if (alive) {
+          setAbsence(null);
           setActive(data);
           setFailed(false);
           setTime(Date.now());
         }
       } catch {
-        if (alive) setFailed(true);
+        if (alive) { setAbsence(null); setFailed(true); }
       } finally {
         if (alive) timer = setTimeout(refresh, 15000);
       }
@@ -116,6 +124,13 @@ export function TokenMarket({
         : "Bonding curve";
   const options = frame?.quotes?.filter((q) => q.side === side) ?? [],
     quoted = options.find((q) => q.input === quoteInput) ?? options[0];
+  if (absence?.token === token) {
+    const current = time - Date.parse(absence.timestamp) < 120000;
+    return <section className="lpNotice" role="status">
+      <h2>{current ? "Token not found" : "Market verification pending"}</h2>
+      <p>{current ? "The factory has no registration for this address at the verified checkpoint." : "Waiting for a fresh checkpoint."}</p>
+    </section>;
+  }
   return (
     <div className="rmWorkspace">
       {replay && (

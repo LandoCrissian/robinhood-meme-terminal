@@ -10,7 +10,8 @@ import {
   type Hex,
   type PublicClient,
 } from "viem";
-import type { BlockEvidence } from "./curve-launch-evidence.js";
+import { blockEvidence, type BlockEvidence } from "./curve-launch-evidence.js";
+import { productionCurveIdentity, productionCurveScope } from "./curve-production-store.js";
 import type { CurveProductionConfig } from "./curve-production-config.js";
 import {
   addMarketFill,
@@ -42,11 +43,13 @@ const abi = parseAbi([
 export type MarketQuery = { token: Address; interval: number; before?: number };
 export function parseMarketQuery(url: URL): MarketQuery | null {
   const match = /^\/curve-market\/(0x[0-9a-f]{40})$/i.exec(url.pathname);
-  const interval = Number(url.searchParams.get("interval") || "300"),
+  const requestedInterval = url.searchParams.get("interval") ?? "300";
+  const interval = Number(requestedInterval),
     end = url.searchParams.get("before");
   const keys = [...url.searchParams.keys()];
   if (
     !match ||
+    String(interval) !== requestedInterval ||
     !marketIntervals.some((n) => n === interval) ||
     keys.some((k) => k !== "interval" && k !== "before") ||
     new Set(keys).size !== keys.length ||
@@ -78,20 +81,49 @@ export async function readCurveMarket(
   const { token, interval, before } = query,
     blockNumber = BigInt(checkpoint.blockNumber),
     factory = config.binding.factory;
-  const reg = await db.query<{ initial: string }>(
-    `SELECT l.payload->>'initialCurve' AS initial FROM rmt_curve_production_launches l
-    JOIN rmt_curve_activity_bindings a USING(scope) JOIN rmt_curve_production_bindings b USING(scope)
-    JOIN rmt_curve_activity_checkpoints c ON c.scope=a.scope AND c.block_number=a.next_block-1
+  const deployment = config.binding;
+  assert.ok(deployment.chainId === 4663 && scope === productionCurveScope(config) && blockNumber >= deployment.deploymentBlock);
+  // The anchor must exist independently of the token. A missing anchor yields no row,
+  // whereas an aligned anchor with no scoped registration yields a NULL token.
+  const reg = await db.query<{ token: string | null; initial: string; valid_registration: boolean }>(
+    `SELECT l.token, l.payload->>'initialCurve' AS initial,
+      l.block_number BETWEEN $6::bigint AND $3::bigint AND lower(l.payload->>'token')=l.token
+        AND l.payload->>'chainId'='4663' AND lower(l.payload->>'factory')=$7
+        AND lower(l.payload->>'projectRegistry')=$8 AS valid_registration
+    FROM rmt_curve_production_bindings b JOIN rmt_curve_activity_bindings a USING(scope)
     JOIN rmt_curve_production_checkpoints p ON p.scope=b.scope AND p.block_number=b.next_block-1
-    WHERE l.scope=$1 AND l.token=$2 AND l.block_number<=$3 AND a.next_block=b.next_block AND c.block_number=$3
-      AND c.block_hash=$4 AND p.block_hash=c.block_hash`,
-    [scope, token, checkpoint.blockNumber, checkpoint.blockHash],
+    JOIN rmt_curve_activity_checkpoints c ON c.scope=a.scope AND c.block_number=a.next_block-1
+    LEFT JOIN rmt_curve_production_launches l ON l.scope=b.scope AND l.token=$2
+    WHERE b.scope=$1 AND b.identity=$5::jsonb AND a.next_block=b.next_block AND p.block_number=$3
+      AND p.block_hash=$4 AND c.block_hash=p.block_hash AND p.observed_at=$9::timestamptz AND c.observed_at=p.observed_at`,
+    [scope, token, checkpoint.blockNumber, checkpoint.blockHash, productionCurveIdentity(config),
+      deployment.deploymentBlock.toString(), factory.toLowerCase(), deployment.projectRegistry.toLowerCase(), checkpoint.timestamp],
   );
-  assert.equal(
-    reg.rows.length,
-    1,
-    "Market activity is not caught up or registered",
-  );
+  assert.equal(reg.rows.length, 1, "Market checkpoints or deployment identity disagree");
+  async function verifyCanonicalBlock() {
+    const heads = await Promise.all(readers.map(r => r.getBlock({ blockNumber })));
+    for (const head of heads) {
+      const observed = blockEvidence(head, blockNumber);
+      assert.ok(observed.blockHash === checkpoint.blockHash && Date.parse(observed.timestamp) === Date.parse(checkpoint.timestamp));
+    }
+  }
+  if (reg.rows[0]!.token === null) {
+    // Check the immutable factory at the same height on both providers. A missing
+    // database registration must never hide a real on-chain curve or indexed events.
+    const orphan = await db.query("SELECT 1 FROM rmt_curve_activity_events WHERE scope=$1 AND token=$2 LIMIT 1", [scope, token]);
+    assert.equal(orphan.rows.length, 0);
+    const curves = await Promise.all(readers.map(r => r.readContract({
+      address: factory, abi, functionName: "curveForToken", args: [token], blockNumber,
+    })));
+    assert.ok(curves.every(curve => curve === zeroAddress), "Factory disagrees with registration absence");
+    await verifyCanonicalBlock();
+    return {
+      status: "not_found" as const, schemaVersion: 1, chainId: deployment.chainId, token,
+      deployment: { factory, registry: deployment.projectRegistry, blockNumber: deployment.deploymentBlock.toString(), blockHash: deployment.deploymentBlockHash },
+      checkpoint: { ...checkpoint, confirmations: deployment.confirmations, finality: "l2-confirmed", l1Finality: "unverified" },
+    };
+  }
+  assert.ok(reg.rows[0]!.valid_registration && reg.rows[0]!.token === token, "Invalid scoped registration");
   async function snapshot(rpc: PublicClient) {
     const read = (
       address: Address,
@@ -306,17 +338,9 @@ export async function readCurveMarket(
     height = last.height;
     ordinal = last.ordinal;
   }
-  const heads = await Promise.all(
-    readers.map((r) => r.getBlock({ blockNumber })),
-  );
-  assert.ok(
-    heads.every(
-      (h) =>
-        h.hash === checkpoint.blockHash &&
-        Number(h.timestamp) * 1000 === Date.parse(checkpoint.timestamp),
-    ),
-  );
+  await verifyCanonicalBlock();
   return {
+    status: "ready" as const,
     schemaVersion: 1,
     chainId: 4663,
     token,

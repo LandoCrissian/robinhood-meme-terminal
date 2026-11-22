@@ -28,6 +28,8 @@ export const curveProductionSchemaSql = `
     ON rmt_curve_production_launches(scope, block_number);
 `;
 
+export const productionCurveIdentity = (config: CurveProductionConfig) => encode(config);
+
 export function productionCurveScope(config: CurveProductionConfig) {
   const { binding } = config;
   return [binding.chainId, binding.factory.toLowerCase(), binding.deploymentBlockHash.toLowerCase()].join(":");
@@ -43,7 +45,7 @@ export async function initializeProductionCurveStore(writer: Database, config: C
   }
   await lockIndexWriter(writer, config.binding.chainId);
   const scope = productionCurveScope(config);
-  const identity = encode(config);
+  const identity = productionCurveIdentity(config);
   await writer.query(`INSERT INTO rmt_curve_production_bindings(scope, identity, next_block)
     VALUES ($1,$2,$3) ON CONFLICT(scope) DO NOTHING`, [scope, identity, config.binding.deploymentBlock.toString()]);
   const result = await writer.query<{ matches: boolean; next_block: string }>(

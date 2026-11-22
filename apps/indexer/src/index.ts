@@ -1453,7 +1453,7 @@ function startServer() {
           await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
           await db.query("SET LOCAL statement_timeout = '1s'");
           const result = market ? await rpcFeed.run("market", () => current.readMarket(db!, market)) : await current.readActivity(db, query!);
-          await db.query("COMMIT"); json(response, 200, result);
+          await db.query("COMMIT"); json(response, result.status === "not_found" ? 404 : 200, result);
         } catch (error) {
           await db?.query("ROLLBACK").catch(() => undefined); json(response, 503, unavailable);
           console.error(JSON.stringify({ event: "production_activity_read_unavailable", errorType: errorType(error) }));

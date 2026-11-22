@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { Client } from "pg";
 import type { Address, PublicClient } from "viem";
-import { curveProductionSchemaSql } from "./curve-production-store.js";
+import { curveProductionSchemaSql, productionCurveIdentity, productionCurveScope } from "./curve-production-store.js";
 import { productionActivitySchemaSql } from "./curve-production-activity.js";
 import { readCurveMarket, parseMarketQuery } from "./curve-market.js";
 import {
@@ -10,7 +10,7 @@ import {
   saleTarget,
   backingTarget,
 } from "./market-candles.js";
-import type { CurveProductionConfig } from "./curve-production-config.js";
+import { syntheticProductionConfig } from "./curve-production-smoke.js";
 const read = (name: string) =>
   JSON.parse(
     readFileSync(
@@ -26,10 +26,10 @@ assert.ok(
     url.pathname === "/rmt_curve_production_smoke_task092_market",
 );
 const db = new Client({ connectionString: url.href });
-const scope = "isolated-market",
-  factory = replay.frames[0].factory,
+const factory = replay.frames[0].factory,
   token = replay.token as Address;
-const config = { binding: { factory } } as CurveProductionConfig;
+const config = { ...syntheticProductionConfig, binding: { ...syntheticProductionConfig.binding, factory } };
+const scope = productionCurveScope(config);
 let frame = replay.frames[0];
 const recorded = new Map<string, any>(
   [...archive.primary, ...archive.orphanedBranch].map((r) => [r.blockHash, r]),
@@ -55,7 +55,7 @@ const rpc = {
     if (blockNumber === BigInt(frame.checkpoint.blockNumber)) {
       const record = recorded.get(frame.checkpoint.blockHash);
       assert.ok(record);
-      return { hash: record.blockHash, timestamp: BigInt(record.time) };
+      return { number: blockNumber, hash: record.blockHash, timestamp: BigInt(record.time) };
     }
     const record = [...recorded.values()].find(
       (r) =>
@@ -64,7 +64,7 @@ const rpc = {
           archive.primary.some((p: any) => p.blockHash === r.blockHash)),
     );
     assert.ok(record);
-    return { hash: record.blockHash, timestamp: BigInt(record.time) };
+    return { number: blockNumber, hash: record.blockHash, timestamp: BigInt(record.time) };
   },
 } as unknown as PublicClient;
 async function checkpoint(f: any) {
@@ -117,8 +117,8 @@ try {
   await db.query(curveProductionSchemaSql);
   await db.query(productionActivitySchemaSql);
   await db.query(
-    "INSERT INTO rmt_curve_production_bindings VALUES($1,'{}',1)",
-    [scope],
+    "INSERT INTO rmt_curve_production_bindings VALUES($1,$2::jsonb,1)",
+    [scope, productionCurveIdentity(config)],
   );
   await db.query("INSERT INTO rmt_curve_activity_bindings VALUES($1,1)", [
     scope,
@@ -132,7 +132,7 @@ try {
       first.hash,
       first.block,
       first.blockHash,
-      { initialCurve: replay.curve },
+      { token, chainId: 4663, factory, projectRegistry: config.binding.projectRegistry, initialCurve: replay.curve },
     ],
   );
   for (const r of archive.primary) await insert(r);
@@ -147,6 +147,7 @@ try {
         frame.checkpoint,
         { token, interval },
       );
+      assert.equal(market.status, "ready");
       assert.deepEqual(market.candles, frame.charts[interval]);
       assert.equal(market.soldWei, frame.soldWei);
       assert.deepEqual(market.graduation, frame.graduation);
@@ -163,6 +164,7 @@ try {
     frame.checkpoint,
     { ...q, before },
   );
+  assert.equal(older.status, "ready");
   assert.deepEqual(
     older.candles,
     current.charts[60].filter((r: any) => r.time < before),
@@ -213,6 +215,7 @@ try {
     frame.checkpoint,
     q,
   );
+  assert.equal(branch.status, "ready");
   assert.equal(branch.phase, "eligible");
   assert.deepEqual(branch.candles, replay.pending.charts[60]);
   await db.query("ROLLBACK");
@@ -225,6 +228,7 @@ try {
     frame.checkpoint,
     q,
   );
+  assert.equal(restored.status, "ready");
   assert.deepEqual(restored.candles, current.charts[60]);
   console.log(
     "Fork receipts matched PostgreSQL in all recorded checkpoint/interval combinations; old rows, sellbacks, branch replacement, pending graduation, pagination and disconnected checkpoints passed.",

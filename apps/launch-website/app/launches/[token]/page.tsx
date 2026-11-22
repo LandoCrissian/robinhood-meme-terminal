@@ -12,6 +12,7 @@ import { TokenArtwork } from "../../_components/token-artwork";
 import { CreatorLink } from "../../_components/creator-link";
 import { availableProductionFinancial } from "../../../lib/server/production-financial";
 import { ProductionLifecycleWallet } from "../../_components/production-lifecycle-wallet";
+import { readMarketResponse } from "../../../lib/server/market-response";
 import { TokenMarket } from "../../_components/token-market";
 
 export const dynamic = "force-dynamic";
@@ -31,6 +32,14 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
   if (!fixture) {
     if (!configuredProductionDiscovery(requestHeaders)) notFound();
     const data = await tokenDiscovery(address);
+    if (data.status === "ready" && data.launches.length === 0) {
+      const response = await readMarketResponse(address, 60, null);
+      if (response.status === 404) {
+        const { checkpoint } = await response.json();
+        const height = BigInt(checkpoint.blockNumber), registeredThrough = BigInt(data.checkpoint.blockNumber);
+        if (height > registeredThrough || (height === registeredThrough && checkpoint.blockHash === data.checkpoint.blockHash)) notFound();
+      }
+    }
     const directory = productionDirectory(data);
     const trading = data.status === "ready" && data.launches[0] && await availableProductionFinancial(requestHeaders, "trading");
     return <>
@@ -38,7 +47,7 @@ export default async function LaunchPage({ params }: { params: Promise<{ token: 
       <header className="lpPageHeading"><div><h1>{data.status === "unavailable" ? "New-engine evidence unavailable" : data.launches[0]?.name ?? "Indexing pending"}</h1><p>Robinhood Chain 4663 · verified creation evidence</p></div></header>
       <p className="lpNotice" role="status">{data.status === "unavailable" ? "Registration cannot be verified right now. An unavailable read does not mean the token was never registered."
         : data.status === "stale" ? "Stale registration checkpoint. Current lifecycle and trading are unverified."
-        : data.launches.length ? "Creation confirmed at the indexed checkpoint. Trading and claims remain separately gated." : "No registration at this verified checkpoint. A newly confirmed transaction may still be indexing."}</p>
+        : data.launches.length ? "Creation confirmed at the indexed checkpoint. Trading and claims remain separately gated." : "No registration at this discovery checkpoint. Market verification is pending or temporarily unavailable."}</p>
       {data.status === "ready" && data.launches[0] && <TokenArtwork symbol={data.launches[0].symbol} projectURI={data.launches[0].projectURI} />}
       {data.status !== "unavailable" && data.launches[0] && <TokenMarket token={address} symbol={data.launches[0].symbol}>
         {trading && data.status === "ready" ? <ProductionLifecycleWallet token={data.launches[0].token} curve={data.launches[0].initialCurve} symbol={data.launches[0].symbol}/> : null}

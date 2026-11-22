@@ -102,7 +102,29 @@ export function validMarket(
       BigInt(c.volumeWei) > 0n,
   );
 }
-export function checkpointFresh(m: MarketSnapshot, now = Date.now()) {
+export function checkpointFresh(m: Pick<MarketSnapshot, "checkpoint">, now = Date.now()) {
   const age = now - Date.parse(m.checkpoint.timestamp);
   return age >= -15000 && age < 120000;
+}
+
+type MarketAbsence = {
+  schemaVersion: 1; chainId: 4663; status: "not_found"; token: string;
+  deployment: { factory: string; registry: string; blockNumber: string; blockHash: string };
+  checkpoint: MarketSnapshot["checkpoint"] & { confirmations: number; finality: "l2-confirmed"; l1Finality: "unverified" };
+};
+
+// Used on both sides of the same-origin proxy; the server additionally pins the exact deployment.
+export function validMarketAbsence(value: unknown, token: string, now = Date.now()): value is MarketAbsence {
+  if (!value || typeof value !== "object") return false;
+  const m = value as MarketAbsence, d = m.deployment, p = m.checkpoint;
+  return m.status === "not_found" && m.schemaVersion === 1 && m.chainId === 4663 && m.token === token.toLowerCase()
+    && typeof d?.factory === "string" && d.factory.toLowerCase() === productionTradingPins.factory.toLowerCase()
+    && typeof d.registry === "string" && /^0x[0-9a-f]{40}$/i.test(d.registry)
+    && typeof d.blockNumber === "string" && /^[1-9][0-9]{0,15}$/.test(d.blockNumber) && hash(d.blockHash)
+    && typeof p?.blockNumber === "string" && /^[1-9][0-9]{0,15}$/.test(p.blockNumber) && BigInt(p.blockNumber) >= BigInt(d.blockNumber)
+    && hash(p.blockHash) && !/^0x0+$/i.test(p.blockHash) && (p.blockNumber !== d.blockNumber || p.blockHash === d.blockHash)
+    && Number.isInteger(p.confirmations) && p.confirmations >= 20 && p.confirmations <= 256
+    && p.finality === "l2-confirmed" && p.l1Finality === "unverified"
+    && typeof p.timestamp === "string" && /^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\d(?:\.\d{3})?Z$/.test(p.timestamp)
+    && checkpointFresh(m, now) && !["candles", "soldWei", "backingWei", "phase", "graduation", "events", "launches"].some(key => key in m);
 }
