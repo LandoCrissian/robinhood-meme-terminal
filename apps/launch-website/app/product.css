@@ -61,7 +61,8 @@
 @media(max-width:620px) {
   .launchpad .lpContent { padding-inline:16px; padding-block:24px 36px; }
   .launchpad .lpHeader .lpBrandWord { display:inline; }
-  .launchpad .lpHeader > nav a { font-size:13px; }
+  .launchpad .lpHeader > nav { display:flex; justify-content:space-between; gap:2px; }
+  .launchpad .lpHeader > nav a { flex:1 1 auto; font-size:13px; }
   .launchpad .lpIdentityCard { padding:18px 14px 8px; }
   .lpIdentityHead .lpProfileAvatar { max-width:60px; max-height:60px; }
   .lpIdentityActions { margin:14px 0; }
