@@ -1,4 +1,5 @@
 import { getAddress, type Address } from "viem";
+import { rmtCreationOwner } from "./owner-creation";
 
 export const profileChainId = 4663 as const;
 export const profileSignInStatement = "Sign in to RMT Launch";
@@ -17,7 +18,7 @@ export type AccountSession =
 export type ProfileEdit = Pick<AccountProfile, "username" | "displayName" | "bio" | "xHandle" | "links" | "preferences">;
 export type ProfileChallenge = { message: string; nonce: string; expiresAt: string; purpose: "login" | "delete-profile" };
 
-const reserved = new Set(["admin", "administrator", "api", "account", "create", "create_token", "creator", "help", "launches", "login", "logout", "my_launches", "official", "operations", "reserve", "rmt", "rmtlaunch", "root", "safe", "security", "settings", "staff", "support", "system", "wallet"]);
+const reserved = new Set(["admin", "administrator", "api", "account", "create", "create_token", "creator", "help", "launches", "login", "logout", "my_launches", "official", "operations", "reserve", "rmt", "root", "safe", "security", "settings", "staff", "support", "system", "wallet"]);
 export function profileAddress(value: unknown): Address {
   if (typeof value !== "string" || !/^0x[0-9a-fA-F]{40}$/.test(value) || BigInt(value) === 0n) throw new Error("A valid wallet address is required.");
   return getAddress(value);
@@ -31,10 +32,10 @@ export function profileUsername(value: unknown): string | null {
   }
   return name;
 }
-function plain(value: unknown, maximum: number, label: string) {
+function plain(value: unknown, maximum: number, label: string, multiline = false) {
   if (typeof value !== "string") throw new Error(`Invalid ${label}.`);
-  const normalized = value.normalize("NFC").trim();
-  if (Array.from(normalized).length > maximum || /[<>\p{Cc}\p{Cf}]/u.test(normalized)) throw new Error(`${label} must be plain text of at most ${maximum} characters.`);
+  const normalized = (multiline ? value.replace(/\r\n?/g, "\n") : value).normalize("NFC").trim();
+  if (Array.from(normalized).length > maximum || /[<>\p{Cc}\p{Cf}]/u.test(multiline ? normalized.replace(/\n/g, "") : normalized)) throw new Error(`${label} must be plain text of at most ${maximum} characters.`);
   return normalized;
 }
 export function profileXHandle(value: unknown) {
@@ -58,16 +59,22 @@ export function profileShareIntent(profile: Pick<PublicCreatorProfile, "username
   const params = new URLSearchParams({ url: "https://www.rmtlaunch.fun" + path, text });
   return "https://twitter.com/intent/tweet?" + params.toString();
 }
-export function profileEdit(value: unknown): ProfileEdit {
+export function profileEdit(value: unknown, walletAddress?: string): ProfileEdit {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Invalid profile.");
   const row = value as Record<string, unknown>;
   if (Object.keys(row).some(key => !["username", "displayName", "bio", "xHandle", "links", "preferences"].includes(key))) throw new Error("Unexpected profile field.");
   if (!Array.isArray(row.links) || row.links.length > 3) throw new Error("Use at most three HTTPS links.");
-  const links = row.links.map(item => {
+  const username = profileUsername(row.username);
+  if (username === "rmtlaunch" && walletAddress?.toLowerCase() !== rmtCreationOwner.toLowerCase()) {
+    throw new Error("The official username rmtlaunch is reserved for the RMT Launch owner wallet.");
+  }
+  const links = row.links.map((item, index) => {
     if (!item || typeof item !== "object" || Array.isArray(item) || Object.keys(item).some(key => !["label", "url"].includes(key))) throw new Error("Invalid profile link.");
     const { label, url } = item as Record<string, unknown>;
     if (typeof url !== "string" || url.length > 512) throw new Error("Invalid HTTPS link.");
-    const parsed = new URL(url);
+    let parsed: URL;
+    try { parsed = new URL(url); }
+    catch { throw new Error(`Project link ${index + 1} needs a full HTTPS URL, such as https://example.com. Complete or remove that link.`); }
     if (parsed.protocol !== "https:" || parsed.username || parsed.password || !parsed.hostname || /[\p{Cc}\p{Cf}]/u.test(url)) throw new Error("Links must use HTTPS without embedded credentials.");
     return { label: plain(label, 32, "Link label"), url: parsed.href };
   });
@@ -75,7 +82,7 @@ export function profileEdit(value: unknown): ProfileEdit {
   if (!prefs || typeof prefs !== "object" || Array.isArray(prefs)) throw new Error("Invalid profile preferences.");
   const settings = prefs as Record<string, unknown>;
   if (Object.keys(settings).some(key => !["theme", "reducedMotion"].includes(key)) || !["system", "dark", "light"].includes(String(settings.theme)) || typeof settings.reducedMotion !== "boolean") throw new Error("Invalid profile preferences.");
-  return { username: profileUsername(row.username), displayName: plain(row.displayName, 48, "Display name"), bio: plain(row.bio, 280, "Bio"), links,
+  return { username, displayName: plain(row.displayName, 48, "Display name"), bio: plain(row.bio, 280, "Bio", true), links,
     ...(Object.hasOwn(row, "xHandle") && { xHandle: profileXHandle(row.xHandle) }),
     preferences: { theme: settings.theme as ProfilePreferences["theme"], reducedMotion: settings.reducedMotion } };
 }

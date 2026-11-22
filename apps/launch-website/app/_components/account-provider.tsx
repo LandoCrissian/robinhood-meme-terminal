@@ -43,7 +43,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         const profile = result.account.profile;
         if (!profile || profile.chainId !== 4663 || !sameAccount(profile.walletAddress, result.account.walletAddress)
             || (profile.avatarUrl !== null && (typeof profile.avatarUrl !== "string" || !/^\/api\/account\/avatar\/0x[0-9a-f]{40}(?:\?v=[0-9a-f]{64})?$/i.test(profile.avatarUrl)))) throw new Error("Unsupported profile response");
-        profileEdit({ username: profile.username, displayName: profile.displayName, bio: profile.bio, links: profile.links, preferences: profile.preferences });
+        profileEdit({ username: profile.username, displayName: profile.displayName, bio: profile.bio, links: profile.links, preferences: profile.preferences }, result.account.walletAddress);
       }
       assignSession(result);
     } catch { if (current === generation.current && alive.current) assignSession(initialSession); }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { accountApi, accountErrorMessage } from "../../lib/account-api";
+import { AccountApiError, accountApi, accountErrorMessage } from "../../lib/account-api";
 import { profileEdit, profileShareIntent, type AccountProfile, type ProfileChallenge, type ProfileEdit } from "../../lib/profiles";
 import { assertAccountChallenge, assertConnectedAccount, sameAccount, signAccountMessage } from "../../lib/profile-wallet";
 import { testWalletErrorCode } from "../../lib/test-wallet";
@@ -33,7 +33,7 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
 
   async function run(action: () => Promise<void>, area: "profile" | "avatar" | "removal" = "profile") {
     if (busy.current) return;
-    busy.current = true; setPending(true); setMessage(""); setNoticeArea(area);
+    busy.current = true; setPending(true); setMessage(area === "profile" ? "Saving profile…" : ""); setNoticeArea(area);
     try { await action(); }
     catch (error) { if (mounted.current) setMessage(testWalletErrorCode(error) === 4001 ? "You declined the wallet message. No profile deletion occurred."
       : error instanceof Error && !("status" in error) ? error.message : accountErrorMessage(error)); }
@@ -42,9 +42,13 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
   async function save(event: FormEvent) {
     event.preventDefault();
     await run(async () => {
-      const body = profileEdit(draft);
-      const result = await accountApi<{ profile: AccountProfile }>("/api/account/profile", { method: "PATCH", body, csrfToken });
-      if (!mounted.current || !sameAccount(result.profile.walletAddress, profile.walletAddress)) return;
+      const body = profileEdit(draft, profile.walletAddress);
+      const result = await accountApi<{ profile: AccountProfile }>("/api/account/profile", { method: "PATCH", body, csrfToken }).catch(error => {
+        if (error instanceof AccountApiError) throw error;
+        throw new Error("Save could not be confirmed. Check your connection and try saving again.");
+      });
+      if (!mounted.current) return;
+      if (!sameAccount(result.profile.walletAddress, profile.walletAddress)) throw new Error("The saved profile could not be confirmed for this wallet. Refresh to check your profile.");
       account.updateProfile(result.profile); setDraft(editable(result.profile)); setMessage("Profile saved. Public details and private preferences are stored separately.");
     });
   }
@@ -112,7 +116,7 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
   }
   return <div className="lpProfileLayout">
     <div className="lpStack">
-      <form className="lpPanel lpForm lpProfileForm" onSubmit={(event) => void save(event)} aria-label="Edit creator profile">
+      <form className="lpPanel lpForm lpProfileForm" noValidate onSubmit={(event) => void save(event)} aria-label="Edit creator profile">
         <div><span className="lpEyebrow">Public profile</span><h2>How creators find you</h2></div>
         <p>Your wallet address, name, username, bio, avatar and links are public. Profile details do not change on-chain project ownership or beneficiary terms.</p>
         <label>Username<input aria-label="Username" aria-describedby="profile-username-hint" value={draft.username ?? ""} minLength={3} maxLength={24} placeholder="your_name" autoCapitalize="none" spellCheck={false}
@@ -132,8 +136,8 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
           <label className="lpCheck"><input type="checkbox" checked={draft.preferences.reducedMotion} onChange={(event) => setDraft({ ...draft, preferences: { ...draft.preferences, reducedMotion: event.target.checked } })} />Reduce motion</label>
           <small>Preferences are private and apply after saving.</small>
         </fieldset>
-        <button className="lpButton" type="submit" disabled={pending}>{pending ? "Saving…" : "Save profile"}</button>
-        {noticeArea === "profile" && message && <p role="status">{message}</p>}
+        <div role="status" aria-live="polite" aria-atomic="true">{noticeArea === "profile" && message && <p className="lpInlineNotice">{message}</p>}</div>
+        <button className="lpButton" type="submit" disabled={pending}>{pending && noticeArea === "profile" ? "Saving…" : "Save profile"}</button>
       </form>
       <details className="lpPanel lpDanger"><summary>Profile data and removal</summary><div className="lpForm">
         <p>Remove your profile, uploaded avatar and private preferences. On-chain transactions and launch history remain public. A fresh wallet message and a separate confirmation are required.</p>

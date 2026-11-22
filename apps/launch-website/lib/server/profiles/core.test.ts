@@ -4,6 +4,7 @@ import sharp from "sharp";
 import { NextRequest } from "next/server";
 import { createRequire } from "node:module";
 import { profileEdit, profileUsername, profileXHandle, profileShareIntent } from "../../profiles";
+import { rmtCreationOwner } from "../../owner-creation";
 import { isProfileApiRoute, profileConfig, requireProfileRequest } from "./config";
 import { sanitizeAvatar } from "./avatar";
 
@@ -83,6 +84,16 @@ test("username, plain text, HTTPS links and private preferences reject untrusted
   for (const name of ["rmt", "admin", "support", "official_root", "a", "../other"]) assert.throws(() => profileUsername(name));
   const valid = { username: "creator_one", displayName: "Creator", bio: "Public project information", links: [{ label: "Project", url: "https://example.test/" }], preferences: { theme: "system", reducedMotion: false } };
   assert.equal(profileEdit(valid).username, "creator_one");
+  const official = { ...valid, username: "RMTLaunch" };
+  assert.equal(profileEdit(official, rmtCreationOwner.toLowerCase()).username, "rmtlaunch");
+  assert.equal(profileShareIntent({ username: "rmtlaunch", walletAddress: rmtCreationOwner }).includes("%2Fu%2Frmtlaunch"), true);
+  assert.throws(() => profileEdit(official), /reserved/);
+  assert.throws(() => profileEdit(official, "0x1111111111111111111111111111111111111111"), /reserved/);
+  assert.throws(() => profileEdit({ ...official, walletAddress: rmtCreationOwner }), /Unexpected profile field/);
+  assert.throws(() => profileEdit({ ...valid, username: "admin" }, rmtCreationOwner), /reserved/);
+  assert.throws(() => profileEdit({ ...valid, links: [{ label: "Website", url: "example.com" }] }), /Project link 1 needs a full HTTPS URL/);
+  assert.equal(profileEdit({ ...valid, bio: "First line\r\nSecond line" }).bio, "First line\nSecond line");
+  assert.throws(() => profileEdit({ ...valid, bio: "First\u202eline" }), /plain text/);
   for (const change of [{ bio: "<script>" }, { links: [{ label: "Bad", url: "javascript:alert(1)" }] }, { links: [{ label: "Bad", url: "https://user:pass@example.test/" }] }, { uid: "other" }, { preferences: { theme: "system", admin: true } }]) assert.throws(() => profileEdit({ ...valid, ...change }));
 });
 test("avatar decoding strips metadata, bounds pixels/storage and rejects SVG or mismatched bytes", async () => {

@@ -10,7 +10,8 @@ import { accountHandler, type AccountAction } from "./controller";
 import { profileConfig } from "./config";
 import { profileFirebase } from "./firebase";
 import { authenticatedProfile, browserCookieName, sessionCookieName } from "./auth";
-import { digest, profileBudget, profileCollections as c, publicMemberPage, updateProfile, walletKey } from "./store";
+import { digest, ensureWalletProfile, profileBudget, profileCollections as c, publicMemberPage, updateProfile, walletKey } from "./store";
+import { rmtCreationOwner } from "../../owner-creation";
 import { removeAvatar, sanitizeAvatar, saveAvatar } from "./avatar";
 import { cleanupExpiredProfileState, profileRetentionPolicy } from "./retention";
 
@@ -135,6 +136,9 @@ test("real Firebase Auth sessions and durable Firestore profiles complete the is
     assert.equal((await call(jar, "/api/account/verify", "POST", { message: challenge.data.message, signature })).result.status, 401);
   });
   await t.test("CSRF, field escalation and concurrent unique-username claims are enforced; existing explicitly linked UID is preserved", async () => {
+    const blocked = await call(jar, "/api/account/profile", "PATCH", { ...edit("creator_alpha"), username: "rmtlaunch" }, { "x-csrf-token": signed.session.csrfToken });
+    assert.equal(blocked.result.status, 400);
+    assert.equal(blocked.data.code, "invalid_profile_fields");
     assert.equal((await call(jar, "/api/account/profile", "PATCH", edit("creator_alpha"))).result.status, 403);
     assert.equal((await call(jar, "/api/account/profile", "PATCH", edit("creator_alpha"), { "x-csrf-token": signed.session.csrfToken })).result.status, 200);
     const oldUid = "rmt_privy_" + "a".repeat(64);
@@ -151,6 +155,19 @@ test("real Firebase Auth sessions and durable Firestore profiles complete the is
     assert.equal((await firebase.db.collection("users").doc(oldUid).get()).data()!.marker, "untouched");
     const visible = await call(new Map(), "/api/account/creator/" + alice.address);
     assert.equal(visible.result.status, 200); assert.equal(visible.data.profile.preferences, undefined); assert.equal(visible.data.profile.uid, undefined);
+  });
+  await t.test("the verified owner wallet can reserve, refresh and publicly resolve the official name", async () => {
+    const account = await ensureWalletProfile(firebase.db, rmtCreationOwner);
+    const guard = { sessionId: digest("isolated-owner-session"), browserHash: digest("isolated-owner-browser"), browserEpoch: 1 };
+    await firebase.db.collection(c.browsers).doc(guard.browserHash).set({ epoch: guard.browserEpoch });
+    await firebase.db.collection(c.sessions).doc(guard.sessionId).set({ ...account, epoch: account.authEpoch, browserHash: guard.browserHash,
+      browserEpoch: guard.browserEpoch, expiresAt: Date.now() + 60_000 });
+    const fields = { ...edit("creator_alpha"), username: "RMTLaunch" };
+    assert.equal((await updateProfile(firebase.db, account, fields, guard)).username, "rmtlaunch");
+    assert.equal((await call(new Map(), "/api/account/public/rmtlaunch")).data.profile.walletAddress, rmtCreationOwner);
+    const edited = await updateProfile(firebase.db, account, { ...fields, bio: "Updated official profile" }, guard);
+    assert.equal(edited.username, "rmtlaunch");
+    assert.ok((await publicMemberPage(firebase.db)).names.includes("rmtlaunch"));
   });
   await t.test("validated avatar persists separately as bounded metadata-free WebP and rejects spoofed content", async () => {
     const png = await sharp({ create: { width: 400, height: 400, channels: 3, background: "green" } }).png().withMetadata().toBuffer();

@@ -1,4 +1,4 @@
-import { profileAddress, profileEdit, profileUsername, type AccountSession } from "../../profiles";
+import { profileAddress, profileUsername, type AccountSession } from "../../profiles";
 import { authenticatedProfile, browserCookieName, issueChallenge, logOut, profileCookie, requireAuthentication, requireCsrf, sessionCookieName, verifyChallenge } from "./auth";
 import { readAvatar, removeAvatar, sanitizeAvatar, saveAvatar, maximumAvatarUploadBytes } from "./avatar";
 import { profileConfig, ProfileError, requireProfileRequest } from "./config";
@@ -94,6 +94,7 @@ export async function accountHandler(request: Request, action: AccountAction, ke
         address = profileAddress(binding.walletAddress);
       }
       const profile = await publicProfile(firebase.db, address);
+      if (action === "public-username" && profile?.username !== key?.trim().toLowerCase()) return accountJson({ profile: null, availability: "available" }, 404);
       return accountJson({ profile, availability: "available" }, profile ? 200 : 404);
     }
     if (action === "public-avatar") {
@@ -112,7 +113,7 @@ export async function accountHandler(request: Request, action: AccountAction, ke
     const guard = { sessionId: auth.id, browserHash: auth.session.browserHash, browserEpoch: auth.session.browserEpoch };
     if (action === "profile" && request.method === "PATCH") {
       const fields = await jsonBody(request);
-      return accountJson({ profile: await updateProfile(firebase.db, auth.account, validated(() => profileEdit(fields)), guard) });
+      return accountJson({ profile: await updateProfile(firebase.db, auth.account, fields, guard) });
     }
     if (action === "profile" && request.method === "DELETE") {
       await deleteProfile(firebase.db, auth.account, auth.id, auth.session.browserHash, auth.session.browserEpoch);

@@ -189,6 +189,9 @@ try {
       await page.getByLabel("Bio", { exact: true }).fill("Isolated Firebase emulator profile. No real transactions.");
       await page.getByLabel("X username (optional)").fill("@rmt_creator");
       await page.getByRole("button", { name: "Add HTTPS link" }).click(); await page.getByLabel("Label", { exact: true }).fill("Project");
+      await page.getByLabel("HTTPS URL", { exact: true }).fill("example.invalid/project");
+      await page.getByRole("button", { name: "Save profile", exact: true }).click();
+      await status(/Project link 1 needs a full HTTPS URL/);
       await page.getByLabel("HTTPS URL", { exact: true }).fill("https://example.invalid/project");
       await page.getByLabel("Reduce motion", { exact: true }).check();
       const saved = await profileMutation("PATCH", "/api/account/profile", () => page.getByRole("button", { name: "Save profile", exact: true }).click());

@@ -54,7 +54,7 @@ function publicView(value: DocumentData | undefined, address: string): PublicCre
   if (!value) return null;
   const wallet = profileAddress(address);
   if (value.walletAddress !== wallet || value.chainId !== 4663 || typeof value.createdAt !== "string" || typeof value.updatedAt !== "string") throw new Error("Invalid stored public profile");
-  const fields = profileEdit({ username: value.username, displayName: value.displayName, bio: value.bio, links: value.links, preferences: defaults });
+  const fields = profileEdit({ username: value.username, displayName: value.displayName, bio: value.bio, links: value.links, preferences: defaults }, wallet);
   const avatarUrl = value.avatarUrl;
   if (avatarUrl !== null && (typeof avatarUrl !== "string" || !avatarUrl.startsWith("/api/account/avatar/" + wallet + "?v=")
       || !/^[a-f0-9]{64}$/.test(avatarUrl.slice(("/api/account/avatar/" + wallet + "?v=").length)))) throw new Error("Invalid stored avatar binding");
@@ -82,7 +82,7 @@ export async function accountProfile(db: Firestore, account: ProfileAccount): Pr
   if (!visible || !privateRow.exists) throw new ProfileError(401, "profile_session_expired", "Sign in again.");
   const preferences = privateRow.data()?.preferences;
   // Public fields are selected explicitly; private preferences never enter the public projection.
-  return { ...visible, preferences: profileEdit({ username: visible.username, displayName: visible.displayName, bio: visible.bio, links: visible.links, preferences }).preferences };
+  return { ...visible, preferences: profileEdit({ username: visible.username, displayName: visible.displayName, bio: visible.bio, links: visible.links, preferences }, account.walletAddress).preferences };
 }
 
 export async function assertWriteSession(tx: Transaction, db: Firestore, account: ProfileAccount, guard: WriteAuthorization) {
@@ -93,7 +93,10 @@ export async function assertWriteSession(tx: Transaction, db: Firestore, account
       || !Number.isSafeInteger(session.expiresAt) || session.expiresAt <= Date.now()) throw new ProfileError(401, "profile_session_expired", "The profile session changed; sign in again.");
 }
 
-export async function updateProfile(db: Firestore, account: ProfileAccount, edit: ProfileEdit, guard: WriteAuthorization, now = Date.now()) {
+export async function updateProfile(db: Firestore, account: ProfileAccount, fields: unknown, guard: WriteAuthorization, now = Date.now()) {
+  let edit: ProfileEdit;
+  try { edit = profileEdit(fields, account.walletAddress); }
+  catch (error) { throw new ProfileError(400, "invalid_profile_fields", error instanceof Error ? error.message : "Invalid profile fields."); }
   const publicRef = db.collection(profileCollections.public).doc(account.walletAddress.toLowerCase());
   const privateRef = db.collection(profileCollections.private).doc(account.uid);
   await db.runTransaction(async tx => {
