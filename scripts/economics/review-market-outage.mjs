@@ -27,6 +27,8 @@ for (const [engine, options] of [[chromium, {}], [webkit, devices["iPhone 13"]]]
   const browser = await engine.launch();
   try {
     const page = await browser.newPage(options);
+    // Headless Chromium on Linux can expose this POSIX locale, which Intl rejects.
+    await page.addInitScript(() => Object.defineProperty(navigator, "language", { get: () => "en-US@posix" }));
     const buy = replay.frames.find(f => f.label === "Curve buy 4");
     const sell = replay.frames.find(f => f.label === "Curve sell 4");
     let frame = buy;

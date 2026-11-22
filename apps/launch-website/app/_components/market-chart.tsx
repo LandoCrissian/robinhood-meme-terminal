@@ -37,6 +37,7 @@ export function MarketChart({
     if (!holder.current) return;
     const view = createChart(holder.current, {
       autoSize: true,
+      localization: { locale: "en-US" },
       layout: {
         background: { type: ColorType.Solid, color: "#101115" },
         textColor: "#b6b4bd",
