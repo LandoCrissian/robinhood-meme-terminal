@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-
 export const metadata: Metadata = { title: "Website Terms | RMT Launch" };
-
-export default function TermsPage() {
-  return <>
-    <header className="lpPageHeading"><div><h1>Website Terms</h1></div></header>
-    <section className="lpPanel lpForm">
-      <h2>Launchpad and account access</h2>
-      <p>You can prepare and review a token draft locally. Token creation, trading and fee claims remain disabled in this preview. Enabling an account or signing in does not authorize a blockchain transaction.</p>
-      <p>Where account services are enabled, wallet connection and a separate sign-in message let you manage a creator profile. Profile names, artwork and links are creator-provided; they do not establish token safety, endorsement or a change in project ownership.</p>
-      <p>Do not use profiles to impersonate others, phish for wallet access, or publish illegal or abusive content. Official names are reserved. Profile fields and HTTPS links have technical validation; those checks do not prevent every form of abuse or verify a project&apos;s claims.</p>
-      <p>RMT is independent software and is unaffiliated with Robinhood Markets, Inc. The website provides product information and does not provide investment, legal or tax advice.</p>
-    </section>
-  </>;
+export default function Page() {
+  return <article className="lpReading lpPolicy"><header className="lpPageHeading"><h1>Website Terms</h1></header>
+    <section><h2>Using RMT Launch</h2><p>Browse launches and public creators, manage a wallet-linked profile and prepare a token draft. Website token creation, trading and fee claims are currently disabled. Wallet connection and profile sign-in do not authorize a transaction.</p></section>
+    <section><h2>Publishing a profile or image</h2><p>Only upload content you have the right to share. Creators are responsible for their profile details, artwork and links. Impersonation, phishing and illegal or abusive content are prohibited. Official usernames are reserved.</p></section>
+    <section><h2>Wallet approvals and fees</h2><p>Review the network, destination, amount and fees in your wallet before approving any future on-chain action. Saving a profile or reviewing a draft has no network fee. Saving token artwork uses a separate gas-free message.</p></section>
+    <section><h2>Independent software</h2><p>RMT Launch is independent software and is unaffiliated with Robinhood Markets, Inc. Information on this site is not investment, legal or tax advice.</p></section>
+  </article>;
 }

@@ -14,7 +14,7 @@ test("creator shares have separate owner and visitor copy, one canonical URL and
   for (const owner of [true,false]) {
     const intent = new URL(profileShareIntent(profile,owner));
     assert.equal(intent.searchParams.get("url"),"https://www.rmtlaunch.fun/u/test_creator");
-    assert.match(intent.searchParams.get("text")!,owner ? /I’m building/ : /test_creator/);
+    assert.match(intent.searchParams.get("text")!,owner ? /I’m building/ : /Avery & Co/);
   }
   const image = shareImagePath(card);
   assert.match(image,/^\/share\/u\/test_creator\/[0-9a-f]{24}\.png$/);

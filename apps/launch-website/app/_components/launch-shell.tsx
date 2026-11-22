@@ -7,7 +7,7 @@ import logo from "../../public/brand/rmt-master-logo.png";
 import { AccountNav } from "./wallet-account";
 import { useAccount } from "./account-provider";
 
-const navigation = [["/", "Launches"], ["/leaderboard", "People"], ["/create-token", "Create"], ["/my-launches", "My Launches"]] as const;
+const navigation = [["/", "Launches"], ["/people", "People"], ["/create-token", "Create"], ["/my-launches", "My Launches"]] as const;
 
 export function LaunchShell({ children, fixture = false }: { children: ReactNode; fixture?: boolean }) {
   const path = usePathname();
@@ -22,18 +22,18 @@ export function LaunchShell({ children, fixture = false }: { children: ReactNode
       </Link>
       <nav aria-label="Launchpad navigation">
         {navigation.map(([href, label]) => {
-          const active = path === href || href === "/" && path.startsWith("/launches/") || href === "/leaderboard" && /^\/(u|creator)\//.test(path) || href === "/my-launches" && path.startsWith("/my-launches/");
-          return <Link key={href} href={href} prefetch={false} className={[active ? "isActive" : "", href === "/create-token" ? "lpCreateLink" : ""].filter(Boolean).join(" ") || undefined} aria-current={active ? "page" : undefined}>{label}</Link>;
+          const active = path === href || href === "/" && path.startsWith("/launches/") || href === "/people" && /^\/(u|creator)\//.test(path) || href === "/my-launches" && path.startsWith("/my-launches/");
+          return <Link key={href} href={href} prefetch={false} className={active ? "isActive" : undefined} aria-current={active ? "page" : undefined}>{label}</Link>;
         })}
       </nav>
       <div className="lpHeaderRight">
-        <span className="lpNetwork"><i aria-hidden="true" />{fixture ? "Anvil test only" : "Read-only"}</span>
+        {fixture && <span className="lpNetwork">Anvil test only</span>}
         <AccountNav />
       </div>
     </header>
     <main id="launch-content" className="lpContent">{children}</main>
     <footer className="lpFooter">
-      <Link href="/leaderboard" prefetch={false}>People</Link>
+      <Link href="/people" prefetch={false}>People</Link>
       <Link href="/terms" prefetch={false}>Terms</Link>
       <Link href="/risks" prefetch={false}>Risks</Link>
       <Link href="/privacy" prefetch={false}>Privacy</Link>

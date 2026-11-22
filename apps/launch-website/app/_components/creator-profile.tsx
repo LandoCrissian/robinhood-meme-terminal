@@ -17,7 +17,9 @@ function httpsLink(value: string) {
 }
 
 export function CreatorProfile({ username, walletAddress, initialProfile }: { username?: string; walletAddress?: string; initialProfile?: PublicCreatorProfile }) {
-  const { session } = useAccount();
+  const { session, checking, refresh } = useAccount();
+  const [copied,setCopied] = useState("");
+  const [feedAttempt,setFeedAttempt] = useState(0);
   const [profile, setProfile] = useState<PublicCreatorProfile | undefined>(initialProfile), [status, setStatus] = useState<"loading" | "ready" | "missing" | "unavailable">(initialProfile ? "ready" : "loading");
   const [attempt, setAttempt] = useState(0);
   const [directory, setDirectory] = useState<NewEngineDirectory | null>(null);
@@ -40,10 +42,11 @@ export function CreatorProfile({ username, walletAddress, initialProfile }: { us
     const controller = new AbortController(); let active = true;
     fetch("/api/launchpad/new-engine", { cache: "no-store", redirect: "error", signal: controller.signal })
       .then(async (response) => {
-        if (!response.ok) throw new Error("Unavailable launch evidence");
+        if (!response.ok && response.status !== 503) throw new Error("Unavailable launch evidence");
         const data = await response.json() as { status: string; launches?: Array<CurveLaunch | { creator: string }> };
         if (!active) return;
-        if (data.status !== "ready" || !Array.isArray(data.launches) || data.launches.length > 25) throw new Error("Unavailable launch evidence");
+        if (data.status === "stale") { setDirectory({status:"stale",history:[]}); return; }
+        if (!response.ok || data.status !== "ready" || !Array.isArray(data.launches) || data.launches.length > 25) throw new Error("Unavailable launch evidence");
         // Public profile content never establishes project ownership. Only this
         // canonical new-engine read supplies the creator-to-launch relationship.
         const launches: CurveLaunch[] = data.launches.flatMap((row) => {
@@ -53,30 +56,40 @@ export function CreatorProfile({ username, walletAddress, initialProfile }: { us
         setDirectory({ status: "ready", launches });
       }).catch(() => { if (active) setDirectory({ status: "unavailable" }); });
     return () => { active = false; controller.abort(); };
-  }, [creator]);
+  }, [creator,feedAttempt]);
   const own = creator && session.authenticated && sameAccount(session.account.walletAddress, creator);
-  return <>
-    <Link className="lpBack" href="/leaderboard" prefetch={false}>← People</Link>
-    <header className="lpPageHeading"><div><h1>Creator profile</h1></div>{own && <Link className="lpButton lpSecondary" href="/account/profile" prefetch={false}>Edit your profile</Link>}</header>
-    {status === "loading" ? <div className="lpSkeleton" role="status">Loading creator profile…</div> : <section className="lpProfileBanner">
-      <div className="lpProfileIdentity"><ProfileAvatar name={profile?.displayName || profile?.username || "R"} url={profile?.avatarUrl} size={64} />
-        <div><h2>{profile?.displayName || (profile?.username ? "@" + profile.username : creator ? shortWallet(creator) : username)}</h2>
-          {profile?.username && <p>@{profile.username}</p>}</div></div>
-      {creator && <p><a className="lpAddress lpCreatorLink" href={`${robinhoodExplorer}/address/${creator}`} target="_blank" rel="noopener noreferrer">{creator}</a></p>}
-      {profile?.bio && <p className="lpProfileBio">{profile.bio}</p>}
-      {profile && <div className="lpActions">
-        {profile.xHandle && <a className="lpButton lpSecondary" href={"https://x.com/" + profile.xHandle} target="_blank" rel="noopener noreferrer ugc">@{profile.xHandle} on X</a>}
-        <a className="lpButton" href={profileShareIntent(profile, Boolean(own))} target="_blank" rel="noopener noreferrer">Share profile on X</a>
-      </div>}
-      {profile?.links.length ? <ul className="lpProfileLinks">{profile.links.map((link, index) => {
-        const href = httpsLink(link.url); return href ? <li key={index}><a href={href} target="_blank" rel="noopener noreferrer ugc">{link.label || new URL(href).hostname} ↗</a></li> : null;
-      })}</ul> : null}
-      {status === "missing" && <p className="lpInlineNotice">No public profile has been created for this identity. Wallet addresses still identify on-chain creators.</p>}
-      {status === "unavailable" && <div className="lpActions"><p role="status">We couldn’t load this profile.</p><button type="button" className="lpButton lpSecondary" onClick={() => setAttempt(value => value + 1)}>Try again</button></div>}
-      <p className="lpInlineNotice">Profile names, avatars and links are self-provided. Wallet sign-in confirms account control, not token safety or endorsement.</p>
-    </section>}
-    {creator && <><div className="lpSectionHeading"><h2>Projects created by this wallet</h2></div>
-      {!directory ? <p className="lpSkeleton" role="status">Loading projects…</p> : directory.status === "ready" && !directory.launches.length
-        ? <p className="lpNotice">No projects from this wallet appear in the current launch feed.</p> : <NewEngineLaunches directory={directory} />}</>}
-  </>;
+  const label = profile?.displayName || profile?.username || (creator ? shortWallet(creator) : username);
+  const destinations = [...(profile?.xHandle ? [{label:"@"+profile.xHandle+" on X",url:"https://x.com/"+profile.xHandle}] : []), ...(profile?.links || [])];
+  return <div className="lpReading lpCreatorIdentity">
+    <Link className="lpUtility lpBreadcrumb" href="/people" prefetch={false}>← People</Link>
+    {status === "loading" ? <p className="lpSkeleton" role="status">Loading creator profile…</p> :
+      status !== "ready" ? <section className="lpNotice"><h1>{status === "missing" ? "Profile unavailable" : "Couldn’t load profile"}</h1>
+        <p>{status === "missing" ? "This creator hasn’t published a profile at this address." : "Check your connection and try again."}</p>
+        {status === "unavailable" && <button className="lpUtility" onClick={()=>setAttempt(n=>n+1)}>Try again</button>}</section> :
+      profile && <article className="lpIdentityCard">
+        <header className="lpIdentityHead"><ProfileAvatar name={label || "R"} url={profile.avatarUrl} size={76} />
+          <div><h1>{label}</h1>{profile.username && <p>@{profile.username}</p>}</div></header>
+        {profile.bio && <p className="lpProfileBio">{profile.bio}</p>}
+        {destinations.length > 0 && <ul className="lpDestinations">{destinations.map(({label,url},index)=>{
+          const safe = httpsLink(url); if (!safe) return null;
+          const parsed = new URL(safe), internal = parsed.origin === "https://www.rmtlaunch.fun";
+          if (internal && (parsed.pathname.startsWith("//") || parsed.pathname === "/" || parsed.pathname === "/u/"+profile.username)) return null;
+          return <li key={index}>{internal ? <Link href={parsed.pathname+parsed.search+parsed.hash} prefetch={false}>{label} →</Link> :
+            <a href={safe} target="_blank" rel="noopener noreferrer ugc">{label || parsed.hostname}<span aria-hidden="true">↗</span></a>}</li>;
+        })}</ul>}
+        <div className="lpIdentityActions">
+          {checking ? <button className="lpButton lpSecondary" disabled>Checking account…</button> :
+            session.availability === "unavailable" ? <button className="lpUtility" onClick={()=>void refresh()}>Check account to share</button> :
+            <a className="lpButton lpSecondary" href={profileShareIntent(profile,Boolean(own))} target="_blank" rel="noopener noreferrer">{own ? "Share my profile" : "Share this profile"}<span aria-hidden="true">↗</span></a>}
+          {own && <Link className="lpUtility" href="/account/profile" prefetch={false}>Edit profile</Link>}
+        </div>
+        <div className="lpWalletLine"><span>Wallet</span><a href={robinhoodExplorer+"/address/"+profile.walletAddress} aria-label={"View wallet "+profile.walletAddress+" on the explorer"} target="_blank" rel="noopener noreferrer">{shortWallet(profile.walletAddress)} ↗</a>
+          <button className="lpUtility" type="button" onClick={async()=>{try {await navigator.clipboard.writeText(profile.walletAddress);setCopied("Copied");}catch{setCopied(profile.walletAddress);}}}>Copy address</button>
+          <span role="status">{copied}</span></div>
+        <details className="lpDisclosure"><summary>About this identity</summary><p>Wallet sign-in confirms control of the address. Creators supply their names, images and links. Check the contract and destination before using a project.</p></details>
+      </article>}
+    {creator && <section className="lpProfileProjects"><h2>Launches</h2>
+      {!directory ? <p className="lpSkeleton" role="status">Loading launches…</p> : directory.status === "ready" && !directory.launches.length
+        ? <p className="lpQuietEmpty">No launches from this wallet in the current feed.</p> : <NewEngineLaunches directory={directory} onRetry={()=>setFeedAttempt(n=>n+1)} />}</section>}
+  </div>;
 }

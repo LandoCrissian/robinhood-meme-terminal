@@ -9,12 +9,13 @@ function units(wei: string) {
   const padded = wei.padStart(19, "0");
   const whole = BigInt(padded.slice(0, -18)).toLocaleString("en-US");
   const fraction = padded.slice(-18).replace(/0+$/, "");
-  return fraction ? `${whole}.${fraction}` : whole;
+  if (whole === "0" && fraction && !/[1-9]/.test(fraction.slice(0,6))) return "<0.000001";
+  return fraction ? `${whole}.${fraction.slice(0,6).replace(/0+$/, "")}`.replace(/\.$/,"") : whole;
 }
 
 const creationDate = new Intl.DateTimeFormat("en-US", { dateStyle: "medium", timeZone: "UTC" });
 
-export function NewEngineLaunches({ directory: received }: { directory: NewEngineDirectory }) {
+export function NewEngineLaunches({ directory: received, onRetry }: { directory: NewEngineDirectory; onRetry?: () => void }) {
   const freshUntil = received.status === "ready" ? received.freshUntil : undefined;
   const [expiredAt, setExpiredAt] = useState<number | null>(null);
   useEffect(() => {
@@ -37,18 +38,17 @@ export function NewEngineLaunches({ directory: received }: { directory: NewEngin
     .some((value) => value.toLowerCase().includes(search)));
   const clearSearch = () => { setQuery(""); input.current?.focus(); };
   return <section className="lpProjectLink" aria-label="New RMT Launch engine">
-    <div className="lpDiscoveryToolbar"><div className="rmtSearch lpSearch"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg></span>
+    {(directory.status === "ready" || directory.status === "prelaunch") && <div className="lpDiscoveryToolbar"><div className="rmtSearch lpSearch"><span aria-hidden="true"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7"><circle cx="10.5" cy="10.5" r="6.5" /><path d="m16 16 4.5 4.5" /></svg></span>
       <input ref={input} type="search" aria-label="Search launches" placeholder="Search name, ticker or address" value={query} onChange={(event) => setQuery(event.target.value)} />
       {query && <button type="button" className="lpSearchClear" aria-label="Clear search" onClick={clearSearch}>×</button>}</div>
       <span className="lpDiscoveryCount" role="status">{directory.status === "ready"
-        ? `${visible.length}${search ? ` of ${launches.length}` : ""} ${launches.length === 1 ? "launch" : "launches"}` : "New launches"}</span></div>
+        ? `${visible.length}${search ? ` of ${launches.length}` : ""} ${launches.length === 1 ? "launch" : "launches"}` : ""}</span></div>}
     {directory.status === "prelaunch" && <section className="lpEmpty lpForm lpLaunchEmpty"><h2>Launches coming soon</h2>
       <p>Token creation, trading and fee claims are not yet available.</p></section>}
-    {directory.status === "unavailable" && <section className="lpEmpty lpForm"><h2>Launch feed unavailable</h2><p>We could not verify the new-engine feed. Refresh to try again.</p><p>Missing feed data does not mean a token was never created. Wallet transactions remain disabled.</p></section>}
+    {directory.status === "unavailable" && <section className="lpEmpty lpForm"><h2>Launch feed unavailable</h2><p>We couldn’t load the latest launches.</p><button className="lpUtility" onClick={onRetry ?? (()=>location.reload())}>Try again</button></section>}
     {directory.status === "stale" && <>
       <section className="lpEmpty lpForm"><h2>Launch feed stale</h2>
-        <p>Current launches cannot be verified. Refresh to try again. Wallet transactions remain disabled.</p>
-        <p>Old records cannot establish current availability or whether a newly submitted transaction was indexed.</p></section>
+        <p>The latest update is overdue. The last known records are available below when present.</p><button className="lpUtility" onClick={onRetry ?? (()=>location.reload())}>Refresh launches</button></section>
       {directory.history.length > 0 && <details className="lpFeedStatus"><summary>Last-known creation history (stale)</summary>
         <p>These records describe an earlier checkpoint. Current lifecycle and availability are unverified.</p>
         <ul>{directory.history.filter(({ registration }) => hasCurveRegistration(registration)).map(({ registration }) =>
@@ -57,7 +57,7 @@ export function NewEngineLaunches({ directory: received }: { directory: NewEngin
             <time dateTime={registration.creation.timestamp}>Created {creationDate.format(new Date(registration.creation.timestamp))} UTC</time>
           </li>)}</ul></details>}
     </>}
-    {directory.status === "ready" && launches.length === 0 && <section className="lpEmpty lpForm lpLaunchEmpty"><h2>No launches yet</h2><p>Verified new-engine projects will appear here after on-chain registration and indexing.</p></section>}
+    {directory.status === "ready" && launches.length === 0 && <section className="lpEmpty lpForm lpLaunchEmpty"><h2>No launches yet</h2><p>Tokens appear here once their creation is confirmed on Robinhood Chain.</p></section>}
     {launches.length > 0 && visible.length === 0 && <section className="lpEmpty lpForm"><h2>No launches match your search</h2><p>Try a token name, ticker or exact contract address.</p></section>}
     <div className="lpCardGrid">{visible.map((launch) => {
       const { registration } = launch;

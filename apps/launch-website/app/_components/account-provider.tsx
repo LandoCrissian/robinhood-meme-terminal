@@ -23,6 +23,7 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const [challenge, setChallenge] = useState<ProfileChallenge>(), [busy, setBusy] = useState(false), [message, setMessage] = useState("");
   const [logoutUnconfirmed, setLogoutUnconfirmed] = useState(false);
   const generation = useRef(0), operation = useRef(false), sessionRef = useRef<AccountSession>(initialSession);
+  const refreshSequence = useRef(0);
   const logoutToken = useRef<string>(undefined);
   const logoutInFlight = useRef<Promise<void>>(undefined);
   const discoveryStop = useRef<() => void>(undefined), walletCleanup = useRef(new Set<() => void>());
@@ -31,11 +32,11 @@ export function AccountProvider({ children }: { children: ReactNode }) {
   const assignChallenge = useCallback((value?: ProfileChallenge) => { challengeRef.current = value; setChallenge(value); }, []);
 
   const refresh = useCallback(async () => {
-    const current = generation.current;
+    const current = generation.current, sequence = ++refreshSequence.current;
     setChecking(true);
     try {
       const result = await accountApi<AccountSession>("/api/account/session");
-      if (current !== generation.current || !alive.current) return;
+      if (sequence !== refreshSequence.current || current !== generation.current || !alive.current) return;
       if (!result || typeof result.authenticated !== "boolean" || !["available", "disabled", "unavailable"].includes(result.availability)
           || (result.authenticated && (result.account?.chainId !== 4663 || !/^0x[0-9a-f]{40}$/i.test(result.account.walletAddress)
             || typeof result.csrfToken !== "string" || !result.csrfToken))) throw new Error("Unsupported session response");
@@ -46,8 +47,8 @@ export function AccountProvider({ children }: { children: ReactNode }) {
         profileEdit({ username: profile.username, displayName: profile.displayName, bio: profile.bio, links: profile.links, preferences: profile.preferences }, result.account.walletAddress);
       }
       assignSession(result);
-    } catch { if (current === generation.current && alive.current) assignSession(initialSession); }
-    finally { if (alive.current) setChecking(false); }
+    } catch { if (sequence === refreshSequence.current && current === generation.current && alive.current) assignSession(initialSession); }
+    finally { if (sequence === refreshSequence.current && alive.current) setChecking(false); }
   }, [assignSession]);
 
   const clearLocalIdentity = useCallback(() => {
@@ -93,6 +94,14 @@ export function AccountProvider({ children }: { children: ReactNode }) {
     alive.current = true; void refresh();
     return () => { alive.current = false; discoveryStop.current?.(); walletCleanup.current.forEach((fn) => fn()); };
   }, [refresh]);
+
+  useEffect(() => {
+    const resume = () => { if (document.visibilityState === "visible" && !operation.current) void refresh(); };
+    const restored = (event: PageTransitionEvent) => { if (event.persisted) resume(); };
+    document.addEventListener("visibilitychange",resume);
+    window.addEventListener("pageshow",restored);
+    return () => {document.removeEventListener("visibilitychange",resume);window.removeEventListener("pageshow",restored);};
+  },[refresh]);
 
   async function run(action: () => Promise<void>) {
     if (operation.current) return;

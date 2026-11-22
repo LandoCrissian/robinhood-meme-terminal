@@ -8,9 +8,10 @@ import { useAccount } from "./account-provider";
 export const shortWallet = (address: string) => address.slice(0, 6) + "…" + address.slice(-4);
 
 export function ProfileAvatar({ name, url, size = 38 }: { name: string; url?: string | null; size?: number }) {
-  const safe = typeof url === "string" && /^\/api\/account\/avatar\/0x[0-9a-f]{40}(?:\?v=[a-z0-9.-]+)?$/i.test(url);
+  const [failed,setFailed]=useState<string>();
+  const safe = url !== failed && typeof url === "string" && (/^\/api\/account\/avatar\/0x[0-9a-f]{40}(?:\?v=[a-z0-9.-]+)?$/i.test(url) || /^\/_next\/static\/public-review\/[a-f0-9]{64}\.webp$/.test(url));
   return <span className="lpProfileAvatar" style={{ width: size, height: size }} aria-hidden="true">
-    {safe ? <img src={url} alt="" width={size} height={size} /> : (name.trim()[0] ?? "R").toUpperCase()}
+    {safe ? <img src={url} alt="" width={size} height={size} onError={()=>setFailed(url || undefined)} /> : (name.trim()[0] ?? "R").toUpperCase()}
   </span>;
 }
 
@@ -84,7 +85,7 @@ export function WalletAccount({ compact = false }: { compact?: boolean }) {
   return <section className="lpPanel lpForm" aria-label="Wallet account">
     <div><h2>{wallet ? "Connected, not signed in" : "Connect your wallet"}</h2></div>
     <p>{compact ? "Sign in to manage your creator profile and view your launches." : "Use MetaMask, Rabby or a compatible browser wallet. A separate sign-in message confirms control of your address, with no gas payment."}</p>
-    {!compact && <details><summary>Supported sign-in wallets</summary><p>Account sign-in supports a standard 65-byte message signature from an externally owned wallet, including a delegated EOA when the wallet returns its original account signature. Safe and ERC-1271/4337 profile sign-in are currently unsupported; Safe treasury claims have their own separate compatibility checks.</p></details>}
+    {!compact && <details><summary>Supported sign-in wallets</summary><p>Account sign-in supports a standard 65-byte message signature from an externally owned wallet, including a delegated EOA when the wallet returns its original account signature. Safe and ERC-1271/4337 smart accounts currently cannot sign in to a profile.</p></details>}
     {session.availability !== "available" && <p className="lpInlineNotice" role="status">{session.availability === "disabled"
       ? "Wallet sign-in is currently turned off." : "The account service is unavailable. Try Check session to reconnect."}</p>}
     {wallet ? <>

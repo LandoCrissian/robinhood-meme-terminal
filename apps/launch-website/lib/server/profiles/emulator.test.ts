@@ -65,20 +65,20 @@ test("real Firebase Auth sessions and durable Firestore profiles complete the is
   await fetch(`http://${config.authHost}/emulator/v1/projects/${config.projectId}/accounts`, { method: "DELETE" });
   await fetch(`http://${config.firestoreHost}/emulator/v1/projects/${config.projectId}/databases/(default)/documents`, { method: "DELETE" });
   const jar: Jar = new Map(); let signed: Awaited<ReturnType<typeof signIn>>;
-  await t.test("public members page orders only usernames and paginates without duplicates", async () => {
-    assert.deepEqual(await publicMemberPage(firebase.db), { names: [], next: null });
-    const names = Array.from({ length: 27 }, (_, i) => "member_" + String(i).padStart(2, "0"));
-    const bindings = firebase.db.collection(c.usernames);
-    const batch = firebase.db.batch();
-    for (const name of [...names].reverse()) batch.create(bindings.doc(name), { uid: "private-test-uid" });
+  await t.test("People pages expose only public identity fields and exclude only the verified QA wallet", async () => {
+    assert.deepEqual(await publicMemberPage(firebase.db), { members: [], next: null });
+    const batch = firebase.db.batch(), profiles = firebase.db.collection(c.public);
+    const fixtures = Array.from({length:27}, (_,i) => ({walletAddress:"0x"+String(100+i).padStart(40,"0"),
+      username:i===0?"launch_qa_lookalike":"member_"+String(i).padStart(2,"0")}));
+    fixtures.push({walletAddress:"0x87fFb1dA6341E6E000D07Ee23dfca913EB9BedFD",username:"member_24b"});
+    for (const {walletAddress,username} of fixtures) batch.create(profiles.doc(walletAddress.toLowerCase()),
+      {walletAddress,username,chainId:4663,displayName:username,avatarUrl:null,preferences:{theme:"private"},uid:"internal"});
     await batch.commit();
-    const first = await publicMemberPage(firebase.db);
-    assert.deepEqual(first, { names: names.slice(0, 25), next: names[24] });
-    assert.deepEqual(await publicMemberPage(firebase.db, first.next!), { names: names.slice(25), next: null });
-    await assert.rejects(publicMemberPage(firebase.db, "../invalid"));
-    const cleanup = firebase.db.batch();
-    for (const name of names) cleanup.delete(bindings.doc(name));
-    await cleanup.commit();
+    const first = await publicMemberPage(firebase.db), second = await publicMemberPage(firebase.db,first.next!);
+    assert.equal(first.members.length,25); assert.equal(first.next,"member_24"); assert.equal(second.next,null);
+    assert.deepEqual([...first.members,...second.members],fixtures.slice(0,27).map(({username})=>({username,displayName:username,avatarUrl:null})));
+    await assert.rejects(publicMemberPage(firebase.db,"../invalid"));
+    const cleanup=firebase.db.batch(); for(const row of fixtures) cleanup.delete(profiles.doc(row.walletAddress.toLowerCase())); await cleanup.commit();
   });
   await t.test("Connect alone is unauthenticated; exact SIWE establishes a genuine HttpOnly Firebase session and is not replayable", async () => {
     assert.equal((await call(jar, "/api/account/session")).data.authenticated, false);
@@ -168,7 +168,7 @@ test("real Firebase Auth sessions and durable Firestore profiles complete the is
     assert.equal((await call(new Map(), "/api/account/public/rmtlaunch")).data.profile.walletAddress, rmtCreationOwner);
     const edited = await updateProfile(firebase.db, account, { ...fields, bio: "Updated official profile" }, guard);
     assert.equal(edited.username, "rmtlaunch");
-    assert.ok((await publicMemberPage(firebase.db)).names.includes("rmtlaunch"));
+    assert.ok((await publicMemberPage(firebase.db)).members.some(row=>row.username==="rmtlaunch"));
   });
   await t.test("validated avatar persists separately as bounded metadata-free WebP and rejects spoofed content", async () => {
     const png = await sharp({ create: { width: 400, height: 400, channels: 3, background: "green" } }).png().withMetadata().toBuffer();

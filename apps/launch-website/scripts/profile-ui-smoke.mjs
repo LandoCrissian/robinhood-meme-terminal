@@ -173,7 +173,7 @@ try {
       if (!emulator) {
         await status(/not configured|unavailable/); assert.equal(walletCalls.length, 0);
         await screenshot("wallet-disabled"); await goto("/account/profile"); await status(/not configured|unavailable/);
-        await goto("/u/synthetic_user"); await status(/profile data is unavailable/);
+        await goto("/u/synthetic_user"); await page.getByRole("heading",{name:"Couldn’t load profile"}).waitFor();
         assert.equal((await context.request.post(new URL("/api/launchpad/production-creation", site).href, { data: {} })).status(), 404);
         assert.equal(walletCalls.length, 0); assert.equal(await page.evaluate(() => window.rmtDiscoveryCount), 0); assert.deepEqual(errors, []); assert.deepEqual(outside, []);
         results.push({ engine: name, mode: "disabled", walletCalls: 0, transactions: 0 }); await context.close(); continue;
@@ -207,6 +207,7 @@ try {
       await page.getByRole("button", { name: "Save profile", exact: true }).click();
       await status(/Project link 1 needs a full HTTPS URL/);
       await page.getByLabel("HTTPS URL", { exact: true }).fill("https://example.invalid/project");
+      await page.locator("summary").filter({hasText:"Private preferences"}).click();
       await page.getByLabel("Reduce motion", { exact: true }).check();
       const saved = await profileMutation("PATCH", "/api/account/profile", () => page.getByRole("button", { name: "Save profile", exact: true }).click());
       assert.equal(saved.profile.username, username); await status(/Profile saved/);
@@ -267,13 +268,38 @@ try {
       const callsBeforeReload = walletCalls.length; await page.reload(); await page.getByRole("form", { name: "Edit creator profile" }).waitFor();
       assert.equal(walletCalls.length, callsBeforeReload); assert.equal(await page.evaluate(() => window.rmtDiscoveryCount), 0); assert.equal(await page.getByLabel("Username", { exact: true }).inputValue(), username);
       assert.equal(await page.getByLabel("Reduce motion", { exact: true }).isChecked(), true);
+      for (const width of (name==="webkit" ? [320,390] : [1440])) {
+        await page.setViewportSize({width,height:width===1440?900:844}); await screenshot("editor-"+width);
+      }
       await goto("/leaderboard");
-      await page.getByRole("link", { name: "@" + username, exact: true }).click();
+      assert.equal(new URL(page.url()).pathname, "/people");
+      const directoryImage=page.getByRole("link",{name:new RegExp("@"+username)}).locator("img");
+      assert.equal(await directoryImage.getAttribute("src"),repeated.profile.avatarUrl);
+      await directoryImage.evaluate(image=>image.decode());
+      await page.getByRole("link", { name: new RegExp("@"+username) }).click();
       await page.getByRole("heading", { name: "Synthetic Creator", exact: true }).waitFor();
-      assert.equal(await page.getByRole("link", { name: "@rmt_creator on X" }).getAttribute("href"), "https://x.com/rmt_creator");
-      const intent = new URL(await page.getByRole("link", { name: "Share profile on X" }).getAttribute("href"));
+      assert.equal(await page.getByRole("link", { name: /@rmt_creator on X/ }).getAttribute("href"), "https://x.com/rmt_creator");
+      const intent = new URL(await page.getByRole("link", { name: "Share my profile" }).getAttribute("href"));
       assert.equal(intent.origin + intent.pathname, "https://twitter.com/intent/tweet");
       assert.equal(intent.searchParams.get("url"), "https://www.rmtlaunch.fun/u/" + username);
+      assert.match(intent.searchParams.get("text"),/^I’m building/);
+      assert.equal(intent.searchParams.getAll("url").length,1);
+      await screenshot("signed-in-share");
+      const visitor = await browser.newContext({ viewport:page.viewportSize() });
+      try {
+        const view = await visitor.newPage();
+        let resume;
+        const waiting=new Promise(resolve=>{resume=resolve;});
+        await view.route("**/api/account/session",async route=>{await waiting;await route.continue();},{times:1});
+        await view.goto(new URL("/u/"+username,site).href,{waitUntil:"domcontentloaded"});
+        await view.getByRole("button",{name:"Checking account…"}).waitFor();
+        assert.equal(await view.locator('a[href*="intent/tweet"]').count(),0);
+        resume();
+        const guest=new URL(await view.getByRole("link",{name:"Share this profile"}).getAttribute("href"));
+        assert.equal(guest.searchParams.get("url"),intent.searchParams.get("url"));
+        assert.match(guest.searchParams.get("text"),/Synthetic Creator’s/);
+        assert.equal(await view.getByRole("link",{name:"Edit profile",exact:true}).count(),0);
+      } finally { await visitor.close(); }
       const publicProfile = await (await context.request.get(new URL("/api/account/public/" + username, site).href)).json();
       assert.equal(publicProfile.profile.preferences, undefined); assert.equal(publicProfile.profile.walletAddress.toLowerCase(), accounts[0].address.toLowerCase());
       await avatarLoaded();

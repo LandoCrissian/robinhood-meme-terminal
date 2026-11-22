@@ -16,9 +16,9 @@ const editable = (profile: AccountProfile): ProfileEdit => ({ username: profile.
 export function ProfileEditor() {
   const { session, checking } = useAccount();
   return <>
-    <header className="lpPageHeading"><div><h1>Edit profile</h1><p>Your creator identity, linked to the wallet you control.</p></div>
+    <header className="lpPageHeading"><div><h1>Edit profile</h1><p>Manage your public photo, details and links.</p></div>
       <Link className="lpButton lpSecondary" href="/wallet" prefetch={false}>Wallet account</Link></header>
-    {checking ? <div className="lpSkeleton" role="status">Loading your account…</div> : session.authenticated
+    {checking && !session.authenticated ? <div className="lpSkeleton" role="status">Loading your account…</div> : session.authenticated
       ? <AuthenticatedEditor key={session.account.walletAddress} profile={session.account.profile} csrfToken={session.csrfToken} /> : <WalletAccount compact />}
   </>;
 }
@@ -46,12 +46,28 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       : error instanceof Error && !("status" in error) ? error.message : accountErrorMessage(error)); }
     finally { busy.current = false; if (mounted.current) setPending(false); }
   }
-  async function save(event: FormEvent) {
+  const [invalid,setInvalid] = useState("");
+  async function save(event: FormEvent<HTMLFormElement>) {
+    const form=event.currentTarget;
+    const focusField=(key:string) => {
+      setInvalid(key);
+      const field=form.elements.namedItem(key);
+      if(field instanceof HTMLElement) field.focus();
+    };
     event.preventDefault();
     await run(async () => {
-      const body = profileEdit(draft, profile.walletAddress);
+      setInvalid("");
+      let body: ProfileEdit;
+      try { body=profileEdit(draft,profile.walletAddress); } catch(error) {
+        const reason=error instanceof Error ? error.message : "";
+        const link=reason.match(/Project link (\d+)/);
+        if(link) focusField("url-"+(Number(link[1])-1));
+        else if (/username|reserved/i.test(reason)) focusField(/X username/.test(reason)?"xHandle":"username");
+        else if (/display name|bio/i.test(reason)) focusField(/bio/i.test(reason)?"bio":"displayName");
+        throw error;
+      }
       const result = await accountApi<{ profile: AccountProfile }>("/api/account/profile", { method: "PATCH", body, csrfToken }).catch(error => {
-        if (error instanceof AccountApiError) throw error;
+        if (error instanceof AccountApiError) { if (error.code === "username_taken") focusField("username"); throw error; }
         throw new Error("Save could not be confirmed. Check your connection and try saving again.");
       });
       if (!mounted.current) return;
@@ -132,30 +148,44 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       account.notify("Profile data removed. On-chain launch history remains public."); await account.refresh();
     }, "removal");
   }
-  return <div className="lpProfileLayout">
+  return <div className="lpEditorFlow">    <section className="lpPanel lpForm lpAvatarEditor" aria-label="Profile photo">
+      <div className="lpProfileIdentity"><ProfileAvatar name={profile.displayName || profile.username || "R"} url={profile.avatarUrl} size={64} />
+        <div><h2>Profile photo</h2><p>Shown on your profile, in People and on your share card</p></div></div>
+      <label className="lpForm">Upload image<input ref={fileInput} type="file" accept={photoAccept} disabled={pending} onChange={(event) => {
+        const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void upload(file);
+      }} /></label>
+      <small>Choosing a photo saves your avatar automatically. JPEG, PNG, WebP and supported HEIC photos up to 24 MiB.</small>
+      {selectedAvatar && avatarPreview && <img className="lpArtworkPreview" src={avatarPreview} alt="Selected avatar preview" />}
+      {pending && noticeArea === "avatar" && <progress aria-label="Saving avatar" />}
+      <div role="status" aria-live="polite">{noticeArea === "avatar" && message}</div>
+      {selectedAvatar && !pending && <button type="button" className="lpButton lpSecondary" onClick={() => void upload(selectedAvatar, true)}>Retry avatar upload</button>}
+      {profile.avatarUrl && <button type="button" className="lpButton lpSecondary" disabled={pending} onClick={() => { setSelectedAvatar(undefined); void removeCurrentAvatar(); }}>Remove avatar</button>}
+    </section>
     <div className="lpStack">
-      <form className="lpPanel lpForm lpProfileForm" noValidate onSubmit={(event) => void save(event)} aria-label="Edit creator profile">
-        <div><span className="lpEyebrow">Public profile</span><h2>How creators find you</h2></div>
-        <p>Your wallet address, name, username, bio, avatar and links are public. Profile details do not change on-chain project ownership or beneficiary terms.</p>
-        <label>Username<input aria-label="Username" aria-describedby="profile-username-hint" value={draft.username ?? ""} minLength={3} maxLength={24} placeholder="your_name" autoCapitalize="none" spellCheck={false}
+      <form className="lpPanel lpForm lpProfileForm" noValidate onInput={()=>setInvalid("")} onSubmit={(event) => void save(event)} aria-label="Edit creator profile">
+        <h2>Public details</h2>
+        <p>Save your changes to update your creator profile.</p>
+        <label>Display name<input name="displayName" aria-invalid={invalid==="displayName" || undefined} aria-errormessage={invalid==="displayName"?"profile-save-message":undefined} value={draft.displayName} maxLength={48} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
+        <label>Username<input name="username" aria-invalid={invalid==="username" || undefined} aria-errormessage={invalid==="username"?"profile-save-message":undefined} aria-label="Username" aria-describedby="profile-username-hint" value={draft.username ?? ""} minLength={3} maxLength={24} placeholder="your_name" autoCapitalize="none" spellCheck={false}
           onChange={(event) => setDraft({ ...draft, username: event.target.value || null })} /><small id="profile-username-hint">3–24 characters. Start with a letter; use letters, numbers or underscores. Saving a username lists it on the People page.</small></label>
-        <label>Display name<input value={draft.displayName} maxLength={48} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
-        <label>X username (optional)<input value={draft.xHandle ?? ""} placeholder="@username" autoCapitalize="none" spellCheck={false} maxLength={16}
+        <label>Bio<textarea name="bio" aria-invalid={invalid==="bio" || undefined} aria-errormessage={invalid==="bio"?"profile-save-message":undefined} aria-label="Bio" aria-describedby="profile-bio-hint" value={draft.bio} maxLength={280} rows={4} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /><small id="profile-bio-hint">{draft.bio.length}/280 characters · plain text</small></label>
+        <label>X username (optional)<input name="xHandle" aria-invalid={invalid==="xHandle" || undefined} aria-errormessage={invalid==="xHandle"?"profile-save-message":undefined} value={draft.xHandle ?? ""} placeholder="@username" autoCapitalize="none" spellCheck={false} maxLength={16}
           onChange={(event) => setDraft({ ...draft, xHandle: event.target.value || null })} /></label>
-        <label>Bio<textarea aria-label="Bio" aria-describedby="profile-bio-hint" value={draft.bio} maxLength={280} rows={4} onChange={(event) => setDraft({ ...draft, bio: event.target.value })} /><small id="profile-bio-hint">{draft.bio.length}/280 characters · plain text</small></label>
         <fieldset><legend>Project links</legend>{draft.links.map((link, index) => <div className="lpProfileLinkRow" key={index}>
           <label>Label<input value={link.label} maxLength={32} onChange={(event) => setDraft({ ...draft, links: draft.links.map((row, i) => i === index ? { ...row, label: event.target.value } : row) })} /></label>
-          <label>HTTPS URL<input type="url" value={link.url} maxLength={512} placeholder="https://" onChange={(event) => setDraft({ ...draft, links: draft.links.map((row, i) => i === index ? { ...row, url: event.target.value } : row) })} /></label>
+          <label>HTTPS URL<input name={"url-"+index} aria-invalid={invalid==="url-"+index || undefined} aria-errormessage={invalid==="url-"+index?"profile-save-message":undefined} type="url" value={link.url} maxLength={512} placeholder="https://" onChange={(event) => setDraft({ ...draft, links: draft.links.map((row, i) => i === index ? { ...row, url: event.target.value } : row) })} /></label>
           <button type="button" className="lpTextButton" onClick={() => setDraft({ ...draft, links: draft.links.filter((_, i) => i !== index) })} aria-label={`Remove link ${index + 1}`}>Remove</button>
         </div>)}{draft.links.length < 3 && <button type="button" className="lpTextButton" onClick={() => setDraft({ ...draft, links: [...draft.links, { label: "", url: "" }] })}>Add HTTPS link</button>}</fieldset>
-        <fieldset><legend>Private preferences</legend>
+        <details className="lpDisclosure"><summary>Private preferences</summary><fieldset><legend className="lpVisuallyHidden">Private preferences</legend>
           <label>Appearance<select aria-label="Appearance" value={draft.preferences.theme} onChange={(event) => setDraft({ ...draft, preferences: { ...draft.preferences, theme: event.target.value as ProfileEdit["preferences"]["theme"] } })}>
             <option value="dark">RMT dark</option><option value="system">Use device appearance</option><option value="light">Light</option></select></label>
           <label className="lpCheck"><input type="checkbox" checked={draft.preferences.reducedMotion} onChange={(event) => setDraft({ ...draft, preferences: { ...draft.preferences, reducedMotion: event.target.checked } })} />Reduce motion</label>
           <small>Preferences are private and apply after saving.</small>
-        </fieldset>
-        <div role="status" aria-live="polite" aria-atomic="true">{noticeArea === "profile" && message && <p className="lpInlineNotice">{message}</p>}</div>
+        </fieldset></details>
+        <div id="profile-save-message" role="status" aria-live="polite" aria-atomic="true">{noticeArea === "profile" && message && <p className="lpInlineNotice">{message}</p>}</div>
         <button className="lpButton" type="submit" disabled={pending}>{pending && noticeArea === "profile" ? "Saving…" : "Save profile"}</button>
+        <Link className="lpUtility" href={profile.username ? "/u/"+profile.username : "/creator/"+profile.walletAddress} prefetch={false}>Open public profile</Link>
+        <a className="lpUtility" href={profileShareIntent(profile,true)} target="_blank" rel="noopener noreferrer">Share my profile ↗</a>
       </form>
       <details className="lpPanel lpDanger"><summary>Profile data and removal</summary><div className="lpForm">
         <p>Remove your profile, uploaded avatar and private preferences. On-chain transactions and launch history remain public. A fresh wallet message and a separate confirmation are required.</p>
@@ -167,21 +197,6 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
         {noticeArea === "removal" && message && <p role="status">{message}</p>}
       </div></details>
     </div>
-    <aside className="lpPanel lpForm">
-      <div className="lpProfileIdentity"><ProfileAvatar name={profile.displayName || profile.username || "R"} url={profile.avatarUrl} size={64} />
-        <div><h2>Your avatar</h2><p>Used on your public creator profile</p></div></div>
-      <label className="lpForm">Upload image<input ref={fileInput} type="file" accept={photoAccept} disabled={pending} onChange={(event) => {
-        const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void upload(file);
-      }} /></label>
-      <small>Choosing a photo saves your avatar automatically. JPEG, PNG, WebP and supported HEIC photos up to 24 MiB.</small>
-      {selectedAvatar && avatarPreview && <img className="lpArtworkPreview" src={avatarPreview} alt="Selected avatar preview" />}
-      {pending && noticeArea === "avatar" && <progress aria-label="Saving avatar" />}
-      <div role="status" aria-live="polite">{noticeArea === "avatar" && message}</div>
-      {selectedAvatar && !pending && <button type="button" className="lpButton lpSecondary" onClick={() => void upload(selectedAvatar, true)}>Retry avatar upload</button>}
-      {profile.avatarUrl && <button type="button" className="lpButton lpSecondary" disabled={pending} onClick={() => { setSelectedAvatar(undefined); void removeCurrentAvatar(); }}>Remove avatar</button>}
-      <dl className="lpFacts"><dt>Wallet</dt><dd className="lpAddress">{profile.walletAddress}</dd><dt>Network</dt><dd>Robinhood Chain 4663</dd></dl>
-      <Link className="lpBack" href={profile.username ? `/u/${profile.username}` : `/creator/${profile.walletAddress}`} prefetch={false}>Open public profile</Link>
-      <a className="lpButton lpSecondary" href={profileShareIntent(profile, true)} target="_blank" rel="noopener noreferrer">Share my profile on X</a>
-    </aside>
+
   </div>;
 }

@@ -1,3 +1,4 @@
+import { reviewOrigin, readPublicReview, reviewAvatarPath } from "./public-review";
 import { cache } from "react";
 import { createHash } from "node:crypto";
 import { headers } from "next/headers";
@@ -26,6 +27,12 @@ async function publicRead(path: string, action: "public-username" | "public-wall
 
 export const readCreator = cache(async (kind: "u" | "creator", key: string): Promise<{ status: "ready"; profile: PublicCreatorProfile } | { status: "missing" | "unavailable" }> => {
   try {
+    const origin = reviewOrigin(await headers());
+    if (origin) {
+      const { profiles } = await readPublicReview(origin);
+      const profile = profiles.find(p => kind === "u" ? p.username === key : p.walletAddress.toLowerCase() === key.toLowerCase());
+      return profile ? {status:"ready",profile} : {status:"missing"};
+    }
     const lookup = kind === "u" ? "public" : "creator";
     const response = await publicRead("/api/account/" + lookup + "/" + key, kind === "u" ? "public-username" : "public-wallet", key);
     if (!response) return { status: "unavailable" };
@@ -39,6 +46,14 @@ export const readCreator = cache(async (kind: "u" | "creator", key: string): Pro
 });
 
 export async function publicAvatar(profile: PublicCreatorProfile) {
+  if (profile.avatarUrl && reviewAvatarPath.test(profile.avatarUrl)) {
+    const origin = reviewOrigin(await headers());
+    if (!origin) return null;
+    const response = await fetch(origin + profile.avatarUrl, {redirect:"error",signal:AbortSignal.timeout(5000)});
+    if (!response.ok || !response.headers.get("content-type")?.startsWith("image/webp")) return null;
+    const bytes = Buffer.from(await response.arrayBuffer());
+    return bytes.length <= 65536 ? bytes : null;
+  }
   if (!profile.avatarUrl?.startsWith("/api/account/avatar/" + profile.walletAddress + "?v=")) return null;
   const response = await publicRead(profile.avatarUrl, "public-avatar", profile.walletAddress);
   return response?.ok ? Buffer.from(await response.arrayBuffer()) : null;
@@ -61,7 +76,7 @@ export async function creatorMetadata(kind: "u" | "creator", key: string) {
   if (found.status !== "ready") return socialMetadata("/" + kind + "/" + key, "Creator profile | RMT Launch", "Discover creators building on Robinhood Chain.");
   const p = found.profile, card = creatorCard(p);
   return socialMetadata(card.path, card.name + " | RMT Launch", p.bio || "Explore " + card.identity + "’s creator profile and projects on Robinhood Chain.",
-    shareImagePath(card), card.name + " · " + card.identity + " on RMT Launch", true);
+    shareImagePath(card), card.name + " · " + card.identity + " on RMT Launch", true, reviewOrigin(await headers()) ?? undefined);
 }
 
 export async function launchMetadata(address: string) {

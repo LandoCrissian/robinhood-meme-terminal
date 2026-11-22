@@ -133,16 +133,16 @@ export function EarningsDashboard({ fixture = false, fixtureFactory, profileFixt
       if (!token && factoryFees && typeof factoryFees === "object") void checkFactory();
     }} />}
     {message && <p className="lpNotice lpError" role="status">{message}</p>}
-    {loading && !directory && <div className="lpSkeleton" role="status">Loading recipient-aware registrations…</div>}
-    {!recipient && <section className="lpEmpty"><div><h2>Your earnings, clearly accounted for</h2><p>Enter a creator, project treasury, Operations or Reserve address.</p></div></section>}
+    {loading && !directory && <div className="lpSkeleton" role="status">Looking up projects for this wallet…</div>}
+    {!recipient && <section className="lpEmpty"><div><h2>Look up a wallet</h2><p>Enter a creator, project treasury, Operations or Reserve address.</p></div></section>}
     {directory && <>
       <div className="lpEarningsSummary" aria-label="Checked project totals">
         <section className="lpPanel"><span>Available in checked projects</span><strong>{verified.length ? earningsAmount(availableEth.toString()) : "Not checked"}</strong></section>
         <section className="lpPanel"><span>Claimed in checked projects</span><strong>{verified.length ? earningsAmount(claimedEth.toString()) : "Not checked"}</strong></section>
       </div>
       <p className="lpInlineNotice">{verified.length} of {rows.length} loaded projects checked. Totals exclude unchecked projects, token-denominated fees and factory creation fees. {directory.nextCursor ? "More projects are available. Each reading window retains up to 100 projects; the next window continues at the verified cursor." : "End of this registration page set."}</p>
-      <div className="lpEarningsCheckpoint"><span>{directory.status === "ready" ? "Indexed registrations" : "Stale indexing checkpoint"}</span><span>Block {directory.checkpoint.blockNumber} · {new Date(directory.checkpoint.timestamp).toLocaleString()}</span><span>{fixture ? "Local synthetic evidence" : "L2 observed · L1 finality unverified"}</span></div>
-      {!rows.length && <section className="lpEmpty"><div><h2>No matching new-engine registrations at this checkpoint</h2><p>This is not a statement about unindexed launches or historical fee rights.</p></div></section>}
+      <details className="lpDisclosure"><summary>Data status</summary><div className="lpEarningsCheckpoint"><span>{directory.status === "ready" ? "Indexed registrations" : "Stale indexing checkpoint"}</span><span>Block {directory.checkpoint.blockNumber} · {new Date(directory.checkpoint.timestamp).toLocaleString()}</span><span>{fixture ? "Local synthetic evidence" : "L2 observed · L1 finality unverified"}</span></div></details>
+      {directory.status === "ready" && !rows.length && <section className="lpEmpty"><div><h2>No matching projects</h2><p>The current feed has no projects registered to this recipient.</p></div></section>}
       <div className="lpEarningsProjects">{rows.map(row => {
         const check = checks[row.token.toLowerCase()], snapshot = check?.status === "ready" ? check.value : null;
         return <article className="lpPanel lpEarningsProject" key={row.token} aria-label={`${row.name} earnings`}>

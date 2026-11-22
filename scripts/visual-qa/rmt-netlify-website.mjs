@@ -273,7 +273,8 @@ try {
     const operationalControls = /connect (?:test (?:trading )?)?wallet|browser wallet|open (?:inside|in) (?:a |your )?wallet|switch to|confirm|review creation|review trade|review (?:test |exact ).*(?:buy|sell|approval|fee)|claim fees|recover wallet request/i;
     async function verifyReadOnly(heading, draftForm = false) {
       await main.getByRole("heading", { name: heading, exact: true }).waitFor();
-      await page.getByText("Read-only", { exact: true }).first().waitFor();
+      assert.equal(await nav.getByRole("link", { name:"Create",exact:true }).count(),1);
+      assert.equal(await page.locator(".lpNetwork").count(),0);
       assert.equal(await main.getByRole("button", { name: operationalControls }).count(), 0);
       assert.equal(await page.getByRole("link", { name: operationalControls }).count(), 0);
       assert.equal(await page.locator("form").count(), Number(draftForm));

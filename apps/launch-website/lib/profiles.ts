@@ -51,11 +51,12 @@ export function profilePublicPath(profile: Pick<PublicCreatorProfile, "username"
   const username = profileUsername(profile.username);
   return username ? "/u/" + username : "/creator/" + profileAddress(profile.walletAddress).toLowerCase();
 }
-export function profileShareIntent(profile: Pick<PublicCreatorProfile, "username" | "walletAddress">, own = false) {
+export function profileShareIntent(profile: Pick<PublicCreatorProfile, "username" | "walletAddress"> & { displayName?: string }, own = false) {
   const path = profilePublicPath(profile);
-  const text = own ? "I’m building on Robinhood Chain. Follow my projects on RMT Launch."
-    : profile.username ? "Meet " + profile.username + " on RMT Launch. Take a look at their creator profile."
-    : "Discover this creator on RMT Launch and explore their projects on Robinhood Chain.";
+  const display = profile.displayName?.trim();
+  const name = (display && !/(?:https?:\/\/|www\.)/i.test(display) && display) || (profile.username ? "@" + profile.username : "this creator");
+  const text = own ? "I’m building on Robinhood Chain. Here’s my creator profile on RMT Launch."
+    : "Explore " + name + "’s creator profile on RMT Launch.";
   const params = new URLSearchParams({ url: "https://www.rmtlaunch.fun" + path, text });
   return "https://twitter.com/intent/tweet?" + params.toString();
 }

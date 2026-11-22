@@ -104,7 +104,8 @@ export async function accountHandler(request: Request, action: AccountAction, ke
       if (!image) return accountJson({ error: "Avatar not found." }, 404);
       return new Response(request.method === "HEAD" ? null : new Uint8Array(image.bytes), { headers: { "Content-Type": "image/webp", "X-Content-Type-Options": "nosniff",
         "Content-Security-Policy": "default-src 'none'; sandbox", "Content-Length": String(image.bytes.length), "ETag": '"' + image.sha256 + '"',
-        "Cache-Control": "public, max-age=60, must-revalidate" } });
+        "Netlify-CDN-Cache-Control": "no-store", "CDN-Cache-Control": "no-store",
+        "Cache-Control": "private, max-age=60, must-revalidate" } });
     }
     const auth = await requireAuthentication(request, firebase);
     if (action === "profile" && ["GET", "HEAD"].includes(request.method)) return accountJson({ profile: await accountProfile(firebase.db, auth.account) });

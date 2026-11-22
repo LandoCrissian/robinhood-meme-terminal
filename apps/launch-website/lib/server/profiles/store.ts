@@ -64,18 +64,24 @@ function publicView(value: DocumentData | undefined, address: string): PublicCre
 export async function publicProfile(db: Firestore, address: string) {
   return publicView((await db.collection(profileCollections.public).doc(profileAddress(address).toLowerCase()).get()).data(), address);
 }
+// This wallet is the site's persistent browser-test identity. Its public profile remains directly addressable.
+const internalDirectoryWallets = new Set(["0x87ffb1da6341e6e000d07ee23dfca913eb9bedfd"]);
+export function visibleDirectoryWallet(address: string) { return !internalDirectoryWallets.has(address.toLowerCase()); }
 export async function publicMemberPage(db: Firestore, after?: string) {
-  // Username reservations are created, renamed and removed atomically with the public profile.
-  // An empty projection reads document IDs without loading wallet or Firebase UID fields.
-  const { FieldPath } = await import("firebase-admin/firestore");
-  const query = db.collection(profileCollections.usernames).orderBy(FieldPath.documentId()).select();
   if (after !== undefined && (!after || profileUsername(after) !== after)) throw new Error("Invalid member cursor");
-  const rows = await (after ? query.startAfter(after) : query).limit(26).get();
-  const names = rows.docs.slice(0, 25).map(({ id }) => {
-    if (profileUsername(id) !== id) throw new Error("Invalid public username");
-    return id;
+  // A single indexed read of public fields also supports profiles created before the directory.
+  const query = db.collection(profileCollections.public).where("username", ">", "").orderBy("username")
+    .select("username", "displayName", "avatarUrl", "walletAddress", "chainId");
+  const rows = await (after ? query.startAfter(after) : query).limit(26 + internalDirectoryWallets.size).get();
+  const visible = rows.docs.filter(row => visibleDirectoryWallet(row.id)).map(row => {
+    const { username, displayName, walletAddress, avatarUrl, chainId } = row.data();
+    if (typeof username !== "string" || !username || profileUsername(username) !== username || chainId !== 4663 ||
+        profileAddress(walletAddress).toLowerCase() !== row.id || typeof displayName !== "string" ||
+        (avatarUrl !== null && (typeof avatarUrl !== "string" || !avatarUrl.startsWith("/api/account/avatar/" + walletAddress + "?v=") ||
+          !/^[0-9a-f]{64}$/.test(avatarUrl.split("?v=")[1])))) throw new Error("Invalid public directory entry");
+    return { username: username as string, displayName, avatarUrl: avatarUrl as string | null };
   });
-  return { names, next: rows.size > 25 ? names[24] : null };
+  return { members: visible.slice(0, 25), next: visible.length > 25 ? visible[24].username : null };
 }
 export async function accountProfile(db: Firestore, account: ProfileAccount): Promise<AccountProfile> {
   const [visible, privateRow] = await Promise.all([publicProfile(db, account.walletAddress), db.collection(profileCollections.private).doc(account.uid).get()]);
