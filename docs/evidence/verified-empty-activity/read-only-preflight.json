@@ -1,0 +1,62 @@
+{
+  "readOnly": "on",
+  "verifiedEmptyCoverage": true,
+  "observed": "2026-11-22T21:40:02.74648+00:00",
+  "anchor": 120917032,
+  "anchorHash": "0x91afe22d7f99fd2a1c7239248ff9f00af669c8f91ecc61418eb066d312a12a2a",
+  "timestamp": "2026-11-22 21:39:54+00",
+  "activityNext": 119424102,
+  "previousHash": "0x5aeac67bea14f1fa458bd42de5c01f150f0e254bba3e677b9325ad0c46ff2f5e",
+  "priorFastRanges": 0,
+  "canonical": [
+    {
+      "url": "https://rpc.mainnet.chain.robinhood.com",
+      "points": {
+        "verifiedEnd": {
+          "height": 120917032,
+          "hash": "0x91afe22d7f99fd2a1c7239248ff9f00af669c8f91ecc61418eb066d312a12a2a",
+          "blockTime": "2026-11-22T21:39:54.000Z"
+        },
+        "previousActivity": {
+          "height": 119424101,
+          "hash": "0x5aeac67bea14f1fa458bd42de5c01f150f0e254bba3e677b9325ad0c46ff2f5e",
+          "blockTime": "2026-11-20T23:02:13.000Z"
+        }
+      }
+    },
+    {
+      "url": "https://robinhood.api.pocket.network",
+      "points": {
+        "verifiedEnd": {
+          "height": 120917032,
+          "hash": "0x91afe22d7f99fd2a1c7239248ff9f00af669c8f91ecc61418eb066d312a12a2a",
+          "blockTime": "2026-11-22T21:39:54.000Z"
+        },
+        "previousActivity": {
+          "height": 119424101,
+          "hash": "0x5aeac67bea14f1fa458bd42de5c01f150f0e254bba3e677b9325ad0c46ff2f5e",
+          "blockTime": "2026-11-20T23:02:13.000Z"
+        }
+      }
+    }
+  ],
+  "factory": [
+    {
+      "provider": "https://rpc.mainnet.chain.robinhood.com",
+      "height": "120917032",
+      "hash": "0x91afe22d7f99fd2a1c7239248ff9f00af669c8f91ecc61418eb066d312a12a2a",
+      "nonce": 1,
+      "accruedWei": "0",
+      "runtime": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091"
+    },
+    {
+      "provider": "https://robinhood.api.pocket.network",
+      "height": "120917032",
+      "hash": "0x91afe22d7f99fd2a1c7239248ff9f00af669c8f91ecc61418eb066d312a12a2a",
+      "nonce": 1,
+      "accruedWei": "0",
+      "runtime": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091"
+    }
+  ],
+  "eligibleBlocks": 1492931
+}

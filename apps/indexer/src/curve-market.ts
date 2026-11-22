@@ -13,6 +13,7 @@ import {
 import { blockEvidence, type BlockEvidence } from "./curve-launch-evidence.js";
 import { productionCurveIdentity, productionCurveScope } from "./curve-production-store.js";
 import type { CurveProductionConfig } from "./curve-production-config.js";
+import { assertNoCorrectedEmptyRange } from "./verified-empty-activity.js";
 import {
   addMarketFill,
   backingTarget,
@@ -82,6 +83,7 @@ export async function readCurveMarket(
     blockNumber = BigInt(checkpoint.blockNumber),
     factory = config.binding.factory;
   const deployment = config.binding;
+  await assertNoCorrectedEmptyRange(db, scope);
   assert.ok(deployment.chainId === 4663 && scope === productionCurveScope(config) && blockNumber >= deployment.deploymentBlock);
   // The anchor must exist independently of the token. A missing anchor yields no row,
   // whereas an aligned anchor with no scoped registration yields a NULL token.

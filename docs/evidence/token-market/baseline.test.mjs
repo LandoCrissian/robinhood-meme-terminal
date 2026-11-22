@@ -18,8 +18,8 @@ test("today's package, contract and security changes are bounded against the act
  // Pin reviewed edits to existing files. New classifiers and their tests are
  // covered independently by their positive proof and fresh rejection canary.
  const changes=new Map([
-  [".github/workflows/ci.yml","3e541e0af64aa77963ff97e09a7555588280ddb3"],
-  ["apps/indexer/package.json","cbac786699eb6e8f13b877fcf06f34b8bc028fcc"],
+  [".github/workflows/ci.yml","2970cfb2b0cc143ac3b604c5f864ed0a7ee9b82d"],
+  ["apps/indexer/package.json","d999985594e39d55ae1ecf3821001c1ce53728cb"],
   ["apps/launch-website/package.json","5734abd6d548eaca1a07bdcc6a2b2cf637089e77"],
   ["pnpm-lock.yaml","de395bc9e33ce18f1ab8293c9b629980e360b7a2"],
   [".github/workflows/launch-website-review.yml","af59b869053f94fa4c5a6a18bcb066871cf68ba0"],
@@ -44,6 +44,6 @@ test("today's package, contract and security changes are bounded against the act
  expected.dependencies["lightweight-charts"]="5.3.0";
  assert.deepEqual(JSON.parse(readFileSync(join(root,path))),expected);
  const workerPath="apps/indexer/package.json", worker=JSON.parse(git("show",production+":"+workerPath));
- Object.assign(worker.scripts,{"test:empty-market":"tsx src/backfill-http-smoke.ts --empty-market","test:backfill-http":"tsx src/backfill-http-smoke.ts","test:activity-backlog":"tsx src/activity-backlog-smoke.ts","test:provider-budget":"tsx --test src/feed-scheduler.test.ts"});
+ Object.assign(worker.scripts,{"test:verified-empty":"tsx src/verified-empty-activity-postgres-smoke.ts","test:empty-market":"tsx src/backfill-http-smoke.ts --empty-market","test:backfill-http":"tsx src/backfill-http-smoke.ts","test:activity-backlog":"tsx src/activity-backlog-smoke.ts","test:provider-budget":"tsx --test src/feed-scheduler.test.ts"});
  assert.deepEqual(JSON.parse(readFileSync(join(root,workerPath))),worker);
 });

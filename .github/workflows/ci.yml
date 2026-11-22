@@ -113,7 +113,7 @@ jobs:
       - run: pnpm --filter indexer test:provider-budget
       - name: Check concurrent discovery under backfill and complete the measured backlog
         run: |
-          for spec in backfill-http activity-backlog empty-market; do
+          for spec in backfill-http activity-backlog verified-empty empty-market; do
             db="rmt_curve_production_smoke_${spec//-/_}"
             docker exec "${{ job.services.postgres.id }}" createdb -U postgres "$db"
             DATABASE_URL="postgres://postgres:postgres@localhost:5432/$db" pnpm --filter indexer "test:$spec"
