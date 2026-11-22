@@ -1,4 +1,5 @@
 "use client";
+import { withProductionNonceStore } from "../../lib/production-nonce-store";
 
 import Link from "next/link";
 import { useEffect, useId, useRef, useState } from "react";
@@ -130,9 +131,9 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
       const r = await post({ action: "verify", request: journal.request, ...((entered || journal.transactionHash) && { transactionHash: entered || journal.transactionHash }) }) as ProductionLifecycleVerification;
       if (!["pending", "confirmed", "reverted", "unavailable"].includes(r.status) || (r.transactionHash && !isTransactionHash(r.transactionHash))) throw new Error("Invalid original receipt evidence");
       setResult(r);
-      updateProductionTradeJournalFromVerification(localStorage, journal.request.from, token, r);
+      await withProductionNonceStore(localStorage, view => updateProductionTradeJournalFromVerification(view, journal.request.from, token, r));
       setJournal(readProductionTradeJournal(localStorage, journal.request.from, token));
-      if (continueAfter) { clearProductionTradeJournal(localStorage, journal.request.from, token, r); setJournal(null); setHash(""); await refresh(); }
+      if (continueAfter) { await withProductionNonceStore(localStorage, view => clearProductionTradeJournal(view, journal.request.from, token, r)); setJournal(null); setHash(""); await refresh(); }
     });
   }
   const v4 = state?.postGraduation;

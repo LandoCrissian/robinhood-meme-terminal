@@ -8,6 +8,7 @@ import { assertNoPendingReclaim } from "./reclaim-recovery";
 import { isProductionWalletOrigin } from "./production-wallet";
 import { assertNoPendingProductionCreation } from "./production-creation";
 import { assertProductionNonceAboveConsumed, assertProductionNonceAvailable, recordProductionConsumedNonce } from "./production-nonce";
+import { withProductionNonceStore } from "./production-nonce-store";
 
 const namespace = "rmt.claim.execution.v1";
 export const claimProfileApiPath = "/api/launchpad/test-claim-profiles";
@@ -225,7 +226,7 @@ async function submitClaim(input: ClaimSubmissionInput, mode: "isolated" | "prod
   // claim-journal guard. No wallet method runs during this read-only import.
   const pendingTrade = production ? (await import("./production-trading-wallet")).assertNoPendingProductionTrade : undefined;
   const safeRetryProofs = new Set<string>();
-  const assertAvailable = () => {
+  const assertAvailable = (storage: Storage) => {
     if (production) {
       pendingTrade!(storage, review.gasPayer, review.gasPayerEvidence.nonce);
       assertNoPendingProductionCreation(storage, review.gasPayer, review.gasPayerEvidence.nonce);
@@ -265,11 +266,14 @@ async function submitClaim(input: ClaimSubmissionInput, mode: "isolated" | "prod
   // retry; a stale stored revert or wallet rejection is not revocation.
   for (const j of listClaimJournals(storage)) {
     if (safeSlot(review) && safeSlot(j.review) === safeSlot(review) && provenSafeOuterRevert(j) && sameSafeProposal(j.review, review) && input.reconcilePrior) {
-      const result = await input.reconcilePrior(j), checked = applyClaimSettlement(storage, j, result, now());
+      const result = await input.reconcilePrior(j), checked = production
+        ? await withProductionNonceStore(storage, view => applyClaimSettlement(view, j, result, now()))
+        : applyClaimSettlement(storage, j, result, now());
       if (provenSafeOuterRevert(checked)) safeRetryProofs.add(j.review.reviewHash);
     }
   }
-  let existing = assertAvailable();
+  const checkJournals = () => production ? withProductionNonceStore(storage, assertAvailable) : assertAvailable(storage);
+  let existing = await checkJournals();
   // Retain Task074 pending intents; switching controller versions cannot erase
   // an uncertain original direct-wallet broadcast.
   const checkWallet = async () => {
@@ -311,7 +315,7 @@ async function submitClaim(input: ClaimSubmissionInput, mode: "isolated" | "prod
   if (now() >= review.expiresAt * 1000) throw new Error("The claim review has expired");
   // All asynchronous reads are over. The caller holds every resource lock;
   // immediately recheck storage before the synchronous durable intent write.
-  existing = assertAvailable();
+  existing = await checkJournals();
   const entry: ClaimRecoveryJournal = { schemaVersion: 1, profile: "rmt-claim-recovery-v1", review,
     stage: "awaiting-wallet", transactionHash: null, verification: null, createdAt: existing?.createdAt ?? now(), updatedAt: now() };
   storeClaimJournal(storage, entry);

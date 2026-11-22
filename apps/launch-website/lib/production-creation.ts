@@ -2,6 +2,7 @@ import { decodeFunctionData, encodeFunctionData, getAddress, parseAbi, zeroAddre
 import { isTransactionHash, testCreationFeeWei, testCreationSignature, type TestCreationFields, type TestCreationVerification } from "./test-creation";
 import { type TestWallet, testWalletErrorCode } from "./test-wallet";
 import { assertProductionNonceAvailable, recordProductionConsumedNonce } from "./production-nonce";
+import { withProductionNonceStore } from "./production-nonce-store";
 import { isLaunchAddress } from "./launch-data";
 import { rmtCreationOwner } from "./owner-creation";
 
@@ -167,12 +168,16 @@ export async function submitProductionCreation(wallet: ProductionWallet, request
   const [{ assertNoPendingProductionClaim }, { assertNoPendingProductionTrade }] = await Promise.all([
     import("./claim-recovery"), import("./production-trading-wallet"),
   ]);
-  assertNoPendingProductionClaim(storage, wallet.account, request.nonce); assertNoPendingProductionTrade(storage, wallet.account, request.nonce);
+  const checkJournals = () => withProductionNonceStore(storage, view => {
+    assertNoPendingProductionCreation(view, wallet.account, request.nonce);
+    assertNoPendingProductionClaim(view, wallet.account, request.nonce); assertNoPendingProductionTrade(view, wallet.account, request.nonce);
+  });
+  await checkJournals();
   await assertProductionWallet(wallet, request);
   assertReviewCurrent();
   if (readProductionCreationJournal(storage)) throw new Error("An original creation request requires recovery");
   assertNoPendingProductionCreation(storage, wallet.account, request.nonce);
-  assertNoPendingProductionClaim(storage, wallet.account, request.nonce); assertNoPendingProductionTrade(storage, wallet.account, request.nonce);
+  await checkJournals();
   const journal: ProductionCreationJournal = { request };
   storage.setItem(productionCreationJournalKey, JSON.stringify(journal));
   const persisted = readProductionCreationJournal(storage);

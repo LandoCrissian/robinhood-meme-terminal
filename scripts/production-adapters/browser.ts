@@ -30,7 +30,7 @@ const sourceFiles = ["scripts/production-adapters/browser.ts", "scripts/producti
   "apps/launch-website/lib/server/production-earnings.ts", "apps/launch-website/lib/server/production-lifecycle.ts",
   "apps/launch-website/lib/server/production-financial.ts", "apps/launch-website/lib/claim-recovery.ts", "apps/launch-website/lib/production-trading-wallet.ts",
   "apps/launch-website/lib/production-creation.ts", "apps/launch-website/lib/production-wallet.ts", "apps/launch-website/lib/claim-profiles.ts",
-  "apps/launch-website/lib/production-nonce.ts", "apps/launch-website/lib/production-lifecycle.ts", "apps/launch-website/lib/production-claims.ts", "apps/launch-website/lib/earnings-claims.ts",
+  "apps/launch-website/lib/production-nonce.ts", "apps/launch-website/lib/production-nonce-store.ts", "apps/launch-website/lib/production-lifecycle.ts", "apps/launch-website/lib/production-claims.ts", "apps/launch-website/lib/earnings-claims.ts",
   "apps/launch-website/lib/server/earnings-contracts.ts", "apps/launch-website/lib/server/claim-profiles.ts", "apps/launch-website/lib/server/earnings-claims.ts",
   "apps/launch-website/lib/server/production-birth.ts", "apps/launch-website/lib/server/production-project-birth.ts", "apps/launch-website/lib/server/production-project-templates.json",
   "apps/launch-website/lib/server/nitro-zero-poster.ts",
@@ -157,7 +157,7 @@ async function main() {
           await page.evaluate(account => { const w = window as any, h = w.__task092Nonce;
             w.__task092FloorHold = navigator.locks.request(h.lockKey(account), async () => {
               w.__task092FloorEntered = true; await new Promise<void>(resolve => { w.__task092FloorRelease = resolve; });
-              h.record(localStorage, account, "0", "0x" + "1".repeat(64));
+              await h.record(localStorage, account, "0", "0x" + "1".repeat(64));
             });
           }, accountA);
           await page.waitForFunction(() => (window as any).__task092FloorEntered === true);
@@ -167,11 +167,21 @@ async function main() {
           assert.equal(blocked, false, "Different accounts serialize the shared consumed-nonce map");
           await page.evaluate(async () => { const w = window as any; w.__task092FloorRelease(); await w.__task092FloorHold; });
           const floors = await second.evaluate(async account => { const h = (window as any).__task092Nonce;
-            await navigator.locks.request(h.lockKey(account), { ifAvailable: true }, lock => {
-              if (!lock) throw Error("Released storage lock remained unavailable"); h.record(localStorage, account, "0", "0x" + "2".repeat(64));
+            await navigator.locks.request(h.lockKey(account), { ifAvailable: true }, async lock => {
+              if (!lock) throw Error("Released storage lock remained unavailable"); await h.record(localStorage, account, "0", "0x" + "2".repeat(64));
             }); return JSON.parse(localStorage.getItem(h.key)!).floors;
           }, accountB);
           assert.equal(floors.length, 2); assert.deepEqual(floors.map((floor: any) => floor.account).sort(), [accountA.toLowerCase(), accountB].sort());
+          // Reproduce a stale localStorage replica deterministically after both
+          // receipts were persisted. A third write must recover both floors.
+          const repaired = await second.evaluate(async account => {
+            const h = (window as any).__task092Nonce;
+            localStorage.setItem(h.key, JSON.stringify({schemaVersion: 1, floors: []}));
+            await h.record(localStorage, account, "1", "0x" + "3".repeat(64));
+            return JSON.parse(localStorage.getItem(h.key)!).floors;
+          }, accountB);
+          assert.deepEqual(repaired.map((r: any) => [r.account,r.nonce]).sort(), [[accountA.toLowerCase(),"0x0"],[accountB,"0x1"]].sort());
+          record.checks.staleNonceReplicaRestored = true;
           record.checks.nativeCrossAccountStorageLock = true; record.consumedNonceFloors = floors; await second.close();
         } else if (mode === "trading") {
           await button("Connect trading wallet").click(); await page.getByText(/Connected account/).waitFor();

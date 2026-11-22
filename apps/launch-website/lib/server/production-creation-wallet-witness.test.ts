@@ -25,7 +25,7 @@ test("owner creation checks both anchored gas estimates, available funds, pendin
     await assert.rejects(corroborateCreationWallet([reader(), other], call, anchor));
 });
 test("owner revalidation checks the original review block on the second provider", async () => {
-  const prior = { blockNumber: "0xbe", blockHash: anchor.blockHash } as NonNullable<Parameters<typeof corroborateCreationWallet>[3]>;
+  const prior = { blockNumber: "0xbe", blockHash: anchor.blockHash } as const;
   await assert.rejects(corroborateCreationWallet([reader(), reader({ priorReorg: true })], call, anchor, prior));
 });
 

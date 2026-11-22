@@ -253,7 +253,7 @@ const ownerDelegate = "0x63c0c19a282a1B52b07dD5a65b58948A07DAE32B";
 const ownerDelegateHash = "0xa06befcb6f1d7b6c566a607d9d5d932f9b267f3470e55940225c6ee9c4c5e6b0";
 
 export async function corroborateCreationWallet(readers: readonly [Reader, Reader], transaction: CreationCall,
-  anchor: { blockNumber: bigint; blockHash: Hex }, prior?: ProductionCreationRequest) {
+  anchor: { blockNumber: bigint; blockHash: Hex }, prior?: Pick<ProductionCreationRequest, "blockNumber" | "blockHash">) {
   const { account } = transaction;
   const witnesses = await Promise.all(readers.map(async reader => {
     const [nonce, pending, code, pendingCode, delegate, pendingDelegate, gas, balance, price, block, original] = await Promise.all([

@@ -1,10 +1,20 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { assertProductionNonceAvailable, assertProductionNonceAboveConsumed, recordProductionConsumedNonce, productionNonceFloorKey } from "../production-nonce";
+import { assertProductionNonceAvailable, assertProductionNonceAboveConsumed, recordProductionConsumedNonce, productionNonceFloorKey, mergeProductionNonceFloors } from "../production-nonce";
 import { productionAccountLock } from "../production-wallet";
 
 const account = (n: number) => "0x" + (100000 + n).toString(16).padStart(40, "0");
 const hash = (n: number) => "0x" + n.toString(16).padStart(64, "0");
+test("an old tab cannot erase another account's floor, rewind a nonce or replace its receipt", () => {
+  const first = memory(), stale = memory();
+  recordProductionConsumedNonce(first, account(1), "3", hash(1));
+  recordProductionConsumedNonce(stale, account(1), "1", hash(2));
+  recordProductionConsumedNonce(stale, account(2), "0", hash(3));
+  const combined = mergeProductionNonceFloors(first.getItem(productionNonceFloorKey), stale.getItem(productionNonceFloorKey));
+  assert.deepEqual(JSON.parse(combined).floors.map((r: {nonce: string}) => r.nonce), ["0x3", "0x0"]);
+  recordProductionConsumedNonce(stale, account(1), "3", hash(4));
+  assert.throws(() => mergeProductionNonceFloors(combined, stale.getItem(productionNonceFloorKey)));
+});
 function memory() { const data = new Map<string, string>(); return { data, getItem: (k: string) => data.get(k) ?? null,
   setItem: (k: string, v: string) => { data.set(k, v); } }; }
 test("canonical decimal/hex candidates must stay above every known consumed nonce, including a zero nonce", () => {

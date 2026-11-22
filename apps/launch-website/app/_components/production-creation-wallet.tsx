@@ -1,4 +1,5 @@
 "use client";
+import { withProductionNonceStore } from "../../lib/production-nonce-store";
 
 import { productionAccountLock } from "../../lib/production-wallet";
 import { assetCID } from "../../lib/token-artwork";
@@ -309,7 +310,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
         const current = readJournal();
         if (!current || !sameProductionCreationRequest(current.request, original.request) || current.transactionHash !== original.transactionHash) throw new Error("Original creation selection changed");
         const verified = await verify(current);
-        archiveCompletedProductionCreation(localStorage, current, verified);
+        await withProductionNonceStore(localStorage, view => archiveCompletedProductionCreation(view, current, verified));
         setCompleted(readCompletedProductionCreations(localStorage)); setJournal(undefined); setResult(undefined); setPrepared(undefined);
         setMessage("Original creation receipt preserved. Trading and claims still require their separate approvals and wallet confirmations.");
       });
