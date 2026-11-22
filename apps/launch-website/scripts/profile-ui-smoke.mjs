@@ -11,7 +11,7 @@ import { installProfileResponseObserver } from "../../../scripts/profiles/browse
 const require = createRequire(new URL("../package.json", import.meta.url));
 const { privateKeyToAccount } = require("viem/accounts"), { hexToString } = require("viem"), sharp = require("sharp");
 const site = new URL(process.env.RMT_PROFILE_UI_URL ?? "http://127.0.0.1:3242/");
-assert.equal(site.origin + "/", site.href); assert.equal(site.protocol, "http:"); assert.equal(site.hostname, "127.0.0.1"); assert.ok(site.port);
+assert.equal(site.origin + "/", site.href); assert.equal(site.protocol, "http:"); assert.ok(["127.0.0.1","localhost"].includes(site.hostname)); assert.ok(site.port);
 const emulator = process.env.RMT_PROFILE_UI_MODE !== "disabled" && Boolean(process.env.FIREBASE_AUTH_EMULATOR_HOST && process.env.FIRESTORE_EMULATOR_HOST);
 const artifacts = process.env.RMT_PROFILE_UI_ARTIFACTS ?? join(tmpdir(), "rmt-profile-ui");
 await mkdir(artifacts, { recursive: true });
@@ -103,7 +103,7 @@ try {
         const upload = document.querySelector('input[type="file"]');
         return save instanceof HTMLButtonElement && !save.disabled && upload instanceof HTMLInputElement && !upload.disabled;
       });
-      const profileMutation = async (method, path, act) => {
+      const profileMutation = async (method, path, act, expectedStatus = 200) => {
         await profileIdle();
         assert.equal(pendingMutation, undefined);
         let timer;
@@ -121,8 +121,8 @@ try {
           assert.equal(network.method, method); assert.equal(network.url, observation.url); assert.equal(network.status, observation.status);
           responseStatus = observation.status; body = observation.body;
         } finally { clearTimeout(timer); pendingMutation = undefined; }
-        assert.equal(responseStatus, 200, `${method} ${path}: ${typeof body.code === "string" ? body.code : "unexpected response"}`);
-        assert.equal(body.profile?.walletAddress.toLowerCase(), accounts[0].address.toLowerCase());
+        assert.equal(responseStatus, expectedStatus, `${method} ${path}: ${typeof body.code === "string" ? body.code : "unexpected response"}`);
+        if (expectedStatus === 200) assert.equal(body.profile?.walletAddress.toLowerCase(), accounts[0].address.toLowerCase());
         await profileIdle();
         return body;
       };
@@ -140,6 +140,20 @@ try {
         const bytes = await response.body(), metadata = await sharp(bytes).metadata();
         assert.ok(bytes.length > 0 && bytes.length <= 65_536); assert.equal(metadata.format, "webp");
         assert.ok(metadata.width > 0 && metadata.width <= 256 && metadata.height > 0 && metadata.height <= 256);
+      };
+      const publicCard = async username => {
+        const crawler = {headers:{"user-agent":"Twitterbot/1.0"}};
+        const page = await context.request.get(new URL("/u/" + username, site).href, crawler);
+        assert.equal(page.status(),200);
+        const tag = (await page.text()).match(/<meta name="twitter:image" content="([^"]+)"/);
+        assert.ok(tag,"Public HTML must include the X card");
+        const path = new URL(tag[1]).pathname;
+        assert.ok(path.startsWith("/share/u/" + username + "/"));
+        const image = await context.request.get(new URL(path,site).href,crawler);
+        assert.equal(image.status(),200);
+        const bytes = await image.body(), metadata = await sharp(bytes).metadata();
+        assert.deepEqual([metadata.format,metadata.width,metadata.height],["png",1200,630]);
+        return {path,bytes};
       };
       await goto("/"); await page.getByRole("heading", { name: "Launches", exact: true }).waitFor();
       const discovery = page.getByRole("region", { name: "New RMT Launch engine", exact: true });
@@ -204,12 +218,24 @@ try {
       await page.getByLabel("Appearance", { exact: true }).selectOption("dark");
       const dark = await profileMutation("PATCH", "/api/account/profile", () => page.getByRole("button", { name: "Save profile", exact: true }).click());
       assert.equal(dark.profile.preferences.theme, "dark"); await status(/Profile saved/);
-      const image = await sharp({ create: { width: 48, height: 48, channels: 4, background: "#31e45d" } }).png().toBuffer();
-      const uploadAvatar = () => profileMutation("POST", "/api/account/avatar", () => page.getByLabel("Upload image", { exact: true })
-        .setInputFiles({ name: "synthetic-avatar.png", mimeType: "image/png", buffer: image }));
-      await uploadAvatar(); await status(/Avatar updated/);
+      const { reportedPng, phoneJpeg } = require("./scripts/photo-fixtures.cjs");
+      const image = await reportedPng(), phone = await phoneJpeg();
+      const selectAvatar = () => page.getByLabel("Upload image", { exact: true })
+        .setInputFiles({ name: "reported.png", mimeType: "image/png", buffer: image });
+      const retryAvatar = () => page.getByRole("button", {name:"Retry avatar upload"}).click();
+      for (const [code, action, message] of [[401,selectAvatar,/session ended/i], [503,retryAvatar,/Check your connection and retry/i]]) {
+        await page.route("**/api/account/avatar", async route => {
+          await page.getByAltText("Selected avatar preview").waitFor();
+          await page.getByRole("progressbar", {name:"Saving avatar"}).waitFor();
+          await route.fulfill({status:code,contentType:"application/json",body:JSON.stringify({code:"unavailable"})});
+        }, {times:1});
+        await profileMutation("POST","/api/account/avatar",action,code);
+        await status(message);
+      }
+      await profileMutation("POST","/api/account/avatar",retryAvatar); await status(/Avatar updated/);
       await avatarLoaded();
       const originalAvatar = (await (await context.request.get(new URL("/api/account/session", site).href)).json()).account.profile.avatarUrl;
+      const originalCard = await publicCard(username);
       const removed = await profileMutation("DELETE", "/api/account/avatar", () => page.getByRole("button", { name: "Remove avatar", exact: true }).click());
       assert.equal(removed.profile.avatarUrl, null); await status(/Avatar removed/);
       await page.waitForFunction(() => document.querySelectorAll(".lpProfileAvatar img").length === 0);
@@ -219,10 +245,23 @@ try {
       assert.equal((await context.request.get(new URL(originalAvatar, site).href)).status(), 404);
       assert.equal(await page.getByRole("button", { name: "Remove avatar", exact: true }).count(), 0);
       assert.equal(await page.getByRole("status").filter({ hasText: /Avatar removed/ }).count(), 1, "Avatar changes should produce one live status announcement");
-      await uploadAvatar(); await status(/Avatar updated/);
+      await profileMutation("POST", "/api/account/avatar", () => page.getByLabel("Upload image", { exact: true })
+        .setInputFiles({name:"phone.jpg", mimeType:"image/jpeg", buffer:phone}));
+      await status(/Avatar updated/);
       await avatarLoaded();
       const replacementAvatar = (await (await context.request.get(new URL("/api/account/session", site).href)).json()).account.profile.avatarUrl;
-      assert.notEqual(replacementAvatar, originalAvatar, "Same-file reupload must have a fresh upload version");
+      assert.notEqual(replacementAvatar, originalAvatar, "A replacement must have a fresh upload version");
+      const publicImage = await context.request.get(new URL(replacementAvatar, site).href);
+      assert.equal(publicImage.status(),200);
+      const meta = await sharp(await publicImage.body()).metadata();
+      assert.deepEqual([meta.width,meta.height],[192,256], "Camera orientation survives optimization and storage");
+      const replacementCard = await publicCard(username);
+      assert.notEqual(replacementCard.path,originalCard.path);
+      assert.ok(!replacementCard.bytes.equals(originalCard.bytes),"Replacing only the avatar must change the rendered card");
+      const repeated = await profileMutation("POST", "/api/account/avatar", () => page.getByLabel("Upload image", { exact: true })
+        .setInputFiles({name:"phone.jpg", mimeType:"image/jpeg", buffer:phone}));
+      assert.notEqual(repeated.profile.avatarUrl,replacementAvatar,"Same-file reupload must have a fresh upload version");
+      await status(/Avatar updated/);
       assert.equal((await context.request.get(new URL(originalAvatar, site).href)).status(), 404);
       await screenshot("profile-portrait"); await page.setViewportSize({ width: 844, height: 390 }); await screenshot("profile-landscape");
       const callsBeforeReload = walletCalls.length; await page.reload(); await page.getByRole("form", { name: "Edit creator profile" }).waitFor();

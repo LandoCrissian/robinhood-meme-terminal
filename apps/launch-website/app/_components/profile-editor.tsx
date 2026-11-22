@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { AccountApiError, accountApi, accountErrorMessage } from "../../lib/account-api";
+import { photoAccept, prepareUploadImage } from "../../lib/prepare-upload-image";
 import { profileEdit, profileShareIntent, type AccountProfile, type ProfileChallenge, type ProfileEdit } from "../../lib/profiles";
 import { assertAccountChallenge, assertConnectedAccount, sameAccount, signAccountMessage } from "../../lib/profile-wallet";
 import { testWalletErrorCode } from "../../lib/test-wallet";
@@ -28,6 +29,12 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
   const [noticeArea, setNoticeArea] = useState<"profile" | "avatar" | "removal">("profile");
   const [removal, setRemoval] = useState<ProfileChallenge>(), [reauthenticated, setReauthenticated] = useState(false), [confirmed, setConfirmed] = useState(false);
   const busy = useRef(false), mounted = useRef(true), generation = useRef(0), fileInput = useRef<HTMLInputElement>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState<File>(), [avatarPreview, setAvatarPreview] = useState("");
+  useEffect(() => {
+    if (!selectedAvatar) { setAvatarPreview(""); return; }
+    const url = URL.createObjectURL(selectedAvatar); setAvatarPreview(url);
+    return () => URL.revokeObjectURL(url);
+  }, [selectedAvatar]);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; generation.current++; }; }, []);
   useEffect(() => { generation.current++; setRemoval(undefined); setReauthenticated(false); setConfirmed(false); }, [account.wallet]);
 
@@ -52,15 +59,26 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       account.updateProfile(result.profile); setDraft(editable(result.profile)); setMessage("Profile saved. Public details and private preferences are stored separately.");
     });
   }
-  async function upload(file?: File) {
-    if (!file) return;
+  async function upload(file?: File, retry = false) {
+    if (!file || busy.current) return;
+    const current = generation.current;
+    const check = () => {
+      if (!mounted.current || current !== generation.current) throw new Error("Your wallet connection changed. Check the account and retry.");
+    };
     await run(async () => {
-      if (!["image/jpeg", "image/png", "image/webp"].includes(file.type) || file.size > 2 * 1024 * 1024 || file.size === 0) throw new Error("Choose a JPG, PNG or WebP image up to 2 MiB.");
-      const body = new FormData(); body.set("file", file);
-      const result = await accountApi<{ profile: AccountProfile }>("/api/account/avatar", { method: "POST", body, csrfToken, signal: AbortSignal.timeout(20_000) });
-      if (!mounted.current) return;
-      account.updateProfile(result.profile); setMessage("Avatar updated. The uploaded image was resized and re-encoded for your profile.");
-      if (fileInput.current) fileInput.current.value = "";
+      if (!retry) { setSelectedAvatar(undefined); setMessage("Optimizing your photo…"); }
+      const prepared = retry ? file : await prepareUploadImage(file, "avatar");
+      check(); setSelectedAvatar(prepared); setMessage("Uploading your avatar…");
+      const body = new FormData(); body.set("file", prepared);
+      const result = await accountApi<{ profile: AccountProfile }>("/api/account/avatar", { method: "POST", body, csrfToken, signal: AbortSignal.timeout(30_000) })
+        .catch(error => {
+          if (error instanceof AccountApiError && [401,403,429].includes(error.status)) throw error;
+          if (error instanceof AccountApiError && [400,413,422].includes(error.status)) throw new Error("The server could not validate this image. Choose another photo.");
+          throw new Error("Avatar save could not be confirmed. Check your connection and retry the upload.");
+        });
+      check();
+      if (!result.profile.avatarUrl || !sameAccount(result.profile.walletAddress, profile.walletAddress)) throw new Error("Could not confirm the saved avatar for this account. Refresh to check your profile.");
+      account.updateProfile(result.profile); setSelectedAvatar(undefined); setMessage("Avatar updated. Your photo is saved to your public profile.");
     }, "avatar");
   }
   async function removeCurrentAvatar() {
@@ -152,10 +170,15 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
     <aside className="lpPanel lpForm">
       <div className="lpProfileIdentity"><ProfileAvatar name={profile.displayName || profile.username || "R"} url={profile.avatarUrl} size={64} />
         <div><h2>Your avatar</h2><p>Used on your public creator profile</p></div></div>
-      <label className="lpForm">Upload image<input ref={fileInput} type="file" accept="image/jpeg,image/png,image/webp" disabled={pending} onChange={(event) => void upload(event.target.files?.[0])} /></label>
-      {profile.avatarUrl && <button type="button" className="lpButton lpSecondary" disabled={pending} onClick={() => void removeCurrentAvatar()}>Remove avatar</button>}
-      <p>JPG, PNG or WebP · up to 2 MiB. Images are resized and re-encoded; external image URLs are not fetched.</p>
-      {noticeArea === "avatar" && message && <p role="status">{message}</p>}
+      <label className="lpForm">Upload image<input ref={fileInput} type="file" accept={photoAccept} disabled={pending} onChange={(event) => {
+        const file = event.currentTarget.files?.[0]; event.currentTarget.value = ""; void upload(file);
+      }} /></label>
+      <small>Choosing a photo saves your avatar automatically. JPEG, PNG, WebP and supported HEIC photos up to 24 MiB.</small>
+      {selectedAvatar && avatarPreview && <img className="lpArtworkPreview" src={avatarPreview} alt="Selected avatar preview" />}
+      {pending && noticeArea === "avatar" && <progress aria-label="Saving avatar" />}
+      <div role="status" aria-live="polite">{noticeArea === "avatar" && message}</div>
+      {selectedAvatar && !pending && <button type="button" className="lpButton lpSecondary" onClick={() => void upload(selectedAvatar, true)}>Retry avatar upload</button>}
+      {profile.avatarUrl && <button type="button" className="lpButton lpSecondary" disabled={pending} onClick={() => { setSelectedAvatar(undefined); void removeCurrentAvatar(); }}>Remove avatar</button>}
       <dl className="lpFacts"><dt>Wallet</dt><dd className="lpAddress">{profile.walletAddress}</dd><dt>Network</dt><dd>Robinhood Chain 4663</dd></dl>
       <Link className="lpBack" href={profile.username ? `/u/${profile.username}` : `/creator/${profile.walletAddress}`} prefetch={false}>Open public profile</Link>
       <a className="lpButton lpSecondary" href={profileShareIntent(profile, true)} target="_blank" rel="noopener noreferrer">Share my profile on X</a>

@@ -2,6 +2,7 @@ import type { Firestore } from "firebase-admin/firestore";
 import { createHash } from "node:crypto";
 import { assertWriteSession, profileCollections as c, randomToken, type ProfileAccount, type WriteAuthorization } from "./store";
 import { ProfileError } from "./config";
+import { inspectArtwork } from "../../token-artwork";
 
 export const maximumAvatarUploadBytes = 2 * 1024 * 1024;
 export const maximumStoredAvatarBytes = 64 * 1024;
@@ -13,8 +14,9 @@ export async function sanitizeAvatar(bytes: Uint8Array, contentType: string) {
     : input.subarray(0, 4).toString() === "RIFF" && input.subarray(8, 12).toString() === "WEBP" ? "webp" : null;
   if (!format || contentType !== "image/" + format) throw new ProfileError(400, "invalid_avatar", "Choose a genuine PNG, JPEG or WebP image.");
   try {
+    inspectArtwork(bytes, contentType);
     const { default: sharp } = await import("sharp");
-    const image = sharp(input, { limitInputPixels: 4_194_304, failOn: "error", animated: false });
+    const image = sharp(input, { limitInputPixels: 4_194_304, failOn: "warning", animated: false });
     const metadata = await image.metadata();
     if (metadata.format !== format || !metadata.width || !metadata.height || (metadata.pages ?? 1) !== 1) throw new Error("Unsupported raster");
     const result = await image.rotate().resize(256, 256, { fit: "inside", withoutEnlargement: true }).webp({ quality: 80 }).toBuffer({ resolveWithObject: true });

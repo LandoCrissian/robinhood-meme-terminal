@@ -1,20 +1,22 @@
 import { createServer, request as forward } from "node:http";
 import { once } from "node:events";
 import { join } from "node:path";
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { chromium, devices, webkit } from "playwright";
-import sharp from "sharp";
+import { createRequire } from "node:module";
 import { generatePrivateKey, privateKeyToAccount } from "viem/accounts";
 import { getStore } from "@netlify/blobs";
 import { artworkCID, assetCID, assetPath } from "../lib/token-artwork";
 import { acceptArtwork, artworkReviewStore, readArtwork } from "../lib/server/token-artwork";
 
 async function main(){
-  const next="http://127.0.0.1:3189", wallet=privateKeyToAccount(generatePrivateKey());
+  const next="http://127.0.0.1:"+(Number(process.env.ARTWORK_TEST_PORT) || 3189), wallet=privateKeyToAccount(generatePrivateKey());
   const scope={siteID:process.env.ARTWORK_REVIEW_SITE,token:process.env.ARTWORK_REVIEW_ACCESS,
     name:artworkReviewStore,consistency:"strong" as const};
   assert.ok(scope.siteID && scope.token,"Review-store access required in test process only.");
-  const logo=await sharp({create:{width:43,height:27,channels:3,background:"#bc6014"}}).png().toBuffer();
+  const { reportedPng, phoneJpeg } = createRequire(import.meta.url)("./photo-fixtures.cjs");
+  const png: Buffer = await reportedPng(), jpeg: Buffer = await phoneJpeg();
   for(const engine of ["chromium","webkit"] as const){
     const browser=await (engine==="chromium"?chromium:webkit).launch();
     let failed=true,receipt:{projectURI:string;artworkURL:string}|undefined;
@@ -64,14 +66,29 @@ async function main(){
       })();`});
       await page.goto(origin+"/create-token",{timeout:120000});
       const picker=page.getByLabel("Token image",{exact:true}),save=page.getByRole("button",{name:"Save artwork",exact:true});
+      await page.waitForFunction(() => document.querySelector<HTMLInputElement>("#token-logo-file")?.disabled === false);
       await picker.setInputFiles({name:"unsupported.svg",mimeType:"image/svg+xml",buffer:Buffer.from("<svg/>")});
-      await page.getByText("Choose a valid, still PNG, JPEG or WebP image.").waitFor();
-      await picker.setInputFiles({name:"large.png",mimeType:"image/png",buffer:Buffer.alloc(2097153)});
-      await page.getByText("Choose an image up to 2 MiB.",{exact:true}).waitFor();
-      if(engine==="chromium"){
-        await picker.evaluate((el,bytes)=>{const dt=new DataTransfer();dt.items.add(new File([new Uint8Array(bytes)],"art.png",{type:"image/png"}));
-          el.dispatchEvent(new DragEvent("drop",{dataTransfer:dt,bubbles:true,cancelable:true}));},[...logo]);
-      }else await picker.setInputFiles({name:"art.png",mimeType:"image/png",buffer:logo});
+      await page.getByText("Choose a still JPEG, PNG, WebP or HEIC photo.").waitFor();
+      await picker.setInputFiles({name:"large.png",mimeType:"image/png",buffer:Buffer.alloc(24*1024*1024+1)});
+      await page.getByText("Choose a photo up to 24 MiB.",{exact:true}).waitFor();
+      await picker.setInputFiles({name:"photo.heic",mimeType:"image/heic",buffer:readFileSync(new URL("./still-photo.heic",import.meta.url))});
+      await page.getByText(/Preview ready|This browser could not open this HEIC photo/).waitFor();
+      const heic = await page.locator(".lpArtworkPicker [role=status]").innerText();
+      await picker.setInputFiles({name:"incomplete.png",mimeType:"image/png",buffer:png.subarray(0,45)});
+      await page.getByText("Incomplete PNG image.").waitFor();
+      await picker.setInputFiles({name:"reported.png",mimeType:"image/png",buffer:png});
+      await page.getByText(/Preview ready/).waitFor();
+      assert.equal(await page.getByAltText("Token artwork preview").evaluate(async img => {
+        const image = img as HTMLImageElement; await image.decode(); return image.naturalWidth;
+      }),1024);
+      const original = engine === "webkit" ? jpeg : png;
+      if (engine === "webkit") await picker.setInputFiles({name:"phone.jpg",mimeType:"image/jpeg",buffer:original});
+      else await picker.evaluate((input, encoded) => {
+        const data = new DataTransfer(), bytes = Uint8Array.from(atob(encoded), c => c.charCodeAt(0));
+        data.items.add(new File([bytes],"dropped.png",{type:"image/png"}));
+        input.dispatchEvent(new DragEvent("drop",{dataTransfer:data,bubbles:true,cancelable:true}));
+      }, png.toString("base64"));
+      await page.waitForFunction(() => !(document.querySelector("#token-logo-file") as HTMLInputElement).disabled);
       await page.getByAltText("Token artwork preview").waitFor(); assert.equal(await page.getByRole("button",{name:"Review draft"}).isDisabled(),true);
       await page.reload();await save.waitFor();
       await save.click();
@@ -87,7 +104,10 @@ async function main(){
       await page.getByRole("button",{name:"Review draft"}).click();
       await page.getByRole("heading",{name:"Review token draft"}).waitFor();
       if(process.env.ARTWORK_EVIDENCE) await page.screenshot({path:join(process.env.ARTWORK_EVIDENCE,engine+"-artwork-review.png")});
-      assert.ok(await page.locator('img[src="'+assetPath(cid,"logo.webp")+'"]').evaluate((img:any)=>img.decode().then(()=>img.naturalWidth===43)));
+      const dimensions = await page.locator('img[src="'+assetPath(cid,"logo.webp")+'"]').evaluate(async (el)=>{
+        const img = el as HTMLImageElement; await img.decode(); return [img.naturalWidth,img.naturalHeight];
+      });
+      assert.deepEqual(dimensions,engine==="webkit"?[768,1024]:[1024,1024]);
       await page.getByRole("button",{name:"Edit draft"}).click();
       await page.getByRole("button",{name:"Remove draft image"}).click();
       await page.getByText("Project information",{exact:true}).click();
@@ -99,7 +119,7 @@ async function main(){
       assert.equal(artworkCID(new Uint8Array(await persisted.arrayBuffer())),assetCID(receipt.artworkURL,"image.webp"));
       assert.ok(methods.every(m=>["eth_accounts","eth_chainId","eth_requestAccounts","personal_sign"].includes(m)));
       console.log(JSON.stringify({engine,mobile:engine==="webkit",metadata:receipt.projectURI,image:receipt.artworkURL,storage:artworkReviewStore,
-        files:"unsupported/oversize/valid",retry:true,reconnected:true,restored:true,reviewed:true,transactionRequests:0}));
+        pngBytes:png.length,phoneJpegBytes:jpeg.length,dimensions,heic,retry:true,reconnected:true,restored:true,reviewed:true,transactionRequests:0}));
     }finally{await browser.close(); server.closeAllConnections(); server.close();}
   }
 }

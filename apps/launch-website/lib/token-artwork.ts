@@ -35,31 +35,43 @@ export function artworkProof(origin: string, wallet: string, cid: string, time: 
 
 export function inspectArtwork(b: Uint8Array, mime: string) {
   if (!b.length || b.length > artworkLimit) throw new Error("Choose an image up to 2 MiB.");
+  const dimensions = stillRasterDimensions(b, mime);
+  if (dimensions.width > 8192 || dimensions.height > 8192 || dimensions.width * dimensions.height > pixelLimit)
+    throw new Error("Use an image up to 16 megapixels and 8192 pixels per side.");
+  return dimensions;
+}
+
+export function stillRasterDimensions(b: Uint8Array, mime: string) {
   const v = new DataView(b.buffer, b.byteOffset, b.byteLength);
   const tag = (i: number) => String.fromCharCode(...b.subarray(i, i + 4));
   let w = 0, h = 0;
   if (mime === "image/png" && b.length >= 33 && v.getUint32(0) === 0x89504e47 &&
       v.getUint32(4) === 0x0d0a1a0a && tag(12) === "IHDR" && v.getUint32(8) === 13) {
     w = v.getUint32(16); h = v.getUint32(20);
-    let offset = 8;
-    for (; offset + 12 <= b.length;) {
+    let ended = false, hasPixels = false, chunks = 0;
+    for (let offset = 8; offset + 12 <= b.length;) {
+      if (++chunks > 65_536) throw new Error("This PNG contains too many chunks.");
       const length = v.getUint32(offset), name = tag(offset + 4);
       if (name === "acTL") throw new Error("Choose a still image.");
+      if (name === "IDAT" && length > 0) hasPixels = true;
       offset += length + 12;
-      if (name === "IEND" && length === 0 && offset === b.length) break;
+      if (name === "IEND" && length === 0 && offset === b.length) { ended = true; break; }
       if (offset + 12 > b.length) throw new Error("Incomplete PNG image.");
     }
+    if (!ended || !hasPixels) throw new Error("Incomplete PNG image.");
   } else if (mime === "image/jpeg" && b.length >= 12 && v.getUint16(0) === 0xffd8 && v.getUint16(b.length - 2) === 0xffd9) {
     for (let i = 2; i + 9 < b.length;) {
       if (b[i++] !== 255) break;
       while (b[i] === 255) i++;
+      if (i + 3 > b.length) break;
       const marker = b[i++], length = v.getUint16(i);
       if (length < 2 || i + length > b.length) break;
       if ([0xc0,0xc1,0xc2].includes(marker) && length >= 8) { h = v.getUint16(i + 3); w = v.getUint16(i + 5); break; }
       i += length;
     }
   } else if (mime === "image/webp" && b.length >= 30 && tag(0) === "RIFF" && tag(8) === "WEBP" && v.getUint32(4,true) === b.length - 8) {
-    if (tag(12) === "VP8X" && !(b[20] & 2)) {
+    if (tag(12) === "VP8X" && (b[20] & 2)) throw new Error("Choose a still image.");
+    if (tag(12) === "VP8X") {
       w = 1 + b[24] + (b[25]<<8) + (b[26]<<16); h = 1 + b[27] + (b[28]<<8) + (b[29]<<16);
     } else if (tag(12) === "VP8L" && b[20] === 0x2f) {
       const size = v.getUint32(21,true); w = 1 + (size & 16383); h = 1 + ((size >>> 14) & 16383);
@@ -68,7 +80,6 @@ export function inspectArtwork(b: Uint8Array, mime: string) {
     }
   }
   if (!w || !h) throw new Error("Choose a valid, still PNG, JPEG or WebP image.");
-  if (w > 8192 || h > 8192 || w * h > pixelLimit) throw new Error("Use an image up to 16 megapixels and 8192 pixels per side.");
   return { width: w, height: h };
 }
 export async function boundedBytes(body: ReadableStream<Uint8Array> | null, limit = artworkLimit) {

@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { artworkCID, artworkLimit, artworkProof, assetCID, assetPath, verifyArtworkReceipt, inspectArtwork, type ArtworkReceipt } from "../../lib/token-artwork";
+import { artworkCID, artworkLimit, artworkProof, assetCID, assetPath, verifyArtworkReceipt, type ArtworkReceipt } from "../../lib/token-artwork";
+import { photoAccept, prepareUploadImage } from "../../lib/prepare-upload-image";
 import { assertConnectedAccount, signAccountMessage, subscribeAccountWallet } from "../../lib/profile-wallet";
 import { useAccount } from "./account-provider";
 
@@ -58,16 +59,19 @@ export function ArtworkUpload({ projectURI, onSave, onPending }: {
     return subscribeAccountWallet(account.wallet,()=>{ request.current?.abort(); setStatus("Wallet disconnected or changed. Reconnect to retry."); });
   },[account.wallet]);
   async function select(next?: File) {
-    if (!next) return;
-    const current = ++version.current; request.current?.abort(); setChecking(true); setStatus("");
+    if (!next || checking || busy) return;
+    const current = ++version.current; request.current?.abort(); setChecking(true); setFile(undefined);
+    setStatus("Optimizing your photo…");
+    const cleared = pendingFile("delete").catch(()=>{});
     try {
-      if (next.size > artworkLimit) throw new Error("Choose an image up to 2 MiB.");
-      inspectArtwork(new Uint8Array(await next.arrayBuffer()),next.type);
-      const url = URL.createObjectURL(next);
-      try { const img = new Image(); img.src = url; await img.decode(); } finally { URL.revokeObjectURL(url); }
+      const optimized = await prepareUploadImage(next, "artwork");
       if (current !== version.current) return;
-      try { await pendingFile("put",next); } catch { if (current === version.current) setStatus("Keep this tab open until the upload is saved."); }
-      if (current === version.current) setFile(next);
+      setFile(optimized);
+      setStatus("Preview ready. Choose Save artwork to store this image.");
+      await cleared;
+      if (current === version.current) {
+        try { await pendingFile("put",optimized); } catch { if (current === version.current) setStatus("Preview ready. Keep this tab open until the upload is saved."); }
+      }
     } catch(e) { if (current === version.current) setStatus(e instanceof Error ? e.message : "Choose a valid image."); }
     finally { if (current === version.current) setChecking(false); }
   }
@@ -85,7 +89,7 @@ export function ArtworkUpload({ projectURI, onSave, onPending }: {
       const cid = artworkCID(new Uint8Array(await file.arrayBuffer())), issued = Date.now();
       check(); setStatus("Review the gas-free artwork message in your wallet.");
       const proof = await signAccountMessage(connected,artworkProof(location.origin,connected.address,cid,issued),check);
-      check(); setStatus("Uploading and verifying storageâ€¦");
+      check(); setStatus("Uploading optimized artwork…");
       const response = await fetch("/api/artwork/upload",{method:"POST",body:file,redirect:"error",signal:controller.signal,
         headers:{"Content-Type":file.type,"x-artwork-cid":cid,"x-artwork-proof":proof,"x-artwork-issued":String(issued)}});
       if (!response.ok) {
@@ -93,6 +97,7 @@ export function ArtworkUpload({ projectURI, onSave, onPending }: {
         throw new Error(typeof error.error === "string" ? error.error : "Upload failed. Retry with the same image.");
       }
       const receipt = await response.json() as ArtworkReceipt;
+      check(); setStatus("Checking the public image and metadata…");
       await verifyArtworkReceipt(receipt,controller.signal);
       await assertConnectedAccount(connected); check();
       onSave(receipt); setFile(undefined); setStatus("Artwork saved and verified.");
@@ -103,15 +108,15 @@ export function ArtworkUpload({ projectURI, onSave, onPending }: {
   return <div className="lpDraftField lpArtworkPicker" onDragOver={e=>e.preventDefault()} onDrop={e=>{
     e.preventDefault(); if (!busy) void select(e.dataTransfer.files[0]); }}>
     <label htmlFor="token-logo-file">Token image</label>
-    <input id="token-logo-file" type="file" accept="image/png,image/jpeg,image/webp" disabled={busy}
+    <input id="token-logo-file" type="file" accept={photoAccept} disabled={busy || checking}
       onChange={e=>{ const selected=e.currentTarget.files?.[0]; e.currentTarget.value=""; void select(selected); }} />
-    <small>Choose or drop a still PNG, JPEG or WebP, up to 2 MiB.</small>
+    <small>Choose or drop a photo up to 24 MiB. JPEG, PNG, WebP and supported HEIC photos are resized automatically.</small>
     {(preview || savedCID) && <img className="lpArtworkPreview" alt="Token artwork preview" src={preview || assetPath(savedCID!,"logo.webp")} />}
     {file && <div className="lpDraftActions"><button className="lpButton lpSecondary" type="button" disabled={busy || checking} onClick={()=>void save()}>Save artwork</button>
       <button type="button" disabled={busy || checking} onClick={()=>{ version.current++; setFile(undefined); setStatus(""); void pendingFile("delete").catch(()=>{}); }}>Discard selection</button></div>}
     {file && !account.wallet && account.wallets.map(w=><button type="button" key={w.id} disabled={account.busy} onClick={()=>void account.connect(w)}>Connect {w.name}</button>)}
     {savedCID && !file && <button type="button" onClick={()=>{ onSave({projectURI:"",artworkURL:""}); setStatus("Image removed from this draft."); }}>Remove draft image</button>}
-    {busy && <progress aria-label="Saving artwork" />}
+    {(checking || busy) && <progress aria-label={busy ? "Saving artwork" : "Preparing artwork"} />}
     <small role="status" aria-live="polite">{status}</small>
   </div>;
 }

@@ -20,6 +20,30 @@ permissions:
   contents: read
 
 jobs:
+  safari-photo-intake:
+    runs-on: macos-15
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+      - uses: pnpm/action-setup@a15d269cd4658e1107c09f1fabf4cbd7bd1f308a
+        with:
+          version: 10.12.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 22
+      - run: pnpm install --frozen-lockfile --filter @rmt/launch-website...
+      - name: Check native Safari photo decoding, orientation and final size
+        run: |
+          sudo safaridriver --enable
+          safaridriver -p 4444 &
+          driver_pid=$!
+          trap 'kill "$driver_pid" || true' EXIT
+          curl --retry 10 --retry-connrefused --retry-delay 1 -fsS http://127.0.0.1:4444/status
+          node apps/launch-website/scripts/photo-safari.mjs
+
   server-and-postgres:
     runs-on: ubuntu-24.04
     timeout-minutes: 20

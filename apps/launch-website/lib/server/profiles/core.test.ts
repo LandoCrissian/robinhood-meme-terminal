@@ -7,6 +7,7 @@ import { profileEdit, profileUsername, profileXHandle, profileShareIntent } from
 import { rmtCreationOwner } from "../../owner-creation";
 import { isProfileApiRoute, profileConfig, requireProfileRequest } from "./config";
 import { sanitizeAvatar } from "./avatar";
+import { photoMime } from "../../prepare-upload-image";
 
 const local = { RMT_PROFILES_MODE: "local-firebase-emulators-v1", RMT_PROFILES_ORIGIN: "http://127.0.0.1:4319", GCLOUD_PROJECT: "demo-rmt-launch-profiles",
   FIREBASE_AUTH_EMULATOR_HOST: "127.0.0.1:9099", FIRESTORE_EMULATOR_HOST: "127.0.0.1:8080" };
@@ -104,4 +105,20 @@ test("avatar decoding strips metadata, bounds pixels/storage and rejects SVG or 
   await assert.rejects(sanitizeAvatar(Buffer.from('<svg xmlns="http://www.w3.org/2000/svg"/>'), "image/png"));
   await assert.rejects(sanitizeAvatar(png, "image/jpeg"));
   await assert.rejects(sanitizeAvatar(new Uint8Array(2 * 1024 * 1024 + 1), "image/png"));
+});
+
+test("photo intake rejects moving images, corrupt files, MIME mismatches and excessive pixel dimensions before decoding", async () => {
+  const animated = await sharp(Buffer.from([0,255,0,255,0,0]), {
+    raw:{width:1,height:2,channels:3,pageHeight:1},
+  }).webp({delay:[200,200],loop:0}).toBuffer();
+  assert.equal((await sharp(animated).metadata()).pages,2);
+  assert.throws(() => photoMime(animated,"image/webp"), /still/);
+  await assert.rejects(sanitizeAvatar(animated,"image/webp"), /safely decoded/);
+  const png = await sharp({create:{width:8,height:8,channels:4,background:"#567"}}).png().toBuffer();
+  assert.equal(photoMime(png,""),"image/png");
+  assert.throws(() => photoMime(png,"image/jpeg"), /does not match/);
+  assert.throws(() => photoMime(png.subarray(0,33),"image/png"), /Incomplete/);
+  const large = Buffer.from(png); large.writeUInt32BE(10001,16); large.writeUInt32BE(10001,20);
+  assert.throws(() => photoMime(large,"image/png"), /50 megapixels/);
+  assert.throws(() => photoMime(Buffer.from("<svg/>"),""), /still/);
 });
