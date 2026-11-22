@@ -1,24 +1,24 @@
 {
   "release": {
-    "at": "2026-11-22T06:16:00.369Z",
-    "source": "9ee17521bbae85b36d8aab9eeab02e5cc5e5bc18",
-    "bundleSha256": "1e4e21547ddb21ba6f9ddbd2a2af3922bc9d4c24a5454c476784d5d5922d3cba",
-    "serverSha256": "111d3a356f9ca7486e5654d41110eb16312b1065df28b9a443c7c94158da6fc3",
-    "deployId": "6b028887d0ada053b279428b",
-    "url": "https://6b028887d0ada053b279428b--eclectic-valkyrie-16cb92.netlify.app",
+    "at": "2026-11-22T06:38:53.251Z",
+    "source": "2641f11b4718250038aab3e93870d3151ae1054c",
+    "bundleSha256": "288b4605a6d7a688dccf3049038ac15d31da33ea0768c8ffc6ceef9341837fd1",
+    "serverSha256": "972613a9f2fed1580fed8e0fc743489972d09caf2e6a7e871a328efa2ac455fd",
+    "deployId": "6b028dd2f0cdc1d43ab9ac68",
+    "url": "https://6b028dd2f0cdc1d43ab9ac68--eclectic-valkyrie-16cb92.netlify.app",
     "productionDeploy": "6b027ac01b4c2506e2a6222a",
     "context": "deploy-preview"
   },
   "linuxBuild": {
-    "sourceCommit": "9ee17521bbae85b36d8aab9eeab02e5cc5e5bc18",
-    "bundleSha256": "1e4e21547ddb21ba6f9ddbd2a2af3922bc9d4c24a5454c476784d5d5922d3cba",
-    "bytes": 36577616,
-    "functionArchiveSha256": "111d3a356f9ca7486e5654d41110eb16312b1065df28b9a443c7c94158da6fc3",
+    "sourceCommit": "2641f11b4718250038aab3e93870d3151ae1054c",
+    "bundleSha256": "288b4605a6d7a688dccf3049038ac15d31da33ea0768c8ffc6ceef9341837fd1",
+    "bytes": 36575655,
+    "functionArchiveSha256": "972613a9f2fed1580fed8e0fc743489972d09caf2e6a7e871a328efa2ac455fd",
     "files": 281,
     "deployed": false,
-    "sourceRun": "44992699312",
-    "artifactId": 14741684547,
-    "outerDigest": "sha256:e386e2dd16692215d91d6403ec83e41c78e19878faf571aa968e3a491b1fcc7a"
+    "sourceRun": "44994103692",
+    "artifactId": 14742812615,
+    "outerDigest": "sha256:f6114dc4d7d40275df3360d72b1b4827c1f34cbb2f57a731587f6396668e4f60"
   },
   "snapshotFiles": {
     "a32ec5bf3de141494b6d633be5da97f0c112e08e955f549eab7021a3fe27d4f7.webp": "a32ec5bf3de141494b6d633be5da97f0c112e08e955f549eab7021a3fe27d4f7",
@@ -26,28 +26,28 @@
     "people.json": "9c37e409e5b00df2d6927a5618b11379689a8b447556dd17d8c27cdbe337334c"
   },
   "hosted": {
-    "at": "2026-11-22T06:16:59.371Z",
-    "origin": "https://6b028887d0ada053b279428b--eclectic-valkyrie-16cb92.netlify.app",
+    "at": "2026-11-22T06:41:09.506Z",
+    "origin": "https://6b028dd2f0cdc1d43ab9ac68--eclectic-valkyrie-16cb92.netlify.app",
     "rows": [
       {
         "path": "/people",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "65b3eb6a6d3e3dfb33baf244c54351816a6c15617f39cc1cbff4568ddb4fb24c",
+        "sha256": "100073c3b6699a5cb8225e2d619d856bf8434308efa8c7750f8e10aa4491ead7",
         "length": 11041
       },
       {
         "path": "/leaderboard?after=alpha",
         "status": 308,
         "type": "text/html; charset=utf-8",
-        "sha256": "6a07ddd461e82a3e161caee6976fa34de7595e05e765552b6514185ba1fe22a1",
+        "sha256": "0a3a1ac6b15d365458c9e0590da81021ee459d732fcf0a01e4b8ea999d0d8cd6",
         "length": 6257
       },
       {
         "path": "/u/rmtlaunch",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "13d378aeae9e625d6edfd758a101da202b4630cd2618eb41f8f7e43d3f311f62",
+        "sha256": "eee07c00970e848a14baab932475cde8f474b098571485b1296d5808188ceebc",
         "length": 15800
       },
       {
@@ -68,63 +68,63 @@
         "path": "/",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "100774b5d9ef33b89b5890a184708013bf8553339c7fa8d3419c3730e09175bf",
+        "sha256": "47a32f395c0a65476f4df3a8c10db3e3fb7966cb2cb67228e13f78e583c6b45f",
         "length": 11179
       },
       {
         "path": "/create-token",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "643a3fcb4c67ba7b5fde6508cdaefad2a3c20b44cc5510af95688c9307d383ef",
+        "sha256": "584dd13b2810c42f44ebed135f90bd1e73e93a18a196badc17c251839372ab36",
         "length": 17086
       },
       {
         "path": "/my-launches",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "a88652f87e82df707fb60df1bbc148e894abf138b72b7c50986ab4453258cf58",
+        "sha256": "66433350a9c2da0e359bfd6504e1b674a729070c6b2a81f601a9e4b013a5632c",
         "length": 9146
       },
       {
         "path": "/my-launches/earnings",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "0042374a1893f41c32f2e8db8d75f69944aa2e73569dbef25097e3df9514ac15",
+        "sha256": "95bf696c69c2713c79681758e4e76e2a13dea950e97b55b3d35eea39999574b1",
         "length": 10171
       },
       {
         "path": "/wallet",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "9da8e1573e5048cf5fab8b68d639d2f355920b416966030fdda0c6d435c1d602",
+        "sha256": "4178b4ad08cc2e38983889a67652c0bb9e6e7f1c37934a0040a0b480ad918ce0",
         "length": 10269
       },
       {
         "path": "/account/profile",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "6ab75010a0a8c5487d074c10ee5a80728620d6d40b505946ce14f87a1b59b6ed",
+        "sha256": "b453d30bf831df617fb57178723295b35e09fb9e585a746fd90c890c57ae9749",
         "length": 9005
       },
       {
         "path": "/terms",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "105cc4f33ebce67959cf12e99b0c9e39b5420fe857c93ada0ef9e3655411ca41",
+        "sha256": "ce27e15c9ec997e5f89563a9d233bd59b18daed30c4b113a159ef984cd5c6dd7",
         "length": 10570
       },
       {
         "path": "/privacy",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "26ca221cc699625de37b7a4967c1a9413a98491f35128006d3f4eee5ca8ca929",
+        "sha256": "b7c47883fee35d95d52efcfc614f2997bc1b59edf43812eb0f4659067dc684ac",
         "length": 10912
       },
       {
         "path": "/risks",
         "status": 200,
         "type": "text/html; charset=utf-8",
-        "sha256": "0cbb4297d0c1d7d4cc053957837befce32a3f25b145b9c6c064c0641903ae228",
+        "sha256": "076e3eb8336f65042e349cea654901da8e3e3b4f33caaac5969b67e47c6f2119",
         "length": 10800
       },
       {

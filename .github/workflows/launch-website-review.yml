@@ -109,6 +109,8 @@ jobs:
             [[ "$attempt" != 30 ]] || { echo "Website preview did not become ready." >&2; exit 1; }
             sleep 1
           done
+          RMT_POLISH_URL=http://127.0.0.1:3205/ \
+            RMT_POLISH_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/polish" pnpm test:polish
           for engine in chromium webkit; do
             RMT_WEBSITE_BROWSER="$engine" \
               RMT_WEBSITE_PREVIEW_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine" \
@@ -125,8 +127,6 @@ jobs:
             node scripts/seaport-acquisition/public-check.mjs --url http://127.0.0.1:3205/ \
               --browser "$engine" --output "$RMT_WEBSITE_PREVIEW_ARTIFACTS/$engine/seaport-acquisition"
           done
-          RMT_POLISH_URL=http://127.0.0.1:3205/ \
-            RMT_POLISH_ARTIFACTS="$RMT_WEBSITE_PREVIEW_ARTIFACTS/polish" pnpm test:polish
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:

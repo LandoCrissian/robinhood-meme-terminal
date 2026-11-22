@@ -137,7 +137,7 @@ try {
       return route.continue();
     });
     const page = await context.newPage();
-    page.on("pageerror", error => errors.push(error.message));
+    page.on("pageerror", error => errors.push({ path: new URL(page.url()).pathname, stack: error.stack || error.message }));
     const main = page.getByRole("main");
     async function settled(heading) {
       await main.getByRole("heading", { name: heading, exact: true }).waitFor();

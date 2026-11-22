@@ -1,10 +1,8 @@
 # RMT Launch website review
 
-These captures document the first hosted product candidate. Linux WebKit subsequently found a 4 px overflow in the last navigation label at 320 px. The final review link, artifact identity and captures for the corrected navigation are maintained in [PR #688](https://github.com/LandoCrissian/robinhood-meme-terminal/pull/688).
+[Open the hosted preview](https://6b028dd2f0cdc1d43ab9ac68--eclectic-valkyrie-16cb92.netlify.app) · [People](https://6b028dd2f0cdc1d43ab9ac68--eclectic-valkyrie-16cb92.netlify.app/people) · [Official profile](https://6b028dd2f0cdc1d43ab9ac68--eclectic-valkyrie-16cb92.netlify.app/u/rmtlaunch) · [Crawler image](https://6b028dd2f0cdc1d43ab9ac68--eclectic-valkyrie-16cb92.netlify.app/share/u/rmtlaunch/b59a8e6b7c91f5608478bc33.png)
 
-[Open the hosted preview](https://6b028887d0ada053b279428b--eclectic-valkyrie-16cb92.netlify.app) · [People](https://6b028887d0ada053b279428b--eclectic-valkyrie-16cb92.netlify.app/people) · [Official profile](https://6b028887d0ada053b279428b--eclectic-valkyrie-16cb92.netlify.app/u/rmtlaunch) · [Crawler image](https://6b028887d0ada053b279428b--eclectic-valkyrie-16cb92.netlify.app/share/u/rmtlaunch/b59a8e6b7c91f5608478bc33.png)
-
-Production baseline `9fc88e35` · review website `9ee17521` · Netlify draft `6b028887d0ada053b279428b`. [Exact source, hashes and observations](review.json).
+Production baseline `9fc88e35` · review website `2641f11b` · Netlify draft `6b028dd2f0cdc1d43ab9ac68`. [Exact source, hashes and observations](review.json).
 
 | Before · official profile | After · official profile |
 |---|---|
