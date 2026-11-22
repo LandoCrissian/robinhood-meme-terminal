@@ -18,6 +18,8 @@ test("today's package, contract and security changes are bounded against the act
  // Pin reviewed edits to existing files. New classifiers and their tests are
  // covered independently by their positive proof and fresh rejection canary.
  const changes=new Map([
+  [".github/workflows/ci.yml","c50d78b83406c01746323a524ec1bdea38a516ed"],
+  ["apps/indexer/package.json","8e32f308bd907572ebb7694cf7830f0426cbc4e0"],
   ["apps/launch-website/package.json","5734abd6d548eaca1a07bdcc6a2b2cf637089e77"],
   ["pnpm-lock.yaml","de395bc9e33ce18f1ab8293c9b629980e360b7a2"],
   [".github/workflows/launch-website-review.yml","af59b869053f94fa4c5a6a18bcb066871cf68ba0"],
@@ -42,4 +44,7 @@ test("today's package, contract and security changes are bounded against the act
  const path="apps/launch-website/package.json", expected=JSON.parse(git("show",production+":"+path));
  expected.dependencies["lightweight-charts"]="5.3.0";
  assert.deepEqual(JSON.parse(readFileSync(join(root,path))),expected);
+ const workerPath="apps/indexer/package.json", worker=JSON.parse(git("show",production+":"+workerPath));
+ Object.assign(worker.scripts,{"test:backfill-http":"tsx src/backfill-http-smoke.ts","test:activity-backlog":"tsx src/activity-backlog-smoke.ts","test:provider-budget":"tsx --test src/feed-scheduler.test.ts"});
+ assert.deepEqual(JSON.parse(readFileSync(join(root,workerPath))),worker);
 });

@@ -148,7 +148,13 @@ export async function readProductionActivity(db: Database, scope: string, point:
 }
 
 /** Existing writer lease owns this separate backfill cursor; no new writer or runtime DDL. */
-export function createProductionActivityIndexer(config: CurveProductionConfig, db: Database, primary: PublicClient, archive: PublicClient | undefined) {
+export function createProductionActivityIndexer(config: CurveProductionConfig, db: Database, primary: PublicClient, archive: PublicClient | undefined,
+  options: { reader?: Database; write?: (task: () => Promise<void>) => Promise<void>; range?: number } = {}) {
+  const reader = options.reader ?? db;
+  const write = options.write ?? (async task => task());
+  const range = BigInt(options.range ?? 1000);
+  if (range < 1n || range > 2000n) throw new Error("Invalid activity range");
+  let indexedThrough: string | null = null;
   const scope = productionCurveScope(config);
   let readyPoint: BlockEvidence | null = null;
   let initialized = false;
@@ -161,22 +167,23 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
     readyPoint = null;
     if (!archive) throw new Error("Activity requires a distinct corroborating provider");
     assert.ok(catalogHeight >= BigInt(point.blockNumber), "Activity catalog is behind its history target");
-    if (!initialized) { await initializeProductionActivityStore(db, config); initialized = true; }
-    const saved = await db.query<{ block_number: string; block_hash: string }>(`SELECT block_number::text,block_hash
-      FROM rmt_curve_activity_checkpoints WHERE scope=$1 ORDER BY block_number DESC LIMIT 25`, [scope]);
+    if (!initialized) { await write(() => initializeProductionActivityStore(db, config)); initialized = true; }
+    const saved = await reader.query<{ block_number: string; block_hash: string }>(`SELECT block_number::text,block_hash
+      FROM rmt_curve_activity_checkpoints c WHERE scope=$1 ORDER BY c.block_number DESC LIMIT 25`, [scope]);
     if (saved.rows.length) {
       let keep: bigint | null = null;
       for (const row of saved.rows.slice(0, 24)) {
         if (BigInt(row.block_number) <= BigInt(point.blockNumber) && (await canonical(BigInt(row.block_number))).blockHash.toLowerCase() === row.block_hash) { keep = BigInt(row.block_number); break; }
       }
       if (keep === null && saved.rows.length > 24) throw new Error("Activity reorg exceeds bounded automatic recovery");
-      if (keep === null || keep !== BigInt(saved.rows[0]!.block_number)) await rollbackProductionActivity(db, scope, keep ?? config.binding.deploymentBlock - 1n);
+      if (keep === null || keep !== BigInt(saved.rows[0]!.block_number)) await write(() => rollbackProductionActivity(db, scope, keep ?? config.binding.deploymentBlock - 1n));
     }
-    const from = await productionActivityCursor(db, scope);
+    const from = await productionActivityCursor(reader, scope);
+    indexedThrough = from > config.binding.deploymentBlock ? String(from - 1n) : null;
     if (from <= BigInt(point.blockNumber)) {
-      const to = from + 1_999n < BigInt(point.blockNumber) ? from + 1_999n : BigInt(point.blockNumber);
+      const to = from + range - 1n < BigInt(point.blockNumber) ? from + range - 1n : BigInt(point.blockNumber);
       const end = await canonical(to);
-      const registrations = await db.query<{ payload: CurveLaunchRegistration }>(`SELECT payload FROM rmt_curve_production_launches
+      const registrations = await reader.query<{ payload: CurveLaunchRegistration }>(`SELECT payload FROM rmt_curve_production_launches
         WHERE scope=$1 AND block_number<=$2 ORDER BY token LIMIT $3`, [scope, to.toString(), registrationLimit + 1]);
       if (registrations.rows.length > registrationLimit) throw new Error("Activity registration set exceeds its bounded release profile");
       const launches = registrations.rows.map(row => row.payload);
@@ -293,12 +300,13 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
       }
       assert.deepEqual(await canonical(to), end, "Activity range changed during receipt verification");
       if (catalog) assert.deepEqual(await canonical(catalogHeight), catalog, "Activity emitter catalog changed during receipt verification");
-      await commitProductionActivity(db, config, from, end, rows);
+      await write(() => commitProductionActivity(db, config, from, end, rows));
+      indexedThrough = end.blockNumber;
     }
-    if (await productionActivityCursor(db, scope) === BigInt(point.blockNumber) + 1n) {
+    if (await productionActivityCursor(reader, scope) === BigInt(point.blockNumber) + 1n) {
       assert.deepEqual(await canonical(BigInt(point.blockNumber)), point, "Activity checkpoint changed"); readyPoint = point;
     }
   }
-  return { sync, invalidate: () => { readyPoint = null; }, ready: (point: BlockEvidence) => readyPoint !== null
+  return { sync, height: () => indexedThrough, invalidate: () => { readyPoint = null; }, ready: (point: BlockEvidence) => readyPoint !== null
     && readyPoint.blockNumber === point.blockNumber && readyPoint.blockHash === point.blockHash };
 }

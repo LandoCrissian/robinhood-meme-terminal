@@ -107,6 +107,14 @@ jobs:
       - run: pnpm --filter indexer build
       - run: pnpm --filter indexer test:resilience
       - run: pnpm --filter indexer exec tsx --test src/curve-fixture-project-treasury-call.test.ts
+      - run: pnpm --filter indexer test:provider-budget
+      - name: Check concurrent discovery under backfill and complete the measured backlog
+        run: |
+          for spec in backfill-http activity-backlog; do
+            db="rmt_curve_production_smoke_${spec//-/_}"
+            docker exec "${{ job.services.postgres.id }}" createdb -U postgres "$db"
+            DATABASE_URL="postgres://postgres:postgres@localhost:5432/$db" pnpm --filter indexer "test:$spec"
+          done
       - name: Verify recipient-aware earnings pagination, restart and canonical rollback
         run: |
           docker exec "${{ job.services.postgres.id }}" createdb -U postgres rmt_curve_production_smoke_task074
@@ -137,6 +145,17 @@ jobs:
           pnpm --filter indexer test:worker-http
         env:
           DATABASE_URL: postgres://postgres:postgres@localhost:5432/rmt_worker_smoke
+      - name: Package the tested Railway input
+        run: |
+          mkdir -p "$RUNNER_TEMP/indexer-release"
+          git archive --format=tar --output="$RUNNER_TEMP/indexer-release/worker.tar" HEAD
+          git rev-parse HEAD > "$RUNNER_TEMP/indexer-release/source.txt"
+          (cd "$RUNNER_TEMP/indexer-release" && sha256sum worker.tar > SHA256SUMS)
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: rmt-indexer-source-${{ github.event.pull_request.head.sha || github.sha }}
+          path: ${{ runner.temp }}/indexer-release/
+          if-no-files-found: error
 
   contracts:
     runs-on: ubuntu-latest

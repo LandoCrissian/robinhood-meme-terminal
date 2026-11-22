@@ -59,7 +59,10 @@ try {
   const advanced = await readProductionCurveLaunches(reopened, scope, next, { limit: 25 });
   assert.deepEqual(advanced[0]?.creation, item.creation);
   await assert.rejects(readProductionCurveLaunches(reopened, scope, item.checkpoint, { limit: 25 }), /checkpoint changed/);
+  assert.equal((await readProductionCurveLaunches(reopened, scope, item.checkpoint, { limit: 25 }, true))[0]?.token, item.token,
+    "An in-flight discovery request keeps its still-canonical bounded page across normal extension");
   await rollbackProductionCurve(reopened, scope, 99n);
+  await assert.rejects(readProductionCurveLaunches(reopened, scope, item.checkpoint, { limit: 25 }, true), /checkpoint changed/);
   const replacementPoint = { ...item.checkpoint, blockHash: "0x" + "b".repeat(64) as `0x${string}` };
   const canonical = { ...item, checkpoint: replacementPoint,
     creation: { ...item.creation, blockHash: replacementPoint.blockHash,

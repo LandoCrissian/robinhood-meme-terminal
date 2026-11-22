@@ -55,8 +55,8 @@ export async function initializeProductionCurveStore(writer: Database, config: C
 
 export async function productionCurveCheckpoints(db: Database, scope: string, limit = 25) {
   const result = await db.query<{ block_number: string; block_hash: BlockEvidence["blockHash"]; observed_at: Date }>(
-    `SELECT block_number::text, block_hash, observed_at FROM rmt_curve_production_checkpoints
-     WHERE scope = $1 ORDER BY block_number DESC LIMIT $2`, [scope, limit]);
+    `SELECT block_number::text, block_hash, observed_at FROM rmt_curve_production_checkpoints c
+     WHERE scope = $1 ORDER BY c.block_number DESC LIMIT $2`, [scope, limit]);
   return result.rows.map((row) => ({ blockNumber: row.block_number, blockHash: row.block_hash,
     timestamp: row.observed_at.toISOString() }));
 }
@@ -134,19 +134,19 @@ export async function rollbackProductionCurve(db: Database, scope: string, keepT
 }
 
 export async function readProductionCurveLaunches(db: Database, scope: string, checkpoint: BlockEvidence,
-  { token, after, limit }: { token?: string; after?: string; limit: number }) {
+  { token, after, limit }: { token?: string; after?: string; limit: number }, allowNewer = false) {
   const current = await db.query<{ matches: boolean }>(`SELECT
-    b.next_block - 1 = $2::bigint AND c.block_hash = $3 AS matches
+    (b.next_block - 1 = $2::bigint OR ($4 AND b.next_block > $2)) AND c.block_hash = $3 AS matches
     FROM rmt_curve_production_bindings b JOIN rmt_curve_production_checkpoints c
-      ON c.scope = b.scope AND c.block_number = b.next_block - 1 WHERE b.scope = $1`,
-    [scope, checkpoint.blockNumber, checkpoint.blockHash]);
+      ON c.scope = b.scope AND c.block_number = $2 WHERE b.scope = $1`,
+    [scope, checkpoint.blockNumber, checkpoint.blockHash, allowNewer]);
   if (current.rows[0]?.matches !== true) throw new Error("Production read checkpoint changed or was restored");
   const result = await db.query<{ payload: CurveLaunchRegistration }>(
     `SELECT l.payload FROM rmt_curve_production_launches l
      JOIN rmt_curve_production_bindings b ON b.scope = l.scope
-     JOIN rmt_curve_production_checkpoints c ON c.scope = b.scope AND c.block_number = b.next_block - 1
+     JOIN rmt_curve_production_checkpoints c ON c.scope = b.scope AND c.block_number = $2
      WHERE l.scope = $1 AND c.block_number = $2 AND c.block_hash = $3
-       AND ($4::text IS NULL OR l.token = $4) AND ($5::text IS NULL OR l.token > $5)
+       AND l.block_number <= $2 AND ($4::text IS NULL OR l.token = $4) AND ($5::text IS NULL OR l.token > $5)
      ORDER BY l.token LIMIT $6`, [scope, checkpoint.blockNumber, checkpoint.blockHash,
       token?.toLowerCase() ?? null, after?.toLowerCase() ?? null, limit]);
   return result.rows.map(({ payload }) => payload);

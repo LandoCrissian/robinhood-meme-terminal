@@ -1,0 +1,169 @@
+{
+  "failure": {
+    "candidate": {
+      "id": "6fdbafea-5ad8-4ea0-bcb8-9861d581e5a5",
+      "source": "bb0838e17a82e2f881418bb57c4d426d5d595c33",
+      "imageDigest": "sha256:710628c2f14cbca96f27231452a7834a9e8c9494778b9695a3666afd09762a20",
+      "finalStatus": "REMOVED"
+    },
+    "failedObservations": {
+      "simultaneous503Observations": [
+        "2026-11-22T14:26:21.614Z",
+        "2026-11-22T14:26:31.469Z",
+        "2026-11-22T14:26:41.443Z",
+        "2026-11-22T14:26:51.329Z"
+      ],
+      "upstreamErrors": [
+        {
+          "timestamp": "2026-11-22T14:26:08.271548967Z",
+          "event": "production_curve_sync_unavailable",
+          "toBlock": null,
+          "indexedThrough": null,
+          "errorType": "ResourceUnavailableRpcError",
+          "reason": null
+        }
+      ]
+    },
+    "restoredDeployment": "3b6e5b24-7589-4135-b023-a0aa87bea011",
+    "originalImage": "sha256:a0168b9f3a5b27bff8b25d772d703cac02617408afc0e41924b12264e8321d3f"
+  },
+  "localHTTP": {
+    "backlogBlocks": 3841625,
+    "servingReads": 17,
+    "registration": 3841734,
+    "resumedAfter": 1099,
+    "observedFaults": [
+      "429",
+      "503",
+      "timeout",
+      "resource"
+    ],
+    "singleWriter": true,
+    "anonymous": 401,
+    "marketDuringBackfill": 503
+  },
+  "completeBacklog": {
+    "blocks": "3841624",
+    "batchLimit": 1000,
+    "committedCheckpoints": 3842,
+    "providerLogRequests": [
+      3842,
+      3842
+    ],
+    "restarts": 1,
+    "events": 0,
+    "elapsedMs": 6015,
+    "clock": "unpaced deterministic RPC, actual PostgreSQL commits"
+  },
+  "liveRpc": {
+    "at": "2026-11-22T15:08:07.342Z",
+    "context": "local PostgreSQL and corrected component; real production discovery and two public RPCs; empty registration fixture anchored to hosted checkpoint",
+    "site": {
+      "blockNumber": "120711210",
+      "blockHash": "0xd62934ca21ef3c4949c98ee7120de2bf5a9be1b19e95d99af454ae29ae5880c9",
+      "timestamp": "2026-11-22T15:06:46.000Z",
+      "confirmations": 20,
+      "finality": "l2-confirmed",
+      "l1Finality": "unverified"
+    },
+    "railway": {
+      "blockNumber": "120711210",
+      "blockHash": "0xd62934ca21ef3c4949c98ee7120de2bf5a9be1b19e95d99af454ae29ae5880c9",
+      "timestamp": "2026-11-22T15:06:46.000Z",
+      "confirmations": 20,
+      "finality": "l2-confirmed",
+      "l1Finality": "unverified"
+    },
+    "urls": [
+      "https://rpc.mainnet.chain.robinhood.com",
+      "https://robinhood.api.pocket.network"
+    ],
+    "observations": [
+      {
+        "registration": {
+          "blockNumber": "120711503",
+          "blockHash": "0x8ee64ffac86e7bdd846ffd9b63eab3e40daa339ffac5a10ea3ce6be9b8c2beb8",
+          "timestamp": "2026-11-22T15:07:22.000Z"
+        },
+        "activity": {
+          "blockNumber": "116836101",
+          "blockHash": "0x76802fef0f7e3321e6d30115c95011daae61a7d6c24dbabc0d7c98c459ee88b6",
+          "timestamp": "2026-11-17T19:50:08.000Z"
+        },
+        "status": "backfilling",
+        "lag": "3875402"
+      },
+      {
+        "registration": {
+          "blockNumber": "120711737",
+          "blockHash": "0x5f0a25104debb4edf58712f26d1ed98de59f0d22329ff1fe6b71432368233b77",
+          "timestamp": "2026-11-22T15:07:52.000Z"
+        },
+        "activity": {
+          "blockNumber": "116837101",
+          "blockHash": "0x5bef1cad0203cb2ffb96d70335ea381c205bb9fe82af944e848264439ab6620a",
+          "timestamp": "2026-11-17T19:51:52.000Z"
+        },
+        "status": "backfilling",
+        "lag": "3874636"
+      },
+      {
+        "registration": {
+          "blockNumber": "120711785",
+          "blockHash": "0x1ecfed491274dfd7d94ff21ad6a9d413655148dda955921706473e26649c9293",
+          "timestamp": "2026-11-22T15:07:57.000Z"
+        },
+        "activity": {
+          "blockNumber": "116838101",
+          "blockHash": "0x1546146f79bb81aa3249d860f40d0c258b6d3bf07c9754a1d229cc3dd047c5ff",
+          "timestamp": "2026-11-17T19:53:37.000Z"
+        },
+        "status": "backfilling",
+        "lag": "3873684"
+      }
+    ],
+    "concurrentReads": 12,
+    "budgets": [
+      {
+        "attempts": 74,
+        "limited": 0,
+        "retries": 0,
+        "timeouts": 0,
+        "errors": 9
+      },
+      {
+        "attempts": 49,
+        "limited": 0,
+        "retries": 0,
+        "timeouts": 0,
+        "errors": 0
+      }
+    ]
+  },
+  "oldWorkerReplay": {
+    "isolatedOriginal": "bb0838e1",
+    "injected": "429 factory eth_getLogs",
+    "statuses": [
+      [
+        503,
+        503,
+        503
+      ],
+      [
+        503,
+        503,
+        503
+      ],
+      [
+        503,
+        503,
+        503
+      ],
+      [
+        503,
+        503,
+        503
+      ]
+    ]
+  }
+}
