@@ -39,14 +39,18 @@ try {
     ["/still.heic","artwork",64,48],["/reported.png","avatar",512,512],["/phone.jpg","artwork",768,1024],
   ]) {
     const measured = await driver(session + "/execute/async",{args:[path,kind],script:`
-      const [path,kind,done] = arguments;
+      const [path,kind,done] = arguments, codecs=[];
+      const originalEncode = HTMLCanvasElement.prototype.toBlob;
+      HTMLCanvasElement.prototype.toBlob = function(callback,type,quality) {
+        originalEncode.call(this,b => {codecs.push([type,b?.type,b?.size]);callback(b);},type,quality);
+      };
       (async () => {
         const original = await (await fetch(path)).blob();
         const prepared = await photo.prepareUploadImage(new File([original],path,{type:original.type}),kind);
         const image = new Image(); image.src = URL.createObjectURL(prepared);
-        try { await image.decode(); return {sourceBytes:original.size,mime:prepared.type,bytes:prepared.size,width:image.naturalWidth,height:image.naturalHeight}; }
+        try { await image.decode(); return {sourceBytes:original.size,mime:prepared.type,bytes:prepared.size,width:image.naturalWidth,height:image.naturalHeight,codecs}; }
         finally { URL.revokeObjectURL(image.src); }
-      })().then(done,e=>done({error:e.message}));
+      })().then(done,e=>done({error:e.message,codecs})).finally(()=>{HTMLCanvasElement.prototype.toBlob = originalEncode;});
     `});
     assert.deepEqual([measured.width,measured.height],[width,height],JSON.stringify(measured));
     assert.ok(["image/webp","image/jpeg"].includes(measured.mime) && measured.bytes > 0 && measured.bytes <= 2*1024*1024);

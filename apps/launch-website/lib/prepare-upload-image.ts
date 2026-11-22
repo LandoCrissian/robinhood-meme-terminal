@@ -83,11 +83,20 @@ export async function prepareUploadImage(file: File, kind: "avatar" | "artwork")
     const encode = (type: string) => new Promise<Blob | null>(resolve => canvas.toBlob(resolve, type, 0.9));
     let blob = await encode("image/webp");
     // Safari's canvas may return PNG for WebP requests. Use bounded JPEG there.
-    if (blob?.type !== "image/webp" || blob.size > artworkLimit) {
+    if (blob?.type !== "image/webp" || !blob.size || blob.size > artworkLimit) {
       ctx.globalCompositeOperation = "destination-over";
       ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       blob = await encode("image/jpeg");
+      // Some WebKit builds return an empty Blob for a canvas codec. Try the
+      // native JPEG data-URL encoder on this already downsampled canvas.
+      if (!blob?.size) {
+        const prefix = "data:image/jpeg;base64,", data = canvas.toDataURL("image/jpeg", 0.9);
+        if (data.startsWith(prefix) && data.length <= prefix.length + 4 * Math.ceil(artworkLimit / 3)) {
+          const bytes = Uint8Array.from(atob(data.slice(prefix.length)), c => c.charCodeAt(0));
+          blob = new Blob([bytes], {type:"image/jpeg"});
+        }
+      }
     }
     if (!blob || !blob.size || blob.size > artworkLimit) throw new Error("The photo could not be optimized. Try choosing it again.");
     inspectArtwork(new Uint8Array(await blob.arrayBuffer()), blob.type);
