@@ -62,9 +62,9 @@ export function NewEngineLaunches({ directory: received, onRetry, creatorView }:
     <div className="lpCardGrid">{visible.map((launch) => {
       const { registration } = launch;
       const lifecycle = describeCurveLifecycle(launch);
-      return <article className="lpLaunchCard" key={`${registration.chainId}:${registration.factory}:${registration.token}`}>
-        <div className="lpTokenHeading"><TokenArtwork symbol={registration.symbol} projectURI={registration.projectURI} /><div><h3><Link href={`/launches/${registration.token}`} prefetch={false}>{registration.name}</Link></h3><span className="lpCardSymbol">${registration.symbol}</span></div></div>
-        <span className="lpPill lpLifecycle" data-stage={lifecycle.stage}>{lifecycle.label}</span>
+      return <Link className="lpLaunchCard lpTokenCard" href={`/launches/${registration.token}`} prefetch={false} aria-label={`View ${registration.name} ($${registration.symbol})`} key={`${registration.chainId}:${registration.factory}:${registration.token}`}>
+        <div className="lpTokenHeading"><TokenArtwork symbol={registration.symbol} projectURI={registration.projectURI} /><div><h3>{registration.name}</h3><span className="lpCardSymbol">${registration.symbol}</span></div></div>
+        <span className="lpPill lpLifecycle" data-stage={lifecycle.stage}>{lifecycle.stage === "created" ? "Created" : lifecycle.label}</span>
         {(lifecycle.stage === "active" || lifecycle.stage === "graduating" || lifecycle.stage === "graduated") && <dl className="lpCardMetrics">
           {(lifecycle.stage === "active" || lifecycle.stage === "graduating") && <>
             <div><dt>Observed backing</dt><dd>{units(lifecycle.observation.backingWei)} / {units(lifecycle.observation.targetBackingWei)} ETH</dd></div>
@@ -75,8 +75,8 @@ export function NewEngineLaunches({ directory: received, onRetry, creatorView }:
             <div><dt>Pool fee</dt><dd>{lifecycle.observation.market.poolKey.fee / 10_000}%</dd></div>
           </>}
         </dl>}
-        <div className="lpCardFooter"><time dateTime={registration.creation.timestamp} title={registration.creation.timestamp}>Created {creationDate.format(new Date(registration.creation.timestamp))} UTC</time><Link href={`/launches/${registration.token}`} prefetch={false}>View token →</Link></div>
-      </article>;
+        <div className="lpCardFooter"><time dateTime={registration.creation.timestamp} title={registration.creation.timestamp}>{creationDate.format(new Date(registration.creation.timestamp))}</time><span className="lpCardOpen">Open market <span aria-hidden="true">↗</span></span></div>
+      </Link>;
     })}</div>
   </section>;
 }

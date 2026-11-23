@@ -19,7 +19,7 @@ function readGit(commit, file) {
   if (!cache.has(ref)) cache.set(ref, execFileSync("git", ["show", ref], { cwd: root, maxBuffer: 32 * 1024 * 1024 }));
   return cache.get(ref);
 }
-const verify = additions => verifyMarketHistoryPublicData([...history, ...additions], { readGit });
+const verify = additions => verifyMarketHistoryPublicData([...history, ...evidence("token-trading-experience/css-scan-rows.json"), ...additions], { readGit });
 
 test("all 39 lines independently resolve to their fork-created addresses from canonical compiler inputs", () => {
   const dir = mkdtempSync(join(tmpdir(), "rmt-address-proof-"));
@@ -31,7 +31,7 @@ test("all 39 lines independently resolve to their fork-created addresses from ca
     const proof = JSON.parse(execFileSync(process.execPath, ["scripts/economics/verify-public-market-addresses.mjs", raw, classification], { cwd: root }));
     assert.deepEqual(Object.values(proof.reproducedPublicContractAddresses).sort((a,b) => a-b), [1, 38]);
     const result = verify(rows);
-    assert.equal(result.classified.length, 361);
+    assert.equal(result.classified.length, 365);
     assert.equal(result.rawScanPassed, false);
     assert.equal(result.status, "PASSED_EXACT_PUBLIC_DATA_ONLY");
   } finally { rmSync(dir, { recursive: true, force: true }); }

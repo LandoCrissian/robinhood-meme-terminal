@@ -23,7 +23,7 @@ const root = resolve(process.cwd(), "../.."), out = resolve(output);
 const origin = "https://www.rmtlaunch.fun";
 const stringify = (value: unknown) => JSON.stringify(value, (_, item) => typeof item === "bigint" ? item.toString() : item, 2) + "\n";
 const cssFiles = ["styles/styles.css", "styles/mobile-polish.css", "styles/desktop-polish.css", "styles/launch-theme.css", "styles/token-detail.css",
-  "launchpad.css", "profile-refinement.css", "creator-polish.css", "earnings.css"].map(file => "apps/launch-website/app/" + file);
+  "launchpad.css", "profile-refinement.css", "creator-polish.css", "earnings.css", "product.css", "market.css", "token-page.css"].map(file => "apps/launch-website/app/" + file);
 const sourceFiles = ["scripts/production-adapters/browser.ts", "scripts/production-adapters/browser-entry.tsx",
   "apps/launch-website/app/_components/production-lifecycle-wallet.tsx", "apps/launch-website/app/_components/earnings-profile-wallet.tsx",
   "apps/launch-website/app/_components/production-creation-wallet.tsx",
@@ -49,8 +49,8 @@ const evidence: any = { schemaVersion: 1, profile: "rmt-task092-production-adapt
 async function main() {
   await mkdir(out, { recursive: true }); assert.equal((await readdir(out)).length, 0, "Refusing to overwrite previous browser evidence");
   evidence.source = await sourceHashes();
-  const require = createRequire(join(root, "apps/launch-website/node_modules/tsx/package.json"));
-  const { build } = require("esbuild");
+  const appRequire = createRequire(join(root, "apps/launch-website/package.json"));
+  const { build } = createRequire(appRequire.resolve("tsx/package.json"))("esbuild");
   const bundled = await build({ absWorkingDir: root, entryPoints: ["scripts/production-adapters/browser-entry.tsx"], bundle: true, write: false,
     platform: "browser", format: "iife", jsx: "automatic", nodePaths: [join(root, "apps/launch-website/node_modules")],
     define: { "process.env.NODE_ENV": '"production"' }, banner: { js: 'var process={env:{NODE_ENV:"production"},platform:"browser",browser:true};' },
@@ -123,7 +123,7 @@ async function main() {
         if (url.pathname === "/__task092.js") return route.fulfill({ contentType: "text/javascript", body: script });
         if (url.pathname === "/__task092.css") return route.fulfill({ contentType: "text/css", body: css });
         if (url.pathname === "/favicon.ico") return route.fulfill({ status: 204 });
-        if (url.pathname === "/api/launchpad/config") return route.fulfill({ json: enabled ? { status: "production-financial", chainId: 4663, trading: "enabled", claims: "enabled",
+        if (url.pathname === "/api/launchpad/config") return route.fulfill({ json: enabled ? { status: "production-financial", readiness: "check-on-prepare", chainId: 4663, trading: "enabled", claims: "enabled",
           approvals: { trading: syntheticClaimApproval, claims: syntheticClaimApproval } } : { status: "production-read-only", chainId: 4663, trading: "disabled", claims: "disabled" } });
         if (req.method() === "POST" && ["/api/launchpad/production-earnings", "/api/launchpad/production-lifecycle"].includes(url.pathname)) {
           const body = req.postDataJSON(), request = new Request(req.url(), { method: "POST", headers: { "content-type": "application/json", host: "www.rmtlaunch.fun", origin }, body: req.postData()! });
@@ -142,10 +142,13 @@ async function main() {
         evidence.externalRequests.push(req.url()); return route.abort();
       });
       const button = (name: string) => page.getByRole("button", { name, exact: true });
+      const tradingPanel = page.getByRole("region", { name: "Trade EVID", exact: true });
+      const tradeButton = (name: string) => tradingPanel.getByRole("button", { name, exact: true });
+      const tradeAmount = tradingPanel.getByRole("textbox", { name: "You pay ETH", exact: true });
       try {
         await page.goto(origin + "/__task092");
         if (mode === "disabled") {
-          await button("Connect trading wallet").click(); await page.getByRole("alert").waitFor();
+          await tradeButton("Connect wallet").click(); await tradingPanel.getByRole("alert").waitFor();
           await button("Connect claim wallet").click(); await page.getByText("This financial capability is not activated", { exact: true }).last().waitFor();
           assert.equal(record.walletMethods.length, 0); record.checks.disabledWithoutWalletPrompt = true;
           const statuses = await page.evaluate(async () => Promise.all(["production-earnings", "production-lifecycle"].map(async path => (await fetch("/api/launchpad/" + path,
@@ -184,16 +187,32 @@ async function main() {
           record.checks.staleNonceReplicaRestored = true;
           record.checks.nativeCrossAccountStorageLock = true; record.consumedNonceFloors = floors; await second.close();
         } else if (mode === "trading") {
-          await button("Connect trading wallet").click(); await page.getByText(/Connected account/).waitFor();
-          await page.getByLabel(/^Trade amount/).fill("2"); await page.getByText(/^Estimated output .* at block /).waitFor(); await button("Review buy").click(); await button("Confirm buy").waitFor();
+          await tradeButton("Connect wallet").click(); await tradingPanel.getByTitle(trade.p.f.creator.toLowerCase(), { exact: true }).waitFor();
+          await tradingPanel.getByText(/^Balance: /).waitFor();
+          await tradeAmount.fill("2"); await tradingPanel.getByText(/^Estimated receive: /).waitFor(); await tradeButton("Review buy").click(); await tradeButton("Confirm buy").waitFor();
           assert.equal(record.sends.length, 0); assert.equal(tradeReview.quote.feeWei, "20000000000000000"); record.checks.twoEthGross = true;
-          await page.getByLabel(/^Trade amount/).fill("4"); await button("Confirm buy").waitFor({ state: "hidden" }); record.checks.editInvalidates = true;
-          await button("Review final buy and v4 graduation").click(); await button("Confirm final buy and v4 graduation").waitFor(); assert.equal(tradeReview.request.operation,"buy-graduate"); assert.ok(BigInt(tradeReview.quote.refundWei) > 10n ** 18n); record.checks.fourEthRefundTwoEthTarget = true;
-          decision = "reject"; await button("Confirm final buy and v4 graduation").click(); await page.getByRole("alert").waitFor(); assert.equal(record.sends.length, 1);
-          decision = "lose"; await button("Review final buy and v4 graduation").click(); await button("Confirm final buy and v4 graduation").click(); await page.getByText("Wallet hash missing · original payer and nonce retained", { exact: true }).waitFor();
+          await tradeAmount.fill("4"); await tradeButton("Confirm buy").waitFor({ state: "hidden" }); record.checks.editInvalidates = true;
+          await tradeButton("Review buy").click(); await tradeButton("Confirm final buy and v4 graduation").waitFor(); assert.equal(tradeReview.request.operation,"buy-graduate"); assert.ok(BigInt(tradeReview.quote.refundWei) > 10n ** 18n); record.checks.fourEthRefundTwoEthTarget = true;
+          decision = "reject"; await tradeButton("Confirm final buy and v4 graduation").click(); await tradingPanel.getByRole("alert").waitFor(); assert.equal(record.sends.length, 1);
+          decision = "lose"; await tradeButton("Review buy").click(); await tradeButton("Confirm final buy and v4 graduation").click();
+          await tradingPanel.getByText("Your original request is saved. Check its status before submitting another transaction.", { exact: true }).waitFor();
+          await page.waitForFunction(({ from, token, nonce }) => {
+            const raw = localStorage.getItem(`rmt:production:trade:v1:${from.toLowerCase()}:${token.toLowerCase()}`);
+            if (!raw) return false;
+            const saved = JSON.parse(raw);
+            return saved.request?.from === from && saved.request?.nonce === nonce && !saved.transactionHash;
+          }, { from: tradeReview.request.from, token: tradeReview.request.token, nonce: tradeReview.request.nonce });
           assert.equal(record.sends.length, 2); trade.knobs.missingIndex = false; trade.knobs.peerOffline = false;
-          await page.reload(); await button("Connect trading wallet").click(); await button("Check original transaction").waitFor();
-          await button("Check original transaction").click(); await page.getByText("Canonical L2 receipt and indexed activity verified. Ethereum L1 finality remains unverified.", { exact: true }).waitFor();
+          await page.reload(); await tradeButton("Connect wallet").click(); await tradeButton("Check transaction").waitFor();
+          await tradeButton("Check transaction").click(); await tradingPanel.getByText("Confirmed on Robinhood Chain and included in market activity.", { exact: true }).waitFor();
+          await page.waitForFunction(({ from, token, transactionHash }) => {
+            const raw = localStorage.getItem(`rmt:production:trade:v1:${from.toLowerCase()}:${token.toLowerCase()}`);
+            if (!raw) return false;
+            const saved = JSON.parse(raw);
+            return saved.transactionHash === transactionHash && saved.verification?.status === "confirmed" && saved.verification?.indexed === true;
+          }, { from: tradeReview.request.from, token: tradeReview.request.token, transactionHash: trade.p.f.txHash });
+          await tradingPanel.getByText("Recovery details", { exact: true }).click();
+          await tradingPanel.getByText("Ethereum L1 settlement has not been verified.", { exact: true }).waitFor();
           assert.equal(record.sends.length, 2); record.checks.explicitRejectThenLostHashRecoveryNoResend = true;
         } else {
           await button("Connect claim wallet").click(); await button("Review claim wallet profile").click();

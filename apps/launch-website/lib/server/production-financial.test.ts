@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import test from "node:test";
 import { curveProductionDeployment, curveProductionPins, curveProductionProfile } from "./curve-production";
-import { configuredProductionFinancial, parseProductionFinancialRelease } from "./production-financial";
+import { configuredProductionFinancial, configuredProductionFinancialPage, configuredProductionFinancialCapabilities,
+  parseProductionFinancialRelease, productionReleaseReadiness } from "./production-financial";
 
 const sha = (raw: string) => createHash("sha256").update(raw).digest("hex");
 const reference = "a".repeat(64);
@@ -50,4 +51,43 @@ test("origin, authority and scope gates cannot be inherited from creation or pre
   const raw = JSON.stringify({ ...accepted, scopes: ["trading"] });
   assert.equal(configuredProductionFinancial(headers(), "claims", { ...env, RMT_CURVE_PRODUCTION_FINANCIAL_RELEASE: raw,
     RMT_CURVE_PRODUCTION_FINANCIAL_RELEASE_SHA256: sha(raw) }), null);
+});
+
+test("approved page capability survives an RPC outage while executable readiness remains unavailable", async () => {
+  const h = headers(); h.delete("origin");
+  const capability = configuredProductionFinancialPage(h, "trading", env);
+  assert.ok(capability);
+  let reads = 0;
+  const unavailable = await productionReleaseReadiness(capability.release, {
+    verify: async () => { reads++; throw Error("RPC timeout"); },
+    discovery: async () => ({ status: "unavailable", launches: [] }),
+  });
+  assert.equal(reads, 1);
+  assert.equal(unavailable, "unavailable");
+  assert.deepEqual(configuredProductionFinancialPage(h, "trading", env), capability);
+  assert.equal(configuredProductionFinancialPage(h, "trading", { ...env, RMT_CURVE_PRODUCTION_TRADING: undefined }), null);
+  h.set("host", "preview.netlify.app");
+  assert.equal(configuredProductionFinancialPage(h, "trading", env), null);
+});
+
+test("capability checks are local release reads; unavailable providers never become readiness or authority", () => {
+  const originalFetch = globalThis.fetch;
+  let networkReads = 0;
+  globalThis.fetch = async () => { networkReads++; throw Error("Provider unavailable"); };
+  try {
+    const h = headers(); h.delete("origin");
+    const tradingOnly = { ...env, RMT_CURVE_PRODUCTION_CLAIMS: undefined };
+    const first = configuredProductionFinancialCapabilities(h, tradingOnly);
+    assert.ok(first);
+    assert.equal(first.readiness, "check-on-prepare");
+    assert.equal(first.trading, "enabled");
+    assert.equal(first.claims, "disabled");
+    assert.equal(first.approvals.claims, undefined);
+    assert.equal(first.approvals.trading, configuredProductionFinancial(h, "trading", tradingOnly, false)?.approvalBinding);
+    assert.deepEqual(configuredProductionFinancialCapabilities(h, tradingOnly), first);
+    assert.equal(configuredProductionFinancialCapabilities(h, { ...tradingOnly, RMT_CURVE_PRODUCTION_TRADING: undefined }), null);
+    h.set("x-forwarded-host", "untrusted.invalid");
+    assert.equal(configuredProductionFinancialCapabilities(h, tradingOnly), null);
+    assert.equal(networkReads, 0);
+  } finally { globalThis.fetch = originalFetch; }
 });

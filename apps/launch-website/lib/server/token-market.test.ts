@@ -100,10 +100,13 @@ test("website market GET authenticates privately, exposes only verified chart fi
     candles: snapshot.candles.map(candle => ({ ...candle, privateNote })),
     graduation: { ...snapshot.graduation, privateNote },
   };
+  let upstreamId: string | null = null;
   let upstream = () => Response.json(body);
   const fetcher = t.mock.method(globalThis, "fetch", async (input: URL, init: RequestInit) => {
     assert.equal(input.href, bindings.RMT_LAUNCH_HISTORY_INDEXER_URL + "curve-market/" + replay.token + "?interval=60");
     assert.equal(new Headers(init.headers).get("authorization"), "Bearer fixture-only");
+    upstreamId = new Headers(init.headers).get("x-rmt-market-request-id");
+    assert.match(upstreamId ?? "", /^[0-9a-f-]{36}$/);
     assert.equal(init.redirect, "error"); assert.equal(init.cache, "no-store");
     return upstream();
   });
@@ -115,6 +118,13 @@ test("website market GET authenticates privately, exposes only verified chart fi
   assert.equal(fetcher.mock.callCount(), 0);
   const response = await read("www.rmtlaunch.fun");
   assert.equal(response.status, 200); assert.match(response.headers.get("cache-control")!, /no-store/);
+  assert.equal(response.headers.get("x-rmt-market-request-id"), upstreamId);
+  upstream = () => new Response(null, {status:429});
+  const limited = await read("www.rmtlaunch.fun");
+  assert.equal(limited.status,503);
+  assert.equal(limited.headers.get("Retry-After"),"1");
+  assert.equal(limited.headers.get("x-rmt-market-request-id"),upstreamId);
+  assert.notEqual(upstreamId,response.headers.get("x-rmt-market-request-id"));
   const payload = await response.text(); assert.ok(!payload.includes(privateNote)); assert.ok(!payload.includes("fixture-only"));
   const page = JSON.parse(payload); assert.ok(validMarket(page, replay.token, 60)); assert.deepEqual(page.checkpoint, { ...snapshot.checkpoint, timestamp: body.checkpoint.timestamp });
   assert.deepEqual(page.candles, snapshot.candles);

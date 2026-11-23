@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { setTimeout as sleep } from "node:timers/promises";
 import { createServer } from "node:http";
 import { once } from "node:events";
-import { providerBudget, rpcFeed, resourceError, scheduledTransport } from "./feed-scheduler.js";
+import { marketReadSignal, providerBudget, rpcFeed, resourceError, scheduledTransport } from "./feed-scheduler.js";
 import { classifySyncFailure } from "./rpc-resilience.js";
 
 test("one request per provider, paced starts and a foreground turn ahead of queued activity", async () => {
@@ -106,4 +106,34 @@ test("a missing numbered header is retried on the same provider and stays unavai
     assert.deepEqual(requests, Array(4).fill(args.params));
     assert.equal(budget.stats.retries, 2);
   } finally { server.close(); }
+});
+
+test("rollout checkpoint: transient archive failure retries the same numbered read; unsupported and pruned state stay distinct", async () => {
+  const budget = providerBudget("archive", 1, () => 0);
+  const number = "0x" + (121562786).toString(16);
+  const params = [number, false];
+  const resource = Object.assign(new Error("resource unavailable"), {code: -32002});
+  let reads = 0;
+  await assert.rejects(budget.request("eth_getBlockByNumber", async () => { reads++; throw resource; }, params), e => e === resource);
+  assert.equal(reads, 2);
+  assert.equal(resourceError(resource).pruned, false);
+  assert.equal(resourceError({code:-32000,message:"missing trie node"}).pruned, true);
+  assert.equal(resourceError({status:503,cause:{code:-32000,message:"missing trie node"}}).transient, false);
+  assert.equal(resourceError({code:-32601}).transient,false);
+  assert.equal(resourceError(new Error("unknown assertion")).transient,false);
+});
+
+test("expired market waiter leaves the provider slot available for discovery", async () => {
+  const budget=providerBudget("archive",1);
+  let release!:()=>void;
+  const occupied=budget.request("eth_call",()=>new Promise<void>(r=>{release=r;}));
+  while(!release) await sleep(1);
+  let sent=false;
+  const deadline = new AbortController();
+  setTimeout(() => deadline.abort(new DOMException("Market deadline", "TimeoutError")),20);
+  await assert.rejects(marketReadSignal.run(deadline.signal,()=>budget.request("eth_call",async()=>{sent=true;})),
+    {name:"TimeoutError"});
+  release(); await occupied;
+  assert.equal(await budget.request("eth_blockNumber",async()=>42),42);
+  assert.equal(sent,false);
 });

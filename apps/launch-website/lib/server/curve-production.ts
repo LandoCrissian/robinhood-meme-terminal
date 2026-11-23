@@ -117,33 +117,66 @@ export async function verifiedReleaseBatch(response: Response, ids: number[]) {
       || new Set(replies.map(row => row.id)).size !== ids.length) throw new Error("Incomplete or conflicting RPC batch");
   return Response.json(replies);
 }
-const readRpc = (url: string, paceReleaseReads = false) => createPublicClient({ transport: http(url, {
+type ReadSchedule = boolean | "financial";
+// Bound each provider's in-flight financial batches independently, including across concurrent requests.
+const financialCooldown = new Map<string, number>();
+const financialInFlight = new Map<string, number>();
+async function financialBatch(url: string, send: () => Promise<Response>, deadline: number, signal?: AbortSignal | null) {
+  for (;;) {
+    const now = performance.now(), cooldown = Math.max(0, (financialCooldown.get(url) ?? 0) - now);
+    if (now + cooldown >= deadline) throw Error("Financial reader is busy");
+    if (!cooldown && (financialInFlight.get(url) ?? 0) < 2) break;
+    await wait(Math.max(40, cooldown), undefined, { signal: signal ?? undefined });
+  }
+  financialInFlight.set(url, (financialInFlight.get(url) ?? 0) + 1);
+  try { return await send(); }
+  finally { financialInFlight.set(url, financialInFlight.get(url)! - 1); }
+}
+const readRpc = (url: string, paceReleaseReads: ReadSchedule = false) => createPublicClient({ transport: http(url, {
   // Each provider answers its own small JSON-RPC batches. All original
   // per-method checks, canonical block pins and cross-provider comparisons apply.
   batch: paceReleaseReads ? { batchSize: 4, wait: 12 } : false,
   timeout: paceReleaseReads ? 24_000 : 4_000, retryCount: 0, fetchOptions: { cache: "no-store", redirect: "error" },
   fetchFn: paceReleaseReads ? async (input, init) => {
-    const batch = JSON.parse(String(init?.body)) as { id: number }[];
+    const batch = JSON.parse(String(init?.body)) as { id: number; method: string; params?: unknown[] }[];
     const deadline = performance.now() + 19_000;
     for (let attempt = 0; ; attempt++) {
       const now = performance.now(), start = Math.max(now, releaseReadSlots.get(url) ?? 0);
       if (start > deadline) throw new Error("Release reader is busy");
       // Count RPC methods, even when they share a single HTTP request.
-      releaseReadSlots.set(url, start + 350 * batch.length);
+      releaseReadSlots.set(url, start + (paceReleaseReads === "financial" ? 75 : 350) * batch.length);
       await wait(Math.ceil(start - now), undefined, { signal: init?.signal ?? undefined });
-      const timeout = AbortSignal.timeout(4_000);
-      const response = await fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
-      if (response.status !== 429 || attempt > 0) return verifiedReleaseBatch(response, batch.map(request => request.id));
+      const send = () => {
+        const timeout = AbortSignal.timeout(4_000);
+        return fetch(input, { ...init, signal: init?.signal ? AbortSignal.any([init.signal, timeout]) : timeout });
+      };
+      const response = paceReleaseReads === "financial" ? await financialBatch(url, send, deadline, init?.signal) : await send();
+      const validated = await verifiedReleaseBatch(response, batch.map(request => request.id));
+      let retry = response.status === 429 || (paceReleaseReads === "financial" && response.status === 503);
+      if (paceReleaseReads === "financial" && validated.ok && attempt === 0) {
+        const rows = await validated.clone().json() as { id: number; result?: unknown; error?: { code?: number } }[];
+        retry = rows.some(row => {
+          const request = batch.find(item => item.id === row.id)!;
+          return row.error?.code === -32005 || row.error?.code === -32002
+            || (row.result === null && (request.method === "eth_getTransactionReceipt"
+              || (request.method === "eth_getBlockByNumber" && /^0x[0-9a-f]+$/i.test(String(request.params?.[0])))));
+        });
+      }
+      if (!retry) return validated;
       const hint = response.headers.get("Retry-After");
       const delayMs = hint === null ? 2000 : /^\d+$/.test(hint) ? Number(hint) * 1000 : Date.parse(hint) - Date.now();
-      if (!Number.isFinite(delayMs) || delayMs > 19_000) return response;
-      await response.body?.cancel();
+      if (paceReleaseReads === "financial") {
+        const cooldown = Number.isFinite(delayMs) ? Math.max(1000, delayMs) : 19_000;
+        financialCooldown.set(url, Math.max(financialCooldown.get(url) ?? 0, performance.now() + cooldown));
+      }
+      if (attempt > 0 || !Number.isFinite(delayMs) || delayMs > 19_000) return validated;
+      await validated.body?.cancel();
       releaseReadSlots.set(url, Math.max(releaseReadSlots.get(url) ?? 0, performance.now() + Math.max(1000, delayMs)));
     }
   } : undefined,
 }) });
 // Exact, existing public providers. No browser-supplied RPC URL or public Anvil.
-export const productionReaders = (paceReleaseReads = false) => [
+export const productionReaders = (paceReleaseReads: ReadSchedule = false) => [
   readRpc("https://rpc.mainnet.chain.robinhood.com", paceReleaseReads), readRpc("https://robinhood.api.pocket.network", paceReleaseReads),
 ];
 type Reader = ReturnType<typeof readRpc>;
@@ -193,14 +226,33 @@ export function validateCurveProductionObservation(release: CurveProductionRelea
   }
 }
 
+// Only these two release receipts are reusable. Their canonical block hashes,
+// publication event, current bytecode and mutable bindings are checked on every review.
+type Receipt = Awaited<ReturnType<Reader["getTransactionReceipt"]>>;
+const releaseReceipts = new Map<string, Receipt>();
+async function pinnedReceipt(rpc: Reader, tx: Hex, blockHash: Hex, height: bigint) {
+  const endpoint = rpc.transport?.url;
+  const pinned = endpoint === "https://rpc.mainnet.chain.robinhood.com" || endpoint === "https://robinhood.api.pocket.network";
+  const key = [endpoint, tx, blockHash, height].join("/");
+  const cached = pinned && releaseReceipts.get(key);
+  if (cached) return cached;
+  const receipt = await rpc.getTransactionReceipt({ hash: tx });
+  if (pinned && receipt.status === "success" && receipt.blockHash === blockHash && receipt.blockNumber === height
+      && receipt.transactionHash === tx && receipt.logs.length <= 80) {
+    if (releaseReceipts.size >= 8) releaseReceipts.delete(releaseReceipts.keys().next().value!);
+    releaseReceipts.set(key, receipt);
+  }
+  return receipt;
+}
+
 async function observe(release: CurveProductionRelease, rpc: Reader, blockNumber: bigint): Promise<ProductionObservation> {
   const read = (contract: keyof typeof curveProductionPins, functionName: (typeof views)[number]["name"]) => rpc.readContract({
     address: curveProductionPins[contract][0], abi: views, functionName, blockNumber,
   });
   const [chainId, block, deployed, deploymentReceipt, publicationBlock, receipt, codes, bindings, suspended, version, approved, fee, supply, engineVersion, engineChain, poolFee, tickSpacing] = await Promise.all([
     rpc.getChainId(), rpc.getBlock({ blockNumber }), rpc.getBlock({ blockNumber: curveProductionDeployment.blockNumber }),
-    rpc.getTransactionReceipt({ hash: curveProductionDeployment.transactionHash }),
-    rpc.getBlock({ blockNumber: BigInt(release.publication.blockNumber) }), rpc.getTransactionReceipt({ hash: release.publication.transactionHash }),
+    pinnedReceipt(rpc, curveProductionDeployment.transactionHash, curveProductionDeployment.blockHash, curveProductionDeployment.blockNumber),
+    rpc.getBlock({ blockNumber: BigInt(release.publication.blockNumber) }), pinnedReceipt(rpc, release.publication.transactionHash, release.publication.blockHash, BigInt(release.publication.blockNumber)),
     Promise.all(Object.values(curveProductionPins).map(([address]) => rpc.getCode({ address, blockNumber }))),
     Promise.all(requiredBindings.map(([contract, fn]) => read(contract, fn))),
     read("directory", "suspended"), read("directory", "latestVersion"),

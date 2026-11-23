@@ -8,7 +8,7 @@ const units = (value: string) => {
   return BigInt(padded.slice(0, -18)).toLocaleString("en-US") + (fraction ? "." + fraction : "");
 };
 
-/** Detailed evidence belongs on the project page, independent of discovery-card presentation. */
+/** Full records remain available inside the token page's Contract details disclosure. */
 export function LaunchProvenance({ launch }: { launch: CurveLaunch }) {
   if (!hasCurveRegistration(launch.registration)) return <p role="status">Launch evidence is unavailable.</p>;
   const { registration: record } = launch;
@@ -55,6 +55,6 @@ export function LaunchProvenance({ launch }: { launch: CurveLaunch }) {
       <dt>Observed position owner</dt><dd><code className="lpAddress">{lifecycle.observation.market.owner}</code></dd>
       <dt>Observed position liquidity</dt><dd>{lifecycle.observation.market.liquidity}</dd>
     </dl>}
-    <p>Evidence is scoped to these observations. Starting deposits are not current reserves. Creation, trading and claims require their separate release approvals.</p>
+    <p>These records describe the displayed blocks. Ethereum L1 settlement has not been verified. Initial liquidity deposits are not current pool reserves.</p>
   </section>;
 }

@@ -21,9 +21,28 @@ export function verifyMarketHistoryPublicData(findings, options = {}) {
   assert.equal(sha(bytes), "50e77b110f4cce64d654375e49e435743489b194473f0d5f75dbf9f8b60d9914");
   const expected = new Map(JSON.parse(bytes).map(row => [row.Fingerprint, row]));
   assert.equal(expected.size, 39);
-  const result = verifyTask092HistoryPublicData(findings.filter(row => !expected.has(row?.Fingerprint)), options);
+  // Four historical scanner hits are digests of published stylesheets in the two
+  // browser reports. Bind the entire redacted finding and reproduce the digest
+  // from the CSS blob in that same immutable Git tree.
+  const cssRows = JSON.parse(readFileSync(new URL("../../docs/evidence/token-trading-experience/css-scan-rows.json",import.meta.url),"utf8"));
+  assert.equal(sha(JSON.stringify(cssRows)), "96ed71f42dcff0af9005070db090b1947bb2b18fcc279d9672ca076b931805aa");
+  const css = new Map(cssRows.map(row => [row.Fingerprint,row]));
+  const result = verifyTask092HistoryPublicData(findings.filter(row => !expected.has(row?.Fingerprint) && !css.has(row?.Fingerprint)), options);
   const files = new Map(), seen = new Set();
   for (const row of findings) {
+    const cssRow = css.get(row?.Fingerprint);
+    if (cssRow) {
+      if (seen.has(row.Fingerprint) || !Object.keys(cssRow).every(key => cssRow[key] === row[key])) {
+        result.unclassified.push({fingerprint:row.Fingerprint,ruleId:row.RuleID});continue;
+      }
+      const blob = file => execFileSync("git", ["show", row.Commit + ":" + file], {cwd:root,windowsHide:true});
+      const line = blob(row.File).toString("utf8").split("\n")[row.StartLine-1];
+      const match = /^\s*"(apps\/launch-website\/app\/(?:styles\/token-detail|token-page)\.css)": "([a-f0-9]{64})",?$/u.exec(line);
+      assert.ok(match && sha(blob(match[1])) === match[2]);
+      seen.add(row.Fingerprint);
+      result.classified.push({fingerprint:row.Fingerprint,kind:"PUBLIC_STYLESHEET_SHA256",commit:row.Commit,lineSha256:sha(line),publicValueSha256:sha(match[2])});
+      continue;
+    }
     const original = expected.get(row?.Fingerprint);
     if (!original) continue;
     if (seen.has(row.Fingerprint) || !Object.keys(original).every(key => original[key] === row[key])) {
@@ -44,7 +63,7 @@ export function verifyMarketHistoryPublicData(findings, options = {}) {
     result.classified.push({ fingerprint: row.Fingerprint, kind: "FORK_CREATE2_CONTRACT_ADDRESS",
       commit: row.Commit, lineSha256: sha(line), publicValueSha256: sha(match[1]) });
   }
-  result.missing.push(...[...expected.keys()].filter(key => !seen.has(key)));
+  result.missing.push(...[...expected.keys(),...css.keys()].filter(key => !seen.has(key)));
   return { ...result, rawFindingCount: findings.length, rawScanPassed: findings.length === 0,
     status: result.unclassified.length || result.missing.length ? "BLOCKED_UNCLASSIFIED_OR_MISSING_FINDING" : "PASSED_EXACT_PUBLIC_DATA_ONLY" };
 }

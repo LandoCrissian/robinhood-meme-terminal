@@ -114,7 +114,7 @@ try {
   try { await assert.rejects(createProductionActivityIndexer(config, other, ...peers).sync(point(last)), /database_writer_conflict/); }
   finally { await other.end(); }
   await assert.rejects(commitProductionActivity(db, config, birth, point(last), []), /exceeds its bound/);
-  await assert.rejects(market(), /checkpoints/);
+  await assert.rejects(market(), {message: "checkpoint_binding"});
   assert.equal(scans.length, 0);
   const race = createProductionActivityIndexer(config, db, ...peers, { write: async task => {
     if (nonceReads.length) await db.query("UPDATE rmt_curve_production_checkpoints SET block_hash=$2 WHERE scope=$1 AND block_number=$3",
@@ -142,7 +142,7 @@ try {
   assert.equal((await db.query(auditSql)).rows[0].conflicts_with_registration, true);
   await assert.rejects(market(), /awaits replay/); await assert.rejects(activity(), /awaits replay/);
   await worker.sync(point(last));
-  assert.equal(await cursor(), creation); assert.ok(!worker.ready(point(last))); await assert.rejects(market(), /checkpoints/);
+  assert.equal(await cursor(), creation); assert.ok(!worker.ready(point(last))); await assert.rejects(market(), {message: "checkpoint_binding"});
   assert.deepEqual(nonceReads.slice(-2), [creation - 1n, creation - 1n]); assert.equal(scans.length, 0);
   fault = "absent-logs"; await assert.rejects(worker.sync(point(last)), /omitted a verified factory creation/);
   assert.equal(await cursor(), creation); fault = "none";

@@ -50,19 +50,19 @@ for (const [engine, options] of [[chromium, { viewport:{width:390,height:844}, i
     // Freeze the browser to the recorded time, then advance its real polling/expiry timers.
     await page.clock.install({ time: new Date(buy.checkpoint.timestamp) });
     await page.goto(origin);
-    await status.getByText("Live · confirmed L2").waitFor();
+    await status.getByText("Updated", { exact: true }).waitFor();
     const peak = Number(await progress.getAttribute("value"));
     frame = null;
     await page.clock.fastForward(16000);
     await status.getByText("Last verified · stale").waitFor();
     assert.equal(Number(await progress.getAttribute("value")), peak);
     await page.reload();
-    await status.getByText("Feed unavailable").waitFor();
+    await status.getByText("Reconnecting", { exact: true }).waitFor();
     assert.equal(await progress.count(), 0);
     frame = sell;
     await page.clock.setSystemTime(new Date(sell.checkpoint.timestamp));
     await page.clock.fastForward(16000);
-    await status.getByText("Live · confirmed L2").waitFor();
+    await status.getByText("Updated", { exact: true }).waitFor();
     assert.ok(Number(await progress.getAttribute("value")) < peak);
     await page.clock.fastForward(125000);
     await status.getByText("Last verified · stale").waitFor();
@@ -75,7 +75,7 @@ for (const [engine, options] of [[chromium, { viewport:{width:390,height:844}, i
     await page.getByText("Token not found",{exact:true}).waitFor(); assert.equal(await progress.count(),0);
     assert.equal(await page.locator("canvas").count(),0);
     absent = {status:"not_found"};
-    await page.clock.fastForward(16000); await status.getByText("Feed unavailable").waitFor();
+    await page.clock.fastForward(16000); await status.getByText("Reconnecting", { exact: true }).waitFor();
     absent=null; frame=replay.frames[0];
     await page.clock.setSystemTime(new Date(frame.checkpoint.timestamp)); await page.clock.fastForward(16000);
     await page.getByText("No trades in this window",{exact:true}).waitFor();

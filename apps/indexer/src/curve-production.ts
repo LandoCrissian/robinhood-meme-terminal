@@ -1,3 +1,4 @@
+import { marketRequestId, resourceError } from "./feed-scheduler.js";
 import assert from "node:assert/strict";
 import type { Client } from "pg";
 import { isAddress, parseAbi, type PublicClient } from "viem";
@@ -13,7 +14,7 @@ import { creatorEarningsProfile, decodeEarningsDiscoveryCursor, earningsBenefici
 import { createProductionActivityIndexer, productionActivityProfile, readProductionActivity,
   type ActivityQuery } from "./curve-production-activity.js";
 import { productionCurveBirthRpc } from "./curve-production-birth.js";
-import { readCurveMarket, type MarketQuery } from "./curve-market.js";
+import { MarketReadError, readCurveMarket, type MarketQuery } from "./curve-market.js";
 
 type Database = Pick<Client, "query">;
 const maximumRange = 2_000n;
@@ -185,7 +186,7 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     const fresh = verifiedAt !== null && currentTime >= verifiedAt && currentTime - verifiedAt <= maximumCheckpointAgeMs
       && Number.isFinite(blockTime) && blockTime <= currentTime + 30_000 && currentTime - blockTime <= maximumCheckpointAgeMs;
     return { status: !checkpoint || failureInvalidatesEvidence || !caughtUp ? "unavailable"
-      : failed || !fresh ? "stale" : "ready", checkpoint, revision, verifiedAt, caughtUp, busy, durationMs: lastRegistrationMs,
+      : failed || !fresh ? "stale" : "ready", checkpoint, verifiedPrefix: fresh && !failureInvalidatesEvidence, revision, verifiedAt, caughtUp, busy, durationMs: lastRegistrationMs,
       lagBlocks: target !== null && checkpoint ? String(target - BigInt(checkpoint.blockNumber)) : null };
   }
 
@@ -210,8 +211,10 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
       if (epoch !== revision) throw new Error("Registration changed fork during activity verification");
       activityError = null;
     } catch (error) {
-      activity.invalidate();
       activityError = classifySyncFailure(error);
+      // Failure to extend a verified prefix does not invalidate that prefix.
+      // Reads still require a fresh point, persisted coverage and two current witnesses.
+      if (activityError !== "upstream" || !resourceError(error, true).transient) activity.invalidate();
       throw error;
     } finally {
       activityBusy = false;
@@ -270,10 +273,10 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
 
   async function readActivity(db: Database, query: ActivityQuery) {
     const before = state();
-    if (before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new Error("Canonical activity evidence unavailable");
+    if (before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new MarketReadError("activity_not_aligned");
     const events = await readProductionActivity(db, scope, before.checkpoint, query);
     const after = state();
-    if (after.revision !== before.revision || after.status !== "ready" || now() - Date.parse(before.checkpoint.timestamp) > maximumCheckpointAgeMs || !activity.ready(before.checkpoint)) throw new Error("Canonical activity changed during read");
+    if (after.revision !== before.revision || after.status !== "ready" || now() - Date.parse(before.checkpoint.timestamp) > maximumCheckpointAgeMs || !activity.ready(before.checkpoint)) throw new MarketReadError("activity_changed");
     return { schemaVersion: 1 as const, chainId: 4663 as const, profile: productionActivityProfile, status: "ready" as const,
       token: query.token ?? null, transactionHash: query.transactionHash, observedAt: new Date(now()).toISOString(),
       deployment: { factory: binding.factory, registry: binding.projectRegistry, blockNumber: binding.deploymentBlock.toString(), blockHash: binding.deploymentBlockHash },
@@ -282,12 +285,54 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
 
   async function readMarket(db: Database, query: MarketQuery) {
     const before = state();
-    if (!archive || before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint unavailable");
-    const result = await readCurveMarket(db, scope, config, [primary, archive], before.checkpoint, query);
+    const anchor = activity.marketAnchor();
+    const epoch = anchor.epoch;
+    let point = anchor.point;
+    if (!archive) throw new MarketReadError("archive_missing");
+    if (!before.verifiedPrefix || !before.checkpoint) throw new MarketReadError("registration_unready");
+    // Cold process only. A known invalidation must go through the writer's
+    // reconciliation path. Recover in the caller's repeatable-read snapshot.
+    if (!point && epoch === 0 && activityError !== "local") {
+      point = await storedMarketCheckpoint(db, scope, before.checkpoint);
+      if (point) console.info(JSON.stringify({event:"market_checkpoint_recovery", requestId:marketRequestId.getStore(),
+        activityCandidate:point, registration:before.checkpoint}));
+    }
+    if (!point) throw new MarketReadError("activity_anchor_missing");
+    if (BigInt(point.blockNumber) > BigInt(before.checkpoint.blockNumber)) throw new MarketReadError("activity_ahead");
+    const pointAge = now() - Date.parse(point.timestamp);
+    if (pointAge >= maximumCheckpointAgeMs || pointAge < -15_000) {
+      throw new MarketReadError(anchor.point ? "activity_stale" : "activity_bootstrap_stale");
+    }
+    // A delayed registration pass can still cover a known market. Reconfirm
+    // depth on both witnesses and verify the covering registration hash below.
+    const delayed = before.status !== "ready";
+    if (delayed) {
+      const heads = await Promise.all([primary, archive].map(rpc => rpc.getBlockNumber({ cacheTime: 0 })));
+      const minimum = BigInt(before.checkpoint.blockNumber) + BigInt(binding.confirmations);
+      if (heads.some(head => head < minimum)) throw new MarketReadError("registration_depth");
+    }
+    const result = await readCurveMarket(db, scope, config, [primary, archive], point, query,
+      anchor.point && !delayed ? point : before.checkpoint, !delayed);
     const after = state();
-    const age = now() - Date.parse(before.checkpoint.timestamp);
-    if (after.status !== "ready" || after.revision !== before.revision || after.checkpoint?.blockHash !== before.checkpoint.blockHash || age >= maximumCheckpointAgeMs || age < -15_000 || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint changed");
+    const age = now() - Date.parse(point.timestamp);
+    if (!after.verifiedPrefix || (!delayed && after.status !== "ready")) throw new MarketReadError("registration_unready_after");
+    if (after.revision !== before.revision || activity.marketAnchor().epoch !== epoch) throw new MarketReadError("epoch_changed");
+    if (age >= maximumCheckpointAgeMs || age < -15_000) throw new MarketReadError("anchor_age");
+    if (result.status === "not_found" && after.checkpoint?.blockHash !== point.blockHash) throw new MarketReadError("absence_head_changed");
     return result;
   }
-  return { syncOnce, syncActivity, state, activityState, read, readEarnings, readActivity, readMarket };
+  return { syncOnce, syncActivity, state, activityState, marketAnchor: activity.marketAnchor, read, readEarnings, readActivity, readMarket };
+}
+
+// Registration and activity commit different range sizes. Only recover the
+// durable activity tip; the reader must independently verify the covering
+// registration checkpoint as well as the activity endpoint.
+async function storedMarketCheckpoint(db: Database, scope: string, ceiling: BlockEvidence): Promise<BlockEvidence | null> {
+  const result = await db.query<{height: string; block_hash: BlockEvidence["blockHash"]; observed_at: Date}>(`
+    SELECT c.block_number::text AS height,c.block_hash,c.observed_at FROM rmt_curve_activity_bindings a
+    JOIN rmt_curve_activity_checkpoints c ON c.scope=a.scope AND c.block_number=a.next_block-1
+    WHERE a.scope=$1 AND c.block_number<=$2`,
+    [scope, ceiling.blockNumber]);
+  const row = result.rows[0];
+  return row ? {blockNumber: row.height, blockHash: row.block_hash, timestamp: row.observed_at.toISOString()} : null;
 }

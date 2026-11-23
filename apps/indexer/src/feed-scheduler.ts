@@ -33,6 +33,9 @@ export function serializedWriter() {
   };
 }
 
+export const marketReadSignal = new AsyncLocalStorage<AbortSignal>();
+export const marketRequestId = new AsyncLocalStorage<string>();
+
 export const rpcFeed = new AsyncLocalStorage<
   "activity" | "registration" | "historical" | "market"
 >();
@@ -53,10 +56,11 @@ export function resourceError(error: unknown, boundedLogs = false) {
     code: number | undefined,
     timeout = false,
     missingBlock = false,
+    pruned = false,
     rangeMessage = false;
   for (
     let cause = error;
-    cause && typeof cause === "object" && !seen.has(cause);
+    cause && typeof cause === "object" && !seen.has(cause) && seen.size < 16;
 
   ) {
     seen.add(cause);
@@ -72,6 +76,7 @@ export function resourceError(error: unknown, boundedLogs = false) {
     if (typeof e.code === "number" && e.code < 0) code = e.code;
     timeout ||= e.name === "TimeoutError" || e.name === "TimeoutRpcError";
     missingBlock ||= e.name === "ProviderBlockUnavailable";
+    pruned ||= [e.details, e.message].some(value => typeof value === "string" && /historical state.{0,90}(?:not available|unavailable)|missing trie node|state is pruned/i.test(value.slice(0,512)));
     rangeMessage ||= e.details === "invalid block range params" || e.message === "invalid block range params";
     cause = e.cause;
   }
@@ -82,13 +87,14 @@ export function resourceError(error: unknown, boundedLogs = false) {
     timeout,
     missingBlock,
     deferredRange,
+    pruned,
     transient:
-      timeout || deferredRange || missingBlock ||
+      !pruned && (timeout || deferredRange || missingBlock ||
       status === 408 ||
       status === 429 ||
       (status !== undefined && status >= 500) ||
       code === -32002 ||
-      code === -32005,
+      code === -32005),
   };
 }
 
@@ -118,13 +124,30 @@ export function providerBudget(
   async function request<T>(method: string, send: () => Promise<T>, params?: unknown) {
     const feed = rpcFeed.getStore() ?? "historical";
     for (let attempt = 0; ; attempt++) {
-      await new Promise<void>((resolve) => {
-        (feed === "activity" ? background : foreground).push(resolve);
+      const started = performance.now();
+      let wireStart = started;
+      const deadline = marketReadSignal.getStore();
+      deadline?.throwIfAborted();
+      await new Promise<void>((resolve,reject) => {
+        const queue = feed === "activity" ? background : foreground;
+        function enter() {
+          deadline?.removeEventListener("abort",expire);
+          resolve();
+        }
+        function expire() {
+          const index = queue.indexOf(enter);
+          if (index >= 0) queue.splice(index,1);
+          reject(deadline?.reason);
+        }
+        deadline?.addEventListener("abort",expire,{once:true});
+        queue.push(enter);
         wake();
       });
       try {
-        await wait(Math.max(0, next - performance.now()));
+        await wait(Math.max(0, next - performance.now()), undefined, {signal:deadline});
+        deadline?.throwIfAborted();
         next = performance.now() + spacingMs;
+        wireStart = performance.now();
         stats.attempts++;
         return await send();
       } catch (error) {
@@ -132,7 +155,7 @@ export function providerBudget(
         stats.errors++;
         if (failure.status === 429 || failure.code === -32005) stats.limited++;
         if (failure.timeout) stats.timeouts++;
-        const retry = failure.transient && attempt < 1;
+        const retry = failure.transient && attempt < 1 && !deadline?.aborted;
         if (failure.transient)
           next = Math.max(
             next,
@@ -143,6 +166,10 @@ export function providerBudget(
         console.warn(
           JSON.stringify({
             event: "indexer_rpc_error",
+            requestId: marketRequestId.getStore(),
+            queueMs: Math.round(wireStart - started),
+            wireMs: Math.round(performance.now() - wireStart),
+            pruned: failure.pruned,
             provider,
             feed,
             method,
@@ -169,7 +196,7 @@ export function providerBudget(
       }
     }
   }
-  return { request, stats };
+  return { request, stats, provider };
 }
 
 export function scheduledTransport(
@@ -184,7 +211,7 @@ export function scheduledTransport(
         budget.request(args.method, async () => {
           signal.throwIfAborted();
           const result = await wire.request(args, {
-            signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]),
+            signal: AbortSignal.any([signal, marketReadSignal.getStore() ?? signal, AbortSignal.timeout(6000)]),
           });
           // A load-balanced provider can report a confirmed head and then route
           // its numbered header read to a backend that has not indexed it yet.

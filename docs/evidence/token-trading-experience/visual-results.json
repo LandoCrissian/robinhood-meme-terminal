@@ -1,0 +1,45 @@
+{
+  "kind": "local component review; all remote requests intercepted; no physical-wallet claim",
+  "widths": [
+    {
+      "width": 390,
+      "descriptionDigestMatched": true,
+      "detailsClosedInitially": true,
+      "noOverflow": true,
+      "amountSurvived503": true,
+      "singleConnectAction": true,
+      "copyAddress": true,
+      "shareCanonicalURL": true,
+      "marketRetry": true,
+      "dockHiddenAtInput": true,
+      "pageErrors": []
+    },
+    {
+      "width": 320,
+      "descriptionDigestMatched": true,
+      "detailsClosedInitially": true,
+      "noOverflow": true,
+      "amountSurvived503": true,
+      "singleConnectAction": true,
+      "copyAddress": true,
+      "shareCanonicalURL": true,
+      "marketRetry": true,
+      "dockHiddenAtInput": true,
+      "pageErrors": []
+    },
+    {
+      "width": 1440,
+      "descriptionDigestMatched": true,
+      "detailsClosedInitially": true,
+      "noOverflow": true,
+      "amountSurvived503": true,
+      "singleConnectAction": true,
+      "copyAddress": true,
+      "shareCanonicalURL": true,
+      "marketRetry": true,
+      "dockHiddenAtInput": true,
+      "pageErrors": []
+    }
+  ],
+  "failures": []
+}

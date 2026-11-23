@@ -24,7 +24,8 @@ function validQuote(q: unknown): q is ProductionLifecycleQuote {
   if (!q || typeof q !== "object" || Array.isArray(q)) return false;
   const r = q as ProductionLifecycleQuote;
   return ["inputWei", "outputWei", "minimumOutputWei", "feeWei", "refundWei", "gasUnits", "gasPriceWei"].every(k => uint(r[k as keyof ProductionLifecycleQuote]))
-    && Object.keys(r).every(k => ["inputWei", "outputWei", "minimumOutputWei", "feeWei", "refundWei", "gasUnits", "gasPriceWei", "feePips", "feeAsset", "feeEvidence", "l1PosterGasUnits", "maxPriorityFeePerGasWei", "nitroZeroPosterPolicy", "transactionBaseFeeWei", "observedGasPriceWei"].includes(k))
+    && Object.keys(r).every(k => ["outputImpactBps", "inputWei", "outputWei", "minimumOutputWei", "feeWei", "refundWei", "gasUnits", "gasPriceWei", "feePips", "feeAsset", "feeEvidence", "l1PosterGasUnits", "maxPriorityFeePerGasWei", "nitroZeroPosterPolicy", "transactionBaseFeeWei", "observedGasPriceWei"].includes(k))
+    && (r.outputImpactBps == null || (Number.isSafeInteger(r.outputImpactBps) && r.outputImpactBps <= 10_000))
     && BigInt(r.gasUnits) > 0n && BigInt(r.gasPriceWei) > 0n && (r.feePips === undefined || r.feePips === 3000)
     && uint(r.maxPriorityFeePerGasWei) && BigInt(r.maxPriorityFeePerGasWei) <= BigInt(r.gasPriceWei)
     && (r.feeEvidence === "verified-nitro" && uint(r.l1PosterGasUnits) && BigInt(r.l1PosterGasUnits) > 0n && BigInt(r.l1PosterGasUnits) < BigInt(r.gasUnits)
@@ -133,7 +134,7 @@ function assertOtherFinancialJournals(storage: Storage, account: string, candida
   assertNoPendingProductionClaim(storage, account, candidateNonce);
 }
 function quoteDoesNotIncrease(reviewed: ProductionLifecycleQuote, current: ProductionLifecycleQuote) {
-  return validQuote(current) && reviewed.feeEvidence === current.feeEvidence && ["inputWei", "outputWei", "minimumOutputWei", "feeWei", "refundWei", "feePips", "feeAsset"].every(k =>
+  return validQuote(current) && reviewed.feeEvidence === current.feeEvidence && ["outputImpactBps", "inputWei", "outputWei", "minimumOutputWei", "feeWei", "refundWei", "feePips", "feeAsset"].every(k =>
     reviewed[k as keyof ProductionLifecycleQuote] === current[k as keyof ProductionLifecycleQuote])
     && BigInt(current.gasUnits) <= BigInt(reviewed.gasUnits) && BigInt(current.gasPriceWei) <= BigInt(reviewed.gasPriceWei)
     && BigInt(current.maxPriorityFeePerGasWei) <= BigInt(reviewed.maxPriorityFeePerGasWei);

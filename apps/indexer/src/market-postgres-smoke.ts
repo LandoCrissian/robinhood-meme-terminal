@@ -169,12 +169,17 @@ try {
     older.candles,
     current.charts[60].filter((r: any) => r.time < before),
   );
+  // Advancing the registration head preserves the completed registered-token window.
+  await db.query("UPDATE rmt_curve_production_bindings SET next_block=next_block+1 WHERE scope=$1", [scope]);
+  assert.equal((await readCurveMarket(db, scope, config, [rpc, rpc], frame.checkpoint, q)).status, "ready");
+  await assert.rejects(readCurveMarket(db, scope, config, [rpc, rpc], frame.checkpoint, { ...q, token: factory }), {message: "absence_cursor_alignment"});
+  await db.query("UPDATE rmt_curve_production_bindings SET next_block=next_block-1 WHERE scope=$1", [scope]);
   await db.query(
     "UPDATE rmt_curve_activity_bindings SET next_block=next_block-1 WHERE scope=$1",
     [scope],
   );
   await assert.rejects(
-    readCurveMarket(db, scope, config, [rpc, rpc], frame.checkpoint, q),
+    readCurveMarket(db, scope, config, [rpc, rpc], frame.checkpoint, q), {message: "checkpoint_binding"},
   );
   await checkpoint(current);
   await assert.rejects(
