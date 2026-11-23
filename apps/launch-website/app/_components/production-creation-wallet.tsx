@@ -355,6 +355,11 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
         : currentReview ? <>
           <dl className="lpFacts">
             <dt>Creator</dt><dd className="lpAddress">{currentReview.request.from}</dd>
+            <dt>Network</dt><dd>Robinhood Chain · 4663</dd>
+            <dt>Token and ticker</dt><dd>{currentReview.draft.name} / {currentReview.draft.symbol}</dd>
+            <dt>Artwork metadata</dt><dd className="lpAddress">{currentReview.draft.projectURI}</dd>
+            <dt>Single-use creation intent</dt><dd className="lpAddress">{currentReview.request.intentId}</dd>
+            <dt>Confirmation policy</dt><dd>Two providers and 20 L2 confirmations. Ethereum L1 settlement is unverified. A reorganization can remove the receipt. Recover the original request before trying again.</dd>
             <dt>Verified factory</dt><dd className="lpAddress">{currentReview.request.to}</dd>
             <dt>Fixed total supply</dt><dd>{currentReview.draft.supply.toLocaleString("en-US")} tokens Â· {launchTokenDecimals} decimals</dd>
             <dt>Exact creation fee</dt><dd>0.0004 ETH, plus gas</dd>

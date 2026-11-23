@@ -54,7 +54,7 @@ export async function handleProductionCreation(request: Request) {
           || (body.prior !== undefined && !prior) || (prior && (!same(prior.from, body.account) || !same(prior.intentId, body.intentId)))) return reply({ status: "invalid" }, 422);
       if (!await isAuthenticatedCreationOwner(request.headers)) return reply({ status: "owner-login-required" }, 401);
       const cid = assetCID((body.fields as {projectURI:string}).projectURI,"metadata.json");
-      if (!cid || !(await readArtwork(configuredArtworkStore(),cid,"logo.webp")).ok) return reply({status:"artwork-unverified"},422);
+      if (cid !== "bafkreiazx4gbczh3uskiarktmoahm6mwt5ri243mmz2rfldak25yivjp5y" || !(await readArtwork(configuredArtworkStore(),cid,"logo.webp")).ok) return reply({status:"artwork-unverified"},422);
       if ((await readProductionDiscovery()).status !== "ready") return reply({ status: "unavailable" }, 503);
       return reply(await prepareCurveProductionCreation(release, body.fields, getAddress(body.account.toLowerCase()), body.intentId, prior ?? undefined));
     }
