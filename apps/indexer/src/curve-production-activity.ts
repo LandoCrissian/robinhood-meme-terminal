@@ -172,6 +172,8 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
   const scope = productionCurveScope(config);
   const canProveEmpty = matchesIndexerBirth(config);
   let readyPoint: BlockEvidence | null = null;
+  let marketEpoch = 0;
+  function invalidate() { readyPoint = null; marketEpoch++; }
   let initialized = false;
   async function canonical(height: bigint) {
     if (!archive) throw new Error("Activity requires two corroborating providers");
@@ -179,7 +181,6 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
     assert.deepEqual(points[0], points[1], "Activity canonical providers disagree"); return points[0]!;
   }
   async function sync(point: BlockEvidence, catalogHeight = BigInt(point.blockNumber)) {
-    readyPoint = null;
     if (!archive || archive === primary) throw new Error("Activity requires a distinct corroborating provider");
     assert.ok(catalogHeight >= BigInt(point.blockNumber), "Activity catalog is behind its history target");
     if (!initialized) { await write(() => initializeProductionActivityStore(db, config)); initialized = true; }
@@ -190,6 +191,7 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
       for (const row of saved.rows.slice(0, 24)) {
         if (BigInt(row.block_number) <= BigInt(point.blockNumber) && (await canonical(BigInt(row.block_number))).blockHash.toLowerCase() === row.block_hash) { keep = BigInt(row.block_number); break; }
       }
+      if (keep !== BigInt(saved.rows[0]!.block_number)) invalidate();
       if (keep === null && saved.rows.length > 24) throw new Error("Activity reorg exceeds bounded automatic recovery");
       if (keep === null || keep !== BigInt(saved.rows[0]!.block_number)) await write(() => rollbackProductionActivity(db, scope, keep ?? config.binding.deploymentBlock - 1n));
     }
@@ -199,6 +201,7 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
     if (first !== null && first < from) {
       const keep = await correctedEmptyRangePredecessor(reader, scope, first, birth);
       if (keep !== null) {
+        invalidate();
         await write(() => rollbackProductionActivity(db, scope, keep));
         from = await productionActivityCursor(reader, scope);
       }
@@ -363,6 +366,6 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
       assert.deepEqual(await canonical(BigInt(point.blockNumber)), point, "Activity checkpoint changed"); readyPoint = point;
     }
   }
-  return { sync, height: () => indexedThrough, invalidate: () => { readyPoint = null; }, ready: (point: BlockEvidence) => readyPoint !== null
+  return { sync, height: () => indexedThrough, invalidate, marketAnchor: () => ({ point: readyPoint, epoch: marketEpoch }), ready: (point: BlockEvidence) => readyPoint !== null
     && readyPoint.blockNumber === point.blockNumber && readyPoint.blockHash === point.blockHash };
 }

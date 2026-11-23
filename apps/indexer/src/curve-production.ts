@@ -282,11 +282,15 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
 
   async function readMarket(db: Database, query: MarketQuery) {
     const before = state();
-    if (!archive || before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint unavailable");
-    const result = await readCurveMarket(db, scope, config, [primary, archive], before.checkpoint, query);
+    const { point, epoch } = activity.marketAnchor();
+    if (!archive || before.status !== "ready" || !before.checkpoint || !point
+      || BigInt(point.blockNumber) > BigInt(before.checkpoint.blockNumber)
+      || now() - Date.parse(point.timestamp) >= maximumCheckpointAgeMs) throw new Error("Market checkpoint unavailable");
+    const result = await readCurveMarket(db, scope, config, [primary, archive], point, query);
     const after = state();
-    const age = now() - Date.parse(before.checkpoint.timestamp);
-    if (after.status !== "ready" || after.revision !== before.revision || after.checkpoint?.blockHash !== before.checkpoint.blockHash || age >= maximumCheckpointAgeMs || age < -15_000 || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint changed");
+    const age = now() - Date.parse(point.timestamp);
+    if (after.status !== "ready" || after.revision !== before.revision || activity.marketAnchor().epoch !== epoch || age >= maximumCheckpointAgeMs || age < -15_000
+      || (result.status === "not_found" && after.checkpoint?.blockHash !== point.blockHash)) throw new Error("Market checkpoint changed");
     return result;
   }
   return { syncOnce, syncActivity, state, activityState, read, readEarnings, readActivity, readMarket };

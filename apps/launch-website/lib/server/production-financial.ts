@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { configuredCurveProductionRelease, curveProductionPins, curveProductionProfile, verifyCurveProduction } from "./curve-production";
+import { configuredCurveProductionRelease, curveProductionPins, curveProductionProfile, productionReaders, verifyCurveProduction } from "./curve-production";
 import { configuredProductionDiscovery, readProductionDiscovery } from "./production-discovery";
 
 export type ProductionFinancialScope = "trading" | "claims";
@@ -86,7 +86,7 @@ export async function productionReleaseReadiness(release: NonNullable<ReturnType
 export async function resolveProductionFinancialContext(headers: Headers, scope: ProductionFinancialScope) {
   const configured = configuredProductionFinancial(headers, scope);
   if (!configured) throw new Error("Production financial capability unavailable");
-  return { ...configured, ...await verifyCurveProduction(configured.release), feePolicy: "nitro-zero-poster-corroborated-v1" as const };
+  return { ...configured, ...await verifyCurveProduction(configured.release, productionReaders(scope === "trading" ? "financial" : true)), feePolicy: "nitro-zero-poster-corroborated-v1" as const };
 }
 
 export async function availableProductionFinancial(headers: Headers, scope: ProductionFinancialScope) {

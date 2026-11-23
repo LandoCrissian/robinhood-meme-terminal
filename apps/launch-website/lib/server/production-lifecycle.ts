@@ -106,7 +106,9 @@ async function registrationFor(context: ProductionTradingContext, token: Address
   const discovery = await (context.discoveryReader ?? readProductionDiscovery)(token);
   must(discovery.status === "ready" && discovery.launches.length === 1);
   const number = BigInt(discovery.checkpoint.blockNumber);
-  must(number <= context.anchor.blockNumber);
+  // Discovery may finish a newer block during the release check. Prove that
+  // checkpoint on both providers and require the original creation at or before the quote.
+  must(BigInt(discovery.launches[0].creation.blockNumber) <= context.anchor.blockNumber);
   const checkpoints = await Promise.all([context.rpc, context.corroboratingRpc].map(rpc => rpc.getBlock({ blockNumber: number })));
   must(checkpoints.every(b => same(b.hash, discovery.checkpoint.blockHash)
     && new Date(Number(b.timestamp) * 1000).toISOString() === discovery.checkpoint.timestamp));
@@ -284,8 +286,15 @@ export async function prepareProductionLifecycle(context: ProductionTradingConte
     const gasPrice = zeroPolicy ? 2n * observedMaximum + priority : price > 2n * base + priority ? price : 2n * base + priority;
     must(gas <= 30000000n); return { gas, gasPrice, priority, poster, ...(zeroPolicy && { zeroPolicy, transactionBaseFeeWei: base.toString(), observedGasPriceWei: price.toString() }) };
   }));
-  must(equal(simulations[0], simulations[1]));
-  const { gas, gasPrice, priority, poster, zeroPolicy, transactionBaseFeeWei, observedGasPriceWei } = simulations[0];
+  // eth_gasPrice is an unpinned node suggestion. Both witnesses must still
+  // agree on the exact wallet caps, C8 simulation and pinned native prices.
+  const [first, second] = simulations;
+  const { observedGasPriceWei: firstSpot, ...firstEvidence } = first;
+  const { observedGasPriceWei: secondSpot, ...secondEvidence } = second;
+  must(equal(firstEvidence, secondEvidence));
+  const observedGasPriceWei = firstSpot !== undefined && secondSpot !== undefined
+    ? (firstSpot > secondSpot ? firstSpot : secondSpot) : undefined;
+  const { gas, gasPrice, priority, poster, zeroPolicy, transactionBaseFeeWei } = first;
   if (BigInt(state.account.ethWei) < value + gas * gasPrice) return { status: "invalid", reason: "insufficient-balance" };
   const commonQuote = { outputImpactBps: outputImpactBps(buy,amount-refund,output,spot), inputWei: amountWei, outputWei: output.toString(), minimumOutputWei: minimum.toString(), feeWei: fee.toString(), refundWei: refund.toString(),
     gasUnits: gas.toString(), gasPriceWei: gasPrice.toString(), maxPriorityFeePerGasWei: priority.toString(),

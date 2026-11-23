@@ -87,16 +87,16 @@ export async function readCurveMarket(
   assert.ok(deployment.chainId === 4663 && scope === productionCurveScope(config) && blockNumber >= deployment.deploymentBlock);
   // The anchor must exist independently of the token. A missing anchor yields no row,
   // whereas an aligned anchor with no scoped registration yields a NULL token.
-  const reg = await db.query<{ token: string | null; initial: string; valid_registration: boolean }>(
-    `SELECT l.token, l.payload->>'initialCurve' AS initial,
+  const reg = await db.query<{ token: string | null; initial: string; aligned: boolean; valid_registration: boolean }>(
+    `SELECT l.token, l.payload->>'initialCurve' AS initial, a.next_block=b.next_block AND b.next_block=$3::bigint+1 AS aligned,
       l.block_number BETWEEN $6::bigint AND $3::bigint AND lower(l.payload->>'token')=l.token
         AND l.payload->>'chainId'='4663' AND lower(l.payload->>'factory')=$7
         AND lower(l.payload->>'projectRegistry')=$8 AS valid_registration
     FROM rmt_curve_production_bindings b JOIN rmt_curve_activity_bindings a USING(scope)
-    JOIN rmt_curve_production_checkpoints p ON p.scope=b.scope AND p.block_number=b.next_block-1
-    JOIN rmt_curve_activity_checkpoints c ON c.scope=a.scope AND c.block_number=a.next_block-1
+    JOIN rmt_curve_production_checkpoints p ON p.scope=b.scope AND p.block_number=$3
+    JOIN rmt_curve_activity_checkpoints c ON c.scope=a.scope AND c.block_number=$3
     LEFT JOIN rmt_curve_production_launches l ON l.scope=b.scope AND l.token=$2
-    WHERE b.scope=$1 AND b.identity=$5::jsonb AND a.next_block=b.next_block AND p.block_number=$3
+    WHERE b.scope=$1 AND b.identity=$5::jsonb AND a.next_block>$3 AND b.next_block>$3
       AND p.block_hash=$4 AND c.block_hash=p.block_hash AND p.observed_at=$9::timestamptz AND c.observed_at=p.observed_at`,
     [scope, token, checkpoint.blockNumber, checkpoint.blockHash, productionCurveIdentity(config),
       deployment.deploymentBlock.toString(), factory.toLowerCase(), deployment.projectRegistry.toLowerCase(), checkpoint.timestamp],
@@ -110,6 +110,7 @@ export async function readCurveMarket(
     }
   }
   if (reg.rows[0]!.token === null) {
+    assert.ok(reg.rows[0]!.aligned, "Token absence requires the current registration and activity heads");
     // Check the immutable factory at the same height on both providers. A missing
     // database registration must never hide a real on-chain curve or indexed events.
     const orphan = await db.query("SELECT 1 FROM rmt_curve_activity_events WHERE scope=$1 AND token=$2 LIMIT 1", [scope, token]);

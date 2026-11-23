@@ -74,6 +74,21 @@ test("new production zero-poster policy requires actual measured zero native rat
   assert.equal(transactionDifferent.quote.transactionBaseFeeWei, "3"); assert.equal(transactionDifferent.quote.nitroZeroPosterPolicy.l2BaseFeeWei, "2");
   assert.equal(transactionDifferent.quote.gasPriceWei, "7");
 }));
+test("different live fee suggestions require identical wallet caps and canonical native evidence", async () => withFixture(async f => {
+  f.knobs.zeroPoster = true; f.knobs.zeroNativeDifferent = true;
+  const context = f.context();
+  const original = context.corroboratingRpc;
+  let suggestion = 3n;
+  context.corroboratingRpc = new Proxy(original, { get(target, key) {
+    return key === "getGasPrice" ? async () => suggestion : Reflect.get(target, key);
+  } });
+  const review = () => prepareProductionLifecycle(context, f.p.f.token, f.p.f.creator, "buy", "2000000000000000000", 50);
+  const result = await review();
+  assert.ok(result.status === "prepared" && result.quote?.feeEvidence === "verified-nitro-zero-poster");
+  assert.equal(result.quote.observedGasPriceWei, "3");
+  suggestion = 100n;
+  await assert.rejects(review);
+}));
 test("new zero-poster branch rejects positive/mixed C8, absent data, nonzero native rates, zero transaction base and missing opt-in", async () => {
   for (const fault of ["positive", "conflicting", "missingC8", "nativeL1", "nativeUnit", "base", "missingNative", "noOptIn"] as const) await withFixture(async f => {
     f.knobs.zeroPoster = true;
