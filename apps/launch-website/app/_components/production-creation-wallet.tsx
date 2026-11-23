@@ -355,7 +355,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
         : currentReview ? <>
           <dl className="lpFacts">
             <dt>Creator</dt><dd className="lpAddress">{currentReview.request.from}</dd>
-            <dt>Network</dt><dd>Robinhood Chain · 4663</dd>
+            <dt>Network</dt><dd>Robinhood Chain 4663</dd>
             <dt>Token and ticker</dt><dd>{currentReview.draft.name} / {currentReview.draft.symbol}</dd>
             <dt>Artwork metadata</dt><dd className="lpAddress">{currentReview.draft.projectURI}</dd>
             <dt>Single-use creation intent</dt><dd className="lpAddress">{currentReview.request.intentId}</dd>
