@@ -18,8 +18,11 @@ export function productionProviderAtWindow() {
 export async function readProductionCapability(scope: FinancialCapability) {
   if (!isProductionWalletOrigin(window.location)) throw new Error("Production wallet origin unavailable");
   const response = await fetch("/api/launchpad/config", { cache: "no-store", redirect: "error", signal: AbortSignal.timeout(20_000) });
-  const capability = await response.json() as { status?: string; chainId?: number; trading?: string; claims?: string;
+  const capability = await response.json() as { status?: string; readiness?: string; chainId?: number; trading?: string; claims?: string;
     approvals?: Partial<Record<FinancialCapability, string>> };
+  if (response.status === 503 || capability.readiness === "unavailable") {
+    throw new Error("Network verification is temporarily unavailable. Your amount is unchanged; try again shortly.");
+  }
   if (!response.ok || capability.status !== "production-financial" || capability.chainId !== 4663 || capability[scope] !== "enabled"
     || !/^[a-f0-9]{64}$/.test(capability.approvals?.[scope] ?? "")) throw new Error("This financial capability is not activated");
   return capability.approvals![scope]!;

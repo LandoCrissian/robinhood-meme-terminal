@@ -16,7 +16,7 @@ import {
 import type { MarketSnapshot } from "../../lib/token-market";
 const green = "#60d7a3",
   red = "#ee828b",
-  violet = "#b39aed";
+  accent = "#93e88e";
 const fmt = (n: number) =>
   n.toLocaleString("en-US", { maximumSignificantDigits: 6 });
 export function MarketChart({
@@ -39,24 +39,24 @@ export function MarketChart({
       autoSize: true,
       localization: { locale: "en-US" },
       layout: {
-        background: { type: ColorType.Solid, color: "#101115" },
-        textColor: "#b6b4bd",
+        background: { type: ColorType.Solid, color: "#0b100c" },
+        textColor: "#a6b0a8",
         fontSize: 11,
         attributionLogo: true,
       },
       grid: {
-        vertLines: { color: "#202026" },
-        horzLines: { color: "#26252c" },
+        vertLines: { color: "#172019" },
+        horzLines: { color: "#202921" },
       },
       crosshair: {
         mode: CrosshairMode.Normal,
-        vertLine: { color: violet },
-        horzLine: { color: violet },
+        vertLine: { color: accent },
+        horzLine: { color: accent },
       },
       timeScale: {
         timeVisible: true,
         secondsVisible: false,
-        borderColor: "#37353e",
+        borderColor: "#344137",
         rightOffset: 1,
         minBarSpacing: 2,
       },
@@ -160,7 +160,7 @@ export function MarketChart({
             {
               time: graduationBucket as UTCTimestamp,
               position: "aboveBar",
-              color: violet,
+              color: accent,
               shape: "arrowDown",
               text: "v4",
             },

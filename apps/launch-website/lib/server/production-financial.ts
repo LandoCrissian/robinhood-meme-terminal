@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { configuredCurveProductionRelease, curveProductionProfile, verifyCurveProduction } from "./curve-production";
+import { configuredCurveProductionRelease, curveProductionPins, curveProductionProfile, verifyCurveProduction } from "./curve-production";
 import { configuredProductionDiscovery, readProductionDiscovery } from "./production-discovery";
 
 export type ProductionFinancialScope = "trading" | "claims";
@@ -51,6 +51,38 @@ export function configuredProductionFinancial(headers: Headers, scope: Productio
   return { release, approvalBinding, scope };
 }
 
+// Page presence reflects the trusted, approved configuration. Network readiness
+// is checked independently before preparation; a temporary outage must not erase
+// the order form or be presented as a revoked trading capability.
+export function configuredProductionFinancialPage(headers: Headers, scope: ProductionFinancialScope,
+  env: Record<string, string | undefined> = process.env) {
+  return configuredProductionFinancial(headers, scope, env, false);
+}
+
+// A capability lookup is a release/configuration read, not a quote or an on-chain
+// readiness statement. The state/quote/prepare handlers still corroborate the
+// complete deployment and current state; submission also revalidates the exact
+// prior request and wallet. Keeping this response pure avoids repeating those
+// RPC checks twice more while a user is confirming an already reviewed trade.
+export function configuredProductionFinancialCapabilities(headers: Headers,
+  env: Record<string, string | undefined> = process.env) {
+  const trading = configuredProductionFinancialPage(headers, "trading", env);
+  const claims = configuredProductionFinancialPage(headers, "claims", env);
+  if (!trading && !claims) return null;
+  return { status: "production-financial", readiness: "check-on-prepare", chainId: 4663,
+    factory: curveProductionPins.factory[0], trading: trading ? "enabled" : "disabled", claims: claims ? "enabled" : "disabled",
+    approvals: { ...(trading && { trading: trading.approvalBinding }), ...(claims && { claims: claims.approvalBinding }) } } as const;
+}
+
+export async function productionReleaseReadiness(release: NonNullable<ReturnType<typeof configuredProductionFinancial>>["release"],
+  options: { verify?: typeof verifyCurveProduction; discovery?: typeof readProductionDiscovery } = {}): Promise<"ready" | "unavailable"> {
+  try {
+    const [, discovery] = await Promise.all([(options.verify ?? verifyCurveProduction)(release),
+      (options.discovery ?? readProductionDiscovery)()]);
+    return discovery.status === "ready" ? "ready" : "unavailable";
+  } catch { return "unavailable"; }
+}
+
 export async function resolveProductionFinancialContext(headers: Headers, scope: ProductionFinancialScope) {
   const configured = configuredProductionFinancial(headers, scope);
   if (!configured) throw new Error("Production financial capability unavailable");
@@ -58,10 +90,7 @@ export async function resolveProductionFinancialContext(headers: Headers, scope:
 }
 
 export async function availableProductionFinancial(headers: Headers, scope: ProductionFinancialScope) {
-  const configured = configuredProductionFinancial(headers, scope, process.env, false);
+  const configured = configuredProductionFinancialPage(headers, scope);
   if (!configured) return null;
-  try {
-    const [, discovery] = await Promise.all([verifyCurveProduction(configured.release), readProductionDiscovery()]);
-    return discovery.status === "ready" ? configured : null;
-  } catch { return null; }
+  return await productionReleaseReadiness(configured.release) === "ready" ? configured : null;
 }

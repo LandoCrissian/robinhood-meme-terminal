@@ -92,6 +92,21 @@ test("production sender journals before exactly one explicit bounded type-2 requ
   assert.equal(readProductionTradeJournal(f.storage, f.wallet.account, f.prepared.request.token)?.transactionHash, f.hash);
   await assert.rejects(() => submitProductionTrade(f.wallet, f.prepared, f.storage, f.fetcher)); assert.equal(f.calls.filter(c => c.method === "eth_sendTransaction").length, 1);
 }));
+test("a temporarily unavailable trading check preserves the request and retry sends only once", async () => fixture(async f => {
+  const approvedFetch = globalThis.fetch;
+  globalThis.fetch = async (input, init) => input === "/api/launchpad/config"
+    ? Response.json({ status: "production-financial", readiness: "unavailable", chainId: 4663, trading: "enabled",
+      approvals: { trading: f.prepared.request.approvalBinding } }, { status: 503 })
+    : approvedFetch(input, init);
+  const reviewed = JSON.stringify(f.prepared);
+  await assert.rejects(() => submitProductionTrade(f.wallet, f.prepared, f.storage, f.fetcher), /temporarily unavailable/);
+  assert.equal(JSON.stringify(f.prepared), reviewed);
+  assert.equal(f.calls.filter(call => call.method === "eth_sendTransaction").length, 0);
+  assert.equal(readProductionTradeJournal(f.storage, f.wallet.account, f.prepared.request.token), null);
+  globalThis.fetch = approvedFetch;
+  assert.equal((await submitProductionTrade(f.wallet, f.prepared, f.storage, f.fetcher)).status, "pending");
+  assert.equal(f.calls.filter(call => call.method === "eth_sendTransaction").length, 1);
+}));
 test("strict zero-poster review sends only with its same canonical native policy and retains positive execution fees", async () => fixture(async f => {
   assert.equal(f.prepared.quote.feeEvidence, "verified-nitro-zero-poster"); assert.equal(f.prepared.quote.l1PosterGasUnits, "0");
   assert.equal((await submitProductionTrade(f.wallet, f.prepared, f.storage, f.fetcher)).status, "pending");

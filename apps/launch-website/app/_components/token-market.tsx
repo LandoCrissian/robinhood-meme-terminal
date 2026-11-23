@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import {
   checkpointFresh,
@@ -48,10 +48,25 @@ export function TokenMarket({
     [absence, setAbsence] = useState<{ token: string; timestamp: string } | null>(null),
     [failed, setFailed] = useState(false),
     [time, setTime] = useState(Date.now),
-    [before, setBefore] = useState<number | null>(null);
+    [before, setBefore] = useState<number | null>(null),
+    [attempt, setAttempt] = useState(0);
   const [side, setSide] = useState("Buy"),
     [quoteInput, setQuoteInput] = useState(""),
     [limitBps, setLimitBps] = useState(100);
+  const order = useRef<HTMLElement>(null);
+  const [orderVisible, setOrderVisible] = useState(false), [editing, setEditing] = useState(false);
+  useEffect(() => {
+    const element = order.current;
+    if (!element || typeof IntersectionObserver === "undefined") return;
+    const observer = new IntersectionObserver(([entry]) => setOrderVisible(entry.isIntersecting),
+      { rootMargin: "-60px 0px 0px 0px" });
+    observer.observe(element);
+    const checkFocus = () => setEditing(!!element.contains(document.activeElement)
+      && !!document.activeElement?.matches("input,textarea,select"));
+    document.addEventListener("focusin", checkFocus);
+    document.addEventListener("focusout", checkFocus);
+    return () => { observer.disconnect(); document.removeEventListener("focusin", checkFocus); document.removeEventListener("focusout", checkFocus); };
+  }, []);
   const frame = replay?.[index],
     recorded = frame
       ? { ...frame, interval, candles: frame.charts[interval], earlier: false }
@@ -67,7 +82,7 @@ export function TokenMarket({
     let alive = true;
     const ctrl = new AbortController();
     let timer: ReturnType<typeof setTimeout>;
-    setActive(null);
+    setActive(previous => previous?.token === token && previous.interval === interval ? previous : null);
     setAbsence(null);
     setFailed(false);
     async function refresh() {
@@ -110,7 +125,7 @@ export function TokenMarket({
       clearTimeout(timer);
       clearInterval(tick);
     };
-  }, [token, interval, before, replay]);
+  }, [token, interval, before, replay, attempt]);
   const fresh = !!market && !failed && checkpointFresh(market, time),
     stale = !!market && !replay && !fresh;
   const pct = market
@@ -124,6 +139,10 @@ export function TokenMarket({
         : "Bonding curve";
   const options = frame?.quotes?.filter((q) => q.side === side) ?? [],
     quoted = options.find((q) => q.input === quoteInput) ?? options[0];
+  const lastCandle = market?.candles.at(-1);
+  const price = lastCandle?.close;
+  const shownVolume = market?.candles.reduce((sum, candle) => sum + BigInt(candle.volumeWei), 0n);
+  const priceText = (value: number) => value.toLocaleString("en-US", { maximumSignificantDigits: 6 });
   if (absence?.token === token) {
     const current = time - Date.parse(absence.timestamp) < 120000;
     return <section className="lpNotice" role="status">
@@ -148,67 +167,14 @@ export function TokenMarket({
           </select>
         </label>
       )}
-      <section className="rmProgress" aria-label="Graduation progress">
-        <div>
-          <strong>{market ? state : "Graduation progress"}</strong>
-          <span className="rmStatus">
-            {replay
-              ? "Recorded checkpoint"
-              : stale
-                ? "Last verified · stale"
-                : fresh
-                  ? "Live · confirmed L2"
-                  : failed
-                    ? "Feed unavailable"
-                    : "Checking indexer…"}
-          </span>
-        </div>
-        {pct !== null && market ? (
-          <>
-            <div className="rmNumbers">
-              <span>
-                <b>{fmt(Number(market.soldWei) / 1e18, 2)}</b> / 600M tokens net
-                sold
-              </span>
-              <strong>{pct === 100 ? "100" : fmt(pct, 2)}%</strong>
-            </div>
-            <progress
-              aria-label="Net curve tokens sold"
-              max="100"
-              value={pct}
-            />
-            <p>
-              {market.graduation ? (
-                <>
-                  Graduation funding <b>2 ETH</b> · sent to the locked position{" "}
-                  <b>
-                    ≈{fmt(Number(market.graduation.nativeUsedWei) / 1e18, 8)}{" "}
-                    ETH
-                  </b>{" "}
-                  · current curve backing 0 ETH
-                </>
-              ) : (
-                <>
-                  Real curve backing{" "}
-                  <b>
-                    {fmt(Number(market.backingWei) / 1e18, 8)} /{" "}
-                    {Number(ethTarget) / 1e18} ETH
-                  </b>
-                </>
-              )}
-              {market.phase === "eligible" &&
-                " · Awaiting the graduation transaction."}
-            </p>
-          </>
-        ) : (
-          <p>
-            Verified token sales and real backing will appear when the canonical
-            checkpoint is available.
-          </p>
-        )}
-      </section>
-      <a className="rmTradeJump" href="#trade">
-        Buy / Sell ↓
+      <div className="rmSummary" aria-label="Market summary">
+        <div><span>{before ? "Period close" : "Last trade"}</span><strong>{price === undefined ? "—" : priceText(price)} <small>ETH</small></strong></div>
+        <div><span>FDV</span><strong>{price === undefined ? "—" : priceText(price * 1_000_000_000)} <small>ETH</small></strong></div>
+        <div><span>Chart volume</span><strong>{shownVolume === undefined ? "—" : fmt(Number(shownVolume) / 1e18, 6)} <small>ETH</small></strong></div>
+      </div>
+      {(failed || stale) && <div className="rmRefreshNotice" role="status"><span>{market ? "Showing the last update. Reconnecting…" : "Market data is temporarily unavailable."}</span><button type="button" onClick={() => setAttempt(value => value + 1)}>Retry</button></div>}
+      <a className="rmTradeDock" href="#trade" hidden={orderVisible || editing}>
+        {children ? "Trade " + symbol : "View trading status"}<span aria-hidden="true">↑↓</span>
       </a>
       <div className="rmGrid">
         <section className="rmChart" aria-label="Token trading chart">
@@ -219,8 +185,8 @@ export function TokenMarket({
               </h2>
               <p>
                 {fdv
-                  ? "Fully diluted valuation · ETH · 1B fixed supply"
-                  : "Execution price · gwei per token"}
+                  ? "FDV in ETH"
+                  : "Price in gwei"}
               </p>
             </div>
             <div className="rmToggle">
@@ -257,13 +223,13 @@ export function TokenMarket({
                 {market
                   ? "No trades in this window"
                   : failed
-                    ? "Trade history unavailable"
-                    : "Waiting for trade history"}
+                    ? "Chart unavailable"
+                    : "Loading chart…"}
               </h3>
               <p>
                 {market
-                  ? "The first verified fill in this window will form a candle."
-                  : "Candles require a verified market feed."}
+                  ? "Trades will appear here."
+                  : failed ? "Retry when the connection recovers." : ""}
               </p>
             </div>
           )}
@@ -280,27 +246,11 @@ export function TokenMarket({
             </div>
           )}
           <footer>
-            ETH volume measures amounts paid on buys and received on sells,
-            after trading fees. Gas is excluded. Empty intervals have no candle.
-            {market && (
-              <span>
-                Block {market.checkpoint.blockNumber} ·{" "}
-                {new Date(market.checkpoint.timestamp)
-                  .toISOString()
-                  .slice(11, 19)}{" "}
-                UTC
-              </span>
-            )}
-            {market?.graduation && (
-              <span>
-                Graduated{" "}
-                {new Date(market.graduation.time * 1000)
-                  .toISOString()
-                  .replace("T", " ")
-                  .slice(0, 19)}{" "}
-                UTC
-              </span>
-            )}
+            <details className="rmDataDetails"><summary>Chart details</summary><div>
+              <p>Volume covers the displayed candles, after trading fees and excluding gas. Empty intervals have no candle. FDV uses the last recorded price and the fixed 1B supply.</p>
+              {market && <p>Block {market.checkpoint.blockNumber} · {new Date(market.checkpoint.timestamp).toISOString().slice(11, 19)} UTC. L2 observation; Ethereum L1 settlement unverified.</p>}
+              {market?.graduation && <p>Graduated {new Date(market.graduation.time * 1000).toISOString().replace("T", " ").slice(0, 19)} UTC.</p>}
+            </div></details>
             <a
               href="https://www.tradingview.com/"
               target="_blank"
@@ -310,7 +260,7 @@ export function TokenMarket({
             </a>
           </footer>
         </section>
-        <aside className="rmOrder" id="trade">
+        <aside ref={order} className="rmOrder" id="trade" tabIndex={-1}>
           {children || (
             <>
               <h2>Trade {symbol}</h2>
@@ -414,6 +364,64 @@ export function TokenMarket({
           )}
         </aside>
       </div>
+      <section className="rmProgress" aria-label="Graduation progress">
+        <div>
+          <strong>{market ? state : "Graduation progress"}</strong>
+          <span className="rmStatus">
+            {replay
+              ? "Recorded checkpoint"
+              : stale
+                ? "Last verified · stale"
+                : fresh
+                  ? "Updated"
+                  : failed
+                    ? "Reconnecting"
+                    : "Updating…"}
+          </span>
+        </div>
+        {pct !== null && market ? (
+          <>
+            <div className="rmNumbers">
+              <span>
+                <b>{fmt(Number(market.soldWei) / 1e18, 2)}</b> / 600M tokens net
+                sold
+              </span>
+              <strong>{pct === 100 ? "100" : fmt(pct, 2)}%</strong>
+            </div>
+            <progress
+              aria-label="Net curve tokens sold"
+              max="100"
+              value={pct}
+            />
+            <p>
+              {market.graduation ? (
+                <>
+                  Graduation funding <b>2 ETH</b> · sent to the locked position{" "}
+                  <b>
+                    ≈{fmt(Number(market.graduation.nativeUsedWei) / 1e18, 8)}{" "}
+                    ETH
+                  </b>{" "}
+                  · current curve backing 0 ETH
+                </>
+              ) : (
+                <>
+                  ETH backing{" "}
+                  <b>
+                    {fmt(Number(market.backingWei) / 1e18, 8)} /{" "}
+                    {Number(ethTarget) / 1e18} ETH
+                  </b>
+                </>
+              )}
+              {market.phase === "eligible" &&
+                " · Awaiting the graduation transaction."}
+            </p>
+          </>
+        ) : (
+          <p>
+            Waiting for the latest update.
+          </p>
+        )}
+      </section>
     </div>
   );
 }

@@ -26,7 +26,17 @@ async function post(body: object) {
     body: JSON.stringify(body), cache: "no-store", redirect: "error", signal: AbortSignal.timeout(30_000) });
   const data = await response.json() as Record<string, unknown>;
   if (!response.ok || data.status === "unavailable" || data.status === "invalid") {
-    throw new Error(data.reason === "insufficient-allowance" ? "Review the exact allowance before selling." : "Current transaction evidence is unavailable. Refresh and review again.");
+    const reasons: Record<string, string> = {
+      "insufficient-allowance": "Approve the selected token amount before selling.",
+      "insufficient-balance": "Your balance does not cover this amount and the network fee.",
+      "stale-review": "This quote has expired. Review the current price before continuing.",
+      "curve-closed": "The market has changed. Refresh to use its current trading route.",
+      "graduation-not-ready": "Graduation is not available for this amount. Refresh the quote.",
+      "amount-unavailable": "This amount cannot be used for the selected transaction.",
+    };
+    throw new Error(response.status === 404 ? "Website trading is not enabled."
+      : response.status === 429 ? "Trading checks are busy. Wait a moment and try again."
+      : reasons[String(data.reason)] ?? "Current prices could not be verified. Your amount is unchanged; try again shortly.");
   }
   return data;
 }
@@ -38,6 +48,8 @@ function stateMatches(s: ProductionLifecycleState, token: string, curve: string)
     && s.totalSupplyWei === (10n ** 27n).toString() && s.targetBackingWei === (2n * 10n ** 18n).toString()
     && s.targetSoldWei === (6n * 10n ** 26n).toString()
     && (!s.account || [s.account.ethWei, s.account.tokenWei, s.account.allowanceWei].every(uint))
+    && (!s.postGraduation?.balances || [s.postGraduation.balances.erc20AllowanceWei, s.postGraduation.balances.permit2AllowanceWei].every(uint)
+      && [s.postGraduation.balances.permit2Expiration, s.postGraduation.balances.chainTimestamp].every(value => Number.isSafeInteger(value) && value >= 0))
     && (s.phase !== "graduated" || !!s.postGraduation && same(s.postGraduation.router, productionTradingPins.router)
       && same(s.postGraduation.permit2, productionTradingPins.permit2) && same(s.postGraduation.poolKey.hooks, productionTradingPins.guard));
 }
@@ -48,19 +60,20 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
   const [review, setReview] = useState<Prepared | null>(null), [journal, setJournal] = useState<ProductionTradeJournal | null>(null);
   const [result, setResult] = useState<ProductionLifecycleVerification | null>(null), [hash, setHash] = useState("");
   const [busy, setBusy] = useState(false), [message, setMessage] = useState("");
+  const [progress, setProgress] = useState("");
   const [indicative,setIndicative] = useState("");
   useEffect(()=>{
     setIndicative("");
-    if(!wallet || journal || review || !/^\d{1,12}(\.\d{1,18})?$/.test(input) || parseUnits(input,18)<=0n)return;
+    if(!wallet || !state || journal || review || !/^\d{1,12}(\.\d{1,18})?$/.test(input) || parseUnits(input,18)<=0n)return;
     let alive=true, retry:ReturnType<typeof setTimeout>;
     async function quote(){try{
       const r=await post({action:"quote",token,side,amountWei:parseUnits(input,18).toString()});
       if(alive)setIndicative(r.status==="ready" && uint(r.outputWei) && uint(r.blockNumber) ?
-        "Estimated output "+amount(r.outputWei)+" "+(side==="buy"?symbol:"ETH")+" at block "+r.blockNumber : "Quote unavailable. Refresh before reviewing.");
+        "Estimated receive: "+amount(r.outputWei)+" "+(side==="buy"?symbol:"ETH") : "Quote unavailable. Try again shortly.");
     }catch{if(alive)setIndicative("Quote unavailable. Refresh before reviewing.");}
     finally{if(alive)retry=setTimeout(quote,15000);}}
     const timer=setTimeout(()=>void quote(),550);return()=>{alive=false;clearTimeout(timer);clearTimeout(retry);};
-  },[wallet,input,side,token,symbol,journal,review]);
+  },[wallet,state,input,side,token,symbol,journal,review]);
   const invalidate = () => { revision.current++; setReview(null); };
   useEffect(() => { active.current = true; return () => { active.current = false; revision.current++; }; }, []);
   useEffect(() => {
@@ -70,11 +83,11 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
   useEffect(() => { const invalidateStored = () => { invalidate(); if (wallet) {
     try { setJournal(readProductionTradeJournal(localStorage, wallet.account, token)); } catch { setMessage("Recovery storage is unavailable. Preserve the original request."); }
   } }; window.addEventListener("storage", invalidateStored); return () => window.removeEventListener("storage", invalidateStored); }, [wallet, token]);
-  async function run(work: () => Promise<void>) {
+  async function run(work: () => Promise<void>, label = "Checking market…") {
     if (running.current) return;
-    running.current = true; setBusy(true); setMessage("");
+    running.current = true; setBusy(true); setMessage(""); setProgress(label);
     try { await work(); } catch (error) { setReview(null); setMessage(error instanceof Error ? error.message : "Transaction evidence unavailable"); }
-    finally { running.current = false; if (active.current) setBusy(false); }
+    finally { running.current = false; if (active.current) { setBusy(false); setProgress(""); } }
   }
   async function refresh(account = wallet?.account) {
     invalidate(); const version = revision.current;
@@ -143,49 +156,100 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
   }
   const trade: ProductionLifecycleOperation = v4 ? side === "buy" ? "v4-buy" : "v4-sell" : terminalBuy ? "buy-graduate" : side;
   const current = review?.wallet === wallet && review.revision === revision.current ? review : null;
-  return <section className="lpPanel lpForm lpTradeColumn" aria-label="Production trading">
-    <h2>{v4 ? "Verified Uniswap v4 trading" : "Verified bonding curve"}</h2>
-    <p role="status">Robinhood Chain 4663 · real assets. Every approval, trade and graduation requires separate wallet confirmation.</p>
-    {state && <dl className="lpFacts"><dt>Market</dt><dd>{state.phase === "eligible" ? "Graduation threshold reached" : v4 ? "Original locked v4 position" : "Open curve"}</dd>
-      <dt>Curve ETH backing</dt><dd>{amount(state.backingWei)} of {amount(state.targetBackingWei)} ETH</dd><dt>Curve tokens sold</dt><dd>{amount(state.soldWei)} {symbol}</dd>
-      <dt>{v4 ? "Pool fee" : "Curve fee"}</dt><dd>{v4 ? "0.30% of input" : "1% of gross ETH"}</dd><dt>Verified state block</dt><dd>{BigInt(state.blockNumber).toString()}</dd>
-      {state.account && <><dt>Wallet ETH</dt><dd>{amount(state.account.ethWei)}</dd><dt>Wallet {symbol}</dt><dd>{amount(state.account.tokenWei)}</dd></>}
-      {v4 && <><dt>Canonical pool</dt><dd className="lpAddress">{v4.poolId}</dd><dt>Universal Router</dt><dd className="lpAddress">{v4.router}</dd></>}
-    </dl>}
-    <button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => refresh())}>Refresh market state</button>
-    {!wallet && <button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(connect)}>Connect trading wallet</button>}
-    {wallet && <p className="lpAddress">Connected account {wallet.account}</p>}
-    {journal ? <div className="lpRecovery lpForm"><h3>Original {labels[journal.request.operation]}</h3>
-      <p role="status">{result?.status === "confirmed" && result.indexed ? "Canonical L2 receipt and indexed activity verified. Ethereum L1 finality remains unverified." : result?.status === "reverted" ? "Original transaction reverted" : "Recover the original request before another transaction. No automatic resubmission."}</p>
-      <code className="lpAddress">{journal.transactionHash ?? "Wallet hash missing · original payer and nonce retained"}</code>
-      <p>Original wallet nonce {BigInt(journal.request.nonce).toString()}</p>
-      <label>Original transaction hash<input value={hash} onChange={e => setHash(e.target.value)} maxLength={66} spellCheck={false} /></label>
-      <button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => recover())}>Check original transaction</button>
-      {(result?.status === "reverted" || result?.status === "confirmed" && result.indexed === true) && <button className="lpButton" disabled={busy} onClick={() => void run(() => recover(true))}>Continue from verified transaction</button>}
-    </div> : wallet && state && <>
-      <fieldset disabled={busy}><legend>{v4 ? "Review a Uniswap v4 swap" : "Review a curve trade"}</legend>
-        <label htmlFor={`${id}-side`}>Trade<select id={`${id}-side`} value={side} onChange={e => { invalidate(); setSide(e.target.value === "sell" ? "sell" : "buy"); }}><option value="buy">Buy</option><option value="sell">Sell</option></select></label>
-        <div className="lpFormGrid"><label htmlFor={`${id}-amount`}>Trade amount<input id={`${id}-amount`} value={input} inputMode="decimal" maxLength={31} onChange={e => { invalidate(); setInput(e.target.value); }} /><small>{side === "buy" ? "ETH budget" : symbol}</small></label>
-          <label htmlFor={`${id}-slippage`}>Slippage (%)<input id={`${id}-slippage`} value={slippage} inputMode="decimal" maxLength={4} onChange={e => { invalidate(); setSlippage(e.target.value); }} /><small>{v4 ? "0.10% to 5%" : "0% to 5%"}</small></label></div>
-      </fieldset>
-      {indicative && <p role="status">{indicative}</p>}
-      {side === "sell" && <div className="lpDraftActions"><button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => prepare(v4 ? "v4-token-approve" : "approve"))}>Review exact token approval</button>
-        {v4 && <button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => prepare("v4-permit2-approve"))}>Review exact Permit2 approval</button>}</div>}
-      <button className="lpButton lpSecondary" disabled={busy || state.phase === "eligible" && side === "buy"} onClick={() => void run(() => prepare(trade))}>Review {labels[trade]}</button>
-      {state.phase === "eligible" && <button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => prepare("graduate"))}>Review graduation</button>}
+  const enteredAmount = /^\d{1,12}(?:\.\d{1,18})?$/.test(input) ? parseUnits(input, 18) : 0n;
+  const sellPermissions = side === "sell" && enteredAmount > 0n && state?.account;
+  const needsTokenApproval = !!sellPermissions && (v4
+    ? !!v4.balances && BigInt(v4.balances.erc20AllowanceWei) !== enteredAmount
+    : BigInt(state!.account!.allowanceWei) !== enteredAmount);
+  const needsPermitApproval = !!sellPermissions && !!v4?.balances && !needsTokenApproval
+    && (BigInt(v4.balances.permit2AllowanceWei) !== enteredAmount
+      || v4.balances.permit2Expiration < v4.balances.chainTimestamp + 180);
+  const nextOperation: ProductionLifecycleOperation = needsTokenApproval ? v4 ? "v4-token-approve" : "approve"
+    : needsPermitApproval ? "v4-permit2-approve" : trade;
+  const nextLabel = needsTokenApproval ? "Review token approval" : needsPermitApproval ? "Review Permit2 approval"
+    : side === "buy" ? "Review buy" : "Review sell";
+  const short = (value: string) => `${value.slice(0, 6)}…${value.slice(-4)}`;
+  return <section className="lpForm lpTradeColumn rmLiveOrder" aria-label={`Trade ${symbol}`}>
+    <div className="rmOrderHeading"><h2>Trade {symbol}</h2>
+      <span className="rmOrderNetwork">Robinhood Chain</span></div>
+    {!journal && <>
+      <div className="rmToggle" aria-label="Trade side">
+        {(["buy", "sell"] as const).map(value => <button key={value} type="button" aria-pressed={side === value} disabled={busy}
+          onClick={() => { invalidate(); setSide(value); }}>{value === "buy" ? "Buy" : "Sell"}</button>)}
+      </div>
+      <label className="rmAmountLabel" htmlFor={`${id}-amount`}>
+        <span>You pay <span className="rmInputAsset">{side === "buy" ? "ETH" : symbol}</span></span>
+        <input id={`${id}-amount`} value={input} inputMode="decimal" autoComplete="off" placeholder="0.00" maxLength={31}
+          disabled={busy} onChange={e => { invalidate(); setInput(e.target.value); }} />
+      </label>
+      {state?.account && <p className="rmBalance">Balance: {amount(side === "buy" ? state.account.ethWei : state.account.tokenWei)} {side === "buy" ? "ETH" : symbol}</p>}
+      <details className="rmTradeSettings"><summary>Slippage <span>{slippage || "—"}%</span></summary>
+        <label htmlFor={`${id}-slippage`}>Maximum slippage (%)<input id={`${id}-slippage`} value={slippage} inputMode="decimal"
+          disabled={busy} maxLength={4} onChange={e => { invalidate(); setSlippage(e.target.value); }} /></label>
+        <small>{v4 ? "Choose 0.10% to 5%." : "Choose 0% to 5%."}</small>
+      </details>
+      {indicative && !current && <p className="rmQuoteHint" role="status">{indicative}</p>}
+      {!current && <>
+        {!wallet ? <button className="lpButton" disabled={busy} onClick={() => void run(connect, "Connecting wallet…")}>Connect wallet</button>
+          : !state ? <button className="lpButton" disabled={busy} onClick={() => void run(() => refresh(), "Checking price…")}>Retry market check</button>
+          : <>
+            {(needsTokenApproval || needsPermitApproval) && <p className="rmQuoteHint">Approve only this amount, then confirm your sell.</p>}
+            <button className="lpButton" disabled={busy || enteredAmount <= 0n || state.phase === "eligible" && side === "buy"}
+              onClick={() => void run(() => prepare(nextOperation), "Preparing review…")}>{nextLabel}</button>
+            {state.phase === "eligible" && <button className="lpButton lpSecondary" disabled={busy}
+              onClick={() => void run(() => prepare("graduate"), "Preparing graduation…")}>Review graduation</button>}
+          </>}
+      </>}
     </>}
-    {current && !journal && <div className="lpReview"><h3>Review {labels[current.request.operation]}</h3><dl className="lpFacts">
-      <dt>Destination</dt><dd className="lpAddress">{current.request.to}</dd><dt>Exact input / allowance</dt><dd>{amount(current.request.amountWei)} {native(current.request.operation) ? "ETH" : symbol}</dd>
-      <dt>Quoted output</dt><dd>{amount(current.quote.outputWei)} {native(current.request.operation) ? symbol : "ETH"}</dd><dt>Minimum output</dt><dd>{amount(current.request.minimumOutputWei)}</dd>
-      <dt>Slippage</dt><dd>{percent(current.request.slippageBps)}</dd><dt>Quoted fee</dt><dd>{amount(current.quote.feeWei)} {current.quote.feeAsset === "token" ? symbol : "ETH"}</dd>
-      <dt>Expected refund</dt><dd>{amount(current.quote.refundWei)} ETH</dd><dt>Maximum proposed network cost</dt><dd>{amount(BigInt(current.quote.gasUnits) * BigInt(current.quote.gasPriceWei))} ETH</dd>
-      <dt>Fee evidence</dt><dd>Corroborated Nitro execution and L1 data gas; L1 transaction finality remains unverified</dd>
-      <dt>Deadline</dt><dd>{new Date(Number(current.request.deadline) * 1000).toISOString()}</dd><dt>Wallet nonce</dt><dd>{BigInt(current.request.nonce).toString()}</dd>
-      {approval(current.request.operation) && <><dt>Approved spender</dt><dd className="lpAddress">{current.request.operation === "approve" ? curve : current.request.operation === "v4-token-approve" ? productionTradingPins.permit2 : productionTradingPins.router}</dd></>}
-    </dl><details><summary>Exact calldata and approval binding</summary><code className="lpAddress">{current.request.data}</code><code className="lpAddress">{current.request.approvalBinding}</code></details>
-      <div className="lpDraftActions"><button className="lpButton" disabled={busy} onClick={() => void run(confirm)}>Confirm {labels[current.request.operation]}</button><button className="lpTextButton" disabled={busy} onClick={invalidate}>Cancel review</button></div>
+    {journal && <div className="lpRecovery lpForm rmRecovery"><h3>{result?.status === "confirmed" && result.indexed ? "Transaction confirmed" : "Transaction status"}</h3>
+      <p role="status">{result?.status === "confirmed" && result.indexed ? "Confirmed on Robinhood Chain and included in market activity."
+        : result?.status === "reverted" ? "This transaction reverted. Check the result before continuing."
+        : "Your original request is saved. Check its status before submitting another transaction."}</p>
+      {journal.transactionHash && <a className="rmTransactionLink" href={`https://robinhoodchain.blockscout.com/tx/${journal.transactionHash}`}
+        target="_blank" rel="noopener noreferrer">View transaction ↗</a>}
+      <details className="rmTradeSettings"><summary>Recovery details</summary>
+        <p>{labels[journal.request.operation]} · wallet nonce {BigInt(journal.request.nonce).toString()}</p>
+        <code className="lpAddress">{journal.transactionHash ?? "Waiting for the wallet transaction hash"}</code>
+        <label>Original transaction hash<input value={hash} onChange={e => setHash(e.target.value)} maxLength={66} spellCheck={false} /></label>
+        <small>Ethereum L1 settlement has not been verified.</small>
+      </details>
+      <button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => recover(), "Checking transaction…")}>Check transaction</button>
+      {(result?.status === "reverted" || result?.status === "confirmed" && result.indexed === true) && <button className="lpButton" disabled={busy}
+        onClick={() => void run(() => recover(true), "Refreshing market…")}>Continue trading</button>}
     </div>}
-    {v4 && <p className="lpInlineNotice">Original-position fees and beneficiary claims are available in <Link href="/my-launches/earnings" prefetch={false}>Earnings</Link>. LP principal remains locked.</p>}
-    {message && <p role="alert" className="lpInlineNotice">{message}</p>}
+    {current && !journal && <div className="lpReview rmTradeReview"><h3>Review {labels[current.request.operation]}</h3>
+      <dl className="lpFacts">
+        {current.request.operation !== "graduate" && <><dt>{approval(current.request.operation) ? "Approve" : "You pay"}</dt><dd>{amount(current.request.amountWei)} {native(current.request.operation) ? "ETH" : symbol}</dd></>}
+        {!approval(current.request.operation) && current.request.operation !== "graduate" && <>
+          <dt>Estimated receive</dt><dd>{amount(current.quote.outputWei)} {native(current.request.operation) ? symbol : "ETH"}</dd>
+          <dt>Minimum receive</dt><dd>{amount(current.request.minimumOutputWei)} {native(current.request.operation) ? symbol : "ETH"}</dd>
+          <dt>Trading fee</dt><dd>{amount(current.quote.feeWei)} {current.quote.feeAsset === "token" ? symbol : "ETH"}</dd>
+          <dt>Slippage</dt><dd>{percent(current.request.slippageBps)}</dd>
+        </>}
+        {BigInt(current.quote.refundWei) > 0n && <><dt>Expected refund</dt><dd>{amount(current.quote.refundWei)} ETH</dd></>}
+        <dt>Maximum network fee</dt><dd>{amount(BigInt(current.quote.gasUnits) * BigInt(current.quote.gasPriceWei))} ETH</dd>
+        {approval(current.request.operation) && <><dt>Approved spender</dt><dd className="lpAddress">{current.request.operation === "approve" ? curve : current.request.operation === "v4-token-approve" ? productionTradingPins.permit2 : productionTradingPins.router}</dd></>}
+      </dl>
+      <details className="rmTradeSettings"><summary>Transaction details</summary><dl className="lpFacts">
+        <dt>Network</dt><dd>Robinhood Chain 4663</dd><dt>From</dt><dd className="lpAddress">{current.request.from}</dd>
+        <dt>Destination</dt><dd className="lpAddress">{current.request.to}</dd>
+        <dt>Deadline</dt><dd>{new Date(Number(current.request.deadline) * 1000).toLocaleTimeString()}</dd>
+        <dt>Wallet nonce</dt><dd>{BigInt(current.request.nonce).toString()}</dd>
+      </dl><p>Network fees include execution and data costs. Ethereum L1 settlement is not yet verified.</p>
+        <p>Calldata</p><code className="lpAddress">{current.request.data}</code>
+        <p>Release binding</p><code className="lpAddress">{current.request.approvalBinding}</code>
+      </details>
+      <div className="lpDraftActions"><button className="lpButton" disabled={busy} onClick={() => void run(confirm, "Opening wallet…")}>Confirm {labels[current.request.operation]}</button>
+        <button className="lpTextButton" disabled={busy} onClick={invalidate}>Cancel</button></div>
+    </div>}
+    {busy && <p className="rmOrderStatus" role="status" aria-live="polite">{progress}</p>}
+    {message && <div className="rmOrderError" role="alert"><p>{message}</p>
+      {wallet && state && !journal && <button className="lpTextButton" disabled={busy} onClick={() => void run(() => refresh(), "Checking price…")}>Retry market check</button>}
+    </div>}
+    <div className="rmOrderFootnote">
+      <span>{state ? v4 ? "0.30% pool fee" : "1% trading fee" : "Fee shown in review"} · network fee extra</span>
+      {wallet && <span title={wallet.account}>{short(wallet.account)}</span>}
+    </div>
+    {v4 && <Link className="rmEarningsLink" href="/my-launches/earnings" prefetch={false}>Creator earnings ↗</Link>}
   </section>;
 }
