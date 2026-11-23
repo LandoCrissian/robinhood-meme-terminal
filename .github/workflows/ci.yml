@@ -118,6 +118,12 @@ jobs:
             docker exec "${{ job.services.postgres.id }}" createdb -U postgres "$db"
             DATABASE_URL="postgres://postgres:postgres@localhost:5432/$db" pnpm --filter indexer "test:$spec"
           done
+      - name: Verify cold market recovery with throttled RPCs
+        run: |
+          docker exec "${{ job.services.postgres.id }}" createdb -U postgres rmt_curve_production_smoke_cold_market
+          pnpm --filter indexer exec tsx src/curve-production-birth-postgres-smoke.ts
+        env:
+          DATABASE_URL: postgres://postgres:postgres@127.0.0.1:5432/rmt_curve_production_smoke_cold_market
       - name: Verify recipient-aware earnings pagination, restart and canonical rollback
         run: |
           docker exec "${{ job.services.postgres.id }}" createdb -U postgres rmt_curve_production_smoke_task074

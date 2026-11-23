@@ -33,6 +33,7 @@ export function serializedWriter() {
   };
 }
 
+export const marketReadSignal = new AsyncLocalStorage<AbortSignal>();
 export const marketRequestId = new AsyncLocalStorage<string>();
 
 export const rpcFeed = new AsyncLocalStorage<
@@ -125,12 +126,26 @@ export function providerBudget(
     for (let attempt = 0; ; attempt++) {
       const started = performance.now();
       let wireStart = started;
-      await new Promise<void>((resolve) => {
-        (feed === "activity" ? background : foreground).push(resolve);
+      const deadline = marketReadSignal.getStore();
+      deadline?.throwIfAborted();
+      await new Promise<void>((resolve,reject) => {
+        const queue = feed === "activity" ? background : foreground;
+        function enter() {
+          deadline?.removeEventListener("abort",expire);
+          resolve();
+        }
+        function expire() {
+          const index = queue.indexOf(enter);
+          if (index >= 0) queue.splice(index,1);
+          reject(deadline?.reason);
+        }
+        deadline?.addEventListener("abort",expire,{once:true});
+        queue.push(enter);
         wake();
       });
       try {
-        await wait(Math.max(0, next - performance.now()));
+        await wait(Math.max(0, next - performance.now()), undefined, {signal:deadline});
+        deadline?.throwIfAborted();
         next = performance.now() + spacingMs;
         wireStart = performance.now();
         stats.attempts++;
@@ -140,7 +155,7 @@ export function providerBudget(
         stats.errors++;
         if (failure.status === 429 || failure.code === -32005) stats.limited++;
         if (failure.timeout) stats.timeouts++;
-        const retry = failure.transient && attempt < 1;
+        const retry = failure.transient && attempt < 1 && !deadline?.aborted;
         if (failure.transient)
           next = Math.max(
             next,
@@ -181,7 +196,7 @@ export function providerBudget(
       }
     }
   }
-  return { request, stats };
+  return { request, stats, provider };
 }
 
 export function scheduledTransport(
@@ -196,7 +211,7 @@ export function scheduledTransport(
         budget.request(args.method, async () => {
           signal.throwIfAborted();
           const result = await wire.request(args, {
-            signal: AbortSignal.any([signal, AbortSignal.timeout(6000)]),
+            signal: AbortSignal.any([signal, marketReadSignal.getStore() ?? signal, AbortSignal.timeout(6000)]),
           });
           // A load-balanced provider can report a confirmed head and then route
           // its numbered header read to a backend that has not indexed it yet.

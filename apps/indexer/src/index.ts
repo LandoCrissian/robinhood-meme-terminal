@@ -1,4 +1,5 @@
-import { boundedSetting, providerBudget, marketRequestId, resourceError, rpcFeed, scheduledTransport, serializedWriter } from "./feed-scheduler.js";
+import { marketWordReader } from "./market-rpc.js";
+import { boundedSetting, providerBudget, marketReadSignal, marketRequestId, resourceError, rpcFeed, scheduledTransport, serializedWriter } from "./feed-scheduler.js";
 import { randomUUID, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { Client, Pool, type PoolClient } from "pg";
@@ -149,7 +150,9 @@ const archiveBudget = new URL(config.archiveRpcUrl).origin === new URL(config.rp
   ? primaryBudget : providerBudget("archive", spacingMs);
 function reader(url: string, budget: typeof primaryBudget) {
   return createPublicClient({ chain, transport: productionCurveConfigured ? scheduledTransport(url, budget, stopSignal.signal)
-    : http(url, { retryCount: 3, retryDelay: 1000, timeout: 12_000 }) });
+    : http(url, { retryCount: 3, retryDelay: 1000, timeout: 12_000 }) }).extend(() => ({
+      readMarketWords: marketWordReader(url, budget, stopSignal.signal),
+    }));
 }
 const rpc = reader(config.rpcUrl, primaryBudget);
 const archiveRpc = reader(config.archiveRpcUrl, archiveBudget);
@@ -1467,7 +1470,8 @@ function startServer() {
           db = await pool.connect();
           await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
           await db.query("SET LOCAL statement_timeout = '1s'");
-          const result = market ? await marketRequestId.run(id, () => rpcFeed.run("market", () => current.readMarket(db!, market))) : await current.readActivity(db, query!);
+          const result = market ? await marketRequestId.run(id, () => marketReadSignal.run(AbortSignal.timeout(7000),
+            () => rpcFeed.run("market", () => current.readMarket(db!, market)))) : await current.readActivity(db, query!);
           await db.query("COMMIT");
           const status = result.status === "not_found" ? 404 : 200;
           report(status, result.status); json(response, status, result);

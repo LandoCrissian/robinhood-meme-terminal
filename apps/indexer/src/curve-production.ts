@@ -1,4 +1,4 @@
-import { resourceError } from "./feed-scheduler.js";
+import { marketRequestId, resourceError } from "./feed-scheduler.js";
 import assert from "node:assert/strict";
 import type { Client } from "pg";
 import { isAddress, parseAbi, type PublicClient } from "viem";
@@ -285,13 +285,23 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
 
   async function readMarket(db: Database, query: MarketQuery) {
     const before = state();
-    const { point, epoch } = activity.marketAnchor();
+    const anchor = activity.marketAnchor();
+    const epoch = anchor.epoch;
+    let point = anchor.point;
     if (!archive) throw new MarketReadError("archive_missing");
     if (before.status !== "ready" || !before.checkpoint) throw new MarketReadError("registration_unready");
+    // Cold process only. A known invalidation must go through the writer's
+    // reconciliation path. Recover in the caller's repeatable-read snapshot.
+    if (!point && epoch === 0 && activityError !== "local") {
+      point = await storedMarketCheckpoint(db, scope, before.checkpoint, now());
+      if (point) console.info(JSON.stringify({event:"market_checkpoint_recovery", requestId:marketRequestId.getStore(),
+        activityCandidate:point, registration:before.checkpoint}));
+    }
     if (!point) throw new MarketReadError("activity_anchor_missing");
     if (BigInt(point.blockNumber) > BigInt(before.checkpoint.blockNumber)) throw new MarketReadError("activity_ahead");
     if (now() - Date.parse(point.timestamp) >= maximumCheckpointAgeMs) throw new MarketReadError("activity_stale");
-    const result = await readCurveMarket(db, scope, config, [primary, archive], point, query);
+    const result = await readCurveMarket(db, scope, config, [primary, archive], point, query,
+      anchor.point ? point : before.checkpoint);
     const after = state();
     const age = now() - Date.parse(point.timestamp);
     if (after.status !== "ready") throw new MarketReadError("registration_unready_after");
@@ -301,4 +311,17 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     return result;
   }
   return { syncOnce, syncActivity, state, activityState, marketAnchor: activity.marketAnchor, read, readEarnings, readActivity, readMarket };
+}
+
+// Registration and activity commit different range sizes. Only recover the
+// durable activity tip; the reader must independently verify the covering
+// registration checkpoint as well as the activity endpoint.
+async function storedMarketCheckpoint(db: Database, scope: string, ceiling: BlockEvidence, now: number): Promise<BlockEvidence | null> {
+  const result = await db.query<{height: string; block_hash: BlockEvidence["blockHash"]; observed_at: Date}>(`
+    SELECT c.block_number::text AS height,c.block_hash,c.observed_at FROM rmt_curve_activity_bindings a
+    JOIN rmt_curve_activity_checkpoints c ON c.scope=a.scope AND c.block_number=a.next_block-1
+    WHERE a.scope=$1 AND c.block_number<=$2 AND c.observed_at>$3 AND c.observed_at<=$4`,
+    [scope, ceiling.blockNumber, new Date(now-maximumCheckpointAgeMs), new Date(now+15000)]);
+  const row = result.rows[0];
+  return row ? {blockNumber: row.height, blockHash: row.block_hash, timestamp: row.observed_at.toISOString()} : null;
 }

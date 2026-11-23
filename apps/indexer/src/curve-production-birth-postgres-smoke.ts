@@ -1,3 +1,4 @@
+import { coldMarketSmoke } from "./cold-market-postgres-smoke.js";
 import assert from "node:assert/strict";
 import {readFileSync} from "node:fs";
 import {gunzipSync} from "node:zlib";
@@ -96,6 +97,7 @@ try{
   assert.equal(await productionActivityCursor(reopened,scope),d.blockNumber+32n);
   assert.equal((await reopened.query("SELECT count(*)::int AS n FROM rmt_curve_production_launches")).rows[0]?.n,0);
   assert.equal((await reopened.query("SELECT to_regclass('public.indexer_state') AS old")).rows[0]?.old,null);
+  await coldMarketSmoke(reopened,config,[primary,secondary]);
  }finally{await reopened.end();}
  console.info("Task092 actual production worker PostgreSQL startup/sync/restart: exact one-shot+registry birth under typed pruned state; wrong/empty/quota/peer-conflict rejection; canonical empty-history activity backfill, no manual cursor seed and no production access passed.");
 }finally{if(!closed)await db.end().catch(()=>undefined);}

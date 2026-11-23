@@ -1,8 +1,11 @@
+import type { MarketWordReader } from "./market-rpc.js";
 import { isDeepStrictEqual } from "node:util";
 import type { Client } from "pg";
 import {
   decodeEventLog,
   encodeAbiParameters,
+  encodeFunctionData,
+  decodeFunctionResult,
   keccak256,
   parseAbi,
   zeroAddress,
@@ -86,6 +89,7 @@ export async function readCurveMarket(
   readers: [PublicClient, PublicClient],
   checkpoint: BlockEvidence,
   query: MarketQuery,
+  registration = checkpoint,
 ) {
   const { token, interval, before } = query,
     blockNumber = BigInt(checkpoint.blockNumber),
@@ -101,20 +105,28 @@ export async function readCurveMarket(
         AND l.payload->>'chainId'='4663' AND lower(l.payload->>'factory')=$7
         AND lower(l.payload->>'projectRegistry')=$8 AS valid_registration
     FROM rmt_curve_production_bindings b JOIN rmt_curve_activity_bindings a USING(scope)
-    JOIN rmt_curve_production_checkpoints p ON p.scope=b.scope AND p.block_number=$3
+    JOIN rmt_curve_production_checkpoints p ON p.scope=b.scope AND p.block_number=$10
     JOIN rmt_curve_activity_checkpoints c ON c.scope=a.scope AND c.block_number=$3
     LEFT JOIN rmt_curve_production_launches l ON l.scope=b.scope AND l.token=$2
     WHERE b.scope=$1 AND b.identity=$5::jsonb AND a.next_block>$3 AND b.next_block>$3
-      AND p.block_hash=$4 AND c.block_hash=p.block_hash AND p.observed_at=$9::timestamptz AND c.observed_at=p.observed_at`,
+      AND p.block_number>=c.block_number AND p.block_number<b.next_block
+      AND p.block_hash=$11 AND p.observed_at=$12::timestamptz AND c.block_hash=$4 AND c.observed_at=$9::timestamptz
+      AND NOT EXISTS (SELECT 1 FROM rmt_curve_production_checkpoints exact WHERE exact.scope=b.scope
+        AND exact.block_number=c.block_number AND (exact.block_hash<>c.block_hash OR exact.observed_at<>c.observed_at))`,
     [scope, token, checkpoint.blockNumber, checkpoint.blockHash, productionCurveIdentity(config),
-      deployment.deploymentBlock.toString(), factory.toLowerCase(), deployment.projectRegistry.toLowerCase(), checkpoint.timestamp],
+      deployment.deploymentBlock.toString(), factory.toLowerCase(), deployment.projectRegistry.toLowerCase(), checkpoint.timestamp,
+      registration.blockNumber, registration.blockHash, registration.timestamp],
   );
   requireMarket(reg.rows.length === 1, "checkpoint_binding");
   async function verifyCanonicalBlock() {
-    const heads = await Promise.all(readers.map(r => r.getBlock({ blockNumber })));
-    for (const head of heads) {
-      const observed = blockEvidence(head, blockNumber);
-      requireMarket(observed.blockHash === checkpoint.blockHash && Date.parse(observed.timestamp) === Date.parse(checkpoint.timestamp), "canonical_block");
+    const points = registration.blockNumber === checkpoint.blockNumber ? [checkpoint] : [checkpoint, registration];
+    for (const point of points) {
+      const height = BigInt(point.blockNumber);
+      const heads = await Promise.all(readers.map(r => r.getBlock({ blockNumber: height })));
+      for (const head of heads) {
+        const observed = blockEvidence(head, height);
+        requireMarket(observed.blockHash === point.blockHash && observed.timestamp === point.timestamp, "canonical_block");
+      }
     }
   }
   if (reg.rows[0]!.token === null) {
@@ -135,47 +147,23 @@ export async function readCurveMarket(
     };
   }
   requireMarket(reg.rows[0]!.valid_registration && reg.rows[0]!.token === token, "registration_identity");
-  async function snapshot(rpc: PublicClient) {
-    const read = (
-      address: Address,
-      functionName: (typeof abi)[number]["name"],
-      args: readonly unknown[] = [],
-    ) =>
-      rpc.readContract({
-        address,
-        abi,
-        functionName,
-        args,
-        blockNumber,
-      } as never);
-    const curve = String(
-      await read(factory, "curveForToken", [token]),
-    ).toLowerCase() as Address;
-    const [
-      asset,
-      deployer,
-      version,
-      graduated,
-      sold,
-      backing,
-      pool,
-      soldGoal,
-      ethGoal,
-    ] = await Promise.all(
-      (
-        [
-          "token",
-          "factory",
-          "executionVersion",
-          "graduated",
-          "sold",
-          "backingReserve",
-          "poolId",
-          "graduationSold",
-          "GRADUATION_BACKING",
-        ] as const
-      ).map((name) => read(curve, name)),
-    );
+  const deadline = Date.now() + 6500;
+  async function snapshot(rpc: PublicClient & {readMarketWords?: MarketWordReader}) {
+    type Getter = typeof abi[number]["name"];
+    async function readMany(address: Address, names: Getter[], args: readonly unknown[] = []) {
+      if (!rpc.readMarketWords) return Promise.all(names.map(functionName => rpc.readContract({
+        address, abi, functionName, args, blockNumber,
+      } as never)));
+      const calls = names.map(functionName => encodeFunctionData({abi, functionName, args} as never));
+      const words = await rpc.readMarketWords(address, checkpoint.blockHash, calls, deadline);
+      return words.map((data,i) => decodeFunctionResult({abi, functionName: names[i]!, data}));
+    }
+    const read = async (address: Address, name: Getter, args: readonly unknown[] = []) =>
+      (await readMany(address, [name], args))[0];
+    const curve = String(await read(factory, "curveForToken", [token])).toLowerCase() as Address;
+    const [asset, deployer, version, graduated, sold, backing, pool, soldGoal, ethGoal] =
+      await readMany(curve, ["token", "factory", "executionVersion", "graduated", "sold",
+        "backingReserve", "poolId", "graduationSold", "GRADUATION_BACKING"]);
     requireMarket(String(asset).toLowerCase() === token &&
         String(deployer).toLowerCase() === factory.toLowerCase() &&
         [1, 2, 3].includes(Number(version)), "curve_identity");
