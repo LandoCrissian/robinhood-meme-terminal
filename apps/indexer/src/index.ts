@@ -1,5 +1,5 @@
-import { boundedSetting, providerBudget, rpcFeed, scheduledTransport, serializedWriter } from "./feed-scheduler.js";
-import { timingSafeEqual } from "node:crypto";
+import { boundedSetting, providerBudget, marketRequestId, resourceError, rpcFeed, scheduledTransport, serializedWriter } from "./feed-scheduler.js";
+import { randomUUID, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { Client, Pool, type PoolClient } from "pg";
 import { setTimeout as wait } from "node:timers/promises";
@@ -54,7 +54,7 @@ import { IndexStoreError, initializeIndexStore, lockIndexWriter } from "./index-
 import { curveProductionConfig } from "./curve-production-config.js";
 import { createProductionCurveIndexer, parseProductionCurveQuery } from "./curve-production.js";
 import { parseProductionActivityQuery, productionActivityProfile } from "./curve-production-activity.js";
-import { parseMarketQuery } from "./curve-market.js";
+import { MarketReadError, parseMarketQuery } from "./curve-market.js";
 import { creatorEarningsProfile, parseEarningsDiscoveryQuery } from "./creator-earnings.js";
 
 const CHAIN_ID = 4663;
@@ -1443,20 +1443,45 @@ function startServer() {
         const query = parseProductionActivityQuery(url);
         if (!query && !market) { json(response, 400, { error: "Invalid production activity query" }); return; }
         const current = productionCurve;
+        const suppliedId = request.headers["x-rmt-market-request-id"];
+        const id = typeof suppliedId === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/.test(suppliedId) ? suppliedId : randomUUID();
+        response.setHeader("X-RMT-Market-Request-ID", id);
+        const started = performance.now();
+        const initialAnchor = current?.marketAnchor();
+        const initialRegistration = current?.state().checkpoint;
+        function report(status: number, reason: string) {
+          const registration = current?.state().checkpoint;
+          const anchor = current?.marketAnchor();
+          console.info(JSON.stringify({event: "production_market_read", requestId: id, route: market ? "market" : "activity",
+            token: market?.token, status, reason, durationMs: Math.round(performance.now()-started),
+            initialActivity: initialAnchor?.point, initialRegistration, initialEpoch: initialAnchor?.epoch,
+            registrationBlock: registration?.blockNumber, registrationHash: registration?.blockHash,
+            activityBlock: anchor?.point?.blockNumber, activityHash: anchor?.point?.blockHash, epoch: anchor?.epoch}));
+        }
         const unavailable = { schemaVersion: 1, chainId: CHAIN_ID, profile: productionActivityProfile, status: "unavailable", checkpoint: null };
-        if (!productionCurveConfigured || !current || current.state().status !== "ready") { json(response, 503, unavailable); return; }
+        if (!productionCurveConfigured || !current || current.state().status !== "ready") { report(503, "registration_unready"); json(response, 503, unavailable); return; }
         const releaseRead = historyReadBudget.acquire();
-        if (!releaseRead) { response.setHeader("Retry-After", "1"); json(response, 429, { error: "Activity requests are temporarily limited" }); return; }
+        if (!releaseRead) { report(429, "read_budget"); response.setHeader("Retry-After", "1"); json(response, 429, { error: "Activity requests are temporarily limited" }); return; }
         let db: PoolClient | undefined;
         try {
           db = await pool.connect();
           await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
           await db.query("SET LOCAL statement_timeout = '1s'");
-          const result = market ? await rpcFeed.run("market", () => current.readMarket(db!, market)) : await current.readActivity(db, query!);
-          await db.query("COMMIT"); json(response, result.status === "not_found" ? 404 : 200, result);
+          const result = market ? await marketRequestId.run(id, () => rpcFeed.run("market", () => current.readMarket(db!, market))) : await current.readActivity(db, query!);
+          await db.query("COMMIT");
+          const status = result.status === "not_found" ? 404 : 200;
+          report(status, result.status); json(response, status, result);
         } catch (error) {
           await db?.query("ROLLBACK").catch(() => undefined); json(response, 503, unavailable);
-          console.error(JSON.stringify({ event: "production_activity_read_unavailable", errorType: errorType(error) }));
+          const f = resourceError(error);
+          const reason = error instanceof MarketReadError ? error.predicate :
+            f.pruned ? "rpc_pruned" : f.code === -32601 ? "rpc_method_rejected" :
+            f.code === -32002 ? "rpc_resource_unavailable" : f.status === 429 || f.code === -32005 ? "rpc_rate_limit" :
+            f.timeout ? "rpc_timeout" : f.status ? "rpc_http_error" :
+            error instanceof Error && error.message === "Activity awaits replay of a corrected registration" ? "corrected_registration" :
+            error instanceof Error && error.name === "AssertionError" ? "unknown_assertion" :
+            (error as {code?: unknown})?.code === "57014" ? "sql_timeout" : "unclassified";
+          report(503, reason);
         } finally { db?.release(); releaseRead(); }
         return;
       }

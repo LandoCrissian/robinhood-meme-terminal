@@ -1,3 +1,4 @@
+import { resourceError } from "./feed-scheduler.js";
 import assert from "node:assert/strict";
 import type { Client } from "pg";
 import { isAddress, parseAbi, type PublicClient } from "viem";
@@ -13,7 +14,7 @@ import { creatorEarningsProfile, decodeEarningsDiscoveryCursor, earningsBenefici
 import { createProductionActivityIndexer, productionActivityProfile, readProductionActivity,
   type ActivityQuery } from "./curve-production-activity.js";
 import { productionCurveBirthRpc } from "./curve-production-birth.js";
-import { readCurveMarket, type MarketQuery } from "./curve-market.js";
+import { MarketReadError, readCurveMarket, type MarketQuery } from "./curve-market.js";
 
 type Database = Pick<Client, "query">;
 const maximumRange = 2_000n;
@@ -210,8 +211,10 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
       if (epoch !== revision) throw new Error("Registration changed fork during activity verification");
       activityError = null;
     } catch (error) {
-      activity.invalidate();
       activityError = classifySyncFailure(error);
+      // Failure to extend a verified prefix does not invalidate that prefix.
+      // Reads still require a fresh point, persisted coverage and two current witnesses.
+      if (activityError !== "upstream" || !resourceError(error, true).transient) activity.invalidate();
       throw error;
     } finally {
       activityBusy = false;
@@ -270,10 +273,10 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
 
   async function readActivity(db: Database, query: ActivityQuery) {
     const before = state();
-    if (before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new Error("Canonical activity evidence unavailable");
+    if (before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new MarketReadError("activity_not_aligned");
     const events = await readProductionActivity(db, scope, before.checkpoint, query);
     const after = state();
-    if (after.revision !== before.revision || after.status !== "ready" || now() - Date.parse(before.checkpoint.timestamp) > maximumCheckpointAgeMs || !activity.ready(before.checkpoint)) throw new Error("Canonical activity changed during read");
+    if (after.revision !== before.revision || after.status !== "ready" || now() - Date.parse(before.checkpoint.timestamp) > maximumCheckpointAgeMs || !activity.ready(before.checkpoint)) throw new MarketReadError("activity_changed");
     return { schemaVersion: 1 as const, chainId: 4663 as const, profile: productionActivityProfile, status: "ready" as const,
       token: query.token ?? null, transactionHash: query.transactionHash, observedAt: new Date(now()).toISOString(),
       deployment: { factory: binding.factory, registry: binding.projectRegistry, blockNumber: binding.deploymentBlock.toString(), blockHash: binding.deploymentBlockHash },
@@ -283,15 +286,19 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
   async function readMarket(db: Database, query: MarketQuery) {
     const before = state();
     const { point, epoch } = activity.marketAnchor();
-    if (!archive || before.status !== "ready" || !before.checkpoint || !point
-      || BigInt(point.blockNumber) > BigInt(before.checkpoint.blockNumber)
-      || now() - Date.parse(point.timestamp) >= maximumCheckpointAgeMs) throw new Error("Market checkpoint unavailable");
+    if (!archive) throw new MarketReadError("archive_missing");
+    if (before.status !== "ready" || !before.checkpoint) throw new MarketReadError("registration_unready");
+    if (!point) throw new MarketReadError("activity_anchor_missing");
+    if (BigInt(point.blockNumber) > BigInt(before.checkpoint.blockNumber)) throw new MarketReadError("activity_ahead");
+    if (now() - Date.parse(point.timestamp) >= maximumCheckpointAgeMs) throw new MarketReadError("activity_stale");
     const result = await readCurveMarket(db, scope, config, [primary, archive], point, query);
     const after = state();
     const age = now() - Date.parse(point.timestamp);
-    if (after.status !== "ready" || after.revision !== before.revision || activity.marketAnchor().epoch !== epoch || age >= maximumCheckpointAgeMs || age < -15_000
-      || (result.status === "not_found" && after.checkpoint?.blockHash !== point.blockHash)) throw new Error("Market checkpoint changed");
+    if (after.status !== "ready") throw new MarketReadError("registration_unready_after");
+    if (after.revision !== before.revision || activity.marketAnchor().epoch !== epoch) throw new MarketReadError("epoch_changed");
+    if (age >= maximumCheckpointAgeMs || age < -15_000) throw new MarketReadError("anchor_age");
+    if (result.status === "not_found" && after.checkpoint?.blockHash !== point.blockHash) throw new MarketReadError("absence_head_changed");
     return result;
   }
-  return { syncOnce, syncActivity, state, activityState, read, readEarnings, readActivity, readMarket };
+  return { syncOnce, syncActivity, state, activityState, marketAnchor: activity.marketAnchor, read, readEarnings, readActivity, readMarket };
 }

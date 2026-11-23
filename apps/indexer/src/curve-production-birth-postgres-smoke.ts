@@ -28,12 +28,16 @@ const config=curveProductionConfig({RMT_CURVE_PRODUCTION_BINDING:JSON.stringify(
  creationFeeWei:"400000000000000",sourceVerificationEvidenceSha256:"66aa27a8f98a395ba76cbf770a890107a56c60af4a5975bfdadd349c84273e10"})})!;
 const scope=productionCurveScope(config),pointHash=(n:bigint)=>`0x${n.toString(16).padStart(64,"0")}` as Hex;
 let head=d.blockNumber+50n,mode="pruned",peerConflict:null|"primary"|"secondary"=null,factoryLogQueries=0,activityHistoricalCalls=0;
+let activityFault: null | "archive" | "unexpected" = null;
 const now=Date.now(),time=BigInt(Math.floor(now/1000));
 const pruned=()=>Object.assign(new Error("historical state "+"a".repeat(64)+" is not available"),{code:-32000});
 function rpc(peer:boolean):PublicClient{return{
  getChainId:async()=>4663,getBlockNumber:async()=>head,
- getBlock:async({blockNumber:n}:{blockNumber:bigint})=>({number:n,hash:n===d.blockNumber?d.blockHash:n===d.registry.blockNumber?d.registry.blockHash:pointHash(n),
-  timestamp:time-(d.blockNumber+30n-n),transactions:n===d.blockNumber?[d.transactionHash]:n===d.registry.blockNumber?[d.registry.transactionHash]:[]}),
+ getBlock:async({blockNumber:n}:{blockNumber:bigint})=>{
+  if(peer && activityFault==="archive") throw Object.assign(new Error("resource unavailable"), {code:-32002});
+  if(peer && activityFault==="unexpected") throw new Error("unclassified integrity failure");
+  return {number:n,hash:n===d.blockNumber?d.blockHash:n===d.registry.blockNumber?d.registry.blockHash:pointHash(n),
+  timestamp:time-(d.blockNumber+30n-n),transactions:n===d.blockNumber?[d.transactionHash]:n===d.registry.blockNumber?[d.registry.transactionHash]:[]};},
  getTransaction:async({hash}:{hash:Hex})=>{const registry=hash===d.registry.transactionHash,p=registry?d.registry:d;return{hash,chainId:4663,to:null,from:d.sender,nonce:p.nonce,value:0n,
   input:registry?registryInput:bootstrap.creation_bytecode,blockNumber:p.blockNumber,blockHash:p.blockHash,transactionIndex:0};},
  getTransactionReceipt:async({hash}:{hash:Hex})=>{const registry=hash===d.registry.transactionHash,p=registry?d.registry:d;return{transactionHash:hash,status:"success",contractAddress:registry?pins.registry[0]:pins.bootstrap[0],
@@ -78,7 +82,17 @@ try{
  const reopened=new Client({connectionString:url.toString()});await reopened.connect();
  try{
   worker=createProductionCurveIndexer(config,reopened,primary,secondary,()=>now);await worker.syncOnce();await worker.syncActivity();assert.equal(worker.state().status,"ready");
-  head++;await worker.syncOnce();await worker.syncActivity();assert.equal(worker.state().checkpoint?.blockNumber,String(d.blockNumber+31n));
+  const verified=worker.marketAnchor();
+  assert.ok(verified.point);
+  head++;await worker.syncOnce();
+  activityFault="archive";
+  await assert.rejects(worker.syncActivity(), {code:-32002});
+  assert.deepEqual(worker.marketAnchor(),verified);
+  activityFault="unexpected";
+  await assert.rejects(worker.syncActivity(), /unclassified integrity/);
+  assert.equal(worker.marketAnchor().point,null);
+  activityFault=null;
+  await worker.syncActivity();assert.equal(worker.state().checkpoint?.blockNumber,String(d.blockNumber+31n));
   assert.equal(await productionActivityCursor(reopened,scope),d.blockNumber+32n);
   assert.equal((await reopened.query("SELECT count(*)::int AS n FROM rmt_curve_production_launches")).rows[0]?.n,0);
   assert.equal((await reopened.query("SELECT to_regclass('public.indexer_state') AS old")).rows[0]?.old,null);

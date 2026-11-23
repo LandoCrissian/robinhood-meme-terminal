@@ -190,8 +190,9 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
       let keep: bigint | null = null;
       for (const row of saved.rows.slice(0, 24)) {
         if (BigInt(row.block_number) <= BigInt(point.blockNumber) && (await canonical(BigInt(row.block_number))).blockHash.toLowerCase() === row.block_hash) { keep = BigInt(row.block_number); break; }
+        invalidate(); // An observed fork must discard the prior anchor even if the next RPC fails.
       }
-      if (keep !== BigInt(saved.rows[0]!.block_number)) invalidate();
+
       if (keep === null && saved.rows.length > 24) throw new Error("Activity reorg exceeds bounded automatic recovery");
       if (keep === null || keep !== BigInt(saved.rows[0]!.block_number)) await write(() => rollbackProductionActivity(db, scope, keep ?? config.binding.deploymentBlock - 1n));
     }

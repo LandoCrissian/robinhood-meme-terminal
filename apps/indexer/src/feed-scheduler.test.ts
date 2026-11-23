@@ -107,3 +107,17 @@ test("a missing numbered header is retried on the same provider and stays unavai
     assert.equal(budget.stats.retries, 2);
   } finally { server.close(); }
 });
+
+test("rollout checkpoint: transient archive failure retries the same numbered read; unsupported and pruned state stay distinct", async () => {
+  const budget = providerBudget("archive", 1, () => 0);
+  const number = "0x" + (121562786).toString(16);
+  const params = [number, false];
+  const resource = Object.assign(new Error("resource unavailable"), {code: -32002});
+  let reads = 0;
+  await assert.rejects(budget.request("eth_getBlockByNumber", async () => { reads++; throw resource; }, params), e => e === resource);
+  assert.equal(reads, 2);
+  assert.equal(resourceError(resource).pruned, false);
+  assert.equal(resourceError({code:-32000,message:"missing trie node"}).pruned, true);
+  assert.equal(resourceError({code:-32601}).transient,false);
+  assert.equal(resourceError(new Error("unknown assertion")).transient,false);
+});

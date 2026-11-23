@@ -1,4 +1,4 @@
-import assert from "node:assert/strict";
+import { isDeepStrictEqual } from "node:util";
 import type { Client } from "pg";
 import {
   decodeEventLog,
@@ -25,6 +25,14 @@ import {
   type Candle,
   type MarketLog,
 } from "./market-candles.js";
+
+export class MarketReadError extends Error {
+  constructor(readonly predicate: string) { super(predicate); }
+}
+
+function requireMarket(valid: unknown, predicate: string): asserts valid {
+  if (!valid) throw new MarketReadError(predicate);
+}
 
 const poolManager = "0x8366a39cc670b4001a1121b8f6a443a643e40951";
 const guard = "0x998f3c0ce20cff92655d495a159b1ca37c162000";
@@ -84,7 +92,7 @@ export async function readCurveMarket(
     factory = config.binding.factory;
   const deployment = config.binding;
   await assertNoCorrectedEmptyRange(db, scope);
-  assert.ok(deployment.chainId === 4663 && scope === productionCurveScope(config) && blockNumber >= deployment.deploymentBlock);
+  requireMarket(deployment.chainId === 4663 && scope === productionCurveScope(config) && blockNumber >= deployment.deploymentBlock, "deployment_scope");
   // The anchor must exist independently of the token. A missing anchor yields no row,
   // whereas an aligned anchor with no scoped registration yields a NULL token.
   const reg = await db.query<{ token: string | null; initial: string; aligned: boolean; valid_registration: boolean }>(
@@ -101,24 +109,24 @@ export async function readCurveMarket(
     [scope, token, checkpoint.blockNumber, checkpoint.blockHash, productionCurveIdentity(config),
       deployment.deploymentBlock.toString(), factory.toLowerCase(), deployment.projectRegistry.toLowerCase(), checkpoint.timestamp],
   );
-  assert.equal(reg.rows.length, 1, "Market checkpoints or deployment identity disagree");
+  requireMarket(reg.rows.length === 1, "checkpoint_binding");
   async function verifyCanonicalBlock() {
     const heads = await Promise.all(readers.map(r => r.getBlock({ blockNumber })));
     for (const head of heads) {
       const observed = blockEvidence(head, blockNumber);
-      assert.ok(observed.blockHash === checkpoint.blockHash && Date.parse(observed.timestamp) === Date.parse(checkpoint.timestamp));
+      requireMarket(observed.blockHash === checkpoint.blockHash && Date.parse(observed.timestamp) === Date.parse(checkpoint.timestamp), "canonical_block");
     }
   }
   if (reg.rows[0]!.token === null) {
-    assert.ok(reg.rows[0]!.aligned, "Token absence requires the current registration and activity heads");
+    requireMarket(reg.rows[0]!.aligned, "absence_cursor_alignment");
     // Check the immutable factory at the same height on both providers. A missing
     // database registration must never hide a real on-chain curve or indexed events.
     const orphan = await db.query("SELECT 1 FROM rmt_curve_activity_events WHERE scope=$1 AND token=$2 LIMIT 1", [scope, token]);
-    assert.equal(orphan.rows.length, 0);
+    requireMarket(orphan.rows.length === 0, "absence_orphan_event");
     const curves = await Promise.all(readers.map(r => r.readContract({
       address: factory, abi, functionName: "curveForToken", args: [token], blockNumber,
     })));
-    assert.ok(curves.every(curve => curve === zeroAddress), "Factory disagrees with registration absence");
+    requireMarket(curves.every(curve => curve === zeroAddress), "absence_factory");
     await verifyCanonicalBlock();
     return {
       status: "not_found" as const, schemaVersion: 1, chainId: deployment.chainId, token,
@@ -126,7 +134,7 @@ export async function readCurveMarket(
       checkpoint: { ...checkpoint, confirmations: deployment.confirmations, finality: "l2-confirmed", l1Finality: "unverified" },
     };
   }
-  assert.ok(reg.rows[0]!.valid_registration && reg.rows[0]!.token === token, "Invalid scoped registration");
+  requireMarket(reg.rows[0]!.valid_registration && reg.rows[0]!.token === token, "registration_identity");
   async function snapshot(rpc: PublicClient) {
     const read = (
       address: Address,
@@ -168,20 +176,16 @@ export async function readCurveMarket(
         ] as const
       ).map((name) => read(curve, name)),
     );
-    assert.ok(
-      String(asset).toLowerCase() === token &&
+    requireMarket(String(asset).toLowerCase() === token &&
         String(deployer).toLowerCase() === factory.toLowerCase() &&
-        [1, 2, 3].includes(Number(version)),
-    );
-    assert.ok(
-      soldGoal === saleTarget &&
+        [1, 2, 3].includes(Number(version)), "curve_identity");
+    requireMarket(soldGoal === saleTarget &&
         ethGoal === backingTarget &&
         typeof sold === "bigint" &&
         sold <= saleTarget &&
         typeof backing === "bigint" &&
         backing <= backingTarget &&
-        typeof graduated === "boolean",
-    );
+        typeof graduated === "boolean", "curve_economics");
     const curves = [reg.rows[0]!.initial.toLowerCase()];
     for (let v = 2; v <= Number(version); v++)
       curves.push(
@@ -189,10 +193,8 @@ export async function readCurveMarket(
           await read(factory, "migrationCandidate", [token, v]),
         ).toLowerCase(),
       );
-    assert.ok(
-      curves.at(-1) === curve &&
-        curves.every((c) => /^0x[0-9a-f]{40}$/.test(c) && c !== zeroAddress),
-    );
+    requireMarket(curves.at(-1) === curve &&
+        curves.every((c) => /^0x[0-9a-f]{40}$/.test(c) && c !== zeroAddress), "migration_lineage");
     const poolId = graduated
       ? keccak256(
           encodeAbiParameters(
@@ -207,16 +209,14 @@ export async function readCurveMarket(
           ),
         )
       : null;
-    assert.ok(
-      graduated
+    requireMarket(graduated
         ? poolId === pool && sold === saleTarget && backing === 0n
-        : BigInt(String(pool)) === 0n,
-    );
+        : BigInt(String(pool)) === 0n, "pool_identity");
     const potential =
       (4n * 10n ** 18n * 18n * 10n ** 26n + (18n * 10n ** 26n - sold) - 1n) /
         (18n * 10n ** 26n - sold) -
       4n * 10n ** 18n;
-    assert.ok(graduated || backing === potential);
+    requireMarket(graduated || backing === potential, "backing_equation");
     return {
       curves,
       manager: poolManager,
@@ -231,15 +231,13 @@ export async function readCurveMarket(
     };
   }
   const [binding, other] = await Promise.all(readers.map(snapshot));
-  assert.deepEqual(binding, other);
-  assert.ok(binding);
+  if (!isDeepStrictEqual(binding, other)) throw new MarketReadError("provider_snapshot_disagreement");
+  requireMarket(binding, "missing_snapshot");
   const checkedTimes = new Map<string, number>();
   async function time(row: Row) {
     if (row.payload.marketTime !== undefined) {
-      assert.ok(
-        Number.isSafeInteger(row.payload.marketTime) &&
-          row.payload.marketTime > 0,
-      );
+      requireMarket(Number.isSafeInteger(row.payload.marketTime) &&
+          row.payload.marketTime > 0, "event_timestamp");
       return row.payload.marketTime;
     }
     const cached = checkedTimes.get(row.hash);
@@ -247,11 +245,9 @@ export async function readCurveMarket(
     const headers = await Promise.all(
       readers.map((r) => r.getBlock({ blockNumber: BigInt(row.height) })),
     );
-    assert.ok(
-      headers.every(
+    requireMarket(headers.every(
         (h) => h.hash === row.hash && h.timestamp === headers[0]!.timestamp,
-      ),
-    );
+      ), "event_block");
     const value = Number(headers[0]!.timestamp);
     checkedTimes.set(row.hash, value);
     return value;
@@ -277,18 +273,16 @@ export async function readCurveMarket(
         binding.poolId,
       ],
     );
-    assert.equal(result.rows.length, 1);
+    requireMarket(result.rows.length === 1, "graduation_event_count");
     const row = result.rows[0]!,
       { args: g } = decodeEventLog({
         abi: [graduationEvent],
         data: row.payload.data,
         topics: [...row.payload.topics] as [Hex, ...Hex[]],
       });
-    assert.ok(
-      g.positionTokenId > 0n &&
+    requireMarket(g.positionTokenId > 0n &&
         g.nativeUsed + g.nativeDust === backingTarget &&
-        g.tokenUsed + g.tokenDust === 400_000_000n * 10n ** 18n,
-    );
+        g.tokenUsed + g.tokenDust === 400_000_000n * 10n ** 18n, "graduation_amounts");
     graduation = {
       time: await time(row),
       nativeUsedWei: g.nativeUsed.toString(),
@@ -303,7 +297,7 @@ export async function readCurveMarket(
   const started = Date.now();
   for (;;) {
     if (Date.now() - started > 6000)
-      throw new Error("Market history exceeded the read budget");
+      throw new MarketReadError("history_read_deadline");
     const page = await db.query<Row>(
       select +
         ` WHERE scope=$1 AND token=$2 AND (block_number,log_index)<($3::bigint,$4::integer)
@@ -333,7 +327,7 @@ export async function readCurveMarket(
         break;
       }
       const fill = marketFill(row.payload, binding);
-      assert.ok(fill);
+      requireMarket(fill, "invalid_fill");
       addMarketFill(buckets, stamp, interval, fill);
     }
     if (earlier || page.rows.length < 256) break;

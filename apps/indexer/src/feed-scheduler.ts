@@ -33,6 +33,8 @@ export function serializedWriter() {
   };
 }
 
+export const marketRequestId = new AsyncLocalStorage<string>();
+
 export const rpcFeed = new AsyncLocalStorage<
   "activity" | "registration" | "historical" | "market"
 >();
@@ -53,10 +55,11 @@ export function resourceError(error: unknown, boundedLogs = false) {
     code: number | undefined,
     timeout = false,
     missingBlock = false,
+    pruned = false,
     rangeMessage = false;
   for (
     let cause = error;
-    cause && typeof cause === "object" && !seen.has(cause);
+    cause && typeof cause === "object" && !seen.has(cause) && seen.size < 16;
 
   ) {
     seen.add(cause);
@@ -72,6 +75,7 @@ export function resourceError(error: unknown, boundedLogs = false) {
     if (typeof e.code === "number" && e.code < 0) code = e.code;
     timeout ||= e.name === "TimeoutError" || e.name === "TimeoutRpcError";
     missingBlock ||= e.name === "ProviderBlockUnavailable";
+    pruned ||= [e.details, e.message].some(value => typeof value === "string" && /historical state.{0,90}(?:not available|unavailable)|missing trie node|state is pruned/i.test(value.slice(0,512)));
     rangeMessage ||= e.details === "invalid block range params" || e.message === "invalid block range params";
     cause = e.cause;
   }
@@ -82,6 +86,7 @@ export function resourceError(error: unknown, boundedLogs = false) {
     timeout,
     missingBlock,
     deferredRange,
+    pruned,
     transient:
       timeout || deferredRange || missingBlock ||
       status === 408 ||
@@ -118,6 +123,8 @@ export function providerBudget(
   async function request<T>(method: string, send: () => Promise<T>, params?: unknown) {
     const feed = rpcFeed.getStore() ?? "historical";
     for (let attempt = 0; ; attempt++) {
+      const started = performance.now();
+      let wireStart = started;
       await new Promise<void>((resolve) => {
         (feed === "activity" ? background : foreground).push(resolve);
         wake();
@@ -125,6 +132,7 @@ export function providerBudget(
       try {
         await wait(Math.max(0, next - performance.now()));
         next = performance.now() + spacingMs;
+        wireStart = performance.now();
         stats.attempts++;
         return await send();
       } catch (error) {
@@ -143,6 +151,10 @@ export function providerBudget(
         console.warn(
           JSON.stringify({
             event: "indexer_rpc_error",
+            requestId: marketRequestId.getStore(),
+            queueMs: Math.round(wireStart - started),
+            wireMs: Math.round(performance.now() - wireStart),
+            pruned: failure.pruned,
             provider,
             feed,
             method,
