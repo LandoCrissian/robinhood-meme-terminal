@@ -183,7 +183,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft, metad
     try { await action(); }
     catch (error) {
       if (error instanceof PreparationUnavailable) {
-        setMessage("Live creation evidence is temporarily unavailable. Your draft is saved. Try again when the connection recovers.");
+        setMessage("Verification temporarily unavailable. Your reviewed draft is saved. Tap Launch Token to retry.");
         return;
       }
       if (error instanceof OwnerLoginRequired) {
