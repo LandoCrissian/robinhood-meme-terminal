@@ -11,6 +11,8 @@ import { proposedCurveLifecycle } from "../../lib/curve-lifecycle";
 import { formatEther } from "viem";
 import { launchTerms, launchTokenDecimals, launchTokenSupply, minimumGraduationGrossWei } from "../../lib/launch-terms";
 import { TestCreationWallet } from "./test-creation-wallet";
+import { PublishDescription } from "./publish-description";
+import {descriptionMetadata, originalRmtMetadataCID, rmtImageURL} from "../../lib/rmt-metadata";
 import { ArtworkUpload, clearPendingArtwork } from "./artwork-upload";
 import { assetCID, receiptForImage, verifyArtworkReceipt } from "../../lib/token-artwork";
 import { TokenArtwork } from "./token-artwork";
@@ -190,6 +192,10 @@ export function CreatorDraft({ executionTest, productionCreation }: {
     const boundAccount = liveAccountBinding.current;
     setPending(true);
     try {
+      if (productionCreation && draft.name==="RMT" && draft.symbol==="RMT") {
+        let uri; try {uri=descriptionMetadata(draft.description).projectURI;} catch { /* Show the same recovery action. */ }
+        if (!uri || uri!==draft.projectURI) {setMessage("Review and publish the saved description with the RMT artwork before creation.");return;}
+      }
       const { name, symbol, projectURI, treasury, treasuryShare } = draft;
       const request: LaunchReviewRequest = {
         name, symbol, projectURI, treasury, treasuryShare, treasuryShareUnit: projectTreasuryShareUnit,
@@ -286,9 +292,12 @@ export function CreatorDraft({ executionTest, productionCreation }: {
           <div className="lpDraftField">
             <label htmlFor={fieldId("description")}>Project description</label>
             <textarea {...inputProps("description", true)} maxLength={launchDraftLimits.description} rows={3} placeholder="What are you launching?" />
-            <small id={fieldId("description") + "-hint"}>Up to 500 UTF-8 bytes · kept on this device</small>
+            <small id={fieldId("description") + "-hint"}>Up to 500 UTF-8 bytes. Private until explicitly published.</small>
             {errorFor("description")}
           </div>
+          {draft.name==="RMT" && draft.symbol==="RMT" && (draft.artworkURL===rmtImageURL || assetCID(draft.projectURI,"metadata.json")===originalRmtMetadataCID) &&
+            <PublishDescription description={draft.description} projectURI={draft.projectURI} onSave={receipt=>setDraft(previous=>
+              previous.description===draft.description && previous.projectURI===draft.projectURI && previous.artworkURL===draft.artworkURL ? {...previous,...receipt}:previous)} />}
           <details><summary>Advanced URLs</summary>{projectLinks.map(({ key, label, max }) => <div className="lpDraftField" key={key}>
             <label htmlFor={fieldId(key)}>{label}</label>
             <input {...inputProps(key, true)} readOnly={Boolean(assetCID(draft.projectURI,"metadata.json"))} type="url" maxLength={max} placeholder="https://" autoComplete="off" />
@@ -353,7 +362,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
           setMessage("");
         }}>Clear draft</button>
       </div>
-      <p className="lpCreatorHelp">Your draft and description stay in this browser. Saving artwork publishes the image and its metadata URL.</p>
+      <p className="lpCreatorHelp">Your draft is saved in this browser. Saving artwork publishes the image. Publishing the RMT description creates a new metadata URL.</p>
     </form>;
   return <div className="lpColumns lpCreatorColumns">
     {draftPanel}

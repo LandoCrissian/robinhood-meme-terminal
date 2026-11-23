@@ -323,7 +323,7 @@ export function ProductionCreationWallet({ factory, draft, isCurrentDraft }: {
   const state = result?.status ?? "pending";
   return <section className="lpPanel lpForm" aria-label="Create on Robinhood Chain">
     <h2>Create on Robinhood Chain</h2>
-    <p>Robinhood Chain 4663 · real ETH. Review the live network fee in MetaMask before personally confirming. The transaction includes the reviewed token name, ticker, project URI and treasury terms. The factory sets the one-billion-token supply. The registration includes the saved artwork metadata URI. Your description stays in this browser.</p>
+    <p>Robinhood Chain 4663 · real ETH. Review the live network fee in MetaMask before personally confirming. The transaction includes the reviewed token name, ticker, project URI and treasury terms. The factory sets the one-billion-token supply. The registration includes the saved artwork metadata URI. The approved RMT metadata includes your published description.</p>
     {journal ? <>
       <p role="status">{state === "confirmed" ? "On-chain creation confirmed" : state === "reverted" ? "Creation reverted"
         : state === "unavailable" ? "Evidence unavailable" : "Transaction pending"}</p>

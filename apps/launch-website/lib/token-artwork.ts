@@ -118,7 +118,7 @@ export async function verifyArtworkReceipt(receipt: ArtworkReceipt, signal: Abor
     if (artworkCID(bytes) !== expected) throw new Error("Stored artwork failed verification.");
     return bytes;
   };
-  const document = await load(assetPath(metadata,"metadata.json"),metadata,512,"application/json");
+  const document = await load(assetPath(metadata,"metadata.json"),metadata,4096,"application/json");
   if (JSON.parse(new TextDecoder().decode(document)).image !== receipt.artworkURL) throw new Error("Metadata image did not match.");
   await load(assetPath(image,"image.webp"),image,artworkLimit,"image/webp");
 }

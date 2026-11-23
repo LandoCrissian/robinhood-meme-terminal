@@ -1,3 +1,5 @@
+import {descriptionMetadata} from "../rmt-metadata";
+import {approvedMetadataURI} from "./rmt-metadata";
 import { assetCID } from "../token-artwork";
 import { configuredArtworkStore, readArtwork } from "./token-artwork";
 import { decodeFunctionData, getAddress, type Hex } from "viem";
@@ -54,9 +56,14 @@ export async function handleProductionCreation(request: Request) {
           || (body.prior !== undefined && !prior) || (prior && (!same(prior.from, body.account) || !same(prior.intentId, body.intentId)))) return reply({ status: "invalid" }, 422);
       if (!await isAuthenticatedCreationOwner(request.headers)) return reply({ status: "owner-login-required" }, 401);
       const cid = assetCID((body.fields as {projectURI:string}).projectURI,"metadata.json");
-      if (cid !== "bafkreiazx4gbczh3uskiarktmoahm6mwt5ri243mmz2rfldak25yivjp5y" || !(await readArtwork(configuredArtworkStore(),cid,"logo.webp")).ok) return reply({status:"artwork-unverified"},422);
+      if (!cid || !approvedMetadataURI((body.fields as {projectURI:string}).projectURI, release.operationalAcceptanceSha256)) return reply({status:"artwork-unverified"},422);
+      const store=configuredArtworkStore();
+      const metadata=await readArtwork(store,cid,"metadata.json");
+      if (!metadata.ok || descriptionMetadata((await metadata.json()).description).cid!==cid ||
+          !(await readArtwork(store,cid,"logo.webp")).ok) return reply({status:"artwork-unverified"},422);
       if ((await readProductionDiscovery()).status !== "ready") return reply({ status: "unavailable" }, 503);
-      return reply(await prepareCurveProductionCreation(release, body.fields, getAddress(body.account.toLowerCase()), body.intentId, prior ?? undefined));
+      const prepared=await prepareCurveProductionCreation(release, body.fields, getAddress(body.account.toLowerCase()), body.intentId, prior ?? undefined);
+      return reply({...prepared,metadata:{...prepared.metadata,description:"registered-metadata"}});
     }
     if (keys(body, ["action", "request", ...(body && Object.hasOwn(body, "transactionHash") ? ["transactionHash"] : [])]) && body.action === "verify") {
       const original = preparedRequest(body.request);
