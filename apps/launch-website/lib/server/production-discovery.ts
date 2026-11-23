@@ -115,7 +115,8 @@ export async function readProductionDiscovery(token?: string, options: Productio
       await new Promise(resolve => setTimeout(resolve, 3_000));
       response = await fetchCheckpoint();
     }
-    if (!response.ok) {
+    const tokenNotFound = Boolean(token) && response.status === 404;
+    if (!response.ok && !tokenNotFound) {
       await response.body?.cancel();
       return report(response.status === 401 ? "unauthorized" : response.status === 403 ? "forbidden"
         : response.status === 429 ? "rate_limited" : "upstream_http", response.status);
@@ -139,7 +140,10 @@ export async function readProductionDiscovery(token?: string, options: Productio
     } finally { await reader.cancel().catch(() => undefined); reader.releaseLock(); }
     const raw = JSON.parse(new TextDecoder("utf-8", { fatal: true }).decode(bytes.subarray(0, size)));
     const data = parseProductionDiscovery(raw, token, options.now);
-    if (data.status === "unavailable") return report("response_schema");
+    // A registered worker returns 404 + a complete checkpoint for an unknown
+    // address. An ordinary 404, a stale absence or a contradictory row cannot
+    // establish absence at a current block.
+    if (data.status === "unavailable" || (tokenNotFound && (data.status !== "ready" || data.launches.length !== 0))) return report("response_schema");
     if (data.status === "stale") report(raw.status === "stale" ? "stale_upstream" : "stale_checkpoint");
     return data;
   } catch { return report(stage); }

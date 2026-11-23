@@ -1,0 +1,451 @@
+{
+  "website": {
+    "at": "2026-11-22T10:38:10.759Z",
+    "source": "bb0838e17a82e2f881418bb57c4d426d5d595c33",
+    "bundleSha256": "381c8fefe963a744137051bad1c19e240e626cab151d197856026df38233650e",
+    "serverSha256": "8b33f8fc871401b0c4dc9b561dec4dea30fd27015ca1f1cadec3e37b720d2d9f",
+    "deployId": "6b02c5f9c3e21ae970a5e4b7",
+    "url": "https://6b02c5f9c3e21ae970a5e4b7--eclectic-valkyrie-16cb92.netlify.app",
+    "productionDeploy": "6b029787efaaf7bc868d68e4",
+    "context": "deploy-preview"
+  },
+  "outerArchive": "sha256:ff184cc8813cfcd1cbf49c532affa26e323ab9c5db47e1c9f546bef1c4ab163c",
+  "artifactId": 14751026514,
+  "buildRun": "45013082054",
+  "sourceTree": "185f50e8516206a47e039e34bf7b53a87aacab6c",
+  "workerArchive": {
+    "commit": "bb0838e17a82e2f881418bb57c4d426d5d595c33",
+    "command": "git archive --format=tar bb0838e17a82e2f881418bb57c4d426d5d595c33",
+    "bytes": 136386560,
+    "sha256": "0389db7b035553fb352de3e1bc220ffef5dea83a92d3f235506d90b0d5551089",
+    "migrationSha256": "ac9df20e59e97daaa907d83f3760e5ef91b11fdf0c0ad35f28510fef05df5c65"
+  },
+  "production": {
+    "started": "2026-11-22T10:11:36.388Z",
+    "deployments": {
+      "worker": {
+        "id": "8fdf4a2a-09e0-4605-bea7-ff77e97739e9",
+        "status": "SUCCESS",
+        "createdAt": "2026-11-21T17:27:41.538Z"
+      },
+      "postgres": {
+        "id": "4211895e-3259-4437-bf27-0c197b670783",
+        "status": "SUCCESS",
+        "createdAt": "2026-11-21T15:10:15.610Z"
+      }
+    },
+    "worker": "27b1aa2c-77e5-4ed4-91a1-1951d68c488e",
+    "project": "19587a6e-6f02-4cfa-b7db-f308934f697b",
+    "environment": "539a42da-fb60-420f-b9fa-8c29af25ebbe",
+    "observations": [
+      {
+        "blockNumber": "120553635",
+        "blockHash": "0x6626e94e4b321af851fa3abc1c03f1df67532085350b2c942a4c6386dce4aa53",
+        "timestamp": "2026-11-22T10:11:10.000Z",
+        "confirmations": 20,
+        "finality": "l2-confirmed",
+        "l1Finality": "unverified",
+        "observedAt": "2026-11-22T10:11:41.461Z",
+        "siteLaunchCount": 0,
+        "workerLaunchCount": 0,
+        "siteRequest": "01M81BTW7RMD94ZSGNSF7MET7J",
+        "workerRequest": "lfly49m4RjawWT-_lt7tkg",
+        "providers": [
+          "https://rpc.mainnet.chain.robinhood.com",
+          "https://robinhood.api.pocket.network"
+        ]
+      },
+      {
+        "blockNumber": "120553944",
+        "blockHash": "0xcc594776c2adf890681c1064efe3e8f911f028e1c1938a3642805caa3b4be43c",
+        "timestamp": "2026-11-22T10:11:45.000Z",
+        "confirmations": 20,
+        "finality": "l2-confirmed",
+        "l1Finality": "unverified",
+        "observedAt": "2026-11-22T10:11:56.576Z",
+        "siteLaunchCount": 0,
+        "workerLaunchCount": 0,
+        "siteRequest": "01M81BVBCFPQJ94AM0VFVGN5TE",
+        "workerRequest": "er90oeiERKm9rt7PWUN5dQ",
+        "providers": [
+          "https://rpc.mainnet.chain.robinhood.com",
+          "https://robinhood.api.pocket.network"
+        ]
+      }
+    ],
+    "routes": [
+      {
+        "path": "/ready",
+        "http": 200,
+        "id": "RRymtTIMTaGQCc9lLPU1MQ"
+      },
+      {
+        "path": "/curve-launches",
+        "http": 401,
+        "id": "_sqCDAIqQ4mBOUGNljLL4A"
+      },
+      {
+        "path": "/curve-market/0x0000000000000000000000000000000000000001?interval=60",
+        "http": 404,
+        "id": "Xrs9uqJIRxiHW3pNYqVb7A"
+      },
+      {
+        "path": "/curve-activity?transactionHash=0x0000000000000000000000000000000000000000000000000000000000000000",
+        "http": 404,
+        "id": "8TfwlfreRPa_mmr09o6EoQ"
+      }
+    ]
+  },
+  "controlPlane": {
+    "source": "Railway describe_environment",
+    "serviceReplicas": 1,
+    "postgresVolume": "bf6e7ddc-3be6-4ba7-ad53-8e7010e76c86",
+    "mount": "/var/lib/postgresql/data",
+    "sizeMB": 500,
+    "pendingChanges": 0,
+    "directSqlObservation": null
+  },
+  "fork": {
+    "baseHeight": "120560798",
+    "baseHash": "0x85ddb0ab8656ffb250e0d6b1c594954927079ad00c3007cfc15ccf959d0bddb3",
+    "receiptsByProvider": [
+      54,
+      54
+    ],
+    "canonicalFills": 35,
+    "receiptsSha256": "a03c2f501b1e5e5fd26dadbd83b573aa18e85f7e89342917df23faa0ca29c866",
+    "replaySha256": "11af6958788d357998cca8280870c13f48ed7fb15985991ae53374cf1af0a3e2",
+    "poolId": "0xa189305d0cfd8018b06d615a7968b68f4113522eea153d09f09722efc2d21816"
+  },
+  "publicChecks": {
+    "at": "2026-11-22T10:40:53.661Z",
+    "preview": "https://6b02c5f9c3e21ae970a5e4b7--eclectic-valkyrie-16cb92.netlify.app",
+    "profiles": [
+      {
+        "agent": "Twitterbot/1.0",
+        "canonical": "https://www.rmtlaunch.fun/u/rmtlaunch",
+        "card": "https://6b02c5f9c3e21ae970a5e4b7--eclectic-valkyrie-16cb92.netlify.app/share/u/rmtlaunch/4ea0db858514ec42c7794f0a.png",
+        "sha256": "543906f623c4488517be26c75c439a44a449205292bd607b4a059ba8ae40e5c5",
+        "publicAvatarMatches": true,
+        "cache": "public,max-age=60,must-revalidate",
+        "size": [
+          1200,
+          630
+        ]
+      },
+      {
+        "agent": "facebookexternalhit/1.1",
+        "canonical": "https://www.rmtlaunch.fun/u/rmtlaunch",
+        "card": "https://6b02c5f9c3e21ae970a5e4b7--eclectic-valkyrie-16cb92.netlify.app/share/u/rmtlaunch/4ea0db858514ec42c7794f0a.png",
+        "sha256": "543906f623c4488517be26c75c439a44a449205292bd607b4a059ba8ae40e5c5",
+        "publicAvatarMatches": true,
+        "cache": "public,max-age=60,must-revalidate",
+        "size": [
+          1200,
+          630
+        ]
+      },
+      {
+        "browser": "webkit",
+        "visitorIntent": "https://twitter.com/intent/tweet?url=https%3A%2F%2Fwww.rmtlaunch.fun%2Fu%2Frmtlaunch&text=Take+a+look+at+rmtlaunch%E2%80%99s+profile+on+%40RMTLaunch.",
+        "overflow": false
+      },
+      {
+        "browser": "chromium",
+        "visitorIntent": "https://twitter.com/intent/tweet?url=https%3A%2F%2Fwww.rmtlaunch.fun%2Fu%2Frmtlaunch&text=Take+a+look+at+rmtlaunch%E2%80%99s+profile+on+%40RMTLaunch.",
+        "overflow": false
+      }
+    ],
+    "financial": [
+      {
+        "origin": "https://6b02c5f9c3e21ae970a5e4b7--eclectic-valkyrie-16cb92.netlify.app",
+        "route": "production-creation",
+        "http": 404
+      },
+      {
+        "origin": "https://6b02c5f9c3e21ae970a5e4b7--eclectic-valkyrie-16cb92.netlify.app",
+        "route": "production-lifecycle",
+        "http": 404
+      },
+      {
+        "origin": "https://6b02c5f9c3e21ae970a5e4b7--eclectic-valkyrie-16cb92.netlify.app",
+        "route": "production-earnings",
+        "http": 404
+      },
+      {
+        "origin": "https://www.rmtlaunch.fun",
+        "route": "production-creation",
+        "http": 404
+      },
+      {
+        "origin": "https://www.rmtlaunch.fun",
+        "route": "production-lifecycle",
+        "http": 404
+      },
+      {
+        "origin": "https://www.rmtlaunch.fun",
+        "route": "production-earnings",
+        "http": 404
+      }
+    ],
+    "wallet": "No wallet interaction",
+    "rpc": [
+      {
+        "url": "https://rpc.mainnet.chain.robinhood.com",
+        "block": "120569623",
+        "hash": "0x3d51a2ec0fa6ebae478c53a4b3de4620c98c52eb9d933ab7b377d6e4650aae37",
+        "factory": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+        "runtime": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091"
+      },
+      {
+        "url": "https://robinhood.api.pocket.network",
+        "block": "120569623",
+        "hash": "0x3d51a2ec0fa6ebae478c53a4b3de4620c98c52eb9d933ab7b377d6e4650aae37",
+        "factory": "0x7281e1F9D8764Ae6533b374DFd08AB2ECbC273c3",
+        "runtime": "0x519d55e694263866896e05023834b124829173f13f42c5aea7e3ca2200c5a091"
+      }
+    ],
+    "artwork": {
+      "metadataSha256": "19bf0c1164fba49480455363807679969f628d736c667512ac6056bb84552fee",
+      "imageSha256": "f84f6fe90a92aad761f565e0304b1c51215479fe5174dd110b74a0acde49b7fc",
+      "imageBytes": 147724
+    }
+  },
+  "browser": {
+    "origin": "https://6b02c5f9c3e21ae970a5e4b7--eclectic-valkyrie-16cb92.netlify.app",
+    "at": "2026-11-22T10:39:18.511Z",
+    "results": [
+      {
+        "browser": "chromium",
+        "width": 1440,
+        "priceAndFdv": true,
+        "sellback": true,
+        "pendingAndGraduated": true,
+        "quotes": true,
+        "reload": true,
+        "overflow": false,
+        "walletRequests": 0
+      },
+      {
+        "browser": "webkit",
+        "width": 375,
+        "priceAndFdv": true,
+        "sellback": true,
+        "pendingAndGraduated": true,
+        "quotes": true,
+        "reload": true,
+        "overflow": false,
+        "walletRequests": 0
+      }
+    ]
+  },
+  "layout": [
+    {
+      "invalidHostLocale": "en-US@posix",
+      "browser": "webkit",
+      "width": 320,
+      "height": 568,
+      "progress": 68.04,
+      "quoteFloor": true,
+      "document": 320
+    },
+    {
+      "invalidHostLocale": "en-US@posix",
+      "browser": "webkit",
+      "width": 360,
+      "height": 780,
+      "progress": 68.04,
+      "quoteFloor": true,
+      "document": 360
+    },
+    {
+      "invalidHostLocale": "en-US@posix",
+      "browser": "chromium",
+      "width": 768,
+      "height": 1024,
+      "progress": 68.04,
+      "quoteFloor": true,
+      "document": 768
+    }
+  ],
+  "creatorDisclosure": {
+    "origin": "https://6b02c5f9c3e21ae970a5e4b7--eclectic-valkyrie-16cb92.netlify.app",
+    "at": "2026-11-22T10:39:23.957Z",
+    "results": [
+      {
+        "engine": "chromium",
+        "viewport": 1440,
+        "disclosures": true,
+        "restoredSyntheticDraft": true,
+        "riskPage": true,
+        "financial": "disabled"
+      },
+      {
+        "engine": "webkit",
+        "viewport": 390,
+        "disclosures": true,
+        "restoredSyntheticDraft": true,
+        "riskPage": true,
+        "financial": "disabled"
+      }
+    ]
+  },
+  "physicalWalletReview": null,
+  "productionPublicPageSample": [
+    {
+      "path": "/api/launchpad/new-engine",
+      "http": 200,
+      "headings": [],
+      "status": "ready",
+      "block": "120564601",
+      "id": "01M81CZK8EB9N1VECVX42T274R",
+      "at": 1795343509.164841
+    },
+    {
+      "path": "/launches/0x868027fe14ab2447646e3cce561def4e66ff3c96",
+      "http": 200,
+      "headings": [
+        "New-engine evidence unavailable"
+      ],
+      "status": null,
+      "block": null,
+      "id": "01M81CZK8PBFCS1BRQW0YJMCTZ",
+      "at": 1795343508.873822
+    },
+    {
+      "path": "/",
+      "http": 200,
+      "headings": [
+        "Launches",
+        "No launches yet"
+      ],
+      "status": null,
+      "block": null,
+      "id": "01M81CZK8FA3M63FXC3AGJG4RE",
+      "at": 1795343504.0381274
+    },
+    {
+      "path": "/api/launchpad/new-engine",
+      "http": 200,
+      "headings": [],
+      "status": "ready",
+      "block": "120564601",
+      "id": "01M81CZWRB4TGT6GE2Y2T70JT7",
+      "at": 1795343512.504263
+    },
+    {
+      "path": "/launches/0x868027fe14ab2447646e3cce561def4e66ff3c96",
+      "http": 200,
+      "headings": [
+        "New-engine evidence unavailable"
+      ],
+      "status": null,
+      "block": null,
+      "id": "01M81CZWRBQ3SG38CYKA48P7ZH",
+      "at": 1795343513.3848035
+    },
+    {
+      "path": "/",
+      "http": 200,
+      "headings": [
+        "Launches",
+        "No launches yet"
+      ],
+      "status": null,
+      "block": null,
+      "id": "01M81CZWT94VZ1E8C7T6FMA5C6",
+      "at": 1795343513.2578833
+    },
+    {
+      "path": "/api/launchpad/new-engine",
+      "http": 200,
+      "headings": [],
+      "status": "ready",
+      "block": "120564601",
+      "id": "01M81D00WCKPM8Z9A5AT0Y711Q",
+      "at": 1795343516.7025087
+    },
+    {
+      "path": "/launches/0x868027fe14ab2447646e3cce561def4e66ff3c96",
+      "http": 200,
+      "headings": [
+        "New-engine evidence unavailable"
+      ],
+      "status": null,
+      "block": null,
+      "id": "01M81D00WFWY8PW40HJ3QXVFPB",
+      "at": 1795343517.2940953
+    },
+    {
+      "path": "/",
+      "http": 200,
+      "headings": [
+        "Launches",
+        "No launches yet"
+      ],
+      "status": null,
+      "block": null,
+      "id": "01M81D00Y7C5G4GPVY7VCV76WK",
+      "at": 1795343517.446039
+    },
+    {
+      "path": "/api/launchpad/new-engine",
+      "http": 200,
+      "headings": [],
+      "status": "ready",
+      "block": "120564601",
+      "id": "01M81D04XF0SVYVBTZ5KSKGXVF",
+      "at": 1795343521.8853958
+    },
+    {
+      "path": "/launches/0x868027fe14ab2447646e3cce561def4e66ff3c96",
+      "http": 200,
+      "headings": [
+        "New-engine evidence unavailable"
+      ],
+      "status": null,
+      "block": null,
+      "id": "01M81D04V2PX9X58N61HDYH4PC",
+      "at": 1795343521.3350043
+    },
+    {
+      "path": "/",
+      "http": 200,
+      "headings": [
+        "Launches",
+        "No launches yet"
+      ],
+      "status": null,
+      "block": null,
+      "id": "01M81D04VJ4AFXFJBTVJ96364S",
+      "at": 1795343521.390867
+    }
+  ],
+  "candidateTokenLookup": {
+    "at": "2026-11-22T10:33:46.015Z",
+    "upstream": 404,
+    "requestId": "p07rGk0HSXuPYkHg2prcFg",
+    "address": "0x868027fe14ab2447646e3cce561def4e66ff3c96",
+    "status": "ready",
+    "count": 0,
+    "checkpoint": {
+      "blockNumber": "120565650",
+      "blockHash": "0xdf91664f557940b3b2ab104e5735179d0c68b7e98e18ae14584e3ecac3045931",
+      "timestamp": "2026-11-22T10:33:33.000Z",
+      "confirmations": 20,
+      "finality": "l2-confirmed",
+      "l1Finality": "unverified"
+    },
+    "source": "Candidate website reader called locally against the actual authenticated production worker"
+  },
+  "builtCandidatePage": {
+    "at": "2026-11-22T10:40:27.349Z",
+    "source": "Built candidate Next.js token page on loopback, authenticated server-side read from the live Railway worker",
+    "address": "0x868027fe14ab2447646e3cce561def4e66ff3c96",
+    "http": 200,
+    "heading": "Indexing pending",
+    "confirmedNoRegistration": true,
+    "marketMounted": false,
+    "financialConfig": "disabled"
+  }
+}

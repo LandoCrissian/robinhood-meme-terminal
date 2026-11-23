@@ -32,13 +32,12 @@ export function isPrunedIndexerBirthState(error: unknown) {
   }
   return matched;
 }
-function exactBinding(config: CurveProductionConfig) {
+export function matchesIndexerBirth(config: CurveProductionConfig) {
   const b = config.binding, p = indexerBirthPins, d = indexerBirthDeployment;
-  assert.ok(b.chainId === 4663 && b.engineVersion === 1 && same(b.factory, p.factory[0]) && same(b.factoryRuntimeHash, p.factory[1])
+  return b.chainId === 4663 && b.engineVersion === 1 && same(b.factory, p.factory[0]) && same(b.factoryRuntimeHash, p.factory[1])
     && same(b.projectRegistry, p.registry[0]) && same(b.projectRegistryRuntimeHash, p.registry[1]) && b.deploymentBlock === d.blockNumber
     && same(b.deploymentBlockHash, d.blockHash) && same(config.deploymentTransactionHash, d.transactionHash)
-    && same(b.creationFeeRecipient, d.operating) && same(config.reserveRecipient, d.reserve) && b.creationFeeWei === 400000000000000n,
-  "Indexer alternative birth proof requires the exact original production binding");
+    && same(b.creationFeeRecipient, d.operating) && same(config.reserveRecipient, d.reserve) && b.creationFeeWei === 400000000000000n;
 }
 async function directCreate(rpc: PublicClient, expected: { transactionHash: Hex; blockNumber: bigint; blockHash: Hex; nonce: number; initcodeHash: Hex }, address: Address) {
   const [tx, receipt, block] = await Promise.all([rpc.getTransaction({ hash: expected.transactionHash }), rpc.getTransactionReceipt({ hash: expected.transactionHash }),
@@ -55,7 +54,8 @@ async function directCreate(rpc: PublicClient, expected: { transactionHash: Hex;
 /** No archive bytes stand in for a missing observation. Exact canonical
  * successful original CREATEs plus immutable current code prove these births. */
 export async function proveIndexerProductionBirth(config: CurveProductionConfig, rpc: PublicClient, checkpoint: bigint) {
-  exactBinding(config); const p = indexerBirthPins, d = indexerBirthDeployment;
+  assert.ok(matchesIndexerBirth(config), "Indexer alternative birth proof requires the exact original production binding");
+  const p = indexerBirthPins, d = indexerBirthDeployment;
   assert.ok(checkpoint >= d.blockNumber);
   const [chainId, , , anchor, codes, bindings, values] = await Promise.all([
     rpc.getChainId(), directCreate(rpc, d, p.bootstrap[0]), directCreate(rpc, d.registry, p.registry[0]),

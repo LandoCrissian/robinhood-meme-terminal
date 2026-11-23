@@ -69,7 +69,7 @@ try{
   await assert.rejects(createProductionCurveIndexer(config,db,primary,secondary,()=>now).syncOnce(),/runtime mismatch/);
   assert.equal((await db.query("SELECT count(*)::int AS n FROM rmt_curve_production_bindings")).rows[0]?.n,0);}
  peerConflict=null;
- let worker=createProductionCurveIndexer(config,db,primary,secondary,()=>now);await worker.syncOnce();
+ let worker=createProductionCurveIndexer(config,db,primary,secondary,()=>now);await worker.syncOnce();await worker.syncActivity();
  assert.equal(worker.state().status,"ready");assert.equal(worker.state().checkpoint?.blockNumber,String(d.blockNumber+30n));
  assert.equal(await productionActivityCursor(db,scope),d.blockNumber+31n);
  assert.ok(factoryLogQueries>=4,"Both actual main and activity paths scan factory logs");assert.equal(activityHistoricalCalls,0,"Empty activity does not require historic dependency state");
@@ -77,8 +77,8 @@ try{
  await db.end();closed=true;
  const reopened=new Client({connectionString:url.toString()});await reopened.connect();
  try{
-  worker=createProductionCurveIndexer(config,reopened,primary,secondary,()=>now);await worker.syncOnce();assert.equal(worker.state().status,"ready");
-  head++;await worker.syncOnce();assert.equal(worker.state().checkpoint?.blockNumber,String(d.blockNumber+31n));
+  worker=createProductionCurveIndexer(config,reopened,primary,secondary,()=>now);await worker.syncOnce();await worker.syncActivity();assert.equal(worker.state().status,"ready");
+  head++;await worker.syncOnce();await worker.syncActivity();assert.equal(worker.state().checkpoint?.blockNumber,String(d.blockNumber+31n));
   assert.equal(await productionActivityCursor(reopened,scope),d.blockNumber+32n);
   assert.equal((await reopened.query("SELECT count(*)::int AS n FROM rmt_curve_production_launches")).rows[0]?.n,0);
   assert.equal((await reopened.query("SELECT to_regclass('public.indexer_state') AS old")).rows[0]?.old,null);

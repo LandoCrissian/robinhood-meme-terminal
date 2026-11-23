@@ -1,4 +1,5 @@
 "use client";
+import { withProductionNonceStore } from "../../lib/production-nonce-store";
 
 import { useEffect, useRef, useState } from "react";
 import { isClaimExecutionReview, type ClaimExecutionReview, type ClaimWalletKind } from "../../lib/claim-profiles";
@@ -137,7 +138,9 @@ export function EarningsProfileWallet({ token, factory, beneficiary, snapshot, f
     const binding = production ? await readProductionCapability("claims") : undefined;
     const result = await post({ action: "verify", review: entry.review, ...(transactionHash ? { transactionHash } : {}) }, production, binding);
     if (production && (result.status !== "verification" || result.executionEnabled !== false || result.approvalBinding !== binding)) throw Error("Claim recovery approval is unavailable");
-    const next = applyClaimSettlement(localStorage, entry, (production ? result.settlement : result) as ClaimSettlementResult);
+    const next = production
+      ? await withProductionNonceStore(localStorage, view => applyClaimSettlement(view, entry, result.settlement as ClaimSettlementResult))
+      : applyClaimSettlement(localStorage, entry, result as ClaimSettlementResult);
     reload(); setSelected(next.review.intentHash); window.dispatchEvent(new Event(notification));
     setMessage(description(next));
     // Updating balances never changes the original submitted review or hash.

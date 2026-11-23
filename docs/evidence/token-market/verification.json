@@ -1,0 +1,284 @@
+{
+  "release": {
+    "at": "2026-11-22T09:59:26.289Z",
+    "source": "19d180175e3a85f4a567398af1b6792158d09162",
+    "bundleSha256": "9877160d07a9eab248a0b30e822221e184b9c607a72136d6d182725f58683d5d",
+    "serverSha256": "3fc898101f45628bf31aebb64ddcf36d7f02529eb7b95a376040e3ae5def6c7e",
+    "deployId": "6b02bce6503f27925a927daf",
+    "url": "https://6b02bce6503f27925a927daf--eclectic-valkyrie-16cb92.netlify.app",
+    "productionDeploy": "6b029787efaaf7bc868d68e4",
+    "context": "deploy-preview"
+  },
+  "artifact": {
+    "sourceCommit": "19d180175e3a85f4a567398af1b6792158d09162",
+    "bundleSha256": "9877160d07a9eab248a0b30e822221e184b9c607a72136d6d182725f58683d5d",
+    "bytes": 36751393,
+    "functionArchiveSha256": "3fc898101f45628bf31aebb64ddcf36d7f02529eb7b95a376040e3ae5def6c7e",
+    "files": 291,
+    "deployed": false,
+    "sourceRun": "45009766928",
+    "artifactId": 14749278578,
+    "outerDigest": "sha256:7adedd321133928c3aaaac1544e61404cb9fb2005743d07f3d58894ea899bea2"
+  },
+  "publicProfileSnapshotHashes": {
+    "a32ec5bf3de141494b6d633be5da97f0c112e08e955f549eab7021a3fe27d4f7.webp": "a32ec5bf3de141494b6d633be5da97f0c112e08e955f549eab7021a3fe27d4f7",
+    "dbca4bd4600f3ad30e698aa2ef19cd1a0d4be9e4f96d7a87b0bcf18c13bf0a2f.webp": "dbca4bd4600f3ad30e698aa2ef19cd1a0d4be9e4f96d7a87b0bcf18c13bf0a2f",
+    "people.json": "9c37e409e5b00df2d6927a5618b11379689a8b447556dd17d8c27cdbe337334c"
+  },
+  "hosted": {
+    "origin": "https://6b02bce6503f27925a927daf--eclectic-valkyrie-16cb92.netlify.app",
+    "at": "2026-11-22T09:59:50.634Z",
+    "results": [
+      {
+        "browser": "chromium",
+        "width": 1440,
+        "priceAndFdv": true,
+        "sellback": true,
+        "pendingAndGraduated": true,
+        "quotes": true,
+        "reload": true,
+        "overflow": false,
+        "walletRequests": 0
+      },
+      {
+        "browser": "webkit",
+        "width": 375,
+        "priceAndFdv": true,
+        "sellback": true,
+        "pendingAndGraduated": true,
+        "quotes": true,
+        "reload": true,
+        "overflow": false,
+        "walletRequests": 0
+      }
+    ]
+  },
+  "hostedDisclosures": {
+    "origin": "https://6b02bce6503f27925a927daf--eclectic-valkyrie-16cb92.netlify.app",
+    "at": "2026-11-22T10:02:21.173Z",
+    "results": [
+      {
+        "engine": "chromium",
+        "viewport": 1440,
+        "disclosures": true,
+        "restoredSyntheticDraft": true,
+        "riskPage": true,
+        "financial": "disabled"
+      },
+      {
+        "engine": "webkit",
+        "viewport": 390,
+        "disclosures": true,
+        "restoredSyntheticDraft": true,
+        "riskPage": true,
+        "financial": "disabled"
+      }
+    ],
+    "automationNote": "Two early generic clicks timed out waiting for the expanded disclosure. After page load, a targeted desktop click and mobile WebKit tap both opened the disclosure and the draft restored on refresh."
+  },
+  "screenshotsSha256": {
+    "desktop.png": "8e171a5d2305ab9929fffcbb262774b9fd18a59f15a4101bf8292351776d19cd",
+    "mobile.png": "40b0eb0e7ea10b3f4fb0867710f2718d2e20398b90c2560fb0169384a1479ce6"
+  },
+  "isolatedBrowserWallet": {
+    "chromium": {
+      "checks": {
+        "twoEthGross": true,
+        "editInvalidates": true,
+        "fourEthRefundTwoEthTarget": true,
+        "explicitRejectThenLostHashRecoveryNoResend": true
+      },
+      "layout": {
+        "width": 1440,
+        "document": 1440
+      },
+      "status": "passed"
+    },
+    "webkit": {
+      "checks": {
+        "twoEthGross": true,
+        "editInvalidates": true,
+        "fourEthRefundTwoEthTarget": true,
+        "explicitRejectThenLostHashRecoveryNoResend": true
+      },
+      "layout": {
+        "width": 390,
+        "document": 390
+      },
+      "status": "passed"
+    }
+  },
+  "independentForkRepeat": {
+    "repeatBlock": "120535468",
+    "hash": "0xf211d613c82708b9f4c00f689747e66faa22cfac741bf9e5955a26723203919f",
+    "canonicalReceiptsPerProvider": 54,
+    "canonicalFillsPerProvider": 35,
+    "all36StateAndQuoteComparisons": true,
+    "minuteOhlcvIdenticalAfterRebasingTime": true,
+    "receiptsSha256": "adfe1afbf163b51722e3ddc4739636b164a59d3c1c53b4eb8460ebb753d333e6",
+    "marketReplaySha256": "320b4366609e728370e29168180e64a5fef048d6e536ec09707b79be159ad7d2"
+  },
+  "production": {
+    "origin": "https://www.rmtlaunch.fun",
+    "at": "2026-11-22T10:01:19.231890+00:00",
+    "checks": [
+      {
+        "path": "/api/launchpad/config",
+        "method": "GET",
+        "http": 200,
+        "status": "disabled"
+      },
+      {
+        "path": "/api/launchpad/production-creation",
+        "method": "POST",
+        "http": 404,
+        "status": "unavailable"
+      },
+      {
+        "path": "/api/launchpad/production-lifecycle",
+        "method": "POST",
+        "http": 404,
+        "status": "unavailable"
+      },
+      {
+        "path": "/api/launchpad/production-earnings",
+        "method": "POST",
+        "http": 404,
+        "status": "unavailable"
+      },
+      {
+        "path": "/review/trading",
+        "method": "GET",
+        "http": 404,
+        "status": null
+      }
+    ]
+  },
+  "historicalScanner": {
+    "run": 45009767097,
+    "artifact": 14748799691,
+    "raw": 361,
+    "approvedByExistingClassifier": 322,
+    "independentlyReproducedPublicErc20Addresses": 39,
+    "automatedDecision": "BLOCKED_UNCLASSIFIED_OR_MISSING_FINDING"
+  },
+  "hostedLocaleAndWidths": [
+    {
+      "invalidHostLocale": "en-US@posix",
+      "browser": "webkit",
+      "width": 320,
+      "height": 568,
+      "progress": 68.04,
+      "quoteFloor": true,
+      "document": 320
+    },
+    {
+      "invalidHostLocale": "en-US@posix",
+      "browser": "webkit",
+      "width": 360,
+      "height": 780,
+      "progress": 68.04,
+      "quoteFloor": true,
+      "document": 360
+    },
+    {
+      "invalidHostLocale": "en-US@posix",
+      "browser": "chromium",
+      "width": 768,
+      "height": 1024,
+      "progress": 68.04,
+      "quoteFloor": true,
+      "document": 768
+    }
+  ],
+  "databaseAcceptance": {
+    "source": "19d180175e3a85f4a567398af1b6792158d09162",
+    "postgres": "18.6 (Ubuntu 18.6-1.pgdg24.04+2)",
+    "run": 45009766894,
+    "job": 137169282470,
+    "artifact": 14749058110,
+    "checkpointIntervalComparisons": 180,
+    "suites": [
+      "birth",
+      "activity",
+      "market",
+      "creation",
+      "http"
+    ],
+    "result": "passed"
+  },
+  "walletMatrix": [
+    {
+      "engine": "chromium",
+      "viewport": "desktop",
+      "feeMode": "zero-poster",
+      "source": "d4efca03a29a42ffed0ec774f0ad8129b12305d3",
+      "result": "passed"
+    },
+    {
+      "engine": "chromium",
+      "viewport": "mobile",
+      "feeMode": "positive",
+      "source": "d4efca03a29a42ffed0ec774f0ad8129b12305d3",
+      "result": "passed"
+    },
+    {
+      "engine": "chromium",
+      "viewport": "mobile",
+      "feeMode": "zero-poster",
+      "source": "d4efca03a29a42ffed0ec774f0ad8129b12305d3",
+      "result": "passed"
+    },
+    {
+      "engine": "webkit",
+      "viewport": "desktop",
+      "feeMode": "positive",
+      "source": "d4efca03a29a42ffed0ec774f0ad8129b12305d3",
+      "result": "passed"
+    },
+    {
+      "engine": "webkit",
+      "viewport": "desktop",
+      "feeMode": "zero-poster",
+      "source": "d4efca03a29a42ffed0ec774f0ad8129b12305d3",
+      "result": "passed"
+    },
+    {
+      "engine": "webkit",
+      "viewport": "mobile",
+      "feeMode": "zero-poster",
+      "source": "d4efca03a29a42ffed0ec774f0ad8129b12305d3",
+      "result": "passed"
+    },
+    {
+      "engine": "chromium",
+      "viewport": "desktop",
+      "feeMode": "positive",
+      "source": "55ac66fc1f1f0970db984883fa9cee5acf07114a",
+      "result": "passed"
+    },
+    {
+      "engine": "webkit",
+      "viewport": "mobile",
+      "feeMode": "positive",
+      "source": "55ac66fc1f1f0970db984883fa9cee5acf07114a",
+      "result": "passed"
+    }
+  ],
+  "earlierAcceptance": {
+    "application": "55ac66fc1f1f0970db984883fa9cee5acf07114a",
+    "adapterWorkflow": 45007543312,
+    "passedJobs": 12
+  },
+  "releaseAcceptance": {
+    "source": "19d180175e3a85f4a567398af1b6792158d09162",
+    "run": 45009766894,
+    "result": "success",
+    "jobsPassed": 12,
+    "invalidLocaleRegression": {
+      "chromiumJob": 137169282426,
+      "webkitJob": 137169282394,
+      "hostLanguage": "en-US@posix"
+    }
+  }
+}

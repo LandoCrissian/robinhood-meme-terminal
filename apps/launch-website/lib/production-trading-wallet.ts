@@ -3,6 +3,7 @@ import { claimDelegatePin } from "./claim-profiles";
 import { assertNoPendingProductionClaim } from "./claim-recovery";
 import { assertNoPendingProductionCreation } from "./production-creation";
 import { assertProductionNonceAvailable, recordProductionConsumedNonce } from "./production-nonce";
+import { withProductionNonceStore } from "./production-nonce-store";
 import { assertProductionWalletBinding, productionAccountLock, readProductionCapability, type ProductionWallet } from "./production-wallet";
 import { isTransactionHash } from "./test-creation";
 import { testWalletErrorCode } from "./test-wallet";
@@ -194,7 +195,10 @@ export async function submitProductionTrade(wallet: ProductionWallet, prepared: 
   return locks.request(productionAccountLock(wallet.account), { ifAvailable: true }, async lock => {
     if (!lock) throw new Error("Another financial transaction is in progress");
     const r = prepared.request;
-    guard(); assertNoPendingProductionTrade(storage, wallet.account, r.nonce); assertOtherFinancialJournals(storage, wallet.account, r.nonce);
+    const checkJournals = () => withProductionNonceStore(storage, view => {
+      guard(); assertNoPendingProductionTrade(view, wallet.account, r.nonce); assertOtherFinancialJournals(view, wallet.account, r.nonce);
+    });
+    await checkJournals();
     const approval = await readProductionCapability("trading");
     if (!same(approval, r.approvalBinding)) throw new Error("Owner trading approval changed");
     const current = await post(fetcher, { action: "prepare", token: r.token, account: r.from, operation: r.operation, amountWei: r.amountWei, slippageBps: r.slippageBps, prior: r });
@@ -202,7 +206,7 @@ export async function submitProductionTrade(wallet: ProductionWallet, prepared: 
         || !quoteDoesNotIncrease(prepared.quote, current.quote)) throw new Error("Production transaction review changed");
     await assertWalletReview(wallet, prepared, guard, current.quote);
     if (!same(await readProductionCapability("trading"), r.approvalBinding)) throw new Error("Owner trading approval changed");
-    guard(); assertNoPendingProductionTrade(storage, wallet.account, r.nonce); assertOtherFinancialJournals(storage, wallet.account, r.nonce);
+    await checkJournals();
     const journal: ProductionTradeJournal = { schemaVersion: 1, request: r, quote: prepared.quote, createdAt: Date.now() };
     store(storage, journal);
     let result: unknown;
@@ -218,7 +222,7 @@ export async function submitProductionTrade(wallet: ProductionWallet, prepared: 
     try {
       const verification = await post(fetcher, { action: "verify", request: r, ...(journal.transactionHash && { transactionHash: journal.transactionHash }) }) as ProductionLifecycleVerification;
       if (!verification || !["pending", "confirmed", "reverted", "unavailable"].includes(verification.status)) throw journalError();
-      updateProductionTradeJournalFromVerification(storage, r.from, r.token, verification);
+      await withProductionNonceStore(storage, view => updateProductionTradeJournalFromVerification(view, r.from, r.token, verification));
       return verification;
     } catch { return { status: "pending", ...(journal.transactionHash && { transactionHash: journal.transactionHash }), indexed: false }; }
   });

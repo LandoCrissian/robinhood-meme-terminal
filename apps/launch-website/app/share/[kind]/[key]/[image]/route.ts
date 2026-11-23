@@ -31,6 +31,8 @@ async function cardResponse(request: Request, {params}: Params) {
       const found = await readCreator(kind === "u" ? "u" : "creator", key);
       if (found.status !== "ready") return failure(found.status === "missing" ? 404 : 503);
       card = creatorCard(found.profile);
+      if (shareImagePath(card, "rmt-card-v1") === path)
+        return new Response(null, {status:307, headers:{Location:shareImagePath(card), "Cache-Control":"no-store"}});
       if (shareImagePath(card) !== path) return failure(404);
       portrait = await publicAvatar(found.profile);
     }

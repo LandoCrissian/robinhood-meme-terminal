@@ -2,6 +2,7 @@ import { decodeFunctionData, encodeFunctionData, getAddress, parseAbi, zeroAddre
 import { isTransactionHash, testCreationFeeWei, testCreationSignature, type TestCreationFields, type TestCreationVerification } from "./test-creation";
 import { type TestWallet, testWalletErrorCode } from "./test-wallet";
 import { assertProductionNonceAvailable, recordProductionConsumedNonce } from "./production-nonce";
+import { withProductionNonceStore } from "./production-nonce-store";
 import { isLaunchAddress } from "./launch-data";
 import { rmtCreationOwner } from "./owner-creation";
 
@@ -160,19 +161,24 @@ export async function assertProductionWallet(wallet: ProductionWallet, request?:
 // draft, account and chain immediately before this operation. Persist before the
 // sole wallet send; a lost hash/transport error can never trigger an automatic retry.
 export async function submitProductionCreation(wallet: ProductionWallet, request: ProductionCreationRequest,
-  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">, assertReviewCurrent: () => void) {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">, assertReviewCurrent: () => void, onWalletPrompt?: () => void) {
   if (!isProductionCreationRequest(request)) throw new Error("Invalid creation request");
   if (readProductionCreationJournal(storage)) throw new Error("An original creation request requires recovery");
   assertNoPendingProductionCreation(storage, wallet.account, request.nonce);
   const [{ assertNoPendingProductionClaim }, { assertNoPendingProductionTrade }] = await Promise.all([
     import("./claim-recovery"), import("./production-trading-wallet"),
   ]);
-  assertNoPendingProductionClaim(storage, wallet.account, request.nonce); assertNoPendingProductionTrade(storage, wallet.account, request.nonce);
+  const checkJournals = () => withProductionNonceStore(storage, view => {
+    assertNoPendingProductionCreation(view, wallet.account, request.nonce);
+    assertNoPendingProductionClaim(view, wallet.account, request.nonce); assertNoPendingProductionTrade(view, wallet.account, request.nonce);
+  });
+  await checkJournals();
   await assertProductionWallet(wallet, request);
   assertReviewCurrent();
   if (readProductionCreationJournal(storage)) throw new Error("An original creation request requires recovery");
   assertNoPendingProductionCreation(storage, wallet.account, request.nonce);
-  assertNoPendingProductionClaim(storage, wallet.account, request.nonce); assertNoPendingProductionTrade(storage, wallet.account, request.nonce);
+  await checkJournals();
+  assertReviewCurrent();
   const journal: ProductionCreationJournal = { request };
   storage.setItem(productionCreationJournalKey, JSON.stringify(journal));
   const persisted = readProductionCreationJournal(storage);
@@ -180,6 +186,7 @@ export async function submitProductionCreation(wallet: ProductionWallet, request
   assertReviewCurrent();
   try {
     const { from, to, data, value, chainId, nonce } = request;
+    onWalletPrompt?.();
     const result = await wallet.request.call(wallet.provider, { method: "eth_sendTransaction", params: [{ from, to, data, value, chainId, nonce }] });
     if (isTransactionHash(result)) {
       journal.transactionHash = result;

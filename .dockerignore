@@ -11,6 +11,10 @@
 !packages/launchpad-common/
 !packages/launchpad-common/native-proof.mjs
 !packages/launchpad-common/native-proof.d.mts
+!docs/
+!docs/evidence/
+!docs/evidence/token-market/
+!docs/evidence/token-market/market-replay.json
 apps/launch-website/node_modules
 apps/launch-website/.next
 apps/launch-website/.netlify

@@ -82,6 +82,21 @@ test("authentication failure, unavailable worker, oversized data and malformed r
   assert.equal((await readProductionDiscovery(undefined, { env, fetch: async () => { throw new Error("Provider outage"); } })).status, "unavailable");
 });
 
+test("token lookup accepts only a verified current empty checkpoint on 404", async () => {
+  const env = { RMT_LAUNCH_HISTORY_INDEXER_URL: "https://worker.example.invalid", RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: "fixture-only" };
+  const empty = { ...feed(), launches: [] };
+  for (const [body, token, expected] of [
+    [empty, address("2"), "ready"], [empty, undefined, "unavailable"], [feed(), address("2"), "unavailable"],
+    [{ ...empty, status: "stale" }, address("2"), "unavailable"], [{ ...empty, chainId: 1 }, address("2"), "unavailable"],
+    [{ status: "undeployed", launches: [] }, address("2"), "unavailable"], [{ error: "Not found" }, address("2"), "unavailable"],
+  ] as const) {
+    const data = await readProductionDiscovery(token, { env, now, onDiagnostic() {},
+      fetch: async () => Response.json(body, { status: 404 }) });
+    assert.equal(data.status, expected);
+    if (data.status === "ready") { assert.deepEqual(data.launches, []); assert.equal(data.checkpoint.blockHash, point.blockHash); }
+  }
+});
+
 test("a transient directory 503 requires a fresh authenticated read and full validation", async () => {
   const env = { RMT_LAUNCH_HISTORY_INDEXER_URL: "https://worker.up.railway.app", RMT_LAUNCH_HISTORY_INDEXER_READ_TOKEN: "synthetic-credential" };
   const cases = [

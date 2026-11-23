@@ -6,7 +6,10 @@ on:
       - "apps/launch-website/**"
       - "apps/indexer/**"
       - "scripts/production-adapters/**"
+      - "scripts/economics/review-market-outage.mjs"
       - "scripts/security/public-task092-identities*"
+      - "scripts/security/public-market-identities*"
+      - "docs/evidence/token-market/redacted-public-address-rows.json"
       - "scripts/security/run-history-scan.mjs"
       - "scripts/release/website-financial-preflight*"
       - "docs/evidence/rmt-task092/**"
@@ -82,7 +85,7 @@ jobs:
             2>&1 | tee "$RUNNER_TEMP/task092-public-evidence-tests.log"
           node --test scripts/release/website-financial-preflight.test.mjs \
             2>&1 | tee "$RUNNER_TEMP/task092-financial-preflight-tests.log"
-          node --test scripts/security/public-task092-identities.test.mjs \
+          node --test scripts/security/public-task092-identities.test.mjs scripts/security/public-market-identities.test.mjs \
             2>&1 | tee "$RUNNER_TEMP/task092-public-history-tests.log"
       - name: Prepare exact signed-archive PostgreSQL18.6 fixture
         run: bash .github/scripts/prepare-postgres-18.sh
@@ -259,6 +262,9 @@ jobs:
         run: |
           pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json ../../scripts/production-adapters/browser.ts \
             --browser "${{ matrix.browser }}" --viewport "${{ matrix.viewport }}" --fee-mode "${{ matrix.fee }}" --output "$RUNNER_TEMP/task092-browser"
+      - name: Verify stale market state and recovery after a disconnected feed
+        if: matrix.fee == 'positive' && ((matrix.browser == 'chromium' && matrix.viewport == 'desktop') || (matrix.browser == 'webkit' && matrix.viewport == 'mobile'))
+        run: node scripts/economics/review-market-outage.mjs "${{ matrix.browser }}"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         if: always()
         with:

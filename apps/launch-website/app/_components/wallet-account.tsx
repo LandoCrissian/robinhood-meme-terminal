@@ -84,7 +84,7 @@ export function WalletAccount({ compact = false }: { compact?: boolean }) {
   }
   return <section className="lpPanel lpForm" aria-label="Wallet account">
     <div><h2>{wallet ? "Connected, not signed in" : "Connect your wallet"}</h2></div>
-    <p>{compact ? "Sign in to manage your creator profile and view your launches." : "Use MetaMask, Rabby or a compatible browser wallet. A separate sign-in message confirms control of your address, with no gas payment."}</p>
+    <p>{compact ? "Sign in to manage your profile and view your launches." : "Use MetaMask, Rabby or a compatible browser wallet. A separate sign-in message confirms control of your address, with no gas payment."}</p>
     {!compact && <details><summary>Supported sign-in wallets</summary><p>Account sign-in supports a standard 65-byte message signature from an externally owned wallet, including a delegated EOA when the wallet returns its original account signature. Safe and ERC-1271/4337 smart accounts currently cannot sign in to a profile.</p></details>}
     {session.availability !== "available" && <p className="lpInlineNotice" role="status">{session.availability === "disabled"
       ? "Wallet sign-in is currently turned off." : "The account service is unavailable. Try Check session to reconnect."}</p>}

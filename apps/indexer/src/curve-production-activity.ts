@@ -1,10 +1,13 @@
 import assert from "node:assert/strict";
 import type { Client } from "pg";
 import { isAddress, parseAbi, toEventSelector, zeroAddress, type Address, type Hash, type Hex, type PublicClient, type TransactionReceipt } from "viem";
-import { blockEvidence, type BlockEvidence, type CurveLaunchRegistration } from "./curve-launch-evidence.js";
+import { blockEvidence, curveCreationAbi, type BlockEvidence, type CurveLaunchRegistration } from "./curve-launch-evidence.js";
 import type { CurveProductionConfig } from "./curve-production-config.js";
 import { productionCurveScope } from "./curve-production-store.js";
 import { assertIndexWriterLease } from "./index-store.js";
+import { matchesIndexerBirth } from "./curve-production-birth.js";
+import { assertEmptyCoverage, assertNoCorrectedEmptyRange, correctedEmptyRangePredecessor, firstProductionRegistration,
+  maxScannedActivityBlocks, verifyEmptyFactoryNonce } from "./verified-empty-activity.js";
 
 type Database = Pick<Client, "query">;
 export const productionActivityProfile = "rmt-curve-activity-v1";
@@ -96,20 +99,30 @@ export async function productionActivityCursor(db: Database, scope: string) {
   return BigInt(result.rows[0].next_block);
 }
 export async function commitProductionActivity(db: Database, config: CurveProductionConfig, from: bigint,
-  checkpoint: BlockEvidence, rows: { token: Address; event: ProductionActivityEvent }[]) {
+  checkpoint: BlockEvidence, rows: { token: Address; event: ProductionActivityEvent; marketTime?: number }[]) {
+  if (BigInt(checkpoint.blockNumber) - from + 1n > maxScannedActivityBlocks) throw new Error("Activity range exceeds its bound");
+  await persistActivityRange(db, config, from, checkpoint, rows);
+}
+async function persistActivityRange(db: Database, config: CurveProductionConfig, from: bigint, checkpoint: BlockEvidence,
+  rows: { token: Address; event: ProductionActivityEvent; marketTime?: number }[],
+  empty?: { anchor: BlockEvidence; previousHash: string | null }) {
   const scope = productionCurveScope(config), to = BigInt(checkpoint.blockNumber);
   if (rows.length > rangeEventLimit || to < from) throw new Error("Activity range exceeds its bound");
   await assertIndexWriterLease(db, config.binding.chainId);
   await atomic(db, async () => {
     const cursor = await db.query<{ next_block: string }>("SELECT next_block::text FROM rmt_curve_activity_bindings WHERE scope=$1 FOR UPDATE", [scope]);
     if (!cursor.rows[0] || BigInt(cursor.rows[0].next_block) !== from) throw new Error("Activity cursor changed during ingestion");
-    for (const { token, event } of rows) {
+    if (empty) {
+      assert.ok(!rows.length && matchesIndexerBirth(config));
+      await assertEmptyCoverage(db, config, from, to, empty.anchor, empty.previousHash);
+    }
+    for (const { token, event, marketTime } of rows) {
       validateProductionActivityEvent(event);
       if (!isAddress(token, { strict: false }) || BigInt(event.blockNumber) < from || BigInt(event.blockNumber) > to) throw new Error("Activity scope or range mismatch");
-      const payload = JSON.stringify(event);
+      const payload = JSON.stringify(marketTime === undefined ? event : { ...event, marketTime });
       await db.query(`INSERT INTO rmt_curve_activity_events(scope,token,transaction_hash,log_index,block_number,block_hash,payload)
         VALUES($1,$2,$3,$4,$5,$6,$7) ON CONFLICT DO NOTHING`, [scope, token.toLowerCase(), event.transactionHash, event.logIndex, event.blockNumber, event.blockHash, payload]);
-      const exact = await db.query<{ matches: boolean }>(`SELECT payload=$5::jsonb AS matches FROM rmt_curve_activity_events
+      const exact = await db.query<{ matches: boolean }>(`SELECT payload-'marketTime'=($5::jsonb-'marketTime') AND (NOT payload ? 'marketTime' OR payload->'marketTime'=$5::jsonb->'marketTime') AS matches FROM rmt_curve_activity_events
         WHERE scope=$1 AND token=$2 AND transaction_hash=$3 AND log_index=$4`, [scope, token.toLowerCase(), event.transactionHash, event.logIndex, payload]);
       if (exact.rows[0]?.matches !== true) throw new Error("Conflicting durable activity identity");
     }
@@ -128,6 +141,7 @@ export async function rollbackProductionActivity(db: Database, scope: string, ke
   });
 }
 export async function readProductionActivity(db: Database, scope: string, point: BlockEvidence, query: ActivityQuery) {
+  await assertNoCorrectedEmptyRange(db, scope);
   const current = await db.query<{ matches: boolean }>(`SELECT a.next_block-1=$2::bigint AND c.block_hash=$3
       AND b.next_block=a.next_block AND p.block_hash=c.block_hash AS matches
     FROM rmt_curve_activity_bindings a JOIN rmt_curve_activity_checkpoints c ON c.scope=a.scope AND c.block_number=a.next_block-1
@@ -139,7 +153,7 @@ export async function readProductionActivity(db: Database, scope: string, point:
     const registered = await db.query("SELECT token FROM rmt_curve_production_launches WHERE scope=$1 AND token=$2 AND block_number<=$3", [scope, query.token, point.blockNumber]);
     if (registered.rows.length !== 1) throw new Error("Activity token is not registered to this deployment");
   }
-  const result = await db.query<{ payload: ProductionActivityEvent }>(`SELECT payload FROM rmt_curve_activity_events
+  const result = await db.query<{ payload: ProductionActivityEvent }>(`SELECT payload-'marketTime' AS payload FROM rmt_curve_activity_events
     WHERE scope=$1 AND token=$2 AND transaction_hash=$3 AND block_number<=$4 ORDER BY log_index LIMIT $5`,
     [scope, query.token ?? zeroAddress, query.transactionHash, point.blockNumber, activityEventLimit + 1]);
   if (result.rows.length > activityEventLimit) throw new Error("Activity receipt exceeds its event bound");
@@ -148,8 +162,15 @@ export async function readProductionActivity(db: Database, scope: string, point:
 }
 
 /** Existing writer lease owns this separate backfill cursor; no new writer or runtime DDL. */
-export function createProductionActivityIndexer(config: CurveProductionConfig, db: Database, primary: PublicClient, archive: PublicClient | undefined) {
+export function createProductionActivityIndexer(config: CurveProductionConfig, db: Database, primary: PublicClient, archive: PublicClient | undefined,
+  options: { reader?: Database; write?: (task: () => Promise<void>) => Promise<void>; range?: number } = {}) {
+  const reader = options.reader ?? db;
+  const write = options.write ?? (async task => task());
+  const range = BigInt(options.range ?? 1000);
+  if (range < 1n || range > maxScannedActivityBlocks) throw new Error("Invalid activity range");
+  let indexedThrough: string | null = null;
   const scope = productionCurveScope(config);
+  const canProveEmpty = matchesIndexerBirth(config);
   let readyPoint: BlockEvidence | null = null;
   let initialized = false;
   async function canonical(height: bigint) {
@@ -159,24 +180,56 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
   }
   async function sync(point: BlockEvidence, catalogHeight = BigInt(point.blockNumber)) {
     readyPoint = null;
-    if (!archive) throw new Error("Activity requires a distinct corroborating provider");
+    if (!archive || archive === primary) throw new Error("Activity requires a distinct corroborating provider");
     assert.ok(catalogHeight >= BigInt(point.blockNumber), "Activity catalog is behind its history target");
-    if (!initialized) { await initializeProductionActivityStore(db, config); initialized = true; }
-    const saved = await db.query<{ block_number: string; block_hash: string }>(`SELECT block_number::text,block_hash
-      FROM rmt_curve_activity_checkpoints WHERE scope=$1 ORDER BY block_number DESC LIMIT 25`, [scope]);
+    if (!initialized) { await write(() => initializeProductionActivityStore(db, config)); initialized = true; }
+    const saved = await reader.query<{ block_number: string; block_hash: string }>(`SELECT block_number::text,block_hash
+      FROM rmt_curve_activity_checkpoints c WHERE scope=$1 ORDER BY c.block_number DESC LIMIT 25`, [scope]);
     if (saved.rows.length) {
       let keep: bigint | null = null;
       for (const row of saved.rows.slice(0, 24)) {
         if (BigInt(row.block_number) <= BigInt(point.blockNumber) && (await canonical(BigInt(row.block_number))).blockHash.toLowerCase() === row.block_hash) { keep = BigInt(row.block_number); break; }
       }
       if (keep === null && saved.rows.length > 24) throw new Error("Activity reorg exceeds bounded automatic recovery");
-      if (keep === null || keep !== BigInt(saved.rows[0]!.block_number)) await rollbackProductionActivity(db, scope, keep ?? config.binding.deploymentBlock - 1n);
+      if (keep === null || keep !== BigInt(saved.rows[0]!.block_number)) await write(() => rollbackProductionActivity(db, scope, keep ?? config.binding.deploymentBlock - 1n));
     }
-    const from = await productionActivityCursor(db, scope);
+    const birth = config.binding.deploymentBlock;
+    let from = await productionActivityCursor(reader, scope);
+    const first = canProveEmpty ? await firstProductionRegistration(reader, scope) : null;
+    if (first !== null && first < from) {
+      const keep = await correctedEmptyRangePredecessor(reader, scope, first, birth);
+      if (keep !== null) {
+        await write(() => rollbackProductionActivity(db, scope, keep));
+        from = await productionActivityCursor(reader, scope);
+      }
+    }
+    indexedThrough = from > config.binding.deploymentBlock ? String(from - 1n) : null;
+    const target = BigInt(point.blockNumber);
+    const emptyEnd = first !== null && first <= target ? first - 1n : target;
+    if (canProveEmpty && emptyEnd - from + 1n > maxScannedActivityBlocks) {
+      assert.equal((await canonical(birth)).blockHash, config.binding.deploymentBlockHash, "Factory deployment fork changed");
+      const previousHash = from === birth ? null : (await canonical(from - 1n)).blockHash;
+      await assertEmptyCoverage(reader, config, from, emptyEnd, point, previousHash);
+      const end = await canonical(emptyEnd);
+      const checkAnchor = async () => assert.deepEqual(await canonical(target), point, "Registration anchor changed during empty proof");
+      if (emptyEnd === target) assert.deepEqual(end, point, "Registration anchor differs from empty boundary");
+      else await checkAnchor();
+      if (await verifyEmptyFactoryNonce([primary, archive], config, emptyEnd)) {
+        assert.deepEqual(await canonical(emptyEnd), end, "Verified-empty boundary changed");
+        if (emptyEnd !== target) await checkAnchor();
+        await write(() => persistActivityRange(db, config, from, end, [], { anchor: point, previousHash }));
+        console.info(JSON.stringify({ event: "verified_empty_activity", scope, from: String(from), previousHash, end,
+          registrationCheckpoint: point, factoryNonce: 1 }));
+        indexedThrough = end.blockNumber;
+        if (emptyEnd === target) readyPoint = point;
+        return;
+      }
+      // Old state can be pruned. Replay the usual bounded receipt scan.
+    }
     if (from <= BigInt(point.blockNumber)) {
-      const to = from + 1_999n < BigInt(point.blockNumber) ? from + 1_999n : BigInt(point.blockNumber);
+      const to = from + range - 1n < BigInt(point.blockNumber) ? from + range - 1n : BigInt(point.blockNumber);
       const end = await canonical(to);
-      const registrations = await db.query<{ payload: CurveLaunchRegistration }>(`SELECT payload FROM rmt_curve_production_launches
+      const registrations = await reader.query<{ payload: CurveLaunchRegistration }>(`SELECT payload FROM rmt_curve_production_launches
         WHERE scope=$1 AND block_number<=$2 ORDER BY token LIMIT $3`, [scope, to.toString(), registrationLimit + 1]);
       if (registrations.rows.length > registrationLimit) throw new Error("Activity registration set exceeds its bounded release profile");
       const launches = registrations.rows.map(row => row.payload);
@@ -246,10 +299,20 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
       }
       const referencesBoth = await Promise.all([primary, archive].map(references));
       assert.deepEqual(referencesBoth[0], referencesBoth[1], "Activity providers disagree on event discovery");
+      if (canProveEmpty) {
+        for (const launch of launches) {
+          if (BigInt(launch.creation.blockNumber) < from) continue;
+          const ref = launch.creation;
+          assert.ok(referencesBoth[0]!.some(event => event.address === config.binding.factory.toLowerCase()
+            && event.blockNumber === ref.blockNumber && event.blockHash === ref.blockHash && event.transactionHash === ref.transactionHash
+            && event.logIndex === ref.logIndex && event.topics[0] === toEventSelector(curveCreationAbi[5])
+            && event.topics[1]?.slice(-40) === launch.token.slice(2).toLowerCase()), "Activity discovery omitted a verified factory creation");
+        }
+      }
       const grouped = new Map<Hash, ProductionActivityEvent[]>();
       for (const event of referencesBoth[0]!) { const events = grouped.get(event.transactionHash) ?? []; events.push(event); grouped.set(event.transactionHash, events); }
       if (grouped.size > activityEventLimit) throw new Error("Activity transaction range exceeds its bound");
-      const rows: { token: Address; event: ProductionActivityEvent }[] = [];
+      const rows: { token: Address; event: ProductionActivityEvent; marketTime: number }[] = [];
       for (const [transactionHash, discovered] of grouped) {
         const receipts: TransactionReceipt[] = await Promise.all([primary, archive].map(rpc => rpc.getTransactionReceipt({ hash: transactionHash })));
         const normalized: { blockNumber: string; blockHash: string; transactionIndex: number; events: ProductionActivityEvent[] }[] = receipts.map(receipt => {
@@ -286,17 +349,20 @@ export function createProductionActivityIndexer(config: CurveProductionConfig, d
             tokens.add(token);
           }
         }
-        for (const token of tokens) for (const event of receipt.events) rows.push({ token, event });
+        const marketTime = Date.parse(block.timestamp) / 1000;
+        assert.ok(Number.isSafeInteger(marketTime) && marketTime > 0);
+        for (const token of tokens) for (const event of receipt.events) rows.push({ token, event, marketTime });
         if (rows.length > rangeEventLimit) throw new Error("Durable activity range exceeds its bound");
       }
       assert.deepEqual(await canonical(to), end, "Activity range changed during receipt verification");
       if (catalog) assert.deepEqual(await canonical(catalogHeight), catalog, "Activity emitter catalog changed during receipt verification");
-      await commitProductionActivity(db, config, from, end, rows);
+      await write(() => commitProductionActivity(db, config, from, end, rows));
+      indexedThrough = end.blockNumber;
     }
-    if (await productionActivityCursor(db, scope) === BigInt(point.blockNumber) + 1n) {
+    if (await productionActivityCursor(reader, scope) === BigInt(point.blockNumber) + 1n) {
       assert.deepEqual(await canonical(BigInt(point.blockNumber)), point, "Activity checkpoint changed"); readyPoint = point;
     }
   }
-  return { sync, invalidate: () => { readyPoint = null; }, ready: (point: BlockEvidence) => readyPoint !== null
+  return { sync, height: () => indexedThrough, invalidate: () => { readyPoint = null; }, ready: (point: BlockEvidence) => readyPoint !== null
     && readyPoint.blockNumber === point.blockNumber && readyPoint.blockHash === point.blockHash };
 }

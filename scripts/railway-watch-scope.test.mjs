@@ -54,5 +54,6 @@ test("the worker build pins its lockfile and preserves startup, health endpoint 
     ...priorBuild,
     buildCommand: "pnpm install --frozen-lockfile && pnpm --filter indexer build",
   });
-  assert.deepEqual(config.deploy, baseline.deploy);
+  // The deployed worker allows an hour for corroborated catch-up after downtime.
+  assert.deepEqual(config.deploy, { ...baseline.deploy, healthcheckTimeout: 3600 });
 });

@@ -13,6 +13,7 @@ import { creatorEarningsProfile, decodeEarningsDiscoveryCursor, earningsBenefici
 import { createProductionActivityIndexer, productionActivityProfile, readProductionActivity,
   type ActivityQuery } from "./curve-production-activity.js";
 import { productionCurveBirthRpc } from "./curve-production-birth.js";
+import { readCurveMarket, type MarketQuery } from "./curve-market.js";
 
 type Database = Pick<Client, "query">;
 const maximumRange = 2_000n;
@@ -34,7 +35,8 @@ export function parseProductionCurveQuery(url: URL) {
 
 /** One bounded pass inside the original process and its existing leased writer. */
 export function createProductionCurveIndexer(config: CurveProductionConfig, writer: Database,
-  primary: PublicClient, archive: PublicClient | undefined, now: () => number = Date.now) {
+  primary: PublicClient, archive: PublicClient | undefined, now: () => number = Date.now,
+  options: { reader?: Database; write?: (task: () => Promise<void>) => Promise<void>; range?: number } = {}) {
   const { binding } = config;
   const scope = productionCurveScope(config);
   let initialized = false;
@@ -43,9 +45,26 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
   let failed = false;
   let failureInvalidatesEvidence = false;
   let caughtUp = false;
+  let activityBusy = false;
+  let activityError: "upstream" | "local" | null = null;
+  let lastActivityMs: number | null = null;
+  let lastRegistrationMs: number | null = null;
+  let target: bigint | null = null;
   let busy = false;
   let revision = 0;
-  const activity = createProductionActivityIndexer(config, writer, primary, archive);
+  let activityEpoch = 0;
+  const write = options.write ?? (async task => task());
+  const activity = createProductionActivityIndexer(config, writer, primary, archive, {
+    ...options, write: task => write(async () => {
+      if (activityEpoch !== revision || state().status !== "ready") throw new Error("Activity anchor invalidated");
+      await task();
+    }),
+  });
+  function invalidateRegistration() {
+    revision++;
+    failureInvalidatesEvidence = true;
+    activity.invalidate();
+  }
 
   async function canonicalBlock(height: bigint) {
     if (!archive) throw new Error("Production curve indexing requires a distinct corroborating RPC");
@@ -78,7 +97,10 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     if (!latest) return;
     for (const [index, point] of saved.slice(0, 24).entries()) {
       const observed = await canonicalBlock(BigInt(point.blockNumber));
-      if (observed.blockHash.toLowerCase() !== point.blockHash.toLowerCase()) continue;
+      if (observed.blockHash.toLowerCase() !== point.blockHash.toLowerCase()) {
+        invalidateRegistration();
+        continue;
+      }
       if (index > 0) await rollbackProductionCurve(writer, scope, BigInt(point.blockNumber));
       return;
     }
@@ -90,11 +112,13 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
   async function syncOnce() {
     if (busy) throw new Error("Production curve writer pass is already running");
     busy = true;
-    revision++;
+    const started = now();
     try {
       if (!archive) throw new Error("Production curve indexing requires a distinct corroborating RPC");
       const heads = await Promise.all([primary, archive].map((rpc) => rpc.getBlockNumber({ cacheTime: 0 })));
       const safeHead = (heads[0]! < heads[1]! ? heads[0]! : heads[1]!) - BigInt(binding.confirmations);
+      target = safeHead;
+      if (checkpoint && BigInt(checkpoint.blockNumber) > safeHead) invalidateRegistration();
       if (safeHead < binding.deploymentBlock) throw new Error("Production deployment confirmations are pending");
       const readers = [primary, archive].map(rpc => productionCurveBirthRpc(config, rpc, safeHead));
       if (!initialized) {
@@ -142,19 +166,16 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
       checkpoint = (await productionCurveCheckpoints(writer, scope, 1))[0] ?? null;
       if (!checkpoint) throw new Error("Production canonical checkpoint unavailable");
       caughtUp = BigInt(checkpoint.blockNumber) === safeHead;
-      // Optional explicitly installed activity schema backfills independently.
-      // Missing/invalid activity never makes creation-only evidence unavailable.
-      try { await activity.sync(checkpoint, safeHead); } catch { activity.invalidate(); }
       verifiedAt = now();
       failed = false;
       failureInvalidatesEvidence = false;
     } catch (error) {
       failed = true;
-      failureInvalidatesEvidence = classifySyncFailure(error) !== "upstream";
+      if (classifySyncFailure(error) !== "upstream") invalidateRegistration();
       throw error;
     } finally {
       busy = false;
-      revision++;
+      lastRegistrationMs = now() - started;
     }
   }
 
@@ -163,18 +184,49 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     const blockTime = checkpoint ? Date.parse(checkpoint.timestamp) : Number.NaN;
     const fresh = verifiedAt !== null && currentTime >= verifiedAt && currentTime - verifiedAt <= maximumCheckpointAgeMs
       && Number.isFinite(blockTime) && blockTime <= currentTime + 30_000 && currentTime - blockTime <= maximumCheckpointAgeMs;
-    return { status: busy || !checkpoint || failureInvalidatesEvidence || !caughtUp ? "unavailable"
-      : failed || !fresh ? "stale" : "ready", checkpoint, revision, verifiedAt, caughtUp };
+    return { status: !checkpoint || failureInvalidatesEvidence || !caughtUp ? "unavailable"
+      : failed || !fresh ? "stale" : "ready", checkpoint, revision, verifiedAt, caughtUp, busy, durationMs: lastRegistrationMs,
+      lagBlocks: target !== null && checkpoint ? String(target - BigInt(checkpoint.blockNumber)) : null };
+  }
+
+  function activityState() {
+    const height = activity.height();
+    const reg = state();
+    const lag = height && checkpoint ? BigInt(checkpoint.blockNumber) - BigInt(height) : null;
+    const ready = reg.status === "ready" && checkpoint && activity.ready(checkpoint);
+    return { status: ready ? "ready" : activityError === "local" ? "unavailable" : activityError ? "delayed"
+      : height || activityBusy ? "backfilling" : "pending", indexedThrough: height,
+      lagBlocks: lag === null ? null : String(lag), busy: activityBusy, durationMs: lastActivityMs };
+  }
+
+  async function syncActivity() {
+    const point = checkpoint, epoch = revision;
+    if (!point || state().status !== "ready" || activityBusy || activity.ready(point)) return;
+    activityBusy = true;
+    activityEpoch = epoch;
+    const started = now();
+    try {
+      await activity.sync(point);
+      if (epoch !== revision) throw new Error("Registration changed fork during activity verification");
+      activityError = null;
+    } catch (error) {
+      activity.invalidate();
+      activityError = classifySyncFailure(error);
+      throw error;
+    } finally {
+      activityBusy = false;
+      lastActivityMs = now() - started;
+    }
   }
 
   async function read(db: Database, query: NonNullable<ReturnType<typeof parseProductionCurveQuery>>) {
     const before = state();
     if (before.status === "unavailable" || !before.checkpoint) throw new Error("Production curve evidence unavailable");
-    const launches = await readProductionCurveLaunches(db, scope, before.checkpoint, query);
+    const launches = await readProductionCurveLaunches(db, scope, before.checkpoint, query, true);
     const after = state();
     if (after.revision !== before.revision || after.status === "unavailable") throw new Error("Production evidence changed during read");
     return {
-      chainId: 4663, profile: binding.profile, status: after.status, observedAt: new Date(now()).toISOString(),
+      chainId: 4663, profile: binding.profile, status: now() - Date.parse(before.checkpoint.timestamp) > maximumCheckpointAgeMs ? "stale" : after.status, observedAt: new Date(now()).toISOString(),
       deployment: { factory: binding.factory, registry: binding.projectRegistry, blockNumber: binding.deploymentBlock.toString(),
         blockHash: binding.deploymentBlockHash },
       checkpoint: { ...before.checkpoint, confirmations: binding.confirmations, finality: "l2-confirmed", l1Finality: "unverified" },
@@ -221,12 +273,21 @@ export function createProductionCurveIndexer(config: CurveProductionConfig, writ
     if (before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new Error("Canonical activity evidence unavailable");
     const events = await readProductionActivity(db, scope, before.checkpoint, query);
     const after = state();
-    if (after.revision !== before.revision || after.status !== "ready" || !activity.ready(before.checkpoint)) throw new Error("Canonical activity changed during read");
+    if (after.revision !== before.revision || after.status !== "ready" || now() - Date.parse(before.checkpoint.timestamp) > maximumCheckpointAgeMs || !activity.ready(before.checkpoint)) throw new Error("Canonical activity changed during read");
     return { schemaVersion: 1 as const, chainId: 4663 as const, profile: productionActivityProfile, status: "ready" as const,
       token: query.token ?? null, transactionHash: query.transactionHash, observedAt: new Date(now()).toISOString(),
       deployment: { factory: binding.factory, registry: binding.projectRegistry, blockNumber: binding.deploymentBlock.toString(), blockHash: binding.deploymentBlockHash },
       checkpoint: { ...before.checkpoint, confirmations: binding.confirmations, finality: "l2-confirmed" as const, l1Finality: "unverified" as const }, events };
   }
 
-  return { syncOnce, state, read, readEarnings, readActivity };
+  async function readMarket(db: Database, query: MarketQuery) {
+    const before = state();
+    if (!archive || before.status !== "ready" || !before.checkpoint || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint unavailable");
+    const result = await readCurveMarket(db, scope, config, [primary, archive], before.checkpoint, query);
+    const after = state();
+    const age = now() - Date.parse(before.checkpoint.timestamp);
+    if (after.status !== "ready" || after.revision !== before.revision || after.checkpoint?.blockHash !== before.checkpoint.blockHash || age >= maximumCheckpointAgeMs || age < -15_000 || !activity.ready(before.checkpoint)) throw new Error("Market checkpoint changed");
+    return result;
+  }
+  return { syncOnce, syncActivity, state, activityState, read, readEarnings, readActivity, readMarket };
 }

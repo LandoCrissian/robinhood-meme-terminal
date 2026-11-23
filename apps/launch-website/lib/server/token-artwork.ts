@@ -26,7 +26,7 @@ export async function readArtwork(store: ArtworkStore, cid: string, file: string
     if (!data) return failure(404,"Missing artwork.");
     let bytes = data;
     if (file !== "image.webp") {
-      if (bytes.length > 512) return failure(404,"Missing metadata.");
+      if (bytes.length > 4096) return failure(404,"Missing metadata.");
       const image = assetCID(JSON.parse(new TextDecoder().decode(bytes)).image, "image.webp");
       if (!image) return failure(404,"Invalid metadata.");
       if (file === "logo.webp") return readArtwork(store,image,"image.webp");
@@ -35,7 +35,7 @@ export async function readArtwork(store: ArtworkStore, cid: string, file: string
       "X-Content-Type-Options":"nosniff", "Cache-Control":"public, max-age=31536000, immutable", ETag:'"' + artworkCID(bytes) + '"'}});
   } catch { return failure(503,"Artwork temporarily unavailable."); }
 }
-async function reserve(store: ArtworkStore, owner: string, input: string, now: number) {
+export async function reserve(store: ArtworkStore, owner: string, input: string, now: number) {
   const prefix = "uploads/" + owner.toLowerCase() + "/" + new Date(now).toISOString().slice(0,10) + "/";
   for (let i = 0; i < 8; i++) {
     const key = prefix + i;

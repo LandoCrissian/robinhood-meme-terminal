@@ -16,6 +16,7 @@ import "./profile-refinement.css";
 import "./creator-polish.css";
 import "./earnings.css";
 import "./product.css";
+import "./market.css";
 
 export const metadata: Metadata = {
   title: "RMT Launch | Token Launchpad",

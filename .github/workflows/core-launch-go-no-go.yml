@@ -5,6 +5,7 @@ on:
     paths:
       - "docs/RMT_CORE_LAUNCH_GO_NO_GO.md"
       - "docs/evidence/rmt-task089/**"
+      - "docs/evidence/token-market/verify-discovery-baseline.py"
       - "docs/evidence/rmt-task091/**"
       - "apps/launch-website/lib/server/production-discovery*"
       - "packages/contracts/scripts/fixed-supply-profile.mjs"
@@ -53,7 +54,11 @@ jobs:
       - name: Verify retained governance and discovery evidence offline
         run: |
           node --test docs/evidence/rmt-task089/governance/read-state.test.mjs
-          python docs/evidence/rmt-task089/discovery/verify-evidence.py
+          git fetch --no-tags --depth=1 origin 27f19787ed0a2d904ba4508d2adfab1773e82e67
+          git worktree add --quiet --detach "$RUNNER_TEMP/task089-discovery" 27f19787ed0a2d904ba4508d2adfab1773e82e67
+          python "$RUNNER_TEMP/task089-discovery/docs/evidence/rmt-task089/discovery/verify-evidence.py"
+          python docs/evidence/token-market/verify-discovery-baseline.py
+          pnpm --filter @rmt/launch-website exec tsx --tsconfig tsconfig.test.json --test lib/server/production-discovery.test.ts
       - name: Verify terminal-only lifecycle read draining and natural failure propagation
         run: |
           node --check scripts/visual-qa/rmt-creator-integration.mjs

@@ -1,3 +1,4 @@
+import { boundedSetting, providerBudget, rpcFeed, scheduledTransport, serializedWriter } from "./feed-scheduler.js";
 import { timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
 import { Client, Pool, type PoolClient } from "pg";
@@ -53,6 +54,7 @@ import { IndexStoreError, initializeIndexStore, lockIndexWriter } from "./index-
 import { curveProductionConfig } from "./curve-production-config.js";
 import { createProductionCurveIndexer, parseProductionCurveQuery } from "./curve-production.js";
 import { parseProductionActivityQuery, productionActivityProfile } from "./curve-production-activity.js";
+import { parseMarketQuery } from "./curve-market.js";
 import { creatorEarningsProfile, parseEarningsDiscoveryQuery } from "./creator-earnings.js";
 
 const CHAIN_ID = 4663;
@@ -137,15 +139,20 @@ const chain = {
   rpcUrls: { default: { http: [config.rpcUrl] } }
 } as const;
 
-const rpc = createPublicClient({
-  chain,
-  transport: http(config.rpcUrl, { retryCount: 3, retryDelay: 1_000, timeout: 12_000 })
-});
-
-const archiveRpc = createPublicClient({
-  chain,
-  transport: http(config.archiveRpcUrl, { retryCount: 3, retryDelay: 1_000, timeout: 12_000 })
-});
+const stopSignal = new AbortController();
+const productionCurveConfigured = Boolean(process.env.RMT_CURVE_PRODUCTION_BINDING);
+const spacingMs = boundedSetting("RMT_INDEXER_RPC_SPACING_MS", 400, 350, 2000);
+const activityRange = boundedSetting("RMT_INDEXER_ACTIVITY_BLOCKS", 1000, 1, 2000);
+const activityInterval = boundedSetting("RMT_INDEXER_ACTIVITY_INTERVAL_MS", 5000, 1000, 60000);
+const primaryBudget = providerBudget("primary", spacingMs);
+const archiveBudget = new URL(config.archiveRpcUrl).origin === new URL(config.rpcUrl).origin
+  ? primaryBudget : providerBudget("archive", spacingMs);
+function reader(url: string, budget: typeof primaryBudget) {
+  return createPublicClient({ chain, transport: productionCurveConfigured ? scheduledTransport(url, budget, stopSignal.signal)
+    : http(url, { retryCount: 3, retryDelay: 1000, timeout: 12_000 }) });
+}
+const rpc = reader(config.rpcUrl, primaryBudget);
+const archiveRpc = reader(config.archiveRpcUrl, archiveBudget);
 const distinctArchive = config.archiveRpcUrl !== config.rpcUrl ? archiveRpc : undefined;
 const usesHistoricalBinding = lower(config.factory) === historicalFactory
   && config.startBlock === historicalStartBlock;
@@ -163,13 +170,14 @@ const pool = new Pool({
 pool.on("error", (error) => console.error(JSON.stringify({ event: "indexer_read_pool_error", errorType: errorType(error) })));
 const writer = new Client({ ...database, connectionTimeoutMillis: 10_000, keepAlive: true });
 const historyReadBudget = createHistoryReadBudget();
-const productionCurveConfigured = Boolean(process.env.RMT_CURVE_PRODUCTION_BINDING);
+const withWriter = serializedWriter();
 let productionCurve: ReturnType<typeof createProductionCurveIndexer> | null = null;
 if (productionCurveConfigured) {
   try {
     const production = curveProductionConfig(process.env);
     if (!production || !config.readToken) throw new Error("Production curve read authentication is required");
-    productionCurve = createProductionCurveIndexer(production, writer, rpc, distinctArchive);
+    productionCurve = createProductionCurveIndexer(production, writer, rpc, distinctArchive, Date.now,
+      { reader: pool, write: withWriter, range: activityRange });
   } catch (error) {
     console.error(JSON.stringify({ event: "production_curve_config_unavailable", errorType: errorType(error) }));
   }
@@ -1164,8 +1172,8 @@ async function syncOnce() {
   }
 
   let cursor = nextBlock;
-  while (!stopping && cursor <= safeHead) {
-    const candidate = cursor + BigInt(config.chunkSize) - 1n;
+  if (!stopping && cursor <= safeHead) {
+    const candidate = cursor + BigInt(Math.min(config.chunkSize, 1000)) - 1n;
     const end = candidate < safeHead ? candidate : safeHead;
     await processRange(cursor, end);
     cursor = end + 1n;
@@ -1349,6 +1357,20 @@ function json(response: import("node:http").ServerResponse, status: number, body
   response.end(JSON.stringify(body));
 }
 
+let historicalDurationMs: number | null = null;
+function feedHealth() {
+  const point = historicalCheckpoint;
+  const time = Date.now();
+  const expired = !point || time < point.verifiedAt || time - point.verifiedAt > historicalCheckpointMaxAgeMs
+    || time - Number(point.blockTimestamp) * 1000 > historicalCheckpointMaxAgeMs;
+  const status = !initialSyncComplete || lastFailureKind === "local" || (usesHistoricalBinding && !point) ? "unavailable"
+    : lastFailureKind || historicalUpstreamDelayed || (usesHistoricalBinding && expired) ? "stale" : "ready";
+  return { historical: { status, indexedThrough: indexedThrough.toString(), durationMs: historicalDurationMs,
+      lagBlocks: latestObservedHead === null ? null : String(latestObservedHead - indexedThrough) },
+    registration: productionCurveState(), activity: productionCurve?.activityState() ?? { status: "undeployed" },
+    rpc: { primary: primaryBudget.stats, archive: archiveBudget.stats } };
+}
+
 function startServer() {
   const bindings = requireProtocolBindings();
   return createServer(async (request, response) => {
@@ -1364,7 +1386,7 @@ function startServer() {
         const healthy = !stopping && latest !== null && syncState.available && !syncState.stale
           && (!productionCurveConfigured || productionCurveState().status === "ready");
         json(response, healthy ? 200 : 503, {
-          ok: healthy,
+          ok: healthy, feeds: feedHealth(),
           chainId: CHAIN_ID,
           protocolVersion: 6,
           factory: config.factory,
@@ -1400,7 +1422,7 @@ function startServer() {
         const ready = !stopping && lastFailureKind !== "local" && databaseReady
           && (!productionCurveConfigured || productionCurveState().status === "ready");
         json(response, ready ? 200 : 503, {
-          ok: ready,
+          ok: ready, feeds: feedHealth(),
           initialSyncComplete,
           indexedThrough: indexedThrough.toString(),
           lastSyncAt,
@@ -1413,12 +1435,13 @@ function startServer() {
         json(response, 503, { error: "Indexer data service is temporarily unavailable." });
         return;
       }
-      if (url.pathname === "/curve-activity") {
+      if (url.pathname === "/curve-activity" || url.pathname.startsWith("/curve-market/")) {
         if (!hasHistoricalReadAccess(config.readToken, request.headers.authorization)) {
           response.setHeader("WWW-Authenticate", "Bearer"); json(response, 401, { error: "Unauthorized" }); return;
         }
+        const market = url.pathname.startsWith("/curve-market/") ? parseMarketQuery(url) : null;
         const query = parseProductionActivityQuery(url);
-        if (!query) { json(response, 400, { error: "Invalid production activity query" }); return; }
+        if (!query && !market) { json(response, 400, { error: "Invalid production activity query" }); return; }
         const current = productionCurve;
         const unavailable = { schemaVersion: 1, chainId: CHAIN_ID, profile: productionActivityProfile, status: "unavailable", checkpoint: null };
         if (!productionCurveConfigured || !current || current.state().status !== "ready") { json(response, 503, unavailable); return; }
@@ -1429,8 +1452,8 @@ function startServer() {
           db = await pool.connect();
           await db.query("BEGIN ISOLATION LEVEL REPEATABLE READ READ ONLY");
           await db.query("SET LOCAL statement_timeout = '1s'");
-          const result = await current.readActivity(db, query);
-          await db.query("COMMIT"); json(response, 200, result);
+          const result = market ? await rpcFeed.run("market", () => current.readMarket(db!, market)) : await current.readActivity(db, query!);
+          await db.query("COMMIT"); json(response, result.status === "not_found" ? 404 : 200, result);
         } catch (error) {
           await db?.query("ROLLBACK").catch(() => undefined); json(response, 503, unavailable);
           console.error(JSON.stringify({ event: "production_activity_read_unavailable", errorType: errorType(error) }));
@@ -1655,13 +1678,29 @@ function startServer() {
 }
 
 let stopping = false;
-const stopSignal = new AbortController();
 const stop = () => {
   stopping = true;
   stopSignal.abort();
 };
 process.once("SIGTERM", stop);
 process.once("SIGINT", stop);
+
+async function runActivity() {
+  if (!productionCurve) return;
+  let failures = 0;
+  while (!stopping) {
+    let delay = activityInterval;
+    try {
+      await rpcFeed.run("activity", () => productionCurve!.syncActivity());
+      failures = 0;
+    } catch (error) {
+      const backoff = failureBackoffMs(activityInterval, ++failures);
+      delay = Math.min(60_000, Math.round(backoff * (1 + Math.random())));
+      console.warn(JSON.stringify({ event: "activity_sync_delayed", errorType: errorType(error), retryInMs: delay }));
+    }
+    await wait(delay, undefined, { signal: stopSignal.signal }).catch(() => undefined);
+  }
+}
 
 async function run() {
   protocolBindings = await verifyV6Factory();
@@ -1682,18 +1721,22 @@ async function run() {
   }
   latestObservedHead = startupHead;
   const server = startServer();
+  const backfill = runActivity();
   try {
     let consecutiveFailures = 0;
     while (!stopping) {
       let delayMs = config.pollMs;
+      const historicalStart = Date.now();
       try {
-        const { caughtUp, observedBoundary } = await syncOnce();
-        if (!stopping && usesHistoricalBinding && config.readToken && config.confirmations >= historicalConfirmationDepth) {
-          await refreshHistoricalCheckpoint(observedBoundary);
-          if (caughtUp && historicalCheckpoint?.proofAt != null && !historicalUpstreamDelayed) {
-            delayMs = config.caughtUpPollMs;
+        await withWriter(async () => {
+          const { caughtUp, observedBoundary } = await syncOnce();
+          if (!stopping && usesHistoricalBinding && config.readToken && config.confirmations >= historicalConfirmationDepth) {
+            await refreshHistoricalCheckpoint(observedBoundary);
+            if (caughtUp && historicalCheckpoint?.proofAt != null && !historicalUpstreamDelayed) {
+              delayMs = config.caughtUpPollMs;
+            }
           }
-        }
+        });
         initialSyncComplete = true;
         lastSyncFailed = false;
         lastFailureKind = null;
@@ -1711,9 +1754,12 @@ async function run() {
           retryInMs: delayMs
         }));
       }
+      historicalDurationMs = Date.now() - historicalStart;
       if (!stopping && productionCurve && lastFailureKind !== "local") {
         try {
-          await productionCurve.syncOnce();
+          await rpcFeed.run("registration", () => withWriter(() => productionCurve!.syncOnce()));
+          console.info(JSON.stringify({ event: "indexer_feeds", ...feedHealth() }));
+          if (!productionCurve.state().caughtUp) delayMs = Math.min(delayMs, config.pollMs);
         } catch (error) {
           console.error(JSON.stringify({ event: "production_curve_sync_unavailable", errorType: errorType(error) }));
         }
@@ -1725,7 +1771,9 @@ async function run() {
       }
     }
   } finally {
+    stop();
     server.close();
+    await backfill;
   }
 }
 

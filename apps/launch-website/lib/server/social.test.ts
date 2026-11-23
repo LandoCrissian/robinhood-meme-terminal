@@ -14,12 +14,20 @@ test("creator shares have separate owner and visitor copy, one canonical URL and
   for (const owner of [true,false]) {
     const intent = new URL(profileShareIntent(profile,owner));
     assert.equal(intent.searchParams.get("url"),"https://www.rmtlaunch.fun/u/test_creator");
-    assert.match(intent.searchParams.get("text")!,owner ? /I’m building/ : /Avery & Co/);
+    assert.match(intent.searchParams.get("text")!,owner ? /^Find me/ : /Avery & Co’s profile/);
+    assert.deepEqual(intent.searchParams.get("text")!.match(/@rmtlaunch/gi),["@RMTLaunch"]);
+    assert.deepEqual([...intent.searchParams.keys()].sort(),["text","url"]);
   }
   const image = shareImagePath(card);
   assert.match(image,/^\/share\/u\/test_creator\/[0-9a-f]{24}\.png$/);
   assert.notEqual(image,shareImagePath({...card,artwork:"another version"}));
   assert.notEqual(image,shareImagePath({...card,name:"A new name"}));
+  assert.notEqual(image,shareImagePath(card,"rmt-card-v1"));
+  for (const displayName of ["@RMTLaunch", "promo.test", "https://example.com", ""]) {
+    const intent = new URL(profileShareIntent({...profile,username:"rmtlaunch",displayName}));
+    assert.deepEqual(intent.searchParams.get("text")!.match(/@rmtlaunch/gi),["@RMTLaunch"]);
+    assert.doesNotMatch(intent.searchParams.get("text")!,/promo\.test|example\.com/);
+  }
   assert.equal(creatorCard({...profile,username:null}).path,"/creator/"+walletAddress);
   const incoming = anonymousReadHeaders(new Headers({host:"example.invalid",cookie:"private",origin:"https://example.com","x-forwarded-host":"example.invalid"}));
   assert.deepEqual([...incoming.keys()].sort(),["host","x-forwarded-host"]);

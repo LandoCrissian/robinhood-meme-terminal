@@ -20,11 +20,11 @@ export function productionTradingFixture() {
   const p = productionClaimFixture(), key = { currency0: zeroAddress, currency1: p.f.token, fee: 3000, tickSpacing: 60, hooks: pins.guard[0] };
   const knobs = { phase: "curve" as "curve" | "eligible" | "graduated", request: null as ProductionLifecycleRequest | null,
     mined: false, reverted: false, reorg: false, missingIndex: false, wrongIndex: false, quoteConflict: false, wrongTarget: false,
-    nonceConflict: false, allowance: 0n, erc20Allowance: 0n, permitAllowance: 0n, peerOffline: false,
+    nonceConflict: false, wrongSellFee: false, allowance: 0n, erc20Allowance: 0n, permitAllowance: 0n, peerOffline: false,
     zeroPoster: false, positiveC8: false, missingC8: false, conflictingC8: false, zeroL1Estimate: 0n, zeroUnit: 0n,
     zeroBaseMismatch: false, zeroNativeDifferent: false, missingTransactionBase: false, missingGasInfo: false, advance: 0n, expired: false };
   const minedAt = p.reviewNumber + 1n;
-  const phaseAt = (n: bigint) => knobs.request?.operation === "graduate" && knobs.mined && n >= minedAt ? "graduated" : knobs.phase;
+  const phaseAt = (n: bigint) => (knobs.request?.operation === "graduate" || knobs.request?.operation === "buy-graduate") && knobs.mined && n >= minedAt ? "graduated" : knobs.phase;
   const buyQuote = (input: bigint): readonly [bigint, bigint, bigint, bigint] => {
     // A 2 ETH gross budget backs 1.98 ETH. Four ETH fills the unchanged 2 ETH target and refunds the excess.
     const cap = (2n * eth * 10000n + 9899n) / 9900n;
@@ -66,7 +66,7 @@ export function productionTradingFixture() {
             virtualToken: launchTokenSupplyWei * 9n / 5n, poolId: await testV4PoolId(key), positionTokenId: 1n };
           if (Object.hasOwn(v, arg.functionName)) return v[arg.functionName];
           if (arg.functionName === "quoteBuy") { const q = buyQuote(arg.args[0]); return peer && knobs.quoteConflict ? [q[0] + 1n, ...q.slice(1)] : q; }
-          if (arg.functionName === "quoteSell") return [990n, 1000n, 10n];
+          if (arg.functionName === "quoteSell") return knobs.wrongSellFee ? [999n, 1000n, 1n] : [990n, 1000n, 10n];
         }
         if (same(arg.address, pins.engine[0])) {
           if (arg.functionName === "positions") return phase === "graduated" ? [1n, 1000n] : [0n, 0n];
@@ -95,13 +95,16 @@ export function productionTradingFixture() {
   }
   async function receipt() {
     const r = knobs.request!, base = { blockNumber: minedAt, blockHash: p.point(minedAt).blockHash, transactionHash: p.f.txHash, transactionIndex: 0, removed: false };
-    let event: object;
-    if (r.operation === "buy" || r.operation === "sell") {
-      const buy = r.operation === "buy", [output, gross, fee, refund] = buy ? buyQuote(BigInt(r.amountWei)) : [BigInt(r.amountWei), 1000n, 10n, 0n];
+    let event!: object;
+    const extra: object[] = [];
+    if (r.operation === "buy" || r.operation === "buy-graduate" || r.operation === "sell") {
+      const buy = r.operation !== "sell", [output, gross, fee, refund] = buy ? buyQuote(BigInt(r.amountWei)) : [BigInt(r.amountWei), 1000n, 10n, 0n];
       event = { address: r.curve, logIndex: 1, ...base, topics: encodeEventTopics({ abi: tradeAbi, eventName: "CurveTrade", args: { account: r.from, isBuy: buy } }),
         data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "uint256" }], [output, gross, fee, refund, output, gross - fee]) };
-    } else if (r.operation === "graduate") {
-      event = { address: r.curve, logIndex: 1, ...base, topics: encodeEventTopics({ abi: graduationAbi, eventName: "CurveGraduated", args: { poolId: await testV4PoolId(key), positionTokenId: 1n } }),
+      if(r.operation==="buy-graduate") extra.push(event);
+    }
+    if (r.operation === "graduate" || r.operation==="buy-graduate") {
+      event = { address: r.curve, logIndex: 2, ...base, topics: encodeEventTopics({ abi: graduationAbi, eventName: "CurveGraduated", args: { poolId: await testV4PoolId(key), positionTokenId: 1n } }),
         data: encodeAbiParameters([{ type: "uint256" }, { type: "uint256" }, { type: "uint256" }, { type: "uint256" }], [2n * eth, launchTokenSupplyWei * 2n / 5n, 0n, 0n]) };
     } else if (r.operation === "v4-buy" || r.operation === "v4-sell") {
       const buy = r.operation === "v4-buy", input = BigInt(r.amountWei), output = 10n ** 20n;
@@ -114,11 +117,11 @@ export function productionTradingFixture() {
     } else if (r.operation === "v4-permit2-approve") {
       event = { address: pins.permit2[0], logIndex: 1, ...base, topics: encodeEventTopics({ abi: permitAbi, eventName: "Approval", args: { owner: r.from, token: r.token, spender: pins.router212[0] } }),
         data: encodeAbiParameters([{ type: "uint160" }, { type: "uint48" }], [BigInt(r.amountWei), Number(BigInt(r.deadline) + 720n)]) };
-    } else {
+    } else if (r.operation === "approve" || r.operation === "v4-token-approve") {
       event = { address: r.token, logIndex: 1, ...base, topics: encodeEventTopics({ abi: erc20Abi, eventName: "Approval", args: { owner: r.from, spender: r.operation === "approve" ? r.curve : pins.permit2[0] } }),
         data: encodeAbiParameters([{ type: "uint256" }], [BigInt(r.amountWei)]) };
     }
-    return { status: knobs.reverted ? "reverted" : "success", from: r.from, to: r.to, ...base, logs: knobs.reverted ? [] : [event] };
+    return { status: knobs.reverted ? "reverted" : "success", from: r.from, to: r.to, ...base, logs: knobs.reverted ? [] : [...extra,event] };
   }
   const directory = () => ({ ...p.directory(), profile: "rmt-curve-fixed-supply-security-v2", checkpoint: { ...p.point(context().anchor.blockNumber - 20n),
     ...(!knobs.mined && context().anchor.blockNumber - 20n > p.reviewNumber && { timestamp: new Date(Number(p.current().timestamp + 12n) * 1000).toISOString() }), confirmations: 20,

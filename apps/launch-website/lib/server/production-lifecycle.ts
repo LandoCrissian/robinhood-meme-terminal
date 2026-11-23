@@ -4,7 +4,7 @@ import { claimDelegatePin } from "../claim-profiles";
 import { isTransactionHash } from "../test-creation";
 import { curveBuySignature, curveGraduateSignature, curveSellSignature, isLifecycleAmount, isLifecycleSlippage,
   isLifecycleTrade, sameLifecycleValue as same } from "../test-lifecycle";
-import { encodeProductionLifecycleCalldata, isProductionLifecycleOperation, isProductionLifecycleRequest,
+import { tradeTermsOperation, encodeProductionLifecycleCalldata, isProductionLifecycleOperation, isProductionLifecycleRequest,
   isProductionV4Operation, productionLifecycleCalldataMatches, productionLifecycleChain, productionLifecycleDestination, productionLifecyclePath,
   sameProductionLifecycleRequest, type ProductionLifecycleOperation, type ProductionLifecycleQuote,
   type ProductionLifecycleRequest, type ProductionLifecycleState, type ProductionLifecycleVerification } from "../production-lifecycle";
@@ -77,6 +77,11 @@ export function productionCurveBuyQuote(amount: bigint, result: readonly [bigint
   must(output > 0n && gross > 0n && refund >= 0n && gross + refund === amount && fee >= 1n
     && productionCurveFee(gross) === fee && output + sold <= graduationSold);
   return { output, fee, refund };
+}
+
+function productionCurveSellQuote([output, gross, fee]: readonly [bigint, bigint, bigint]) {
+  must(output > 0n && fee > 0n && output + fee === gross && fee === productionCurveFee(gross));
+  return { output, fee };
 }
 
 export async function productionDirectWallet(rpc: EarningsRpc, account: Address, blockNumber: bigint, pending: boolean) {
@@ -169,16 +174,44 @@ async function currentState(context: ProductionTradingContext, token: Address, a
   return results[0];
 }
 
+async function poolQuote(context: ProductionTradingContext, binding: TestV4Binding, buy: boolean, amount: bigint, account?: Address) {
+  must(amount > 0n && amount < 2n ** 127n);
+  const data = encodeFunctionData({ abi: quoterAbi, functionName: "quoteExactInputSingle", args: [{ poolKey: binding.poolKey, zeroForOne: buy, exactAmount: amount, hookData: "0x" }] });
+  const quotes = await Promise.all([context.rpc, context.corroboratingRpc].map(async rpc => {
+    const result = await rpc.call({ ...(account && {account}), to: pins.quoter[0], data, blockNumber: context.anchor.blockNumber }); must(result.data);
+    return decodeFunctionResult({ abi: quoterAbi, functionName: "quoteExactInputSingle", data: result.data })[0];
+  }));
+  must(quotes[0] === quotes[1] && quotes[0] > 0n && quotes[0] < 2n ** 127n);
+  return quotes[0];
+}
+
+async function indicativeQuote(context: ProductionTradingContext, token: Address, buy:boolean, amount:bigint) {
+  const {state,binding}=await currentState(context,token);
+  if(buy && state.phase==="eligible") return {status:"invalid",reason:"graduation-pending"};
+  let output:bigint;
+  if(binding) output=await poolQuote(context,binding,buy,amount);
+  else if(buy){
+    const quotes=await Promise.all([context.rpc,context.corroboratingRpc].map(r=>r.readContract({address:state.curve,abi:curveAbi,functionName:"quoteBuy",args:[amount],blockNumber:context.anchor.blockNumber})));
+    must(equal(quotes[0],quotes[1]));
+    output=productionCurveBuyQuote(amount,quotes[0],BigInt(state.soldWei),BigInt(state.targetSoldWei)).output;
+  }else{
+    const quotes=await Promise.all([context.rpc,context.corroboratingRpc].map(r=>r.readContract({address:state.curve,abi:curveAbi,functionName:"quoteSell",args:[amount],blockNumber:context.anchor.blockNumber})));
+    must(equal(quotes[0],quotes[1]));
+    output=productionCurveSellQuote(quotes[0]).output;
+  }
+  return {status:"ready",outputWei:String(output),blockNumber:String(context.anchor.blockNumber),blockHash:context.anchor.blockHash};
+}
+
 export async function prepareProductionLifecycle(context: ProductionTradingContext, token: Address, from: Address,
   operation: ProductionLifecycleOperation, amountWei: string, slippageBps: number, prior?: ProductionLifecycleRequest) {
-  must(address(token) && address(from) && isProductionLifecycleOperation(operation) && isLifecycleAmount(operation, amountWei) && isLifecycleSlippage(operation, slippageBps));
+  must(address(token) && address(from) && isProductionLifecycleOperation(operation) && isLifecycleAmount(tradeTermsOperation(operation), amountWei) && isLifecycleSlippage(tradeTermsOperation(operation), slippageBps));
   if (prior && (!isProductionLifecycleRequest(prior) || !requestIdentity(context, prior) || !same(prior.token, token) || !same(prior.from, from)
       || prior.operation !== operation || prior.amountWei !== amountWei || prior.slippageBps !== slippageBps)) return { status: "invalid", reason: "stale-review" };
   const [{ state, binding }, wallets] = await Promise.all([currentState(context, token, from),
     Promise.all([context.rpc, context.corroboratingRpc].map(rpc => productionDirectWallet(rpc, from, context.anchor.blockNumber, true)))]);
   must(equal(wallets[0], wallets[1]) && state.account);
-  const v4 = isProductionV4Operation(operation), buy = operation === "buy" || operation === "v4-buy";
-  if (v4 ? state.phase !== "graduated" : state.phase === "graduated" || (state.phase === "eligible" && operation === "buy")) return { status: "invalid", reason: "curve-closed" };
+  const v4 = isProductionV4Operation(operation), buy = tradeTermsOperation(operation) === "buy" || operation === "v4-buy";
+  if (v4 ? state.phase !== "graduated" : state.phase === "graduated" || (state.phase === "eligible" && buy)) return { status: "invalid", reason: "curve-closed" };
   if (operation === "graduate" && state.phase !== "eligible") return { status: "invalid", reason: "graduation-not-ready" };
   const at = context.anchor.blockNumber, timestamp = context.anchor.timestamp, amount = BigInt(amountWei);
   const reviewNumber = prior ? BigInt(prior.reviewBlockNumber) : at, deadline = prior ? BigInt(prior.deadline) : timestamp + deadlineWindow;
@@ -197,28 +230,22 @@ export async function prepareProductionLifecycle(context: ProductionTradingConte
     if ((operation === "v4-permit2-approve" || operation === "v4-sell") && erc20 !== amount || operation === "v4-sell" && (permit !== amount || BigInt(p.permit2Expiration) < deadline)) return { status: "invalid", reason: "insufficient-allowance" };
     if (operation === "v4-buy" || operation === "v4-sell") {
       must(amount < 2n ** 127n);
-      const poolKey = binding.poolKey;
-      const data = encodeFunctionData({ abi: quoterAbi, functionName: "quoteExactInputSingle", args: [{ poolKey, zeroForOne: buy, exactAmount: amount, hookData: "0x" }] });
-      const quotes = await Promise.all([context.rpc, context.corroboratingRpc].map(async rpc => {
-        const result = await rpc.call({ account: from, to: pins.quoter[0], data, blockNumber: at }); must(result.data);
-        return decodeFunctionResult({ abi: quoterAbi, functionName: "quoteExactInputSingle", data: result.data });
-      }));
-      must(quotes[0][0] === quotes[1][0] && quotes[0][0] > 0n && quotes[0][0] < 2n ** 127n);
-      output = quotes[0][0]; fee = amount * 3000n / 1000000n;
+      output = await poolQuote(context,binding,buy,amount,from); fee = amount * 3000n / 1000000n;
     }
-  } else if (operation === "buy") {
+  } else if (tradeTermsOperation(operation) === "buy") {
     const quotes = await Promise.all([context.rpc, context.corroboratingRpc].map(rpc => rpc.readContract({ address: state.curve, abi: curveAbi,
       functionName: "quoteBuy", args: [amount], blockNumber: at })));
     must(equal(quotes[0], quotes[1]));
     ({ output, fee, refund } = productionCurveBuyQuote(amount, quotes[0], BigInt(state.soldWei), BigInt(state.targetSoldWei)));
+    if (operation === "buy-graduate" && output + BigInt(state.soldWei) !== BigInt(state.targetSoldWei)) return {status:"invalid", reason:"graduation-not-ready"};
   } else if (operation === "sell") {
     const quotes = await Promise.all([context.rpc, context.corroboratingRpc].map(rpc => rpc.readContract({ address: state.curve, abi: curveAbi,
       functionName: "quoteSell", args: [amount], blockNumber: at })));
-    must(equal(quotes[0], quotes[1])); const [out, gross, charge] = quotes[0];
-    must(out > 0n && charge > 0n && out + charge === gross && productionCurveFee(gross) === charge); output = out; fee = charge;
+    must(equal(quotes[0], quotes[1]));
+    ({ output, fee } = productionCurveSellQuote(quotes[0]));
   }
   const minimum = output * BigInt(10000 - slippageBps) / 10000n;
-  if (isLifecycleTrade(operation) && minimum === 0n) return { status: "invalid", reason: "amount-unavailable" };
+  if (isLifecycleTrade(tradeTermsOperation(operation)) && minimum === 0n) return { status: "invalid", reason: "amount-unavailable" };
   const to = productionLifecycleDestination(operation, token, state.curve);
   const data = await encodeProductionLifecycleCalldata(operation, token, state.curve, amount, minimum, deadline, binding);
   const value = buy ? amount : 0n;
@@ -381,20 +408,23 @@ async function verifyAt(rpc: EarningsRpc, context: ProductionTradingContext, r: 
       must(before === input && after === 0n && permitBefore[0] === input && BigInt(permitBefore[1]) >= BigInt(r.deadline) && permitAfter[0] === 0n);
     }
     evidence = receipt.logs.filter(l => l.logIndex === events[0].logIndex || l.logIndex === transfers[0].logIndex); refund = 0n;
-  } else if (r.operation === "graduate") {
+  }
+  if (r.operation === "graduate" || r.operation === "buy-graduate") {
     const events = parseEventLogs({ abi: [graduationEvent], strict: true, logs: receipt.logs.filter(l => same(l.address, r.curve)) });
     must(events.length === 1 && events[0].args.positionTokenId > 0n && events[0].args.nativeUsed + events[0].args.nativeDust === 2n * 10n ** 18n);
     const atReceipt = { ...context, anchor: { ...context.anchor, blockNumber: receipt.blockNumber, blockHash: receipt.blockHash, timestamp: block.timestamp } };
     const state = await readProductionTradingStateAt(rpc, atReceipt, launch, r.from, true);
     must(state.state.phase === "graduated" && state.binding && same(state.binding.poolId, events[0].args.poolId));
     evidence = receipt.logs.filter(l => l.logIndex === events[0].logIndex);
-  } else {
+  }
+  if (tradeTermsOperation(r.operation) === "buy" || r.operation === "sell") {
     const events = parseEventLogs({ abi: [tradeEvent], strict: true, logs: receipt.logs.filter(l => same(l.address, r.curve)) });
-    must(events.length === 1); const trade = events[0].args, buy = r.operation === "buy";
+    must(events.length === 1); const trade = events[0].args, buy = tradeTermsOperation(r.operation) === "buy";
     output = buy ? trade.tokenAmount : trade.grossNative - trade.fee; fee = trade.fee; refund = trade.nativeRefund;
     must(same(trade.account, r.from) && trade.isBuy === buy && output >= BigInt(r.minimumOutputWei) && fee > 0n && productionCurveFee(trade.grossNative) === fee
       && (buy ? trade.grossNative + refund === BigInt(r.amountWei) : trade.tokenAmount === BigInt(r.amountWei) && refund === 0n));
-    evidence = receipt.logs.filter(l => l.logIndex === events[0].logIndex);
+    if(r.operation === "buy-graduate") must(trade.sold === 600_000_000n * 10n**18n && trade.backingReserve === 2n * 10n**18n);
+    evidence = [...(r.operation === "buy-graduate" ? evidence : []), ...receipt.logs.filter(l => l.logIndex === events[0].logIndex)];
   }
   if (!activity || BigInt(activity.checkpoint.blockNumber) < receipt.blockNumber || context.anchor.blockNumber < receipt.blockNumber + 20n
       || !evidence.every(log => activity.events.some(row => sameActivityLog(row, log)))) return { status: "pending", transactionHash: hash, indexed: false, settlementPending: true };
@@ -434,12 +464,16 @@ export async function handleProductionLifecycle(request: Request, options: Produ
     if (!resolved) return reply({ status: "unavailable" });
     const context = { ...resolved, rpc: boundedClaimVerificationRpc(resolved.rpc, Date.now, 512), corroboratingRpc: boundedClaimVerificationRpc(resolved.corroboratingRpc, Date.now, 512),
       ...(options.discovery && { discoveryReader: options.discovery }) };
+    if (body.action==="quote" && exactKeys(body,["action","token","side","amountWei"]) && address(body.token) &&
+        (body.side==="buy" || body.side==="sell") && isLifecycleAmount(body.side,body.amountWei)) {
+      return reply(await indicativeQuote(context,addr(body.token),body.side==="buy",BigInt(body.amountWei)));
+    }
     if (body.action === "state" && exactKeys(body, ["action", "token"], ["account"]) && address(body.token) && (body.account === undefined || address(body.account))) {
       return reply({ status: "ready", state: (await currentState(context, addr(body.token), body.account ? addr(body.account) : undefined)).state });
     }
     if (body.action === "prepare" && exactKeys(body, ["action", "token", "account", "operation", "amountWei", "slippageBps"], ["prior"])
-        && address(body.token) && address(body.account) && isProductionLifecycleOperation(body.operation) && isLifecycleAmount(body.operation, body.amountWei)
-        && isLifecycleSlippage(body.operation, body.slippageBps) && (body.prior === undefined || isProductionLifecycleRequest(body.prior))) {
+        && address(body.token) && address(body.account) && isProductionLifecycleOperation(body.operation) && isLifecycleAmount(tradeTermsOperation(body.operation), body.amountWei)
+        && isLifecycleSlippage(tradeTermsOperation(body.operation), body.slippageBps) && (body.prior === undefined || isProductionLifecycleRequest(body.prior))) {
       return reply(await prepareProductionLifecycle(context, addr(body.token), addr(body.account), body.operation, body.amountWei, body.slippageBps, body.prior));
     }
     if (body.action === "verify" && exactKeys(body, ["action", "request"], ["transactionHash"]) && isProductionLifecycleRequest(body.request)

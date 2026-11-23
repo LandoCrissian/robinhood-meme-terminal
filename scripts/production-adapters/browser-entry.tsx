@@ -10,7 +10,10 @@ declare global { interface Window { __task092: { mode: "claims" | "trading" | "d
 const fixture = window.__task092;
 // Harness-only bridge to the actual pure storage/lock helpers. This script is
 // never part of an application route or production deployment.
-(window as any).__task092Nonce = { lockKey: productionAccountLock, record: recordProductionConsumedNonce, key: productionNonceFloorKey };
+import { withProductionNonceStore } from "../../apps/launch-website/lib/production-nonce-store";
+(window as any).__task092Nonce = { lockKey: productionAccountLock, key: productionNonceFloorKey,
+  record: (store: Storage, account: string, nonce: string, hash: string) =>
+    withProductionNonceStore(store, view => recordProductionConsumedNonce(view, account, nonce, hash)) };
 createRoot(document.getElementById("root")!).render(<div className="rmtVnext rmtTerminal launchpad" data-theme="dark"><main className="lpContent task092Harness">
   <h1>Task092 adapter rehearsal</h1><p>Isolated synthetic state and wallet. No production network, signature or broadcast.</p>
   {fixture.mode !== "claims" && <ProductionLifecycleWallet token={fixture.token} curve={fixture.curve} symbol="EVID" />}

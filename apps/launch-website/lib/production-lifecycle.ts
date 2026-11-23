@@ -15,7 +15,7 @@ export const productionTradingPins = Object.freeze({
   permit2: "0x000000000022D473030F116dDEE9F6B43aC78BA3" as Address,
   router: "0x204FAca1764B154221e35c0d20aBb3c525710498" as Address,
 });
-export type ProductionLifecycleOperation = "buy" | "sell" | "approve" | "graduate" | "v4-buy" | "v4-sell" | "v4-token-approve" | "v4-permit2-approve";
+export type ProductionLifecycleOperation = "buy" | "buy-graduate" | "sell" | "approve" | "graduate" | "v4-buy" | "v4-sell" | "v4-token-approve" | "v4-permit2-approve";
 export type ProductionLifecycleRequest = {
   operation: ProductionLifecycleOperation; token: Address; curve: Address; factory: Address; from: Address; to: Address;
   data: Hex; value: Hex; chainId: typeof productionLifecycleChain; nonce: Hex; blockNumber: Hex; blockHash: Hex;
@@ -40,7 +40,8 @@ export function isProductionNitroZeroPosterEvidence(value: unknown): value is Pr
 }
 export type ProductionLifecycleVerification = TestLifecycleVerification;
 export const isProductionLifecycleOperation = (v: unknown): v is ProductionLifecycleOperation =>
-  ["buy", "sell", "approve", "graduate", "v4-buy", "v4-sell", "v4-token-approve", "v4-permit2-approve"].includes(v as string);
+  ["buy", "buy-graduate", "sell", "approve", "graduate", "v4-buy", "v4-sell", "v4-token-approve", "v4-permit2-approve"].includes(v as string);
+export const tradeTermsOperation = (operation: ProductionLifecycleOperation) => operation === "buy-graduate" ? "buy" : operation;
 export const isProductionV4Operation = (v: ProductionLifecycleOperation) => v.startsWith("v4-");
 export function productionLifecycleDestination(operation: ProductionLifecycleOperation, token: Address, curve: Address) {
   if (operation === "approve" || operation === "v4-token-approve") return token;
@@ -63,14 +64,14 @@ export function isProductionLifecycleRequest(value: unknown): value is Productio
       || !isTransactionHash(r.blockHash) || !isTransactionHash(r.reviewBlockHash) || !isTransactionHash(r.walletCodeHash)
       || typeof r.approvalBinding !== "string" || !/^[0-9a-f]{64}$/i.test(r.approvalBinding)
       || typeof r.deadline !== "string" || !/^[1-9][0-9]{0,15}$/.test(r.deadline)
-      || !isLifecycleAmount(r.operation, r.amountWei) || !isLifecycleSlippage(r.operation, r.slippageBps)
+      || !isLifecycleAmount(tradeTermsOperation(r.operation), r.amountWei) || !isLifecycleSlippage(tradeTermsOperation(r.operation), r.slippageBps)
       || typeof r.minimumOutputWei !== "string" || !uint.test(r.minimumOutputWei)) return false;
   const v4 = isProductionV4Operation(r.operation);
   if (Object.keys(r).length !== (v4 ? 21 : 20) || (v4 ? !isTestV4Binding(r.v4, r.token!)
       || !sameLifecycleValue(r.v4.engine, productionTradingPins.engine) || !sameLifecycleValue(r.v4.poolKey.hooks, productionTradingPins.guard) : Object.hasOwn(r, "v4"))) return false;
-  return isLifecycleTrade(r.operation) === (BigInt(r.minimumOutputWei) > 0n)
+  return isLifecycleTrade(tradeTermsOperation(r.operation)) === (BigInt(r.minimumOutputWei) > 0n)
     && BigInt(r.minimumOutputWei) < (v4 ? 2n ** 127n : 2n ** 256n)
-    && BigInt(r.value) === (r.operation === "buy" || r.operation === "v4-buy" ? BigInt(r.amountWei) : 0n)
+    && BigInt(r.value) === (tradeTermsOperation(r.operation) === "buy" || r.operation === "v4-buy" ? BigInt(r.amountWei) : 0n)
     && sameLifecycleValue(r.to, productionLifecycleDestination(r.operation, r.token!, r.curve!));
 }
 export function sameProductionLifecycleRequest(a: ProductionLifecycleRequest, b: ProductionLifecycleRequest) {
@@ -89,6 +90,7 @@ export async function encodeProductionLifecycleCalldata(operation: ProductionLif
       args: [operation === "approve" ? curve : productionTradingPins.permit2, amount] });
     case "v4-permit2-approve": return encodeFunctionData({ abi: parseAbi([testV4PermitSignature]), functionName: "approve",
       args: [token, productionTradingPins.router, amount, Number(deadline + testPermit2Lifetime)] });
+    case "buy-graduate": return encodeFunctionData({ abi: parseAbi(["function buyAndGraduate(uint256,uint256) payable returns(uint256)"]), functionName:"buyAndGraduate", args:[minimum, deadline] });
     case "buy": return encodeFunctionData({ abi, functionName: "buy", args: [minimum, deadline] });
     case "sell": return encodeFunctionData({ abi, functionName: "sell", args: [amount, minimum, deadline] });
     case "graduate": return encodeFunctionData({ abi, functionName: "graduate", args: [deadline] });

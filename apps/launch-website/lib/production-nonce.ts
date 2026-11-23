@@ -12,8 +12,8 @@ function nonce(value: unknown) {
 function account(value: string) {
   if (!/^0x[0-9a-f]{40}$/i.test(value) || BigInt(value) <= 0xffffn) throw fail(); return value.toLowerCase();
 }
-function floors(storage: ReadStorage): Floor[] {
-  const raw = storage.getItem(productionNonceFloorKey); if (raw === null) return [];
+function parseFloors(raw: string | null): Floor[] {
+  if (raw === null) return [];
   if (raw.length > 16384) throw fail(); const value = JSON.parse(raw) as { schemaVersion: number; floors: Floor[] };
   if (!value || Object.keys(value).length !== 2 || value.schemaVersion !== 1 || !Array.isArray(value.floors) || value.floors.length > 64) throw fail();
   const seen = new Set<string>();
@@ -24,6 +24,18 @@ function floors(storage: ReadStorage): Floor[] {
     seen.add(row.account);
   }
   return value.floors;
+}
+const floors = (storage: ReadStorage) => parseFloors(storage.getItem(productionNonceFloorKey));
+
+export function mergeProductionNonceFloors(saved: string | null, legacy: string | null): string {
+  const accounts = new Map<string, Floor>();
+  for (const row of [...parseFloors(saved), ...parseFloors(legacy)]) {
+    const prior = accounts.get(row.account);
+    if (prior?.nonce === row.nonce && prior.transactionHash !== row.transactionHash) throw fail();
+    if (!prior || nonce(row.nonce) > nonce(prior.nonce)) accounts.set(row.account, row);
+  }
+  if (accounts.size > 64) throw fail();
+  return JSON.stringify({ schemaVersion: 1, floors: [...accounts.values()] });
 }
 /** Both hex wallet quantities and canonical decimal journal quantities are
  * accepted. A consumed nonce is a durable floor even if a later reorg rewinds
@@ -45,6 +57,7 @@ export function assertProductionNonceAvailable(storage: ReadStorage, owner: stri
 export function recordProductionConsumedNonce(storage: Storage, owner: string, consumedNonce: string, transactionHash: string) {
   const who = account(owner), consumed = nonce(consumedNonce); if (!isTransactionHash(transactionHash)) throw fail();
   const all = floors(storage), existing = all.find(row => row.account === who);
+  if (existing && nonce(existing.nonce) === consumed && existing.transactionHash !== transactionHash.toLowerCase()) throw fail();
   if (existing && nonce(existing.nonce) >= consumed) return;
   if (!existing && all.length >= 64) throw fail();
   const row = { account: who, nonce: "0x" + consumed.toString(16), transactionHash: transactionHash.toLowerCase() };

@@ -163,9 +163,9 @@ function AuthenticatedEditor({ profile, csrfToken }: { profile: AccountProfile; 
       {profile.avatarUrl && <button type="button" className="lpButton lpSecondary" disabled={pending} onClick={() => { setSelectedAvatar(undefined); void removeCurrentAvatar(); }}>Remove avatar</button>}
     </section>
     <div className="lpStack">
-      <form className="lpPanel lpForm lpProfileForm" noValidate onInput={()=>setInvalid("")} onSubmit={(event) => void save(event)} aria-label="Edit creator profile">
+      <form className="lpPanel lpForm lpProfileForm" noValidate onInput={()=>setInvalid("")} onSubmit={(event) => void save(event)} aria-label="Edit profile">
         <h2>Public details</h2>
-        <p>Save your changes to update your creator profile.</p>
+        <p>Save your changes to update your public profile.</p>
         <label>Display name<input name="displayName" aria-invalid={invalid==="displayName" || undefined} aria-errormessage={invalid==="displayName"?"profile-save-message":undefined} value={draft.displayName} maxLength={96} onChange={(event) => setDraft({ ...draft, displayName: event.target.value })} /></label>
         <label>Username<input name="username" aria-invalid={invalid==="username" || undefined} aria-errormessage={invalid==="username"?"profile-save-message":undefined} aria-label="Username" aria-describedby="profile-username-hint" value={draft.username ?? ""} minLength={3} maxLength={24} placeholder="your_name" autoCapitalize="none" spellCheck={false}
           onChange={(event) => setDraft({ ...draft, username: event.target.value || null })} /><small id="profile-username-hint">3–24 characters. Start with a letter; use letters, numbers or underscores. Saving a username lists it on the People page.</small></label>

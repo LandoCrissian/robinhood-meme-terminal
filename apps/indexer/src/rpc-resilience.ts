@@ -44,12 +44,13 @@ export function failureBackoffMs(baseMs: number, consecutiveFailures: number, ca
 type ErrorLike = {
   cause?: unknown;
   code?: unknown;
+  status?: unknown;
   message?: unknown;
   name?: unknown;
 };
 
 const TRANSIENT_UPSTREAM_ERROR = /(?:too many requests|\b429\b|context deadline exceeded|fetch failed|http request failed|gateway timeout|service unavailable|socket hang up|timed? out|econnreset|enotfound)/i;
-const TRANSIENT_UPSTREAM_NAMES = new Set(["HttpRequestError", "TimeoutError", "SocketClosedError"]);
+const TRANSIENT_UPSTREAM_NAMES = new Set(["HttpRequestError", "TimeoutError", "SocketClosedError", "ResourceUnavailableRpcError", "LimitExceededRpcError", "TimeoutRpcError", "UpstreamLogRangeUnavailable", "ProviderBlockUnavailable"]);
 
 export function classifySyncFailure(error: unknown): SyncFailureKind {
   const seen = new Set<unknown>();
@@ -59,6 +60,7 @@ export function classifySyncFailure(error: unknown): SyncFailureKind {
     seen.add(current);
     const candidate = current as ErrorLike;
     if (typeof candidate.code === "string" && /^[0-9A-Z]{5}$/.test(candidate.code)) return "local";
+    if (candidate.code === -32002 || candidate.code === -32005 || candidate.status === 429 || candidate.status === 503) return "upstream";
     if (typeof candidate.name === "string" && TRANSIENT_UPSTREAM_NAMES.has(candidate.name)) return "upstream";
     if (typeof candidate.message === "string" && TRANSIENT_UPSTREAM_ERROR.test(candidate.message)) return "upstream";
     current = candidate.cause;

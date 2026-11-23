@@ -63,9 +63,9 @@ export function CreatorProfile({ username, walletAddress, initialProfile, review
   const destinations = [...(profile?.xHandle ? [{label:"@"+profile.xHandle+" on X",url:"https://x.com/"+profile.xHandle}] : []), ...(profile?.links || [])];
   return <div className="lpReading lpCreatorIdentity">
     <Link className="lpUtility lpBreadcrumb" href="/people" prefetch={false}>← People</Link>
-    {status === "loading" ? <p className="lpSkeleton" role="status">Loading creator profile…</p> :
+    {status === "loading" ? <p className="lpSkeleton" role="status">Loading profile…</p> :
       status !== "ready" ? <section className="lpNotice"><h1>{status === "missing" ? "Profile unavailable" : "Couldn’t load profile"}</h1>
-        <p>{status === "missing" ? "This creator hasn’t published a profile at this address." : "Check your connection and try again."}</p>
+        <p>{status === "missing" ? "This wallet hasn’t published a profile." : "Check your connection and try again."}</p>
         {status === "unavailable" && <button className="lpUtility" onClick={()=>setAttempt(n=>n+1)}>Try again</button>}</section> :
       profile && <article className="lpIdentityCard">
         <header className="lpIdentityHead"><ProfileAvatar name={label || "R"} url={profile.avatarUrl} size={76} />
@@ -87,7 +87,7 @@ export function CreatorProfile({ username, walletAddress, initialProfile, review
         <div className="lpWalletLine"><span>Wallet</span><a href={robinhoodExplorer+"/address/"+profile.walletAddress} aria-label={"View wallet "+profile.walletAddress+" on the explorer"} target="_blank" rel="noopener noreferrer">{shortWallet(profile.walletAddress)} ↗</a>
           <button className="lpUtility" type="button" onClick={async()=>{try {await navigator.clipboard.writeText(profile.walletAddress);setCopied("Copied");}catch{setCopied(profile.walletAddress);}}}>Copy address</button>
           <span role="status">{copied}</span></div>
-        <details className="lpDisclosure"><summary>About this identity</summary><p>Wallet sign-in confirms control of the address. Creators supply their names, images and links. Check the contract and destination before using a project.</p></details>
+        <details className="lpDisclosure"><summary>About this identity</summary><p>Wallet sign-in confirms control of the address. People choose their own names, images and links. Check the contract and destination before using a project.</p></details>
       </article>}
     {creator && <section className="lpProfileProjects"><h2>Launches</h2>
       {!directory ? <p className="lpSkeleton" role="status">Loading launches…</p> : <NewEngineLaunches directory={directory} creatorView onRetry={reviewFeed ? ()=>location.reload() : ()=>setFeedAttempt(n=>n+1)} />}</section>}
