@@ -19,6 +19,7 @@ import {
   providerBudget,
   rpcFeed,
 } from "./feed-scheduler.js";
+import { commitProductionActivity } from "./curve-production-activity.js";
 import { marketWordReader } from "./market-rpc.js";
 
 // Run only inside the existing isolated PostgreSQL birth/restart fixture.
@@ -35,9 +36,12 @@ export async function coldMarketSmoke(
   const factory = config.binding.factory.toLowerCase(),
     scope = productionCurveScope(config);
   const hash = (n: bigint) => ("0x" + n.toString(16).padStart(64, "0")) as Hex;
-  const clock = Date.now(),
+  let registrationHead = reg,
+    activityHead = activity;
+  const clock = Date.parse("2026-11-23T17:49:26Z"),
     seconds = BigInt(Math.floor(clock / 1000));
-  const timestamp = (n: bigint) => seconds - (reg - n) / 10n;
+  const timestamp = (n: bigint) =>
+    n === activity ? seconds - 100n : seconds - (reg - n) / 10n;
   const date = (n: bigint) => new Date(Number(timestamp(n)) * 1000);
   const creation = activity - 5n;
   // Adjacent coverage around the first synthetic receipt; no registration
@@ -151,7 +155,7 @@ export async function coldMarketSmoke(
           ];
         }) => {
           assert.equal(x.method, "eth_call");
-          assert.equal(x.params[1].blockHash, hash(activity));
+          assert.equal(x.params[1].blockHash, hash(activityHead));
           assert.equal(x.params[1].requireCanonical, true);
           if (peer && fault && batch.length === 3 && x.id === 1) {
             fault = false;
@@ -183,7 +187,7 @@ export async function coldMarketSmoke(
     assert.ok(address && typeof address !== "string");
     const clients = peers.map((peer, i) => ({
       ...peer,
-      getBlockNumber: async () => reg + 20n,
+      getBlockNumber: async () => registrationHead + 20n,
       getBlock: async (args: { blockNumber: bigint }) =>
         args.blockNumber < activity - 1000n
           ? peer.getBlock(args)
@@ -275,8 +279,33 @@ export async function coldMarketSmoke(
     fork = true;
     await assert.rejects(read("reorg"), { message: "canonical_block" });
     fork = false;
-    shift = 30000;
-    await assert.rejects(read("aged"), { message: "activity_anchor_missing" });
+    // Replay actual UTC observations. The old tip had 2.916s of freshness
+    // left for the first sample and had already expired before the second.
+    shift = 17084;
+    const nearExpiry = await read("incident-first");
+    assert.equal(nearExpiry.checkpoint.blockNumber, String(activity));
+    shift = 37629;
+    await assert.rejects(read("incident-second"), {
+      message: "activity_anchor_missing",
+    });
+    registrationHead = 121597564n;
+    shift = 78238;
+    await worker.syncOnce();
+    activityHead = 121597200n;
+    await commitProductionActivity(
+      db,
+      config,
+      activity + 1n,
+      {
+        blockNumber: String(activityHead),
+        blockHash: hash(activityHead),
+        timestamp: date(activityHead).toISOString(),
+      },
+      [],
+    );
+    const caughtUp = await read("incident-new-durable-tip");
+    assert.equal(caughtUp.status, "ready");
+    assert.equal(caughtUp.checkpoint.blockNumber, String(activityHead));
     console.info(
       JSON.stringify({
         test: "cold_market",

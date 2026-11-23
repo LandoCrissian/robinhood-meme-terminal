@@ -96,7 +96,20 @@ function provider(primary: boolean) {
   return createServer(async (req, res) => {
     let raw = "";
     for await (const chunk of req) raw += chunk;
-    const { id, method, params = [] } = JSON.parse(raw);
+    const body = JSON.parse(raw);
+    if (Array.isArray(body)) {
+      assert.ok(body.length > 0 && body.length <= 3);
+      const answers = body.map(({ id, method, params }) => {
+        assert.equal(method, "eth_call");
+        assert.deepEqual(params[1], { blockHash: hash(safe), requireCanonical: true });
+        const result = marketCall(params[0].to.toLowerCase(), params[0].data);
+        assert.ok(result);
+        return { jsonrpc: "2.0", id, result };
+      });
+      res.end(JSON.stringify(answers.reverse()));
+      return;
+    }
+    const { id, method, params = [] } = body;
     let result: unknown;
     if (method === "eth_blockNumber") result = toHex(safe + 20);
     else if (method === "eth_chainId") result = toHex(4663);
