@@ -161,7 +161,7 @@ export async function assertProductionWallet(wallet: ProductionWallet, request?:
 // draft, account and chain immediately before this operation. Persist before the
 // sole wallet send; a lost hash/transport error can never trigger an automatic retry.
 export async function submitProductionCreation(wallet: ProductionWallet, request: ProductionCreationRequest,
-  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">, assertReviewCurrent: () => void) {
+  storage: Pick<Storage, "getItem" | "setItem" | "removeItem">, assertReviewCurrent: () => void, onWalletPrompt?: () => void) {
   if (!isProductionCreationRequest(request)) throw new Error("Invalid creation request");
   if (readProductionCreationJournal(storage)) throw new Error("An original creation request requires recovery");
   assertNoPendingProductionCreation(storage, wallet.account, request.nonce);
@@ -178,6 +178,7 @@ export async function submitProductionCreation(wallet: ProductionWallet, request
   if (readProductionCreationJournal(storage)) throw new Error("An original creation request requires recovery");
   assertNoPendingProductionCreation(storage, wallet.account, request.nonce);
   await checkJournals();
+  assertReviewCurrent();
   const journal: ProductionCreationJournal = { request };
   storage.setItem(productionCreationJournalKey, JSON.stringify(journal));
   const persisted = readProductionCreationJournal(storage);
@@ -185,6 +186,7 @@ export async function submitProductionCreation(wallet: ProductionWallet, request
   assertReviewCurrent();
   try {
     const { from, to, data, value, chainId, nonce } = request;
+    onWalletPrompt?.();
     const result = await wallet.request.call(wallet.provider, { method: "eth_sendTransaction", params: [{ from, to, data, value, chainId, nonce }] });
     if (isTransactionHash(result)) {
       journal.transactionHash = result;
