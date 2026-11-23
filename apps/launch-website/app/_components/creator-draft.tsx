@@ -35,7 +35,7 @@ const projectLinks = [
   { key: "artworkURL", label: "Artwork URL", max: launchDraftLimits.artworkURL },
 ] as const;
 const treasuryFields = [
-  { key: "treasury", label: "Treasury address", max: 42, placeholder: "0x…" },
+  { key: "treasury", label: "Treasury address", max: 42, placeholder: "0xâ€¦" },
   { key: "treasuryShare", label: "Treasury share of project fees (%)", max: 6, placeholder: "0" },
 ] as const;
 const number = new Intl.NumberFormat("en-US");
@@ -50,21 +50,21 @@ function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; produc
       {production && <><dt>Future reserve recipient</dt><dd><code className="lpAddress">{production.reserve}</code></dd></>}
       <dt>Creator token allocation</dt><dd>0 tokens</dd>
       <dt>Opening curve inventory</dt><dd>{number.format(launchTokenSupply)} tokens</dd>
-      <dt>Opening real reserve</dt><dd>0 ETH · creators supply no liquidity</dd>
+      <dt>Opening real reserve</dt><dd>0 ETH Â· creators supply no liquidity</dd>
       <dt>Opening virtual reserve</dt><dd>{launchTerms.virtualEth} ETH for pricing only. Buyers supply the actual ETH.</dd>
       <dt>Curve trading fee</dt><dd>{launchTerms.curveTradeFeePercent}% of gross ETH, plus gas</dd>
       <dt>Curve and locked-position fee split</dt><dd>
         {draft ? <>
-          {percent.format(launchTerms.projectFeeSharePercent - draft.treasuryShareBps / 100)}% creator · {percent.format(draft.treasuryShareBps / 100)}% treasury
+          {percent.format(launchTerms.projectFeeSharePercent - draft.treasuryShareBps / 100)}% creator Â· {percent.format(draft.treasuryShareBps / 100)}% treasury
         </> : <>{launchTerms.projectFeeSharePercent}% creator/project</>}
-        { " · " }{launchTerms.operatingFeeSharePercent}% RMT operations · {launchTerms.futureReserveFeeSharePercent}% RMT future reserve
+        { " Â· " }{launchTerms.operatingFeeSharePercent}% RMT operations Â· {launchTerms.futureReserveFeeSharePercent}% RMT future reserve
       </dd>
       <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(draft?.treasuryShareBps ?? 0)}</dd>
       <dt>Rewards after graduation</dt><dd>Same recipients for ETH and token fees collected from the original locked position</dd>
       <dt>Graduation target</dt><dd>{number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold ({launchTerms.curveAllocationPercent}%) and {launchTerms.graduationBackingEth} ETH of real backing</dd>
       <dt>Minimum gross buy from launch</dt><dd>{formatEther(minimumGraduationGrossWei)} ETH in a single buy, including the curve fee. Gas is separate. Sells reduce progress and splitting buys can add rounding costs.</dd>
-      <dt>Original v4 position</dt><dd>{number.format(launchTokenSupply * launchTerms.liquidityAllocationPercent / 100)} tokens available before rounding ({launchTerms.liquidityAllocationPercent}%) · permanently locked principal</dd>
-      <dt>v4 pool fee</dt><dd>{launchTerms.graduationPoolFeePercent}% · project earnings depend on fees earned by the locked position</dd>
+      <dt>Original v4 position</dt><dd>{number.format(launchTokenSupply * launchTerms.liquidityAllocationPercent / 100)} tokens available before rounding ({launchTerms.liquidityAllocationPercent}%) Â· permanently locked principal</dd>
+      <dt>v4 pool fee</dt><dd>{launchTerms.graduationPoolFeePercent}% Â· project earnings depend on fees earned by the locked position</dd>
     </dl>
     <p>At the target, anyone can complete graduation. The transaction seeds the locked v4 position at the final curve price. Small rounding balances stay in the curve.</p>
   </>;
@@ -75,12 +75,12 @@ function DraftTerms({ draft, production }: { draft?: ReviewedLaunchDraft; produc
     {draft ? fullTerms : <>
       <dl className="lpCreatorTermHighlights">
         <div><dt>Creation fee</dt><dd>{launchTerms.creationFeeEth} ETH<small>Plus network gas</small></dd></div>
-        <div><dt>Fixed supply</dt><dd>{number.format(launchTokenSupply)}<small>Tokens · {launchTokenDecimals} decimals</small></dd></div>
+        <div><dt>Fixed supply</dt><dd>{number.format(launchTokenSupply)}<small>Tokens Â· {launchTokenDecimals} decimals</small></dd></div>
         <div><dt>Curve trading fee</dt><dd>{launchTerms.curveTradeFeePercent}%<small>Of gross ETH, plus gas</small></dd></div>
         <div><dt>v4 pool fee</dt><dd>{launchTerms.graduationPoolFeePercent}%<small>After graduation</small></dd></div>
       </dl>
       <div className="lpCreatorTermsSummary">
-        <p><strong>{launchTerms.projectFeeSharePercent}% project</strong> · {launchTerms.operatingFeeSharePercent}% RMT operations · {launchTerms.futureReserveFeeSharePercent}% RMT future reserve</p>
+        <p><strong>{launchTerms.projectFeeSharePercent}% project</strong> Â· {launchTerms.operatingFeeSharePercent}% RMT operations Â· {launchTerms.futureReserveFeeSharePercent}% RMT future reserve</p>
         <p>Applies to curve fees and fees earned by the original locked position. An optional treasury receives part of the project share.</p>
         <p><strong>0 creator tokens.</strong> Creators supply no liquidity.</p>
         <p>Graduation requires {number.format(launchTokenSupply * launchTerms.curveAllocationPercent / 100)} tokens net sold and {launchTerms.graduationBackingEth} ETH of buyer-funded backing. One buy from launch costs about {Number(formatEther(minimumGraduationGrossWei)).toFixed(4)} ETH including the fee, plus gas.</p>
@@ -192,11 +192,16 @@ export function CreatorDraft({ executionTest, productionCreation }: {
     const boundAccount = liveAccountBinding.current;
     setPending(true);
     try {
-      if (productionCreation && draft.name==="RMT" && draft.symbol==="RMT") {
-        let uri; try {uri=descriptionMetadata(draft.description).projectURI;} catch { /* Show the same recovery action. */ }
-        if (!uri || uri!==draft.projectURI) {setMessage("Review and publish the saved description with the RMT artwork before creation.");return;}
+      const { name, symbol, treasury, treasuryShare } = draft;
+      let projectURI = draft.projectURI;
+      if (productionCreation && name === "RMT" && symbol === "RMT") {
+        const reviewedMetadata = descriptionMetadata(draft.description);
+        if (draft.artworkURL !== rmtImageURL && projectURI !== reviewedMetadata.projectURI && assetCID(projectURI,"metadata.json") !== originalRmtMetadataCID) {
+          setMessage("Restore the approved RMT artwork before launching.");return;
+        }
+        projectURI = reviewedMetadata.projectURI;
+        checked.draft = {...checked.draft, description:draft.description, projectURI, artworkURL:rmtImageURL};
       }
-      const { name, symbol, projectURI, treasury, treasuryShare } = draft;
       const request: LaunchReviewRequest = {
         name, symbol, projectURI, treasury, treasuryShare, treasuryShareUnit: projectTreasuryShareUnit,
       };
@@ -249,13 +254,13 @@ export function CreatorDraft({ executionTest, productionCreation }: {
       </div>
       <div><span className="lpPill">{proposedCurveLifecycle.label}</span></div>
       <dl className="lpFacts lpCreatorReviewFacts">
-        <dt>Fixed total supply</dt><dd>{number.format(reviewed.supply)} tokens · {launchTokenDecimals} decimals</dd>
+        <dt>Fixed total supply</dt><dd>{number.format(reviewed.supply)} tokens Â· {launchTokenDecimals} decimals</dd>
         {reviewed.description && <><dt>Project description</dt><dd className="lpDraftDescription">{reviewed.description}</dd></>}
-        <dt>Project or metadata URL</dt><dd>{reviewed.projectURI || "None"}</dd>
+        <dt>Registration metadata</dt><dd>{reviewed.projectURI ? <span className="lpAddress">{reviewed.projectURI}</span> : "None"}</dd>
         <dt>Artwork URL</dt><dd>{reviewed.artworkURL || "None"}</dd>
         <dt>Project treasury</dt><dd className={reviewed.treasury ? "lpAddress" : undefined}>{reviewed.treasury || "None"}</dd>
-        {treasuryProof && <><dt>Separate project treasury contract</dt><dd className="lpAddress">{treasuryProof.treasury}</dd><dt>Treasury deployment</dt><dd>Verified synthetic block {treasuryProof.deployment.blockNumber} · purchases OFF at creation</dd></>}
-        <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(reviewed.treasuryShareBps)} · {percent.format(reviewed.treasuryShareBps / 100)}% of all eligible fees</dd>
+        {treasuryProof && <><dt>Separate project treasury contract</dt><dd className="lpAddress">{treasuryProof.treasury}</dd><dt>Treasury deployment</dt><dd>Verified synthetic block {treasuryProof.deployment.blockNumber} Â· purchases OFF at creation</dd></>}
+        <dt>Treasury share of project fees</dt><dd>{treasuryProjectPercent(reviewed.treasuryShareBps)} Â· {percent.format(reviewed.treasuryShareBps / 100)}% of all eligible fees</dd>
       </dl>
       <p className="lpCreatorHelp">The server verified the registration fields. {assetCID(reviewed.projectURI,"metadata.json") ? "The registration includes your saved image metadata." : "Optional draft notes stay in this browser."}
         {executionTest ? " The test wallet signs only the transaction reviewed below." : " No token has been created."}</p>
@@ -264,6 +269,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         setReviewed(undefined);
         requestAnimationFrame(() => formHeading.current?.focus());
       }}>Edit draft</button>
+      {!productionCreation && !executionTest && <p role="status">Your draft is saved. Launching is currently closed. Return here when owner creation opens.</p>}
     </section> : <form className="lpPanel lpForm lpDraft lpCreatorDraft" method="post" noValidate onSubmit={(event) => void review(event)}>
       <div className="lpCreatorSectionHeader">
         <div><span className="lpEyebrow">Your draft</span><h2 id="creator-token-details" ref={formHeading} tabIndex={-1}>Token details</h2></div>
@@ -283,7 +289,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         <div className="lpDraftField lpCreatorSupply">
           <label htmlFor="draft-fixed-supply">Fixed supply</label>
           <input id="draft-fixed-supply" value={`${number.format(launchTokenSupply)} tokens`} readOnly aria-describedby="draft-fixed-supply-hint" />
-          <small id="draft-fixed-supply-hint">Set by the launch contract · {launchTokenDecimals} decimals</small>
+          <small id="draft-fixed-supply-hint">Set by the launch contract Â· {launchTokenDecimals} decimals</small>
         </div>
       </fieldset>
       <details className="lpCreatorDisclosure lpCreatorMetadata">
@@ -295,13 +301,13 @@ export function CreatorDraft({ executionTest, productionCreation }: {
             <small id={fieldId("description") + "-hint"}>Up to 500 UTF-8 bytes. Private until explicitly published.</small>
             {errorFor("description")}
           </div>
-          {draft.name==="RMT" && draft.symbol==="RMT" && (draft.artworkURL===rmtImageURL || assetCID(draft.projectURI,"metadata.json")===originalRmtMetadataCID) &&
+          {!productionCreation && draft.name==="RMT" && draft.symbol==="RMT" && (draft.artworkURL===rmtImageURL || assetCID(draft.projectURI,"metadata.json")===originalRmtMetadataCID) &&
             <PublishDescription description={draft.description} projectURI={draft.projectURI} onSave={receipt=>setDraft(previous=>
               previous.description===draft.description && previous.projectURI===draft.projectURI && previous.artworkURL===draft.artworkURL ? {...previous,...receipt}:previous)} />}
           <details><summary>Advanced URLs</summary>{projectLinks.map(({ key, label, max }) => <div className="lpDraftField" key={key}>
             <label htmlFor={fieldId(key)}>{label}</label>
             <input {...inputProps(key, true)} readOnly={Boolean(assetCID(draft.projectURI,"metadata.json"))} type="url" maxLength={max} placeholder="https://" autoComplete="off" />
-            <small id={fieldId(key) + "-hint"}>{key === "projectURI" ? "Included in the creation transaction’s registration fields" : "Paste a saved RMT Launch image URL to reuse it. For other links, upload the original file to include it in registration."}</small>
+            <small id={fieldId(key) + "-hint"}>{key === "projectURI" ? "Included in the creation transactionâ€™s registration fields" : "Paste a saved RMT Launch image URL to reuse it. For other links, upload the original file to include it in registration."}</small>
             {errorFor(key)}
           </div>)}
           {assetCID(draft.artworkURL,"image.webp") && !assetCID(draft.projectURI,"metadata.json") &&
@@ -318,7 +324,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         </fieldset>
       </details>
       <details className="lpDraftTreasury lpCreatorDisclosure">
-        <summary><span><span>Optional project treasury</span><small>Allocate part of your project’s fee share</small></span></summary>
+        <summary><span><span>Optional project treasury</span><small>Allocate part of your projectâ€™s fee share</small></span></summary>
         <fieldset disabled={pending || !restored} aria-label="Project treasury settings">
           {restored && <ProjectTreasurySetup key={treasurySetupVersion} creatorFields={{ name: draft.name, symbol: draft.symbol, projectURI: draft.projectURI }}
             fixture={executionTest?.projectTreasury === true} initialExisting={Boolean(draft.treasury)}
@@ -336,7 +342,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
               setDraft(previous => ({ ...previous, treasury: proof.treasuryShareBps ? proof.treasury.toLowerCase() : "",
                 treasuryShare: proof.treasuryShareBps ? share : "" }));
             }} existingChildren={<>
-          <p>Allocate 0–100% of the project’s 90% share. The creator receives the rest. Leave both fields empty to pay the creator directly.</p>
+          <p>Allocate 0â€“100% of the projectâ€™s 90% share. The creator receives the rest. Leave both fields empty to pay the creator directly.</p>
           <p>The treasury address is permanent and must be able to claim fees. Verify smart-account claim support on the launch chain first.</p>
           {treasuryFields.map(({ key, label, max, placeholder }) => <div className="lpDraftField" key={key}>
             <label htmlFor={fieldId(key)}>{label}</label>
@@ -350,7 +356,7 @@ export function CreatorDraft({ executionTest, productionCreation }: {
       </details>
       {message && <p className="lpNotice lpError" role="alert">{message}</p>}
       <div className="lpDraftActions lpCreatorActions">
-        <button type="submit" className="lpButton" disabled={pending || !restored || artworkPending}>{pending ? "Reviewing draft…" : "Review draft"}</button>
+        <button type="submit" className="lpButton" disabled={pending || !restored || artworkPending}>{pending ? "Reviewing draftâ€¦" : "Review draft"}</button>
         <button type="button" className="lpButton lpSecondary" disabled={pending || !restored} onClick={() => {
           void clearPendingArtwork(); setArtworkReset(value=>value+1);
           setDraft(emptyLaunchDraft);
@@ -374,6 +380,8 @@ export function CreatorDraft({ executionTest, productionCreation }: {
         draft={reviewed}
         isCurrentDraft={(value) => value === currentDraft.current && reviewedAccountBinding.current === liveAccountBinding.current} />
         : productionCreation && <ProductionCreationWallet factory={productionCreation.factory} draft={reviewed}
+          metadataSaved={draft.projectURI === reviewed?.projectURI}
+          onMetadataSaved={(value) => setDraft(previous => previous.description === value.description && previous.name === value.name && previous.symbol === value.symbol ? {...previous,projectURI:value.projectURI,artworkURL:value.artworkURL}:previous)}
           isCurrentDraft={(value) => value === currentDraft.current && reviewedAccountBinding.current === liveAccountBinding.current} />}
     </div>}
   </div>;

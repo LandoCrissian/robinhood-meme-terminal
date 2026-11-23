@@ -1,3 +1,6 @@
+import {profileConfig, requireProfileRequest} from "./profiles/config";
+import {profileFirebase} from "./profiles/firebase";
+import {requireAuthentication, requireCsrf} from "./profiles/auth";
 import {descriptionMetadata} from "../rmt-metadata";
 import {approvedMetadataURI} from "./rmt-metadata";
 import { assetCID } from "../token-artwork";
@@ -54,7 +57,16 @@ export async function handleProductionCreation(request: Request) {
       if (typeof body.account !== "string" || !/^0x[0-9a-f]{40}$/i.test(body.account)
           || !same(body.account, rmtCreationOwner) || !isTransactionHash(body.intentId) || !isRmtCreation(body.fields, body.intentId)
           || (body.prior !== undefined && !prior) || (prior && (!same(prior.from, body.account) || !same(prior.intentId, body.intentId)))) return reply({ status: "invalid" }, 422);
-      if (!await isAuthenticatedCreationOwner(request.headers)) return reply({ status: "owner-login-required" }, 401);
+      if (request.headers.has("x-csrf-token")) {
+        const config = profileConfig();
+        if (!config || config.origin !== release.origin) return reply({status:"owner-login-required"},401);
+        try {
+          requireProfileRequest(request, config, true);
+          const auth = await requireAuthentication(request, await profileFirebase(config));
+          requireCsrf(request, auth);
+          if (!same(auth.account.walletAddress, rmtCreationOwner)) return reply({status:"owner-login-required"},401);
+        } catch { return reply({status:"owner-login-required"},401); }
+      } else if (!await isAuthenticatedCreationOwner(request.headers)) return reply({ status: "owner-login-required" }, 401);
       const cid = assetCID((body.fields as {projectURI:string}).projectURI,"metadata.json");
       if (!cid || !approvedMetadataURI((body.fields as {projectURI:string}).projectURI, release.operationalAcceptanceSha256)) return reply({status:"artwork-unverified"},422);
       const store=configuredArtworkStore();
