@@ -89,12 +89,12 @@ export function resourceError(error: unknown, boundedLogs = false) {
     deferredRange,
     pruned,
     transient:
-      timeout || deferredRange || missingBlock ||
+      !pruned && (timeout || deferredRange || missingBlock ||
       status === 408 ||
       status === 429 ||
       (status !== undefined && status >= 500) ||
       code === -32002 ||
-      code === -32005,
+      code === -32005),
   };
 }
 

@@ -90,6 +90,7 @@ export async function readCurveMarket(
   checkpoint: BlockEvidence,
   query: MarketQuery,
   registration = checkpoint,
+  allowAbsence = true,
 ) {
   const { token, interval, before } = query,
     blockNumber = BigInt(checkpoint.blockNumber),
@@ -130,6 +131,7 @@ export async function readCurveMarket(
     }
   }
   if (reg.rows[0]!.token === null) {
+    requireMarket(allowAbsence, "absence_registration_unready");
     requireMarket(reg.rows[0]!.aligned, "absence_cursor_alignment");
     // Check the immutable factory at the same height on both providers. A missing
     // database registration must never hide a real on-chain curve or indexed events.

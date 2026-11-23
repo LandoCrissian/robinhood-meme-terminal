@@ -1462,7 +1462,7 @@ function startServer() {
             activityBlock: anchor?.point?.blockNumber, activityHash: anchor?.point?.blockHash, epoch: anchor?.epoch}));
         }
         const unavailable = { schemaVersion: 1, chainId: CHAIN_ID, profile: productionActivityProfile, status: "unavailable", checkpoint: null };
-        if (!productionCurveConfigured || !current || current.state().status !== "ready") { report(503, "registration_unready"); json(response, 503, unavailable); return; }
+        if (!productionCurveConfigured || !current || (!market && current.state().status !== "ready")) { report(503, "registration_unready"); json(response, 503, unavailable); return; }
         const releaseRead = historyReadBudget.acquire();
         if (!releaseRead) { report(429, "read_budget"); response.setHeader("Retry-After", "1"); json(response, 429, { error: "Activity requests are temporarily limited" }); return; }
         let db: PoolClient | undefined;

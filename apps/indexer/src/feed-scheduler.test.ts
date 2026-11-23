@@ -118,6 +118,7 @@ test("rollout checkpoint: transient archive failure retries the same numbered re
   assert.equal(reads, 2);
   assert.equal(resourceError(resource).pruned, false);
   assert.equal(resourceError({code:-32000,message:"missing trie node"}).pruned, true);
+  assert.equal(resourceError({status:503,cause:{code:-32000,message:"missing trie node"}}).transient, false);
   assert.equal(resourceError({code:-32601}).transient,false);
   assert.equal(resourceError(new Error("unknown assertion")).transient,false);
 });

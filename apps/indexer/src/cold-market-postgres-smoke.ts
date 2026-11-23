@@ -106,6 +106,8 @@ export async function coldMarketSmoke(
   let fault = true,
     fork = false,
     shift = 0;
+  let headFault = false;
+  let depthLoss = false;
   let transportFault: "none" | "timeout" | "429" | "reject" | "duplicate" =
     "none";
   const budgets = [
@@ -187,7 +189,10 @@ export async function coldMarketSmoke(
     assert.ok(address && typeof address !== "string");
     const clients = peers.map((peer, i) => ({
       ...peer,
-      getBlockNumber: async () => registrationHead + 20n,
+      getBlockNumber: async () => {
+        if (i && headFault) throw Object.assign(new Error("quota"), { status: 429 });
+        return registrationHead + (i && depthLoss ? 19n : 20n);
+      },
       getBlock: async (args: { blockNumber: bigint }) =>
         args.blockNumber < activity - 1000n
           ? peer.getBlock(args)
@@ -267,6 +272,30 @@ export async function coldMarketSmoke(
     console.info(
       JSON.stringify({ test: "concurrent_backfill_restart", durations }),
     );
+    headFault = true;
+    await assert.rejects(worker.syncOnce(), /quota/);
+    headFault = false;
+    assert.equal(worker.state().status, "stale");
+    depthLoss = true;
+    await assert.rejects(read("lost-depth"), { message: "registration_depth" });
+    depthLoss = false;
+    await assert.rejects(worker.readMarket(db, {token: curve, interval: 60}), {
+      message: "absence_registration_unready",
+    });
+    const sustained = [];
+    for (let i = 0; i < 10; i++) {
+      const started = performance.now();
+      const background = budgets.map(b => rpcFeed.run("activity", () =>
+        b.request("eth_blockNumber", async () => registrationHead)));
+      const result = await read("delayed-registration-" + i);
+      await Promise.all(background);
+      assert.equal(result.status, "ready");
+      assert.equal(result.checkpoint.blockNumber, String(activity));
+      sustained.push(Math.round(performance.now() - started));
+    }
+    assert.ok(sustained.every(ms => ms < 8000));
+    console.info(JSON.stringify({test: "delayed_registration_market", sustained}));
+    await worker.syncOnce();
     transportFault = "reject";
     await assert.rejects(read("unsupported"), { code: -32601 });
     transportFault = "duplicate";
@@ -286,7 +315,7 @@ export async function coldMarketSmoke(
     assert.equal(nearExpiry.checkpoint.blockNumber, String(activity));
     shift = 37629;
     await assert.rejects(read("incident-second"), {
-      message: "activity_anchor_missing",
+      message: "activity_bootstrap_stale",
     });
     registrationHead = 121597564n;
     shift = 78238;
