@@ -69,7 +69,7 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
     async function quote(){try{
       const r=await post({action:"quote",token,side,amountWei:parseUnits(input,18).toString()});
       if(alive)setIndicative(r.status==="ready" && uint(r.outputWei) && uint(r.blockNumber) ?
-        "Estimated receive: "+amount(r.outputWei)+" "+(side==="buy"?symbol:"ETH") : "Quote unavailable. Try again shortly.");
+        "Estimated receive: "+amount(r.outputWei)+" "+(side==="buy"?symbol:"ETH") + (typeof r.outputImpactBps === "number" && Number.isSafeInteger(r.outputImpactBps) ? " · Price impact incl. fee: " + percent(r.outputImpactBps) : "") : "Quote unavailable. Try again shortly.");
     }catch{if(alive)setIndicative("Quote unavailable. Refresh before reviewing.");}
     finally{if(alive)retry=setTimeout(quote,15000);}}
     const timer=setTimeout(()=>void quote(),550);return()=>{alive=false;clearTimeout(timer);clearTimeout(retry);};
@@ -83,7 +83,7 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
   useEffect(() => { const invalidateStored = () => { invalidate(); if (wallet) {
     try { setJournal(readProductionTradeJournal(localStorage, wallet.account, token)); } catch { setMessage("Recovery storage is unavailable. Preserve the original request."); }
   } }; window.addEventListener("storage", invalidateStored); return () => window.removeEventListener("storage", invalidateStored); }, [wallet, token]);
-  async function run(work: () => Promise<void>, label = "Checking market…") {
+  async function run(work: () => Promise<void>, label = "Checking marketâ€¦") {
     if (running.current) return;
     running.current = true; setBusy(true); setMessage(""); setProgress(label);
     try { await work(); } catch (error) { setReview(null); setMessage(error instanceof Error ? error.message : "Transaction evidence unavailable"); }
@@ -168,7 +168,7 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
     : needsPermitApproval ? "v4-permit2-approve" : trade;
   const nextLabel = needsTokenApproval ? "Review token approval" : needsPermitApproval ? "Review Permit2 approval"
     : side === "buy" ? "Review buy" : "Review sell";
-  const short = (value: string) => `${value.slice(0, 6)}…${value.slice(-4)}`;
+  const short = (value: string) => `${value.slice(0, 6)}â€¦${value.slice(-4)}`;
   return <section className="lpForm lpTradeColumn rmLiveOrder" aria-label={`Trade ${symbol}`}>
     <div className="rmOrderHeading"><h2>Trade {symbol}</h2>
       <span className="rmOrderNetwork">Robinhood Chain</span></div>
@@ -183,21 +183,21 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
           disabled={busy} onChange={e => { invalidate(); setInput(e.target.value); }} />
       </label>
       {state?.account && <p className="rmBalance">Balance: {amount(side === "buy" ? state.account.ethWei : state.account.tokenWei)} {side === "buy" ? "ETH" : symbol}</p>}
-      <details className="rmTradeSettings"><summary>Slippage <span>{slippage || "—"}%</span></summary>
+      <details className="rmTradeSettings"><summary>Slippage <span>{slippage || "â€”"}%</span></summary>
         <label htmlFor={`${id}-slippage`}>Maximum slippage (%)<input id={`${id}-slippage`} value={slippage} inputMode="decimal"
           disabled={busy} maxLength={4} onChange={e => { invalidate(); setSlippage(e.target.value); }} /></label>
         <small>{v4 ? "Choose 0.10% to 5%." : "Choose 0% to 5%."}</small>
       </details>
       {indicative && !current && <p className="rmQuoteHint" role="status">{indicative}</p>}
       {!current && <>
-        {!wallet ? <button className="lpButton" disabled={busy} onClick={() => void run(connect, "Connecting wallet…")}>Connect wallet</button>
-          : !state ? <button className="lpButton" disabled={busy} onClick={() => void run(() => refresh(), "Checking price…")}>Retry market check</button>
+        {!wallet ? <button className="lpButton" disabled={busy} onClick={() => void run(connect, "Connecting walletâ€¦")}>Connect wallet</button>
+          : !state ? <button className="lpButton" disabled={busy} onClick={() => void run(() => refresh(), "Checking priceâ€¦")}>Retry market check</button>
           : <>
             {(needsTokenApproval || needsPermitApproval) && <p className="rmQuoteHint">Approve only this amount, then confirm your sell.</p>}
             <button className="lpButton" disabled={busy || enteredAmount <= 0n || state.phase === "eligible" && side === "buy"}
-              onClick={() => void run(() => prepare(nextOperation), "Preparing review…")}>{nextLabel}</button>
+              onClick={() => void run(() => prepare(nextOperation), "Preparing reviewâ€¦")}>{nextLabel}</button>
             {state.phase === "eligible" && <button className="lpButton lpSecondary" disabled={busy}
-              onClick={() => void run(() => prepare("graduate"), "Preparing graduation…")}>Review graduation</button>}
+              onClick={() => void run(() => prepare("graduate"), "Preparing graduationâ€¦")}>Review graduation</button>}
           </>}
       </>}
     </>}
@@ -206,16 +206,16 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
         : result?.status === "reverted" ? "This transaction reverted. Check the result before continuing."
         : "Your original request is saved. Check its status before submitting another transaction."}</p>
       {journal.transactionHash && <a className="rmTransactionLink" href={`https://robinhoodchain.blockscout.com/tx/${journal.transactionHash}`}
-        target="_blank" rel="noopener noreferrer">View transaction ↗</a>}
+        target="_blank" rel="noopener noreferrer">View transaction â†—</a>}
       <details className="rmTradeSettings"><summary>Recovery details</summary>
-        <p>{labels[journal.request.operation]} · wallet nonce {BigInt(journal.request.nonce).toString()}</p>
+        <p>{labels[journal.request.operation]} Â· wallet nonce {BigInt(journal.request.nonce).toString()}</p>
         <code className="lpAddress">{journal.transactionHash ?? "Waiting for the wallet transaction hash"}</code>
         <label>Original transaction hash<input value={hash} onChange={e => setHash(e.target.value)} maxLength={66} spellCheck={false} /></label>
         <small>Ethereum L1 settlement has not been verified.</small>
       </details>
-      <button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => recover(), "Checking transaction…")}>Check transaction</button>
+      <button className="lpButton lpSecondary" disabled={busy} onClick={() => void run(() => recover(), "Checking transactionâ€¦")}>Check transaction</button>
       {(result?.status === "reverted" || result?.status === "confirmed" && result.indexed === true) && <button className="lpButton" disabled={busy}
-        onClick={() => void run(() => recover(true), "Refreshing market…")}>Continue trading</button>}
+        onClick={() => void run(() => recover(true), "Refreshing marketâ€¦")}>Continue trading</button>}
     </div>}
     {current && !journal && <div className="lpReview rmTradeReview"><h3>Review {labels[current.request.operation]}</h3>
       <dl className="lpFacts">
@@ -224,6 +224,7 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
           <dt>Estimated receive</dt><dd>{amount(current.quote.outputWei)} {native(current.request.operation) ? symbol : "ETH"}</dd>
           <dt>Minimum receive</dt><dd>{amount(current.request.minimumOutputWei)} {native(current.request.operation) ? symbol : "ETH"}</dd>
           <dt>Trading fee</dt><dd>{amount(current.quote.feeWei)} {current.quote.feeAsset === "token" ? symbol : "ETH"}</dd>
+          {typeof current.quote.outputImpactBps === "number" && Number.isSafeInteger(current.quote.outputImpactBps) && <><dt>Price impact incl. fee</dt><dd>{percent(current.quote.outputImpactBps)}</dd></>}
           <dt>Slippage</dt><dd>{percent(current.request.slippageBps)}</dd>
         </>}
         {BigInt(current.quote.refundWei) > 0n && <><dt>Expected refund</dt><dd>{amount(current.quote.refundWei)} ETH</dd></>}
@@ -239,17 +240,17 @@ export function ProductionLifecycleWallet({ token, curve, symbol }: { token: str
         <p>Calldata</p><code className="lpAddress">{current.request.data}</code>
         <p>Release binding</p><code className="lpAddress">{current.request.approvalBinding}</code>
       </details>
-      <div className="lpDraftActions"><button className="lpButton" disabled={busy} onClick={() => void run(confirm, "Opening wallet…")}>Confirm {labels[current.request.operation]}</button>
+      <div className="lpDraftActions"><button className="lpButton" disabled={busy} onClick={() => void run(confirm, "Opening walletâ€¦")}>Confirm {labels[current.request.operation]}</button>
         <button className="lpTextButton" disabled={busy} onClick={invalidate}>Cancel</button></div>
     </div>}
     {busy && <p className="rmOrderStatus" role="status" aria-live="polite">{progress}</p>}
     {message && <div className="rmOrderError" role="alert"><p>{message}</p>
-      {wallet && state && !journal && <button className="lpTextButton" disabled={busy} onClick={() => void run(() => refresh(), "Checking price…")}>Retry market check</button>}
+      {wallet && state && !journal && <button className="lpTextButton" disabled={busy} onClick={() => void run(() => refresh(), "Checking priceâ€¦")}>Retry market check</button>}
     </div>}
     <div className="rmOrderFootnote">
-      <span>{state ? v4 ? "0.30% pool fee" : "1% trading fee" : "Fee shown in review"} · network fee extra</span>
+      <span>{state ? v4 ? "0.30% pool fee" : "1% trading fee" : "Fee shown in review"} Â· network fee extra</span>
       {wallet && <span title={wallet.account}>{short(wallet.account)}</span>}
     </div>
-    {v4 && <Link className="rmEarningsLink" href="/my-launches/earnings" prefetch={false}>Creator earnings ↗</Link>}
+    {v4 && <Link className="rmEarningsLink" href="/my-launches/earnings" prefetch={false}>Creator earnings â†—</Link>}
   </section>;
 }

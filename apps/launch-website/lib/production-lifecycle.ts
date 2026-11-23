@@ -25,7 +25,7 @@ export type ProductionLifecycleRequest = {
 export type ProductionLifecycleState = TestLifecycleState;
 export type ProductionNitroZeroPosterEvidence = { profile: "nitro-zero-poster-v1"; chainId: 4663; l1BaseFeeWei: "0"; l1CalldataUnitWei: "0";
   l2BaseFeeWei: string; nativeL2BaseFeeWei: string; blockNumber: string; blockHash: Hex };
-export type ProductionLifecycleQuote = TestLifecycleQuote & { maxPriorityFeePerGasWei: string } & (
+export type ProductionLifecycleQuote = TestLifecycleQuote & { maxPriorityFeePerGasWei: string; outputImpactBps?: number | null } & (
   { feeEvidence: "verified-nitro"; l1PosterGasUnits: string; nitroZeroPosterPolicy?: never; transactionBaseFeeWei?: never; observedGasPriceWei?: never }
   | { feeEvidence: "verified-nitro-zero-poster"; l1PosterGasUnits: "0"; nitroZeroPosterPolicy: ProductionNitroZeroPosterEvidence;
     transactionBaseFeeWei: string; observedGasPriceWei: string });

@@ -4,7 +4,7 @@ import { decodeFunctionData, erc20Abi, parseAbi, type Hex } from "viem";
 import { encodeProductionLifecycleCalldata, isProductionLifecycleRequest, productionLifecycleCalldataMatches, productionTradingPins,
   type ProductionLifecycleOperation, type ProductionLifecycleRequest } from "../production-lifecycle";
 import { prepareProductionLifecycle, verifyProductionLifecycle, productionDirectWallet, exactProductionLifecycleTransaction,
-  handleProductionLifecycle, parseProductionActivity, recoverProductionLifecycleHash } from "./production-lifecycle";
+  outputImpactBps, handleProductionLifecycle, parseProductionActivity, recoverProductionLifecycleHash } from "./production-lifecycle";
 import { productionTradingFixture } from "./production-trading-test-fixture";
 import { curveProductionPins } from "./curve-production";
 import { launchTokenSupplyWei } from "../launch-terms";
@@ -227,4 +227,11 @@ test("active-gate HTTP still rejects foreign authority and oversized streamed bo
   assert.equal((await handleProductionLifecycle(new Request("https://foreign.invalid/api/launchpad/production-lifecycle", { method: "POST", headers, body: "{}" }), options)).status, 403);
   assert.equal((await handleProductionLifecycle(new Request("https://www.rmtlaunch.fun/api/launchpad/production-lifecycle", { method: "POST", headers, body: " ".repeat(4097) }), options)).status, 413);
   assert.equal(resolves, 0);
+});
+
+test("output shortfall includes fees and compares both directions against the block spot", () => {
+  assert.equal(outputImpactBps(true, 50n, 98n, [1n,2n]),200);
+  assert.equal(outputImpactBps(false, 200n, 99n, [1n,2n]),100);
+  assert.equal(outputImpactBps(true, 50n, 100n, [1n,2n]),0);
+  assert.equal(outputImpactBps(true, 0n, 0n, [1n,2n]),null);
 });

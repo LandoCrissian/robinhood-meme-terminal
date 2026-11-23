@@ -1,0 +1,50 @@
+[
+  {
+    "Fingerprint": "0711602ad1a3eca79c89fd993078ee282aabf03a:docs/evidence/token-trading-experience/chromium-adapters-zero-poster.json:generic-api-key:52",
+    "RuleID": "generic-api-key",
+    "Secret": "REDACTED",
+    "Match": "token-detail.css\": \"REDACTED\"",
+    "Commit": "0711602ad1a3eca79c89fd993078ee282aabf03a",
+    "File": "docs/evidence/token-trading-experience/chromium-adapters-zero-poster.json",
+    "StartLine": 52,
+    "EndLine": 52,
+    "StartColumn": 38,
+    "EndColumn": 122
+  },
+  {
+    "Fingerprint": "0711602ad1a3eca79c89fd993078ee282aabf03a:docs/evidence/token-trading-experience/chromium-adapters-zero-poster.json:generic-api-key:59",
+    "RuleID": "generic-api-key",
+    "Secret": "REDACTED",
+    "Match": "token-page.css\": \"REDACTED\"",
+    "Commit": "0711602ad1a3eca79c89fd993078ee282aabf03a",
+    "File": "docs/evidence/token-trading-experience/chromium-adapters-zero-poster.json",
+    "StartLine": 59,
+    "EndLine": 59,
+    "StartColumn": 31,
+    "EndColumn": 113
+  },
+  {
+    "Fingerprint": "0711602ad1a3eca79c89fd993078ee282aabf03a:docs/evidence/token-trading-experience/chromium-adapters-positive.json:generic-api-key:52",
+    "RuleID": "generic-api-key",
+    "Secret": "REDACTED",
+    "Match": "token-detail.css\": \"REDACTED\"",
+    "Commit": "0711602ad1a3eca79c89fd993078ee282aabf03a",
+    "File": "docs/evidence/token-trading-experience/chromium-adapters-positive.json",
+    "StartLine": 52,
+    "EndLine": 52,
+    "StartColumn": 38,
+    "EndColumn": 122
+  },
+  {
+    "Fingerprint": "0711602ad1a3eca79c89fd993078ee282aabf03a:docs/evidence/token-trading-experience/chromium-adapters-positive.json:generic-api-key:59",
+    "RuleID": "generic-api-key",
+    "Secret": "REDACTED",
+    "Match": "token-page.css\": \"REDACTED\"",
+    "Commit": "0711602ad1a3eca79c89fd993078ee282aabf03a",
+    "File": "docs/evidence/token-trading-experience/chromium-adapters-positive.json",
+    "StartLine": 59,
+    "EndLine": 59,
+    "StartColumn": 31,
+    "EndColumn": 113
+  }
+]

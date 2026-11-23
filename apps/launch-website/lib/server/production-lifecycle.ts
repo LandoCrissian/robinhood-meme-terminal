@@ -115,7 +115,7 @@ async function registrationFor(context: ProductionTradingContext, token: Address
 
 /** Production registration/receipt, immutable economics, custody, all PoolKey fields and allowances are read at one corroborated block. */
 export async function readProductionTradingStateAt(rpc: EarningsRpc, context: ProductionTradingContext, launch: ProductionRegistration,
-  account?: Address, historicalReceipt = false): Promise<{ state: ProductionLifecycleState; binding?: TestV4Binding }> {
+  account?: Address, historicalReceipt = false): Promise<{ state: ProductionLifecycleState; binding?: TestV4Binding; spot: readonly [bigint, bigint] }> {
   const token = addr(launch.token), curve = addr(launch.initialCurve), number = context.anchor.blockNumber;
   const point = { blockNumber: number.toString(), blockHash: context.anchor.blockHash, timestamp: new Date(Number(context.anchor.timestamp) * 1000).toISOString() };
   const snapshot = await readEarningsContracts({ ...productionEarningsContext(rpc, point), ...(historicalReceipt && { historicalReceipt: true as const }) }, launch as EarningsRegistration, account ?? addr(launch.creator));
@@ -143,6 +143,7 @@ export async function readProductionTradingStateAt(rpc: EarningsRpc, context: Pr
     targetBackingWei: targetBacking.toString(), targetSoldWei: targetSold.toString(), feeBps: 100,
     priceWei: graduated ? null : ((virtualEth + backing) * 10n ** 18n / (virtualToken - sold)).toString(),
     ...(balances && { account: { ethWei: balances[0].toString(), tokenWei: balances[1].toString(), allowanceWei: balances[2].toString() } }) };
+  let spot: readonly [bigint, bigint] = [virtualEth + backing, virtualToken - sold];
   let binding: TestV4Binding | undefined;
   if (snapshot.lp.status === "ready") {
     const lp = snapshot.lp;
@@ -156,6 +157,8 @@ export async function readProductionTradingStateAt(rpc: EarningsRpc, context: Pr
     ]);
     must(same(poolId, binding.poolId) && same(await testV4PoolId(binding.poolKey), binding.poolId)
       && positionId.toString() === lp.positionTokenId && slot[0] > 0n && slot[3] === 3000 && liquidity >= BigInt(lp.liquidityWei));
+    // Native ETH is currency0 and RMT is currency1. slot0 quotes token units per ETH.
+    spot = [1n << 192n, slot[0] * slot[0]];
     state.postGraduation = { poolId: binding.poolId, poolKey: binding.poolKey, router: pins.router212[0], permit2: pins.permit2[0], ledger: binding.ledger, feeBps: 30,
       fees: { uncollected: { nativeWei: lp.uncollectedNativeWei, tokenWei: lp.uncollectedTokenWei },
         collected: { nativeWei: lp.accruedNativeWei, tokenWei: lp.accruedTokenWei }, claimed: { nativeWei: lp.claimedNativeWei, tokenWei: lp.claimedTokenWei },
@@ -164,7 +167,7 @@ export async function readProductionTradingStateAt(rpc: EarningsRpc, context: Pr
         permit2Expiration: allowances[1][1], chainTimestamp: Number(context.anchor.timestamp) } }) };
   }
   must(same((await rpc.getBlock({ blockNumber: number })).hash, point.blockHash));
-  return { state, binding };
+  return { state, binding, spot };
 }
 
 async function currentState(context: ProductionTradingContext, token: Address, account?: Address) {
@@ -185,21 +188,31 @@ async function poolQuote(context: ProductionTradingContext, binding: TestV4Bindi
   return quotes[0];
 }
 
+// Output shortfall versus the pretrade spot at the same canonical checkpoint.
+export function outputImpactBps(buy: boolean, input: bigint, output: bigint, spot: readonly [bigint,bigint]) {
+  const expected = input * (buy ? spot[1] : spot[0]);
+  const received = output * (buy ? spot[0] : spot[1]);
+  if (expected <= 0n || received <= 0n) return null;
+  return Number(((expected - received) * 10_000n) / expected);
+}
+
 async function indicativeQuote(context: ProductionTradingContext, token: Address, buy:boolean, amount:bigint) {
-  const {state,binding}=await currentState(context,token);
+  const {state,binding,spot}=await currentState(context,token);
   if(buy && state.phase==="eligible") return {status:"invalid",reason:"graduation-pending"};
-  let output:bigint;
+  let output:bigint, spent=amount;
   if(binding) output=await poolQuote(context,binding,buy,amount);
   else if(buy){
     const quotes=await Promise.all([context.rpc,context.corroboratingRpc].map(r=>r.readContract({address:state.curve,abi:curveAbi,functionName:"quoteBuy",args:[amount],blockNumber:context.anchor.blockNumber})));
     must(equal(quotes[0],quotes[1]));
-    output=productionCurveBuyQuote(amount,quotes[0],BigInt(state.soldWei),BigInt(state.targetSoldWei)).output;
+    const q=productionCurveBuyQuote(amount,quotes[0],BigInt(state.soldWei),BigInt(state.targetSoldWei));
+    output=q.output;
+    spent-=q.refund;
   }else{
     const quotes=await Promise.all([context.rpc,context.corroboratingRpc].map(r=>r.readContract({address:state.curve,abi:curveAbi,functionName:"quoteSell",args:[amount],blockNumber:context.anchor.blockNumber})));
     must(equal(quotes[0],quotes[1]));
     output=productionCurveSellQuote(quotes[0]).output;
   }
-  return {status:"ready",outputWei:String(output),blockNumber:String(context.anchor.blockNumber),blockHash:context.anchor.blockHash};
+  return {status:"ready",outputImpactBps:outputImpactBps(buy,spent,output,spot),outputWei:String(output),blockNumber:String(context.anchor.blockNumber),blockHash:context.anchor.blockHash};
 }
 
 export async function prepareProductionLifecycle(context: ProductionTradingContext, token: Address, from: Address,
@@ -207,7 +220,7 @@ export async function prepareProductionLifecycle(context: ProductionTradingConte
   must(address(token) && address(from) && isProductionLifecycleOperation(operation) && isLifecycleAmount(tradeTermsOperation(operation), amountWei) && isLifecycleSlippage(tradeTermsOperation(operation), slippageBps));
   if (prior && (!isProductionLifecycleRequest(prior) || !requestIdentity(context, prior) || !same(prior.token, token) || !same(prior.from, from)
       || prior.operation !== operation || prior.amountWei !== amountWei || prior.slippageBps !== slippageBps)) return { status: "invalid", reason: "stale-review" };
-  const [{ state, binding }, wallets] = await Promise.all([currentState(context, token, from),
+  const [{ state, binding, spot }, wallets] = await Promise.all([currentState(context, token, from),
     Promise.all([context.rpc, context.corroboratingRpc].map(rpc => productionDirectWallet(rpc, from, context.anchor.blockNumber, true)))]);
   must(equal(wallets[0], wallets[1]) && state.account);
   const v4 = isProductionV4Operation(operation), buy = tradeTermsOperation(operation) === "buy" || operation === "v4-buy";
@@ -274,7 +287,7 @@ export async function prepareProductionLifecycle(context: ProductionTradingConte
   must(equal(simulations[0], simulations[1]));
   const { gas, gasPrice, priority, poster, zeroPolicy, transactionBaseFeeWei, observedGasPriceWei } = simulations[0];
   if (BigInt(state.account.ethWei) < value + gas * gasPrice) return { status: "invalid", reason: "insufficient-balance" };
-  const commonQuote = { inputWei: amountWei, outputWei: output.toString(), minimumOutputWei: minimum.toString(), feeWei: fee.toString(), refundWei: refund.toString(),
+  const commonQuote = { outputImpactBps: outputImpactBps(buy,amount-refund,output,spot), inputWei: amountWei, outputWei: output.toString(), minimumOutputWei: minimum.toString(), feeWei: fee.toString(), refundWei: refund.toString(),
     gasUnits: gas.toString(), gasPriceWei: gasPrice.toString(), maxPriorityFeePerGasWei: priority.toString(),
     ...((operation === "v4-buy" || operation === "v4-sell") && { feePips: 3000, feeAsset: buy ? "native" as const : "token" as const }) };
   const quote: ProductionLifecycleQuote = zeroPolicy ? { ...commonQuote, feeEvidence: "verified-nitro-zero-poster", l1PosterGasUnits: "0", nitroZeroPosterPolicy: zeroPolicy,

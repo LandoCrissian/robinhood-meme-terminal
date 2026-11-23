@@ -19,7 +19,7 @@ function readGit(commit, file) {
   if (!cache.has(ref)) cache.set(ref, execFileSync("git", ["show", ref], { cwd: root, maxBuffer: 32 * 1024 * 1024 }));
   return cache.get(ref);
 }
-const verify = additions => verifyMarketHistoryPublicData([...history, ...additions], { readGit });
+const verify = additions => verifyMarketHistoryPublicData([...history, ...evidence("token-trading-experience/css-scan-rows.json"), ...additions], { readGit });
 
 test("all 39 lines independently resolve to their fork-created addresses from canonical compiler inputs", () => {
   const dir = mkdtempSync(join(tmpdir(), "rmt-address-proof-"));

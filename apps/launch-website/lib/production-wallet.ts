@@ -52,6 +52,9 @@ export async function connectProductionFinancialWallet(scope: FinancialCapabilit
   const request = provider.request;
   const accounts = await request.call(provider, { method: "eth_requestAccounts" });
   if (!Array.isArray(accounts) || !isLaunchAddress(accounts[0]) || /^0x0{40}$/i.test(accounts[0])) throw new Error("Select a wallet account");
+  if (scope === "trading" && await request.call(provider, {method:"eth_chainId"}) !== "0x1237") {
+    await request.call(provider, {method:"wallet_switchEthereumChain", params:[{chainId:"0x1237"}]});
+  }
   const wallet = { account: accounts[0].toLowerCase(), provider, request };
   await assertProductionWalletBinding(wallet);
   return wallet;
