@@ -373,7 +373,8 @@ async function checkAfter(browser, engine, layout, harness) {
   assert.deepEqual(await navigation.getByRole("link").allTextContents(), ["Launches", "People", "Create", "My Launches"]);
   assert.equal(await navigation.getByRole("link", { name: "Wallet", exact: true }).count(), 0);
   assert.equal(await page.locator(".lpLaunchSteps, .lpOverview").count(), 0);
-  assert.equal(await page.locator('main a[href="/create-token"]:visible').count(), 1, "Homepage has one prominent Create action");
+  assert.equal(await page.locator('a[href="/create-token"]:visible').count(), 1, "Create is accessible once through the launchpad navigation");
+  assert.equal(await navigation.getByRole("link", { name: "Create", exact: true }).getAttribute("href"), "/create-token");
   assert.equal(await page.locator("details.lpArchive, .lpArchiveRecord").count(), 0, "The homepage must not render historical registrations");
   assert.equal(await page.getByText(/Historical registrations|archive below/i).count(), 0);
   await page.getByRole("heading", { name: "Launches coming soon", exact: true }).waitFor();
@@ -451,12 +452,12 @@ async function checkAfter(browser, engine, layout, harness) {
   await page.goto(`${harness.origin}/`, { waitUntil: "networkidle" });
   await page.getByText("SYNTHETIC QA FIXTURES — LOCAL HARNESS ONLY", { exact: true }).waitFor();
   assert.deepEqual(await page.evaluate(() => window.__rmtPolishFixtureStages), ["created", "active", "graduating", "graduated", "unknown"]);
-  const cards = page.locator("article.lpLaunchCard");
+  const cards = page.locator("a.lpLaunchCard");
   assert.equal(await cards.count(), 5);
   assert.equal(await page.locator(".lpDiscoveryCount").getAttribute("role"), "status");
   assert.equal(await page.locator(".lpDiscoveryCount").textContent(), "5 launches");
   assert.equal(await cards.locator("details").count(), 0, "Card provenance belongs on detail pages");
-  for (const label of ["Creation confirmed", "Active bonding curve", "Ready to graduate", "Graduated to Uniswap v4", "Lifecycle unverified"]) {
+  for (const label of ["Created", "Active bonding curve", "Ready to graduate", "Graduated to Uniswap v4", "Lifecycle unverified"]) {
     assert.equal(await cards.getByText(label, { exact: true }).count(), 1);
   }
   assert.doesNotMatch(await cards.allTextContents().then(parts => parts.join("\n")), /market cap|volume|price|APY|liquidity|PoolManager|Pool key|Pool ID|transaction|L1 finality/i);
@@ -484,8 +485,8 @@ async function checkAfter(browser, engine, layout, harness) {
       assert.equal(await cards.count(), count);
       assert.equal(await page.locator(".lpDiscoveryCount").textContent(), `${count} ${count === 1 ? "launch" : "launches"}`);
       await checkSearchFocus(page);
-      const contrast = await contrastEvidence(page, [".lpLaunchCard h3 a", ".lpCardSymbol", ".lpLifecycle", ".lpCardMetrics dt", ".lpCardMetrics dd", ".lpCardFooter time", ".lpCardFooter a", ".lpEmpty h2", ".lpEmpty p", ".lpDiscoveryCount"]);
-      const targets = count ? await touchEvidence(page, [".lpCardFooter a"]) : [];
+      const contrast = await contrastEvidence(page, [".lpLaunchCard h3", ".lpCardSymbol", ".lpLifecycle", ".lpCardMetrics dt", ".lpCardMetrics dd", ".lpCardFooter time", ".lpCardOpen", ".lpEmpty h2", ".lpEmpty p", ".lpDiscoveryCount"]);
+      const targets = count ? await touchEvidence(page, ["a.lpLaunchCard"]) : [];
       const dimensions = await noOverflow(page);
       const columns = await page.locator(".lpCardGrid").evaluate(element => getComputedStyle(element).gridTemplateColumns.split(" ").length);
       if (count > 1) assert.ok(layout.viewport.width >= 1000 ? columns >= 2 : layout.viewport.width <= 730 ? columns === 1 : columns >= 1);
@@ -508,7 +509,9 @@ async function checkAfter(browser, engine, layout, harness) {
   for (const [query, name] of [["cedar", "Synthetic Cedar"], ["qatwo", "Synthetic Harbor"], [addr("a"), "Synthetic Orchard"], [addr("5"), "Synthetic Cedar"]]) {
     await search.fill(query);
     assert.equal(await cards.count(), 1, `Search supports ${query}`);
-    assert.equal(await cards.getByRole("link", { name, exact: true }).count(), 1);
+    assert.equal(await cards.getByRole("heading", { name, exact: true }).count(), 1);
+    assert.match(await cards.first().getAttribute("aria-label"), new RegExp("^View " + name));
+    assert.match(await cards.first().getAttribute("href"), /^\/launches\/0x[0-9a-f]{40}$/i);
     assert.equal(await page.locator(".lpDiscoveryCount").textContent(), "1 of 5 launches");
   }
   await search.fill("no-such-synthetic-launch");
